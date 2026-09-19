@@ -27,8 +27,10 @@ export function animatedUno() {
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   const paths = [...svg.firstElementChild!.children];
   const sit = group('uno-sit');
+  const tailSide = group('uno-tail-side');
   const tail = group('uno-tail');
   tail.append(paths[1]!);
+  tailSide.append(tail);
   const body = group('uno-body');
   body.append(...paths.slice(2, 4));
   const paws = group('uno-paws');
@@ -47,7 +49,7 @@ export function animatedUno() {
   // Figma head bounds in the 320px source, scaled to the retained 300px sit.
   for (const [key, value] of Object.entries({ x: 68.4375, y: 33.75, width: 150, height: 136.875 })) left.setAttribute(key, String(value));
   head.append(front, left);
-  sit.append(paths[0]!, tail, body, paws, beg, paths[6]!, paths[7]!, head);
+  sit.append(paths[0]!, tailSide, body, paws, beg, paths[6]!, paths[7]!, head);
   svg.replaceChildren(sit);
   const rest = el('img', 'uno-rest');
   Object.assign(rest, { src: restAsset, alt: '', draggable: false });
@@ -61,9 +63,10 @@ export function animatedUno() {
   return {
     node,
     pose(value: UnoPose) { if (node.dataset.pose !== value) node.dataset.pose = value; },
-    tail(angle: number, playing: boolean) {
+    tail(angle: number, playing: boolean, mirrored = false) {
       node.classList.toggle('uno-playing', playing);
       tail.style.transform = `rotate(${reduced.matches ? 0 : angle}deg)`;
+      tailSide.style.transform = mirrored && !reduced.matches ? 'scaleX(-1)' : '';
     },
     nod() {
       if (reduced.matches) return;
