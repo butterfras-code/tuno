@@ -1,0 +1,69 @@
+{
+  "note": "Unmasked comparisons at PDF frame sizes; 5% color tolerance. Synthetic microphone input exercises the real pitch pipeline; playback and volume are set through the UI. The design contains inconsistent shared volumes and transport states. Mobile tools follow the surface instead of covering its last 20px.",
+  "results": [
+    {
+      "width": 1120,
+      "height": 820,
+      "view": "tune",
+      "pdfPage": 6,
+      "differentPixels": 30543,
+      "differentPercent": 3.33
+    },
+    {
+      "width": 1120,
+      "height": 820,
+      "view": "tone",
+      "pdfPage": 7,
+      "differentPixels": 40970,
+      "differentPercent": 4.46
+    },
+    {
+      "width": 1120,
+      "height": 820,
+      "view": "tempo",
+      "pdfPage": 8,
+      "differentPixels": 43118,
+      "differentPercent": 4.69
+    },
+    {
+      "width": 1120,
+      "height": 820,
+      "view": "numbers",
+      "pdfPage": 9,
+      "differentPixels": 31806,
+      "differentPercent": 3.46
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "view": "tune",
+      "pdfPage": 12,
+      "differentPixels": 71885,
+      "differentPercent": 21.84
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "view": "tone",
+      "pdfPage": 13,
+      "differentPixels": 75425,
+      "differentPercent": 22.91
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "view": "tempo",
+      "pdfPage": 14,
+      "differentPixels": 60948,
+      "differentPercent": 18.52
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "view": "numbers",
+      "pdfPage": 15,
+      "differentPixels": 66302,
+      "differentPercent": 20.14
+    }
+  ]
+}

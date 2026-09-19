@@ -193,7 +193,7 @@ export function createAudioController(store: PracticeStore) {
     while (timeline.time < context.currentTime + 0.15) {
       const state = store.get();
       const pulse = timeline.next({ tempo: state.tempo, beats: meterInfo(state).beats, subdivision: state.subdivision });
-      const click = scheduleClick(context, pulse, state);
+      const click = scheduleClick(context, { ...pulse, downbeat: meterInfo(state).beats > 0 && pulse.part === 0 && !!state.beatAccents[pulse.beat] }, { ...state, accent: true });
       clicks.add(click);
       click.oscillator.addEventListener('ended', () => clicks.delete(click), { once: true });
       if (pulse.part === 0) { beatIndex++; beatDuration = 60 / state.tempo; }

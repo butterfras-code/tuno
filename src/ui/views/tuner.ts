@@ -120,10 +120,13 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
     const text = pitchText(state);
     listen.textContent = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus) ? 'Stop listening' : 'Start listening';
     hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : state.micStatus} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
-    caption.textContent = state.micStatus !== 'idle' ? 'LIVE TUNER' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
+    caption.textContent = state.micStatus !== 'idle' ? 'Uno hears...' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);
-    feedback.textContent = text.direction;
+    const reading = pitchReading(state);
+    const centered = reading !== null && Math.abs(reading.cents) <= 8 * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
+    const cents = reading ? `${reading.cents < 0 ? '−' : reading.cents > 0 ? '+' : ''}${Math.abs(reading.cents).toFixed(0)}` : '';
+    responsiveLabel(feedback, centered ? 'Right there. Hold steady.' : text.direction, centered ? `${cents} cents · In tune` : text.direction);
     summary.textContent = state.micStatus === 'idle' ? text.summary : 'Stop listening to explore manual samples.';
     input.disabled = check.disabled = clear.disabled = state.micStatus !== 'idle';
     transpose.textContent = TRANSPOSITIONS.find((option) => option.value === state.transposition)!.label;

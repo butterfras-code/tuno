@@ -32,15 +32,13 @@ try {
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     assert.equal(await page.locator('.pitch-marker').evaluate((marker) => getComputedStyle(marker).transitionDuration), '0.14s');
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
-    const advancedAccuracy = page.getByRole('button', { name: 'Advanced accuracy' });
-    const intermediateAccuracy = page.getByRole('button', { name: 'Intermediate accuracy' });
-    const beginnerAccuracy = page.getByRole('button', { name: 'Beginner accuracy' });
-    assert.equal(await advancedAccuracy.getAttribute('aria-pressed'), 'true');
-    await intermediateAccuracy.click();
-    assert.equal(await intermediateAccuracy.getAttribute('aria-pressed'), 'true');
-    await beginnerAccuracy.click();
-    assert.equal(await beginnerAccuracy.getAttribute('aria-pressed'), 'true');
-    await advancedAccuracy.click();
+    const accuracyTrigger = page.getByRole('button', { name: 'Tuner accuracy', exact: true });
+    assert.match(await accuracyTrigger.textContent(), /ADV/);
+    for (const label of ['INT', 'BEG', 'ADV']) {
+      await accuracyTrigger.click();
+      await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+      assert.match(await accuracyTrigger.textContent(), new RegExp(label));
+    }
     if (mode === 'hosted') {
       await page.getByText('Offline ready', { exact: true }).waitFor();
       host.setAvailable(false);
@@ -77,7 +75,7 @@ try {
     await page.getByLabel('Tempo (BPM)', { exact: true }).press('Tab');
     await page.getByLabel('Meter', { exact: true }).selectOption('6/8');
     assert.equal(await page.locator('.beat:visible').count(), 2);
-    assert.equal(await page.getByText('Dotted quarter = 108 BPM', { exact: true }).isVisible(), true);
+    assert.equal(await page.getByLabel('Tempo (BPM)', { exact: true }).inputValue(), '108');
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
     assert.equal(await page.locator('.selected-note').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
@@ -197,22 +195,20 @@ try {
     const tone = page.locator('#view-tone');
     const noteTrigger = tone.locator('.note-picker-trigger');
     const selectedBeforeBrowsing = await noteTrigger.textContent();
-    await tone.locator('.keyboard-heading .mobile-only').click();
-    await page.getByRole('button', { name: 'Browse octave 5', exact: true }).click();
+    await tone.getByRole('button', { name: 'Browse octave', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: '5', exact: true }).click();
     assert.equal(await noteTrigger.textContent(), selectedBeforeBrowsing, 'Browsing must preserve the selected tone');
-    await page.getByRole('button', { name: 'Done', exact: true }).click();
-    assert.equal(await tone.locator('.keyboard-heading .mobile-only').evaluate((node) => node === document.activeElement), true);
+    assert.equal(await tone.getByRole('button', { name: 'Browse octave', exact: true }).evaluate(node => node === document.activeElement), true);
     await noteTrigger.click();
-    await page.getByRole('button', { name: 'Play A5', exact: true }).click();
-    assert.equal(await page.getByRole('button', { name: 'Play A5', exact: true }).getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);
-    await tone.locator('.note-picker-actions').getByRole('button', { name: 'Octave 5', exact: true }).click();
-    await page.getByRole('button', { name: 'Browse octave 4', exact: true }).click();
-    assert.match(await tone.locator('.octave-sounding').innerText(), /A5/);
+    await page.getByRole('menuitemradio', { name: 'A', exact: true }).click();
+    assert.match(await noteTrigger.textContent(), /A5/);
+    await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+    await tone.getByRole('button', { name: 'Browse octave', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: '4', exact: true }).click();
+    assert.match(await noteTrigger.textContent(), /A5/);
+    await noteTrigger.click();
     await page.keyboard.press('Escape');
-    assert.equal(await tone.locator('.note-picker').isVisible(), true);
-    await page.getByRole('button', { name: 'Done', exact: true }).click();
-    assert.equal(await noteTrigger.evaluate((node) => node === document.activeElement), true);
+    assert.equal(await noteTrigger.evaluate(node => node === document.activeElement), true);
     await tone.locator('.tone-output').getByRole('button', { name: 'Volume · 40%', exact: true }).click();
     const toneVolume = page.getByLabel('Tone output volume', { exact: true });
     await toneVolume.fill('63');
@@ -239,7 +235,7 @@ try {
         await trigger.click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         assert.equal(await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);
-        await page.getByRole('button', { name: 'Done', exact: true }).click();
+        await page.keyboard.press('Escape');
       }
     }
     await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).click();
