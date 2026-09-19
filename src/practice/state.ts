@@ -10,9 +10,9 @@ export const TOOLS = [
 export type Focus = typeof TOOLS[number]['id'];
 export const TRANSPOSITIONS = [
   { value: 0, label: 'Concert pitch' },
-  { value: 2, label: 'B-flat instrument (+2)' },
-  { value: 9, label: 'E-flat instrument (+9)' },
-  { value: 7, label: 'F instrument (+7)' },
+  { value: 2, label: 'B-flat instrument' },
+  { value: 9, label: 'E-flat instrument' },
+  { value: 7, label: 'F instrument' },
 ] as const;
 export const METERS = [
   { value: 'free', label: 'Free pulse', beats: 0, unit: 'Quarter note' },
