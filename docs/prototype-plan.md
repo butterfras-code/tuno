@@ -106,4 +106,14 @@ The first foundation step and initial musical rules are implemented using TypeSc
 
 These checks cover the uncommitted foundation changes following base revision `2d8d7d8`; commands are documented in the README so they can be rerun against the eventual commit. No input/output route was used because this step has no audio. Hosted offline reopening is not yet implemented.
 
-**Next:** integrate the Figma shell, tokens, and static tuner presentation with shared practice state, then prove explicit microphone and tone lifecycle in both formats, including portable offline launch on actual devices, before selecting and integrating pitch detection. See the [design handoff](design-handoff.md) for scope and unresolved interaction details.
+**Next:** prove explicit microphone and tone lifecycle in both formats, including portable offline launch on actual devices, before selecting and integrating pitch detection. The Figma shell, tokens, static tuner presentation, and shared practice state are now implemented; see the [design handoff](design-handoff.md) for scope and unresolved interaction details.
+
+## Design implementation evidence — 2026-09-19
+
+Implemented against base revision `fbba413`: shared design tokens and controls, a single session-state store, responsive tuner/reference/metronome views, and locally embedded Figma artwork and fonts. The metronome is a visual/settings preview; microphone, tone playback, metronome scheduling, reward animation, and hosted offline preparation are not implemented.
+
+- Type checking and 10 unit-test groups pass, including cross-view state preservation, independent octave browsing, manual-pitch clearing, invalid values, and compound-meter preview grouping.
+- Chromium 153.0.8010.12 checks pass for hosted loopback HTTP and a renamed portable file opened with the browser offline. Both fonts and all SVGs decode; the portable file produces no subresource requests.
+- Browser checks exercise all three focus views at widths 1120, 768, 390, and 320 without page overflow; the piano scrolls within its container. Settings cancellation restores focus, shared updates preserve the active control, and reduced-motion preference is honored.
+- Desktop and mobile screenshots were visually reviewed against the Figma references. Mobile layout and Settings dialog are implementation adaptations because no corresponding frames were supplied.
+- Physical microphone/audio routes, actual managed devices, Safari, and Firefox remain untested. These visual checks do not imply audio readiness or hosted offline support.

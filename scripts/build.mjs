@@ -15,6 +15,11 @@ const options = {
   absWorkingDir: root,
   entryPoints: ['src/main.ts'],
   bundle: true,
+  loader: { '.svg': 'dataurl', '.ttf': 'dataurl' },
+  define: { FONT_LICENSES: JSON.stringify((await Promise.all([
+    readFile(path.join(root, 'src/assets/fonts/nunito-OFL.txt'), 'utf8'),
+    readFile(path.join(root, 'src/assets/fonts/nunito-sans-OFL.txt'), 'utf8'),
+  ])).join('\n\n')) },
   // A classic, bundled script also runs under file:// without module fetching.
   format: 'iife',
   platform: 'browser',
@@ -34,7 +39,9 @@ const options = {
       build.onEnd(async (result) => {
         if (result.errors.length) return;
         for (const [name, output] of Object.entries(result.metafile.outputs)) {
-          if (output.imports.length) throw new Error(`Unbundled resource in ${name}`);
+          if (output.imports.some((resource) => !resource.path.startsWith('data:'))) {
+            throw new Error(`Unbundled resource in ${name}`);
+          }
           if (!['app.js', 'app.css'].includes(path.basename(name))) {
             throw new Error(`Portable packaging does not yet handle ${name}`);
           }
@@ -50,8 +57,9 @@ const options = {
         const html = render(`<style>${css}</style>`, `<script>${js}</script>`);
         // esbuild escapes script/style closing sequences for safe inline embedding.
         // Reject resource-bearing markup/CSS; runtime requests are checked in browser tests.
-        if (/<[^>]+\s(?:src|srcset)\s*=/i.test(html) || /<link\b/i.test(html)
-          || /@import\b|url\s*\(/i.test(css)) {
+        if (/<[^>]+\s(?:src|srcset)\s*=/i.test(template) || /<link\b/i.test(template)
+          || /@import\b/i.test(css)
+          || [...css.matchAll(/url\(\s*[\"']?([^\"')]+)/gi)].some((match) => !match[1].startsWith('data:'))) {
           throw new Error('Portable HTML contains an unsupported resource reference.');
         }
         await Promise.all([

@@ -1,10 +1,10 @@
 # Figma design handoff
 
-Reviewed 2026-09-19. Source: [tUno — Practice with a friend](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). This records design intent and implementation planning; the application still uses the temporary pitch explorer.
+Reviewed 2026-09-19. Source: [tUno — Practice with a friend](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). This records design intent and implementation planning. The first visual implementation is now in the application; audio and animation remain pending.
 
 ## Reviewed material
 
-Design context and screenshots were reviewed for the tuner desktop frame (`5:2`), Uno feedback storyboard (`7:133`), and interaction notes (`11:139`). The page inventory also identifies the following reference frames; inspect their full design context before implementing them.
+Design context and screenshots were reviewed for the tuner desktop frame (`5:2`), Uno feedback storyboard (`7:133`), and interaction notes (`11:139`). The reference-tone and both metronome frames were subsequently inspected with full design context during implementation. The inventory below records the source frames.
 
 | Frame | Figma node | Role |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ Use CSS custom properties in the existing plain TypeScript/HTML/CSS app. The gen
 
 The design uses Nunito for headings/controls and Nunito Sans for supporting text. Shared control descriptions specify a minimum 48px height. Preserve visible keyboard focus, semantic buttons and inputs, and readable feedback at zoom. Implement layout with responsive grid/flex flow; the desktop coordinates are a visual reference rather than fixed page positioning.
 
-Export and retain the exact Uno and bone artwork when implementing the UI. Figma asset URLs expire and must not become runtime dependencies. Obtain font files with their license notices and record asset provenance before bundling. Extend the portable build to embed image/font bytes and update its resource checks, which currently reject all image `src` attributes and CSS `url()` references. The application must not fetch fonts or artwork from Figma or a CDN at runtime.
+Export and retain the exact Uno and bone artwork when implementing the UI. Figma asset URLs expire and must not become runtime dependencies. Obtain font files with their license notices and record asset provenance before bundling. The portable build now embeds image/font bytes as data URLs and validates that CSS references are embedded; browser checks verify decoded assets and no external requests. The application must not fetch fonts or artwork from Figma or a CDN at runtime.
 
 ## Interaction contracts
 
@@ -72,3 +72,11 @@ Metronome controls become functional in slice 2. During slice 1, omit unavailabl
 - Keyboard note labels remain concert pitch initially, as in the core plan. Make the convention explicit when the tuner is set to written pitch.
 
 Validate both artifacts after assets and fonts are introduced, then check focus switching during active audio, keyboard operation, reduced motion, and narrow/zoomed layouts. Physical-device verification remains required.
+
+## Implemented visual pass
+
+Global tokens, shared control helpers, one practice-state store, and the shared shell now support all focus views. Tuner samples remain explicitly manual, with no initial fake pitch; clearing a sample hides the marker. Reference-note selection and octave browsing are separate. Tempo/meter and numbered/Uno views are interactive previews, with playback and tap tempo disabled and explained. No timed success or live-beat state is simulated.
+
+Desktop layout follows the Figma palette, type, artwork, and composition. Responsive adaptations use wrapping navigation, stacked tool cards, smaller static Uno artwork, and a horizontally scrollable keyboard with touch-sized keys. Settings/Display share one native dialog with explicit Save/Cancel, calibration, transposition, and Uno visibility. This is an implementation choice for the previously unspecified dialog contents.
+
+Intentional departures from the static examples: accurate sample frequency/cents values, unavailable transport, no invented hold progress, no unverified offline-ready label, and outlined downbeat identity without claiming an active beat. Rhythm subdivisions, accents, sound selection, and audio volumes beyond the reference-tone setting remain part of metronome implementation.

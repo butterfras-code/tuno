@@ -6,7 +6,7 @@ tUno aims to make a dependable tuner, metronome, and reference tones available w
 
 tUno will ship as a hosted, downloadable app and, in parallel, a self-contained offline HTML file. Both releases share the same core practice tools.
 
-This repository contains the first implementation foundation: a basic pitch explorer, tested musical calculations, and hosted/portable builds. Microphone listening, reference-tone playback, metronome, and hosted offline caching are not implemented yet.
+The app now implements the Figma visual foundation: a responsive tuner, reference-note keyboard, and metronome preview with shared controls and session state. Manual pitch input, calibration, transposition, note/octave selection, volume/sustain settings, and tempo/meter previews work. Microphone capture, audio playback, animated rewards, and hosted offline caching remain ahead.
 
 ## Project documents
 
@@ -17,7 +17,7 @@ This repository contains the first implementation foundation: a basic pitch expl
 
 Read these in order. Keep commitments in the charter, distribution decisions in the architecture, and implementation milestones and validation results in the prototype plan. Add architecture decisions as implementation establishes them, rather than documenting an imagined finished system.
 
-Open-source distribution is intended. A project license and attribution inventory still need to be established before importing and distributing upstream code or assets.
+Open-source distribution is intended; the project source license remains undecided. Bundled artwork/font provenance and font licenses are recorded in [dependency provenance](docs/dependencies.md).
 
 ## Development
 
@@ -28,7 +28,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. The temporary pitch explorer accepts a manually entered frequency, A4 calibration, and written-pitch transposition. It does not request microphone access or play audio.
+Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Audio transport is visibly unavailable in this design pass.
 
 ```sh
 npm run check
@@ -47,4 +47,16 @@ npm run test:browser
 
 Build outputs are ignored by Git. The build script owns and replaces `dist/`; stop the development server before running a production build or browser checks. Its ES2022 output target is a tooling choice, not a minimum-browser support claim.
 
-Musical calculations live in `src/music/pitch.ts`; `src/main.ts` connects the temporary controls. The build pipeline is in `scripts/build.mjs`. There are no runtime dependencies or remote assets. See [dependency provenance](docs/dependencies.md) before adding upstream code or assets.
+Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the application. The build pipeline is in `scripts/build.mjs`. There are no runtime dependencies or remote assets. See [dependency provenance](docs/dependencies.md) before adding upstream code or assets.
+
+## UI structure
+
+- `src/tokens.css`: global Figma colors, typography, spacing, and radii; `src/styles.css` defines shared controls and responsive layouts.
+- `src/practice/state.ts`: one application-owned store, typed actions, validation limits, tool/meter definitions, and derived pitch/frequency values. Views do not own duplicate practice state.
+- `src/ui/components.ts`: shared semantic DOM controls, labels, artwork, and pitch formatting. `src/ui/app.ts` owns the header, focus navigation, tool strip, footer, and one settings dialog.
+- `src/ui/views/`: focused presentations mounted once and updated in place. Editing a control preserves DOM focus; switching views preserves session values.
+- `src/assets/`: exact Figma SVG exports and local font files/notices. The build embeds these assets as data URLs in both distributions and includes the font notices in a collapsible footer.
+
+Keep audio resources outside the view modules when adding playback. Extend shared actions and selectors so focused views and compact tool controls stay synchronized. Keep musical rules independent of the DOM. Add global tokens or shared components for recurring patterns; leave view-specific composition in its view module.
+
+Browser checks cover state persistence, settings Save/Cancel, invalid input, keyboard focus, all views at 1120/768/390/320px, reduced-motion preference, and asset decoding in both builds. For review screenshots, run `TUNO_SCREENSHOT_DIR=/tmp/tuno-review npm run test:browser`.

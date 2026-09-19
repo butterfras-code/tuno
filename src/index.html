@@ -3,35 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>tUno — Practice tools</title>
+    <meta name="theme-color" content="#f4efe7">
+    <title>tUno — Practice with a friend</title>
     <!-- styles -->
   </head>
   <body>
-    <main>
-      <h1>tUno</h1>
-      <p>Music practice tools, taking shape.</p>
-      <section aria-labelledby="pitch-heading">
-        <h2 id="pitch-heading">Pitch explorer</h2>
-        <p>Enter a frequency to explore tuning. Microphone listening and reference-tone playback are coming next.</p>
-        <form id="pitch-form">
-          <label for="frequency">Frequency (Hz)</label>
-          <input id="frequency" name="frequency" type="number" min="1" max="24000" step="any" value="440" required>
-          <label for="calibration">A4 reference (Hz)</label>
-          <input id="calibration" name="calibration" type="number" min="400" max="480" step="any" value="440" required>
-          <label for="transposition">Written pitch</label>
-          <select id="transposition" name="transposition">
-            <option value="0">Concert pitch</option>
-            <option value="2">B-flat instrument (+2 semitones)</option>
-            <option value="9">E-flat instrument (+9 semitones)</option>
-            <option value="7">F instrument (+7 semitones)</option>
-          </select>
-          <p class="hint">Transposition adds semitones to concert pitch. Concert B♭ displays as C for a B-flat instrument.</p>
-          <button type="submit">Check pitch</button>
-        </form>
-        <p id="pitch-result" role="status"></p>
-      </section>
-      <noscript>Enable JavaScript to use the pitch explorer.</noscript>
-    </main>
+    <a class="skip-link" href="#practice">Skip to practice</a>
+    <div id="app" class="app"></div>
+    <noscript><p>Enable JavaScript to use tUno’s practice tools.</p></noscript>
     <!-- scripts -->
   </body>
 </html>
