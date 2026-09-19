@@ -1,7 +1,8 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, responsiveLabel, row, select, uno, view, volumePopover } from '../components.ts';
+import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
+import { petTempo } from '../pet-tempo.ts';
 import { tempoInput } from '../tempo.ts';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
@@ -31,7 +32,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   play.classList.add('metronome-play');
   transport.append(tempo, unit, tempoActions, play);
   const friend = el('div', 'pulse-friend');
-  friend.append(el('p', 'eyebrow', 'UNO PULSE'), uno());
+  friend.append(el('p', 'eyebrow', 'UNO PULSE'), petTempo(store, audio));
   body.append(transport, friend);
   const beats = el('ol', 'beat-grid');
   beats.setAttribute('aria-label', 'Meter beats');
@@ -83,7 +84,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     volume.value = String(state.clickVolume);
     current.textContent = !state.metronomePlaying ? 'Stopped' : state.currentBeat === null ? 'Starting…'
       : `${state.meter === 'free' ? 'Pulse' : `Beat ${state.currentBeat + 1}${state.currentBeat === 0 ? ' · Downbeat' : ''}`} · Pulse ${state.currentPart + 1}`;
-    friend.dataset.side = state.currentBeat === null ? '' : state.currentBeat % 2 === 0 ? 'left' : 'right';
+
     meter.value = state.meter;
     responsiveLabel(unit, `${info.unit} = ${state.tempo} BPM`, `${info.unit} · BPM`);
     mode.textContent = `View · ${state.numbered ? 'Numbered' : 'Uno'}`;

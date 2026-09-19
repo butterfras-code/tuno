@@ -18,7 +18,7 @@ try {
   run('typecheck, unit tests, build', process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'check']);
   run('release integrity', process.execPath, ['scripts/release-check.mjs']);
   for (const browser of ['chromium', 'firefox']) {
-    for (const check of ['browser-check', 'offline-check', 'audio-render-check', 'performance-check', 'release-browser-check']) {
+    for (const check of ['browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'audio-render-check', 'performance-check', 'release-browser-check']) {
       run(`${browser}: ${check}`, process.execPath, [`scripts/${check}.mjs`], { ...process.env, TUNO_BROWSER: browser });
     }
   }

@@ -45,3 +45,15 @@ No license file was found in the source checkout. This reuse is authorized by th
 `src/assets/icons/app-icon.svg` wraps the existing approved Uno vector in the warm canvas color with padding. Its paths retain the original artwork; it is an installation icon, not a replacement wordmark or new character design. The committed 192px and 512px PNGs were rasterized with `rsvg-convert -w SIZE -h SIZE -o src/assets/icons/icon-SIZE.png src/assets/icons/app-icon.svg`. Builds copy these files without requiring a rasterizer or adding dependencies. Artwork rights remain as described above.
 
 The manifest and install-event behavior follow [MDN's installability guidance](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable). The optional prompt depends on browser support; native OS installation remains a manual verification item.
+
+## Uno animation assets — 2026-09-19
+
+Additional unmodified SVG exports from the same user-owned Figma file:
+
+| Asset | Figma node |
+| --- | --- |
+| `src/assets/uno-rest.svg` | Rest artwork `7:141` |
+| `src/assets/uno-beg.svg` | Raised-paw artwork `7:193` |
+| `src/assets/uno-head-left.svg` | Left-facing head `32:478` |
+
+`src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. Export files remain unchanged; only DOM grouping and coordinate scaling happen at runtime. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.

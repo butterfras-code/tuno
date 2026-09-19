@@ -24,7 +24,13 @@ export function createAudioController(store: PracticeStore) {
   let metronomeTimer: ReturnType<typeof setTimeout> | undefined;
   let visualFrame = 0;
   let timeline: ReturnType<typeof createTimeline> | undefined;
-  let visualQueue: Pulse[] = [];
+  type VisualPulse = Pulse & { duration: number; index: number };
+  let visualQueue: VisualPulse[] = [];
+  let beatIndex = -1;
+  let beatDuration = 0;
+  let visualBeat: VisualPulse | undefined;
+  const pulseListeners = new Set<(angle: number, playing: boolean, beatIndex: number | null) => void>();
+  const tapListeners = new Set<() => void>();
   const clicks = new Set<ReturnType<typeof scheduleClick>>();
   const tap = createTapTempo();
   const buffer = new Float32Array(4096);
@@ -56,7 +62,7 @@ export function createAudioController(store: PracticeStore) {
     if (!analyser || !context) return;
     analyser.getFloatTimeDomainData(buffer);
     const evidence = detectPitch(buffer, context.sampleRate, 0.005);
-    update({ liveHz: evidence.frequency, rms: evidence.rms, quality: evidence.quality,
+    update({ pitchUpdatedAt: performance.now(), liveHz: evidence.frequency, rms: evidence.rms, quality: evidence.quality,
       micStatus: evidence.rms < 0.005 ? 'no-signal' : evidence.frequency === null ? 'unreliable' : 'listening' });
     timer = setTimeout(analyse, 70);
   }
@@ -146,6 +152,9 @@ export function createAudioController(store: PracticeStore) {
     visualFrame = 0;
     timeline = undefined;
     visualQueue = [];
+    visualBeat = undefined;
+    beatIndex = -1;
+    pulseListeners.forEach(listener => listener(0, false, null));
     for (const click of clicks) click.stop();
     clicks.clear();
     update({ metronomePlaying: false, currentBeat: null, currentPart: 0 });
@@ -155,8 +164,16 @@ export function createAudioController(store: PracticeStore) {
     // Audio events drive beat identity; rendering never schedules sound.
     const stamp = context.getOutputTimestamp?.();
     const now = stamp?.contextTime || context.currentTime;
-    let current: Pulse | undefined;
-    while (visualQueue.length && visualQueue[0]!.time <= now) current = visualQueue.shift();
+    let current: VisualPulse | undefined;
+    while (visualQueue.length && visualQueue[0]!.time <= now) {
+      current = visualQueue.shift()!;
+      if (current.part === 0) visualBeat = current;
+    }
+    if (visualBeat) {
+      const fraction = Math.max(0, Math.min(1, (now - visualBeat.time) / visualBeat.duration));
+      const angle = 25 * Math.cos(Math.PI * (visualBeat.index + fraction));
+      pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index));
+    }
     if (current) update({ currentBeat: current.beat, currentPart: current.part });
     visualFrame = requestAnimationFrame(renderBeat);
   }
@@ -173,7 +190,8 @@ export function createAudioController(store: PracticeStore) {
       const click = scheduleClick(context, pulse, state);
       clicks.add(click);
       click.oscillator.addEventListener('ended', () => clicks.delete(click), { once: true });
-      visualQueue.push(pulse);
+      if (pulse.part === 0) { beatIndex++; beatDuration = 60 / state.tempo; }
+      visualQueue.push({ ...pulse, index: beatIndex, duration: beatDuration });
     }
     metronomeTimer = setTimeout(scheduleBeats, 25);
   }
@@ -211,10 +229,15 @@ export function createAudioController(store: PracticeStore) {
     if (active) { stopAll(); update({ micStatus: 'interrupted', audioError: 'Practice paused while tUno was hidden. Start a tool to resume.' }); }
   }, startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
     toggleMetronome: () => timeline || metronomePending ? stopMetronome() : void startMetronome(),
-    tapTempo: () => { const tempo = tap(performance.now()); if (tempo !== null) store.dispatch({ type: 'tempo', value: tempo }); },
+    onPulseFrame(listener: (angle: number, playing: boolean, beatIndex: number | null) => void) {
+      pulseListeners.add(listener);
+      return () => pulseListeners.delete(listener);
+    },
+    onTap(listener: () => void) { tapListeners.add(listener); return () => tapListeners.delete(listener); },
+    tapTempo: () => { tapListeners.forEach(listener => listener()); const tempo = tap(performance.now()); if (tempo !== null) store.dispatch({ type: 'tempo', value: tempo }); },
     toggleMic: () => stream || store.get().micStatus === 'requesting' ? stopMic() : void startMic(),
     toggleTone: () => oscillator || tonePending ? stopTone() : void playTone(),
-    dispose() { stopAll(); unsubscribe(); if (context) { context.onstatechange = null; void context.close(); } },
+    dispose() { stopAll(); unsubscribe(); pulseListeners.clear(); tapListeners.clear(); if (context) { context.onstatechange = null; void context.close(); } },
   };
 }
 export type AudioController = ReturnType<typeof createAudioController>;

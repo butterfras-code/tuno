@@ -27,7 +27,7 @@ export const LIMITS = {
 } as const;
 export type Settings = Readonly<{ a4: number; transposition: number; showUno: boolean }>;
 export type MicStatus = 'idle' | 'requesting' | 'listening' | 'no-signal' | 'unreliable' | 'error' | 'interrupted';
-export type AudioState = Readonly<{ micStatus: MicStatus; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; metronomePlaying: boolean; currentBeat: number | null; currentPart: number; audioError: string }>;
+export type AudioState = Readonly<{ micStatus: MicStatus; pitchUpdatedAt: number; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; metronomePlaying: boolean; currentBeat: number | null; currentPart: number; audioError: string }>;
 export type PracticeState = Settings & AudioState & Readonly<{
   focus: Focus;
   manualHz: number | null;
@@ -66,7 +66,7 @@ function inRange(value: number, min: number, max: number, integer = false): bool
 
 export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
-    micStatus: 'idle', liveHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
+    micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
     focus: 'tuner', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
     showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40,
     tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, clickVolume: 50, clickSound: 'click',
