@@ -19,7 +19,7 @@ Both app formats show the same release/build identifier in their footer. The hos
 
 ## Deployment handoff
 
-The current work prepares artifacts locally; it does not publish or push them. Before public distribution, resolve source/artwork licensing and complete the required physical validation.
+Local build and verification commands prepare artifacts without publishing them. Cloudflare Pages automatically builds and deploys pushes to `main` at https://tuno.cc; see [hosting setup](hosting.md) for project settings and the feature-branch/PR workflow. Before public distribution, resolve source/artwork licensing and complete the required physical validation.
 
 Serve the entire hosted directory under one HTTPS path with a trailing slash. Serve `sw.js`/`app.js` as JavaScript, `.webmanifest` as `application/manifest+json`, PNGs as `image/png`, CSS as `text/css`, and HTML as `text/html`. Avoid immutable caching for `index.html`, `sw.js`, the manifest, and unversioned JS/CSS; revalidate them on deployment. Deploy the directory atomically so integrity checks do not see mixed revisions. Retain prior versioned downloads while old pages may still link to them.
 
