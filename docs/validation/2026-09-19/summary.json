@@ -1,0 +1,81 @@
+{
+  "build": "9c6d0d1fb200f02a",
+  "revision": "9ff462dda7f6faca58121acc121c8c7b1013aaa4",
+  "dirty": true,
+  "checkedAt": "2026-09-19T16:50:02.958Z",
+  "automatedChecksPassed": true,
+  "physicalAcceptance": "pending",
+  "results": [
+    {
+      "check": "typecheck, unit tests, build",
+      "result": "passed",
+      "elapsedMs": 680
+    },
+    {
+      "check": "release integrity",
+      "result": "passed",
+      "elapsedMs": 38
+    },
+    {
+      "check": "chromium: browser-check",
+      "result": "passed",
+      "elapsedMs": 11407
+    },
+    {
+      "check": "chromium: offline-check",
+      "result": "passed",
+      "elapsedMs": 1962
+    },
+    {
+      "check": "chromium: audio-render-check",
+      "result": "passed",
+      "elapsedMs": 336
+    },
+    {
+      "check": "chromium: performance-check",
+      "result": "passed",
+      "elapsedMs": 827
+    },
+    {
+      "check": "chromium: release-browser-check",
+      "result": "passed",
+      "elapsedMs": 1052
+    },
+    {
+      "check": "firefox: browser-check",
+      "result": "passed",
+      "elapsedMs": 14656
+    },
+    {
+      "check": "firefox: offline-check",
+      "result": "passed",
+      "elapsedMs": 3068
+    },
+    {
+      "check": "firefox: audio-render-check",
+      "result": "passed",
+      "elapsedMs": 1077
+    },
+    {
+      "check": "firefox: performance-check",
+      "result": "passed",
+      "elapsedMs": 1720
+    },
+    {
+      "check": "firefox: release-browser-check",
+      "result": "passed",
+      "elapsedMs": 2081
+    }
+  ],
+  "untested": [
+    "Managed Chromebook",
+    "Physical Safari",
+    "Real microphone/speakers/headphones",
+    "OS installation",
+    "Production HTTPS deployment",
+    "Classroom projection"
+  ],
+  "unavailable": [
+    "Automated WebKit: required system libraries absent on this host"
+  ]
+}

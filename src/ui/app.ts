@@ -1,3 +1,4 @@
+import { createReleaseControls } from '../distribution/release.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
@@ -13,6 +14,7 @@ import { createMetronome } from './views/metronome.ts';
 export function mountApp(root: HTMLElement, store: PracticeStore) {
   const audio = createAudioController(store);
   window.addEventListener('pagehide', audio.stopAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
   const settings = createSettings(store);
   const header = el('header', 'app-header');
   const brand = el('div', 'brand');
@@ -48,7 +50,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     return { title, status, action };
   });
   const footer = el('footer', 'app-footer');
-  const availability = el('p', '', 'Reference tones may be picked up by the microphone. Use headphones to compare.');
+  const availability = el('p', '', 'Reference tones and metronome clicks may be picked up by the microphone. Use headphones to compare.');
   availability.id = 'audio-availability';
   const offline = el('p', 'teal');
   offline.id = 'offline-status';
@@ -60,7 +62,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   licenses.append(notice);
   const error = el('p');
   error.setAttribute('role', 'status');
-  footer.append(button('Stop all audio', audio.stopAll), error, availability, offline, licenses);
+  footer.append(button('Stop all audio', audio.stopAll), error, availability, offline, createReleaseControls(), licenses);
   root.append(header, main, tools, footer, settings.node);
   store.subscribe((state) => {
     links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));

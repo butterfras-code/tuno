@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Turn feasibility questions into a small playable experiment and recorded evidence. This document tracks proposed work and implementation evidence. The source/build foundation and initial musical rules are implemented; the audio prototype and physical-device benchmarks remain ahead.
+Turn feasibility questions into a small playable experiment and recorded evidence. This document tracks proposed work and implementation evidence. The integrated tuner/reference/metronome prototype, both builds, hosted offline support, and release controls are implemented. Physical-device acceptance remains pending; historical implementation evidence below records each stage.
 
 ## Implementation sequence
 
@@ -153,3 +153,9 @@ Validation: type checking, 19 unit tests, production packaging and extended Chro
 | Deliberate 500 ms UI stall | Metronome stops and displays explicit restart guidance in both builds |
 
 Physical microphone/audio routes, HTTPS deployment, managed Chromebook, physical Safari, desktop Firefox, real acoustic leakage, and classroom readability remain untested. These results do not close physical acceptance for the earlier tuner increments or establish background continuity. The next implementation slice is integrated prototype/release validation, including installation/download affordances and measured device tolerances.
+
+## Integrated release candidate — 2026-09-19
+
+Implemented the fifth reported increment: manifest and app icons, optional installation prompt/menu guidance, offline-cached versioned HTML download, visible shared release/build identifiers, and source/checksum release metadata. Added a repeatable Chromium/Firefox verification command and recorded automated thresholds separately from physical acceptance in [release validation](release-validation.md). [Release instructions](releasing.md) cover reproducible checks, output artifacts and deployment handoff.
+
+Integrated checks measure detector CPU/accuracy, synthetic settling and silence clearing, calibrated rendered reference tones, click timing during concurrent tools/UI activity, download/portable equivalence, offline update/cache failure handling, and interruption recovery. Hiding tUno now pauses capture/output with explicit restart, and tone automation only changes when its musical/volume settings change. Automated WebKit could not launch due to missing system libraries; physical devices, OS installation, acoustic leakage and production deployment remain untested. This candidate is not declared physically accepted or published.

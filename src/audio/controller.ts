@@ -1,3 +1,4 @@
+import { createReferenceTone } from './tone.ts';
 import { detectPitch } from './detector.ts';
 import { createTimeline, createTapTempo } from '../music/rhythm.ts';
 import type { Pulse } from '../music/rhythm.ts';
@@ -15,6 +16,7 @@ export function createAudioController(store: PracticeStore) {
   let gain: GainNode | undefined;
   let micGeneration = 0;
   let toneGeneration = 0;
+  let tonePending = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let toneTimer: ReturnType<typeof setTimeout> | undefined;
   let metronomeGeneration = 0;
@@ -33,7 +35,7 @@ export function createAudioController(store: PracticeStore) {
       context.onstatechange = () => {
         if (context?.state !== 'running' && (stream || oscillator || timeline)) {
           stopAll();
-          update({ micStatus: 'interrupted', audioError: 'Audio interrupted. Start listening or play a tone to resume.' });
+          update({ micStatus: 'interrupted', audioError: 'Audio interrupted. Start listening, play a tone, or start the metronome to resume.' });
         }
       };
     }
@@ -91,6 +93,7 @@ export function createAudioController(store: PracticeStore) {
   }
   function stopTone() {
     toneGeneration++;
+    tonePending = false;
     clearTimeout(toneTimer);
     if (oscillator && gain && context) {
       const oldOsc = oscillator, oldGain = gain;
@@ -115,19 +118,16 @@ export function createAudioController(store: PracticeStore) {
   }
   async function playTone() {
     const generation = ++toneGeneration;
+    tonePending = true;
     update({ audioError: '' });
     try {
       const ac = audioContext();
       await ac.resume();
       if (generation !== toneGeneration) return;
       if (!oscillator) {
-        oscillator = ac.createOscillator();
-        gain = ac.createGain();
-        gain.gain.value = 0;
-        oscillator.frequency.value = toneHz(store.get());
-        oscillator.connect(gain);
-        gain.connect(ac.destination);
-        oscillator.start();
+        const voice = createReferenceTone(ac, toneHz(store.get()));
+        oscillator = voice.oscillator;
+        gain = voice.gain;
       }
       syncTone();
       scheduleRelease();
@@ -136,7 +136,7 @@ export function createAudioController(store: PracticeStore) {
       if (generation !== toneGeneration) return;
       stopTone();
       update({ audioError: error instanceof Error ? error.message : 'Unable to play tone.' });
-    }
+    } finally { if (generation === toneGeneration) tonePending = false; }
   }
   function stopMetronome() {
     metronomeGeneration++;
@@ -198,15 +198,22 @@ export function createAudioController(store: PracticeStore) {
   }
   function stopAll() { stopMic(); stopTone(); stopMetronome(); }
   let sustain = store.get().sustain;
+  let { toneNote, a4, toneVolume } = store.get();
   const unsubscribe = store.subscribe((state) => {
-    syncTone();
+    if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume) {
+      toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume;
+      syncTone();
+    }
     if (sustain !== state.sustain) { sustain = state.sustain; scheduleRelease(); }
   });
-  return { startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
+  return { interrupt() {
+    const active = stream || oscillator || tonePending || timeline || metronomePending || store.get().micStatus === 'requesting';
+    if (active) { stopAll(); update({ micStatus: 'interrupted', audioError: 'Practice paused while tUno was hidden. Start a tool to resume.' }); }
+  }, startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
     toggleMetronome: () => timeline || metronomePending ? stopMetronome() : void startMetronome(),
     tapTempo: () => { const tempo = tap(performance.now()); if (tempo !== null) store.dispatch({ type: 'tempo', value: tempo }); },
     toggleMic: () => stream || store.get().micStatus === 'requesting' ? stopMic() : void startMic(),
-    toggleTone: () => oscillator ? stopTone() : void playTone(),
+    toggleTone: () => oscillator || tonePending ? stopTone() : void playTone(),
     dispose() { stopAll(); unsubscribe(); if (context) { context.onstatechange = null; void context.close(); } },
   };
 }

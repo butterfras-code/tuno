@@ -39,3 +39,9 @@ Source: local sibling `pitch-tracker`, revision `75214e7452f286fa50ac317ed06f5c5
 - `src/audio/controller.ts` adapts microphone cancellation generations, capture constraints, disconnected-track cleanup, and gain-ramp patterns from `src/audio/microphone.ts`. The controller is rewritten around tUno's store; teacher scoring and DOM dependencies are excluded. Microphone and tone have independent cancellation.
 
 No license file was found in the source checkout. This reuse is authorized by the owner for this project; it does not establish a public redistribution license. Source and project licensing remain unresolved before public release. No runtime dependencies were added.
+
+## Installation assets — 2026-09-19
+
+`src/assets/icons/app-icon.svg` wraps the existing approved Uno vector in the warm canvas color with padding. Its paths retain the original artwork; it is an installation icon, not a replacement wordmark or new character design. The committed 192px and 512px PNGs were rasterized with `rsvg-convert -w SIZE -h SIZE -o src/assets/icons/icon-SIZE.png src/assets/icons/app-icon.svg`. Builds copy these files without requiring a rasterizer or adding dependencies. Artwork rights remain as described above.
+
+The manifest and install-event behavior follow [MDN's installability guidance](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable). The optional prompt depends on browser support; native OS installation remains a manual verification item.

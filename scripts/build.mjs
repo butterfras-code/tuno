@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import * as esbuild from 'esbuild';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,17 @@ await rm(path.join(root, 'dist'), { recursive: true, force: true });
 await mkdir(hosted, { recursive: true });
 await mkdir(portable, { recursive: true });
 
+const packageInfo = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+const manifest = JSON.stringify({
+  id: './', name: 'tUno — Practice with a friend', short_name: 'tUno',
+  start_url: './', scope: './', display: 'standalone',
+  background_color: '#f4efe7', theme_color: '#f4efe7',
+  description: 'Local-first tuner, reference tones, and metronome.',
+  icons: [192, 512].map((size) => ({ src: `./icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
+}, null, 2);
+const icons = Object.fromEntries(await Promise.all([192, 512].map(async (size) => [
+  `icon-${size}.png`, await readFile(path.join(root, `src/assets/icons/icon-${size}.png`)),
+])));
 const options = {
   absWorkingDir: root,
   entryPoints: ['src/main.ts'],
@@ -53,14 +65,19 @@ const options = {
           readFile(path.join(hosted, 'app.css'), 'utf8'),
         ]);
         const worker = await readFile(path.join(root, 'src/distribution/service-worker.js'), 'utf8');
-        const version = createHash('sha256').update(template + js + css + worker).digest('hex').slice(0, 16);
+        const version = createHash('sha256').update(template + js + css + worker + manifest + packageInfo.version).update(icons['icon-192.png']).update(icons['icon-512.png']).digest('hex').slice(0, 16);
         const render = (styles, scripts) => template
-          .replace('<!-- version -->', `<meta name="tuno-version" content="${version}">`)
+          .replace('<!-- version -->', `<meta name="tuno-version" content="${version}"><meta name="tuno-release" content="${packageInfo.version}">`)
           .replace('<!-- styles -->', () => styles)
           .replace('<!-- scripts -->', () => scripts);
         const html = render(`<style>${css}</style>`, `<script>${js}</script>`);
-        const hostedHtml = render('<link rel="stylesheet" href="./app.css">', '<script defer src="./app.js"></script>');
-        const integrity = Object.fromEntries(Object.entries({ 'index.html': hostedHtml, 'app.js': js, 'app.css': css })
+        const downloadName = `tuno-${version}.html`;
+        const hostedHtml = render('<link rel="stylesheet" href="./app.css">' + (!dev
+          ? `<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><meta name="tuno-download" content="./${downloadName}">` : ''), '<script defer src="./app.js"></script>');
+        const resources = { 'index.html': hostedHtml, 'app.js': js, 'app.css': css,
+          ...(!dev ? { 'manifest.webmanifest': manifest, ...icons, [downloadName]: html } : {}),
+        };
+        const integrity = Object.fromEntries(Object.entries(resources)
           .map(([name, contents]) => [name, 'sha256-' + createHash('sha256').update(contents).digest('base64')]));
         // esbuild escapes script/style closing sequences for safe inline embedding.
         // Reject resource-bearing markup/CSS; runtime requests are checked in browser tests.
@@ -69,10 +86,19 @@ const options = {
           || [...css.matchAll(/url\(\s*[\"']?([^\"')]+)/gi)].some((match) => !match[1].startsWith('data:'))) {
           throw new Error('Portable HTML contains an unsupported resource reference.');
         }
+        const workerSource = worker.replace('__BUILD_VERSION__', version).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));
+        const allHosted = { ...resources, ...(!dev ? { 'sw.js': workerSource } : {}) };
+        let revision = 'unknown';
+        let dirty = true;
+        try {
+          revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+          dirty = Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim());
+        } catch { /* Source archives may not have Git metadata. */ }
+        const checksums = Object.fromEntries(Object.entries(allHosted).map(([name, contents]) => [name, createHash('sha256').update(contents).digest('hex')]));
         await Promise.all([
-          writeFile(path.join(hosted, 'index.html'), hostedHtml),
+          ...Object.entries(allHosted).map(([name, contents]) => writeFile(path.join(hosted, name), contents)),
           writeFile(path.join(portable, 'tuno.html'), html),
-          ...(!dev ? [writeFile(path.join(hosted, 'sw.js'), worker.replace('__BUILD_VERSION__', version).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity)))] : []),
+          writeFile(path.join(root, 'dist/release.json'), JSON.stringify({ version: packageInfo.version, build: version, revision, dirty, checksums, portableSha256: createHash('sha256').update(html).digest('hex') }, null, 2)),
           writeFile(path.join(root, 'dist/build-meta.json'), JSON.stringify(result.metafile, null, 2)),
         ]);
       });

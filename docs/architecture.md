@@ -44,3 +44,9 @@ Production hosted builds generate a service worker and content-derived version, 
 The page reports readiness only when its controlling worker confirms all required cache entries and the matching version. Missing entries can be repaired online with integrity checks; failed preparation and verification stay explicit. Portable files exit before worker registration, and development builds disable registration. No runtime remote assets or sound files are needed.
 
 Validation results and remaining device limitations belong in the prototype plan.
+
+## Release candidate packaging
+
+Hosted builds include a relative-scope web manifest, 192/512px PNG app icons derived from approved Uno artwork, and a versioned download identical to the independent portable artifact. These files join the integrity-checked offline cache. Portable HTML includes no hosted manifest/download links and never registers a worker. Both HTML formats display shared release/build identifiers; `dist/release.json` ties the artifact checksums to source revision and working-tree status.
+
+Native install UI is exposed only after a browser install event; menu guidance remains available elsewhere. All audio pauses on page hiding and requires explicit restart. See release validation for automated results and hardware gaps, and release instructions for the atomic-deployment handoff.

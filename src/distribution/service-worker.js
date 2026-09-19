@@ -4,7 +4,7 @@ const PREFIX = `tuno:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const INTEGRITY = __RESOURCE_INTEGRITY__;
 const requestFor = (url) => new Request(url, { cache: 'reload', integrity: INTEGRITY[new URL(url).pathname.split('/').pop()] });
-const RESOURCES = ['index.html', 'app.js', 'app.css'].map((path) => new URL(path, self.registration.scope).href);
+const RESOURCES = Object.keys(INTEGRITY).map((path) => new URL(path, self.registration.scope).href);
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);

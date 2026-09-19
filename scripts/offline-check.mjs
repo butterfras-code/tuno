@@ -1,31 +1,36 @@
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { readFile, readdir } from 'node:fs/promises';
+import { chromium, firefox } from 'playwright';
 
 const root = new URL('../dist/hosted/', import.meta.url);
 const html = await readFile(new URL('index.html', root), 'utf8');
 const version = /name="tuno-version" content="([^"]+)"/.exec(html)[1];
 let revision = version;
 let failCss = false;
-const resources = new Map(await Promise.all(['index.html', 'app.js', 'app.css', 'sw.js'].map(async (name) => [name, await readFile(new URL(name, root), 'utf8')])));
+let online = true;
+const resources = new Map(await Promise.all((await readdir(root)).map(async (name) => [name, await readFile(new URL(name, root))])));
 const server = createServer((request, response) => {
-  const name = request.url === '/practice/' ? 'index.html' : request.url.replace('/practice/', '');
+  if (!online) { response.destroy(); return; }
+  const name = request.url === '/practice/' ? 'index.html' : request.url.replace('/practice/', '').replace(revision, version);
   if (!resources.has(name)) { response.writeHead(404).end(); return; }
   if (failCss && name === 'app.css') { response.writeHead(503).end(); return; }
-  response.writeHead(200, { 'Content-Type': name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html', 'Cache-Control': 'no-cache' });
-  let contents = resources.get(name).replaceAll(version, revision);
+  response.writeHead(200, { 'Content-Type': name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.png') ? 'image/png' : name.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html', 'Cache-Control': 'no-cache' });
+  let contents = name.endsWith('.png') ? resources.get(name) : resources.get(name).toString().replaceAll(version, revision);
   if (name === 'sw.js') {
     const digest = (text) => createHash('sha256').update(text).digest('base64');
-    contents = contents.replace(digest(html), digest(html.replaceAll(version, revision)));
+    for (const [file, data] of resources) {
+      if (file === 'sw.js' || file.endsWith('.png')) continue;
+      contents = contents.replace(digest(data), digest(data.toString().replaceAll(version, revision)));
+    }
   }
   response.end(contents);
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
-  browser = await chromium.launch();
+  browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
   const url = `http://127.0.0.1:${server.address().port}/practice/`;
   const context = await browser.newContext();
   let page = await context.newPage();
@@ -47,6 +52,7 @@ try {
   await page.close();
   assert.equal(await other.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), true, 'Another open tab must keep the update waiting');
   await other.close();
+  online = false;
   await context.setOffline(true);
   page = await context.newPage();
   await page.goto(url);
@@ -60,6 +66,7 @@ try {
     dispatchEvent(new Event('offline'));
   });
   await page.getByText('Offline preparation incomplete · Reopen online to retry', { exact: true }).waitFor();
+  online = true;
   await context.setOffline(false);
   await page.reload();
   await page.getByText('Offline ready', { exact: true }).waitFor();

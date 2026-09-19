@@ -80,6 +80,17 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     await pendingBeat;
     assert.equal(store.get().metronomePlaying, false);
     assert.equal(oscillators.length, count);
+    const hiddenStart = audio.startMetronome();
+    audio.interrupt();
+    await hiddenStart;
+    assert.equal(store.get().metronomePlaying, false);
+    assert.equal(store.get().micStatus, 'interrupted');
+    assert.match(store.get().audioError, /hidden/);
+    const hiddenTone = audio.playTone();
+    audio.interrupt();
+    await hiddenTone;
+    assert.equal(store.get().tonePlaying, false);
+    assert.equal(oscillators.length, count);
   } finally {
     audio.dispose();
     if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', originalRaf); else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');

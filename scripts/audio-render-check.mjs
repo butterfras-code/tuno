@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 
 // Exercise the same pulse and click modules using the browser's audio renderer.
 const bundle = await build({ stdin: {
@@ -22,7 +22,7 @@ window.renderClicks = async (sampleRate, volume, sound) => {
     return Math.max(...data.subarray(start, start + Math.floor(0.04 * sampleRate)).map(Math.abs));
   }) };
 };`, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'iife', platform: 'browser' });
-const browser = await chromium.launch();
+const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
 try {
   const page = await browser.newPage();
   await page.addScriptTag({ content: bundle.outputFiles[0].text });

@@ -1,38 +1,22 @@
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
+import { hostBuild } from './test-host.mjs';
+const engineName = process.env.TUNO_BROWSER || 'chromium';
 
-const hosted = new URL('../dist/hosted/', import.meta.url);
-const files = new Map([
-  ['/practice/', ['index.html', 'text/html']],
-  ['/practice/index.html', ['index.html', 'text/html']],
-  ['/practice/app.js', ['app.js', 'text/javascript']],
-  ['/practice/app.css', ['app.css', 'text/css']],
-  ['/practice/sw.js', ['sw.js', 'text/javascript']],
-]);
-const server = createServer(async (request, response) => {
-  const file = files.get(request.url);
-  if (!file) { response.writeHead(404).end(); return; }
-  try {
-    response.writeHead(200, { 'Content-Type': file[1] });
-    response.end(await readFile(new URL(file[0], hosted)));
-  } catch {
-    response.writeHead(500).end();
-  }
-});
-await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+const host = await hostBuild();
 const temp = await mkdtemp(join(tmpdir(), 'tuno-portable-'));
+const measurements = [];
 let browser;
 try {
-  browser = await chromium.launch();
+  browser = await ({ chromium, firefox, webkit })[engineName].launch();
   const relocated = join(temp, 'renamed tuno.html');
   await copyFile(new URL('../dist/portable/tuno.html', import.meta.url), relocated);
   for (const [mode, url] of [
-    ['hosted', `http://127.0.0.1:${server.address().port}/practice/`],
+    ['hosted', host.url],
     ['portable', pathToFileURL(relocated).href],
   ]) {
     const context = await browser.newContext({ offline: mode === 'portable', viewport: { width: 1120, height: 1000 } });
@@ -48,6 +32,7 @@ try {
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
     if (mode === 'hosted') {
       await page.getByText('Offline ready', { exact: true }).waitFor();
+      host.setAvailable(false);
       await context.setOffline(true);
       await page.close();
       page = await context.newPage();
@@ -120,11 +105,13 @@ try {
       osc.start();
       window.testInput = { ac, gain, destination };
       Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
-        await ac.resume(); return destination.stream;
+        await ac.resume(); window.inputStarted = performance.now(); return destination.stream;
       } });
     });
     await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
     await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    const settlingMs = await page.evaluate(() => performance.now() - window.inputStarted);
+    assert.ok(settlingMs <= 500, `${mode}: settling ${settlingMs} ms`);
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
     if (await page.getByRole('button', { name: 'Sustain off', exact: true }).isVisible()) await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
     await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
@@ -151,8 +138,10 @@ try {
     // Change focus and settings while input analysis and clicks continue.
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).isVisible(), true);
-    await page.evaluate(() => { window.testInput.gain.gain.value = 0; });
-    await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 1000 });
+    await page.evaluate(() => { window.silenceStarted = performance.now(); window.testInput.gain.gain.value = 0; });
+    await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 500 });
+    const silenceClearMs = await page.evaluate(() => performance.now() - window.silenceStarted);
+    assert.ok(silenceClearMs <= 500);
     await page.getByRole('button', { name: 'Stop all audio' }).click();
     assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
     await page.evaluate(() => window.testInput.ac.close());
@@ -165,7 +154,23 @@ try {
     await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate scheduler underrun. */ } });
     await page.getByText('Metronome timing was interrupted. Start it again to resume a steady beat.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Stop all audio' }).click();
-    console.log(`${mode}: ${clicks.length} clicks at 1/6-second spacing during pitch analysis, tone playback and UI activity; minimum scheduling lead ${(Math.min(...clicks.map((click) => click.time - click.now)) * 1000).toFixed(1)} ms; long stall stops playback.`);
+    measurements.push({ mode, settlingMs, silenceClearMs, clicks: clicks.length, minimumLeadMs: Math.min(...clicks.map((click) => click.time - click.now)) * 1000 });
+    console.log(`${mode}: settling ${settlingMs.toFixed(0)} ms, silence clearing ${silenceClearMs.toFixed(0)} ms; ${clicks.length} clicks at 1/6-second spacing during pitch analysis, tone playback and UI activity; minimum scheduling lead ${(Math.min(...clicks.map((click) => click.time - click.now)) * 1000).toFixed(1)} ms; long stall stops playback.`);
+
+    // Background interruption cancels active output and requires an explicit restart.
+    await page.getByRole('button', { name: 'Play tone', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.getByText('Practice paused while tUno was hidden. Start a tool to resume.', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0);
+    await page.evaluate(() => {
+      delete document.hidden;
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.getByRole('button', { name: 'Stop all audio' }).click();
 
     // Fonts and exact Figma vectors must decode inside both distributions.
     const assets = await page.evaluate(async () => {
@@ -196,7 +201,7 @@ try {
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
     assert.equal(await page.locator('.pitch-lane').isVisible(), true);
     assert.deepEqual(errors, []);
-    if (mode === 'portable') assert.deepEqual(requests, [url], 'Portable must only load itself.');
+    if (mode === 'portable') assert.deepEqual(requests.filter((request) => request !== url), [], 'Portable must not request subresources.');
 
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {
       const directory = process.env.TUNO_SCREENSHOT_DIR;
@@ -216,11 +221,15 @@ try {
         }
       }
     }
-    console.log(`${mode}: shared state, controls, font/image decoding, responsive layouts, and keyboard checks passed in Chromium ${browser.version()}${mode === 'portable' ? '; relocated file, offline, no subresource requests' : ''}.`);
+    console.log(`${mode}: shared state, controls, font/image decoding, responsive layouts, and keyboard checks passed in ${engineName} ${browser.version()}${mode === 'portable' ? '; relocated file, offline, no subresource requests' : ''}.`);
     await context.close();
+    host.setAvailable(true);
   }
+  const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
+  await mkdir(new URL('../dist/validation/', import.meta.url), { recursive: true });
+  await writeFile(new URL(`../dist/validation/${engineName}-integrated.json`, import.meta.url), JSON.stringify({ build: release.build, revision: release.revision, dirty: release.dirty, browser: `${engineName} ${browser.version()}`, measuredAt: new Date().toISOString(), route: 'Synthetic microphone and virtual audio output', measurements }, null, 2));
 } finally {
   await browser?.close();
-  await new Promise((resolve) => server.close(resolve));
+  await host.close();
   await rm(temp, { recursive: true, force: true });
 }
