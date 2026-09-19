@@ -29,6 +29,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
+    assert.equal(await page.locator('.pitch-marker').evaluate((marker) => getComputedStyle(marker).transitionDuration), '0.14s');
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
     const advancedAccuracy = page.getByRole('button', { name: 'Advanced accuracy' });
     const intermediateAccuracy = page.getByRole('button', { name: 'Intermediate accuracy' });

@@ -5,6 +5,7 @@ import type { Pulse } from '../music/rhythm.ts';
 import { scheduleClick } from './click.ts';
 import { toneHz, meterInfo } from '../practice/state.ts';
 import type { AudioState, PracticeStore } from '../practice/state.ts';
+import { PitchDisplay } from '../practice/pitch-display.ts';
 
 /** Application-owned resources. Cancellation generations adapted from pitch-tracker. */
 export function createAudioController(store: PracticeStore) {
@@ -33,6 +34,7 @@ export function createAudioController(store: PracticeStore) {
   const tapListeners = new Set<() => void>();
   const clicks = new Set<ReturnType<typeof scheduleClick>>();
   const tap = createTapTempo();
+  const pitchDisplay = new PitchDisplay();
   const buffer = new Float32Array(4096);
   const update = (value: Partial<AudioState>) => store.dispatch({ type: 'audio', value });
   function audioContext() {
@@ -56,20 +58,23 @@ export function createAudioController(store: PracticeStore) {
     analyser = undefined;
     stream?.getTracks().forEach((track) => { track.onended = null; track.stop(); });
     stream = undefined;
-    update({ micStatus: 'idle', liveHz: null, rms: 0, quality: 0 });
+    pitchDisplay.reset();
+    update({ micStatus: 'idle', liveHz: null, displayHz: null, rms: 0, quality: 0 });
   }
   function analyse() {
     if (!analyser || !context) return;
     analyser.getFloatTimeDomainData(buffer);
     const evidence = detectPitch(buffer, context.sampleRate, 0.005);
-    update({ pitchUpdatedAt: performance.now(), liveHz: evidence.frequency, rms: evidence.rms, quality: evidence.quality,
+    const now = performance.now();
+    update({ pitchUpdatedAt: now, liveHz: evidence.frequency, displayHz: pitchDisplay.frame(now, evidence.frequency), rms: evidence.rms, quality: evidence.quality,
       micStatus: evidence.rms < 0.005 ? 'no-signal' : evidence.frequency === null ? 'unreliable' : 'listening' });
     timer = setTimeout(analyse, 70);
   }
   async function startMic() {
     if (stream || store.get().micStatus === 'requesting') return;
     const generation = ++micGeneration;
-    update({ micStatus: 'requesting', liveHz: null, audioError: '' });
+    pitchDisplay.reset();
+    update({ micStatus: 'requesting', liveHz: null, displayHz: null, audioError: '' });
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw Error('Microphone access is unavailable in this browser or launch mode.');
       const ac = audioContext();
