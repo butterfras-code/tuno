@@ -1,0 +1,28 @@
+/* Shared design values from Figma: Foundations · Warmth, clarity, Uno. */
+:root {
+  --color-canvas: #f4efe7;
+  --color-surface: #fffcf7;
+  --color-accent: #73556f;
+  --color-tint: #ede3eb;
+  --color-ink: #342f2d;
+  --color-muted: #716860;
+  --color-teal: #397a78;
+  --color-line: #dcd2c5;
+  --color-lavender: #a49aca;
+  --color-cream: #f5e3b9;
+  --color-center: #74aca7;
+  --font-heading: 'Nunito', system-ui, sans-serif;
+  --font-body: 'Nunito Sans', system-ui, sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --radius-control: 16px;
+  --radius-card: 20px;
+  --radius-surface: 32px;
+  --control-height: 49px;
+  --content-width: 1040px;
+}

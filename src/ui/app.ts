@@ -1,0 +1,63 @@
+import { noteName } from '../music/pitch.ts';
+import { meterInfo, TOOLS } from '../practice/state.ts';
+import type { PracticeStore } from '../practice/state.ts';
+import { button, el, pitchText, row, unavailableButton } from './components.ts';
+import { createSettings } from './settings.ts';
+import { createTuner } from './views/tuner.ts';
+import { createTone } from './views/tone.ts';
+import { createMetronome } from './views/metronome.ts';
+
+/** Mount once. Views observe the same store and retain DOM/focus across updates. */
+export function mountApp(root: HTMLElement, store: PracticeStore) {
+  const settings = createSettings(store);
+  const header = el('header', 'app-header');
+  const brand = el('div', 'brand');
+  brand.append(el('h1', 'wordmark', 'tUno'), el('p', 'tagline', 'Practice with a friend.'));
+  const navigation = el('nav', 'focus-navigation');
+  navigation.setAttribute('aria-label', 'Practice focus');
+  const links = TOOLS.map((tool) => {
+    const control = button(tool.label, () => store.dispatch({ type: 'focus', value: tool.id }));
+    control.setAttribute('aria-controls', `view-${tool.id}`);
+    navigation.append(control);
+    return control;
+  });
+  header.append(brand, navigation, button('Settings', settings.open));
+
+  const main = el('main', 'practice-surface');
+  main.id = 'practice';
+  main.tabIndex = -1;
+  main.append(createTuner(store, settings.open), createTone(store), createMetronome(store));
+  const tools = el('aside', 'tool-strip');
+  tools.setAttribute('aria-label', 'Practice tools');
+  const summaries = TOOLS.map((tool) => {
+    const card = el('section', 'tool-card');
+    const title = el('h2', 'eyebrow', tool.label.toUpperCase());
+    const status = el('p', 'tool-status');
+    const action = tool.id === 'tuner'
+      ? unavailableButton('Mic off', 'audio-availability')
+      : tool.id === 'tone'
+        ? unavailableButton('Play tone', 'audio-availability')
+        : button('Preview', () => store.dispatch({ type: 'focus', value: 'metronome' }));
+    card.append(title, row(status, action));
+    tools.append(card);
+    return { title, status };
+  });
+  const footer = el('footer', 'app-footer');
+  const availability = el('p', '', 'Design preview · Microphone and audio playback are coming next.');
+  availability.id = 'audio-availability';
+  const offline = el('p', 'teal', location.protocol === 'file:' ? 'Self-contained offline file' : 'Hosted offline setup is coming next');
+  const licenses = el('details', 'licenses');
+  licenses.append(el('summary', '', 'Font licenses'));
+  // Included in both artifacts so the portable font distribution retains its notices.
+  const notice = el('pre', 'license-text', FONT_LICENSES);
+  licenses.append(notice);
+  footer.append(availability, offline, licenses);
+  root.append(header, main, tools, footer, settings.node);
+  store.subscribe((state) => {
+    links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));
+    summaries[0]!.status.textContent = state.manualHz === null ? 'Not listening' : `Sample · ${pitchText(state).note}`;
+    summaries[1]!.status.textContent = `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`;
+    summaries[2]!.title.textContent = `METRONOME · ${meterInfo(state).unit.toUpperCase()}`;
+    summaries[2]!.status.textContent = `${state.tempo} BPM`;
+  });
+}
