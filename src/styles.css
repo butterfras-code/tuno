@@ -1,0 +1,12 @@
+:root { font-family: system-ui, sans-serif; color: #18212b; background: #f6f7f9; }
+body { margin: 0; }
+main { max-width: 40rem; margin: 0 auto; padding: 2rem 1rem; }
+section { padding: 1.5rem; background: white; border: 1px solid #c4cbd3; border-radius: .5rem; }
+h1 { font-size: 2.5rem; margin-bottom: .25rem; }
+p { line-height: 1.6; }
+form { display: grid; gap: .65rem; }
+input, select, button { font: inherit; padding: .75rem; min-width: 0; }
+button { cursor: pointer; color: white; background: #254e74; border: 0; border-radius: .25rem; }
+:focus-visible { outline: 3px solid #a84600; outline-offset: 3px; }
+.hint { margin: 0 0 .5rem; }
+#pitch-result { font-size: 1.2rem; min-height: 3.5em; }
