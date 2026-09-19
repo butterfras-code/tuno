@@ -86,3 +86,17 @@ Intentional departures from the static examples: accurate sample frequency/cents
 ## Audio/offline follow-up — 2026-09-19
 
 The preview-only transport descriptions above record the initial visual pass. Microphone, reference tone, and metronome controls now invoke the shared audio controller, and hosted readiness is verified by its worker. Metronome settings add subdivisions, downbeat accent, sound, and independent volume; current beats use an outline and readable text. Uno remains static with side cues; tail animation and tuner reward transitions are still follow-ups. See the prototype plan for automated evidence and physical-device gaps.
+
+## Uno motion implementation — 2026-09-19
+
+The additional [Pet tempo and head poses storyboard (`32:393`)](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/tUno?node-id=32-393) supplies the forward/nod/left-facing head behavior omitted from the initial handoff. The following values were reviewed and approved for implementation:
+
+- Tuner: enter at ±5 cents, leave beyond ±8; wag at 250 ms, beg at 1.2 s, catch at 2.5 s. Up to 150 ms unreliable/out-of-zone input pauses progress; longer gaps reset it. Rest follows 400 ms invalid/out-of-zone input. One reward per sustained note, rearmed by 500 ms silence, 700 ms out of tune, or a different reliable note stable for 250 ms. Manual samples never earn treats. Evidence older than 250 ms cannot advance progress.
+- Pitch marker: 80 ms exponential smoothing, separate from immediate numerical readings and the character state machine. Missing evidence hides the marker immediately.
+- Character: 300 ms pose crossfades; happy tail ±20°, 700 ms per full cycle. A copied bone follows a 450 ms arc, remains in the catch pose for 650 ms, then fades over 300 ms into happy sit. The live marker remains visible.
+- Metronome: tail ±25° with sinusoidal motion, each endpoint on an audio beat; full cycle spans two beats. Phase follows scheduled beat timing, independent of bar numbering and subdivisions. Stop settles in 200 ms. Existing numeric tempo drag/wheel controls remain unchanged.
+- Pet tempo: one 10°/6-source-pixel nod per tap (90 ms down, 170 ms return). All Tap controls use the same callback. Tap tempo uses the median of the latest four intervals; two taps start estimation, a pause longer than 2 s resets it.
+- Hold/drag: activate after 300 ms or 8 CSS px vertical movement; turn left over 180 ms. Up increases tempo by 1 BPM per 4 CSS px, down decreases; clamp to 30–240 BPM. Head tilt is 1° per 6 CSS px, capped at ±18°. Release/cancel returns to ready in 220 ms, retains BPM and suppresses the pointer tap. Head pivot is (158,165) in 320px artwork, scaled to the retained 300px SVG coordinate system. Body and tail remain independent.
+- Reduced motion: static poses, progress values, catch bone and beat highlights; no wag, nod, flight or animated pose transitions. Keyboard activation and existing numeric controls remain available.
+
+`tests/feedback.test.ts` verifies the timing and reset rules. `scripts/animation-browser-check.mjs` covers hosted/portable poses, rewards, independent audio phase (including 3/4), pet gestures, touch cancellation, keyboard access and reduced motion. These are synthetic browser checks; physical microphone/touch/audio acceptance remains separate.

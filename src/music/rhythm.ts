@@ -33,7 +33,7 @@ export function createTapTempo() {
     if (taps.length && now - taps[taps.length - 1]! > 2000) taps = [];
     if (taps.length && now - taps[taps.length - 1]! < 100) return null;
     taps.push(now);
-    taps = taps.slice(-6);
+    taps = taps.slice(-5);
     if (taps.length < 2) return null;
     const intervals = taps.slice(1).map((time, index) => time - taps[index]!).sort((a, b) => a - b);
     const middle = Math.floor(intervals.length / 2);

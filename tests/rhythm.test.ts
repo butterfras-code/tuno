@@ -50,3 +50,8 @@ test('invalid metronome settings do not enter shared state', () => {
   assert.equal(store.get().subdivision, 1);
   assert.equal(store.get().clickVolume, 50);
 });
+test('tap tempo uses the latest four intervals', () => {
+  const tap = createTapTempo();
+  for (const time of [0, 1000, 2000, 3000, 3500]) tap(time);
+  assert.equal(tap(4000), 80);
+});
