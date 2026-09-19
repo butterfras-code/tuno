@@ -22,9 +22,9 @@ export const METERS = [
 ] as const;
 export type Meter = typeof METERS[number]['value'];
 export const TUNER_ACCURACIES = [
-  { value: 'beginner', label: 'BEG', scale: 1.2 },
-  { value: 'intermediate', label: 'INT', scale: 1.1 },
-  { value: 'advanced', label: 'ADV', scale: 1 },
+  { value: 'beginner', label: 'BEG', scale: 1.38 },
+  { value: 'intermediate', label: 'INT', scale: 1.2 },
+  { value: 'advanced', label: 'ADV', scale: 1.1 },
 ] as const;
 export type TunerAccuracy = typeof TUNER_ACCURACIES[number]['value'];
 export const LIMITS = {
