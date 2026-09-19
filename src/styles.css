@@ -618,3 +618,12 @@ img { display: block; max-width: 100%; }
   .tuner-options .tuner-mic { padding: 0; }
   .tone-sound-field .field-label { left: 8px; }
 }
+
+.tuner-reference > .control { width: 100%; }
+@media (max-width: 650px) {
+  .tuner-options { display: grid; grid-template-columns: 44px minmax(0, 1fr) 58px 68px; }
+  .tuner-options > .control { white-space: normal; height: 48px; padding-block: 6px; }
+  .tuner-options > [aria-haspopup='menu'] { padding-inline: 2px; }
+  .tuner-reference { min-width: 0; }
+  .tuner-reference > .control { padding-inline: 2px; }
+}

@@ -50,7 +50,7 @@ try {
       await page.getByText('Offline ready', { exact: true }).waitFor();
     }
     const settings = page.getByRole('dialog');
-    await page.getByRole('button', { name: 'Display', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await settings.getByLabel('Written pitch', { exact: true }).selectOption('2');
     await settings.getByRole('button', { name: 'Save settings' }).click();
     assert.equal(await settings.isVisible(), false);
@@ -257,7 +257,7 @@ try {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
-    await page.getByRole('button', { name: 'Display', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await settings.getByLabel('Show Uno', { exact: true }).uncheck();
     await settings.getByRole('button', { name: 'Save settings' }).click();
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
@@ -268,7 +268,7 @@ try {
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {
       const directory = process.env.TUNO_SCREENSHOT_DIR;
       await mkdir(directory, { recursive: true });
-      await page.getByRole('button', { name: 'Display', exact: true }).click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
       await settings.getByLabel('Show Uno', { exact: true }).check();
       await settings.getByLabel('Written pitch', { exact: true }).selectOption('0');
       await settings.getByRole('button', { name: 'Save settings' }).click();

@@ -44,7 +44,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   const main = el('main', 'practice-surface');
   main.id = 'practice';
   main.tabIndex = -1;
-  main.append(createTuner(store, settings.open, audio), createTone(store, audio), createMetronome(store, audio));
+  main.append(createTuner(store, audio), createTone(store, audio), createMetronome(store, audio));
   const tools = el('aside', 'tool-strip');
   tools.setAttribute('aria-label', 'Practice tools');
   const popups: HTMLElement[] = [];

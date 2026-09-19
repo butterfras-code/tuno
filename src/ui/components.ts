@@ -85,7 +85,8 @@ export function responsiveLabel(node: HTMLElement, desktop: string, mobile: stri
 }
 
 /** Compact volume button opens the existing range control without losing keyboard access. */
-export function volumePopover(label: string, input: HTMLInputElement) {
+export function volumePopover(label: string, input: HTMLInputElement, options: { heading?: string; formatValue?: (value: string) => string } = {}) {
+  const formatValue = options.formatValue ?? ((value: string) => `${value}%`);
   // Base64 avoids embedded SVG quotes invalidating a CSS url() token.
   const thumb = boneAsset.includes(';base64,') ? boneAsset : `data:image/svg+xml;base64,${btoa(decodeURIComponent(boneAsset.slice(boneAsset.indexOf(',') + 1)))}`;
   input.style.setProperty('--volume-thumb', `url("${thumb}")`);
@@ -93,14 +94,15 @@ export function volumePopover(label: string, input: HTMLInputElement) {
   const popup = el('div', 'volume-popup');
   popup.id = `${label.toLowerCase().replaceAll(' ', '-')}-popup`;
   popup.setAttribute('popover', 'auto');
-  const value = el('output', '', `${input.value || 0}%`);
+  const value = el('output', '', formatValue(input.value || '0'));
   const title = el('div', 'volume-popup-heading');
-  title.append(el('span', '', 'Volume'), value);
+  title.append(el('span', '', options.heading ?? 'Volume'), value);
   input.setAttribute('aria-label', label);
   popup.append(title, input, el('p', 'small muted', 'Drag the bone or use arrow keys'));
   const updateValue = () => {
-    value.textContent = `${input.value}%`;
-    input.style.setProperty('--volume-percent', `${input.value}%`);
+    value.textContent = formatValue(input.value);
+    const percent = (Number(input.value) - Number(input.min || 0)) / (Number(input.max || 100) - Number(input.min || 0)) * 100;
+    input.style.setProperty('--volume-percent', `${percent}%`);
   };
   input.addEventListener('input', updateValue);
   const trigger = button('Volume');
