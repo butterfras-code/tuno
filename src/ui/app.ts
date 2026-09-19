@@ -4,7 +4,7 @@ import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
 import { meterInfo, TOOLS } from '../practice/state.ts';
 import type { PracticeStore } from '../practice/state.ts';
-import { button, el, pitchText, row } from './components.ts';
+import { button, el, pitchText, responsiveLabel, row } from './components.ts';
 import { createSettings } from './settings.ts';
 import { createTuner } from './views/tuner.ts';
 import { createTone } from './views/tone.ts';
@@ -23,6 +23,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   navigation.setAttribute('aria-label', 'Practice focus');
   const links = TOOLS.map((tool) => {
     const control = button(tool.label, () => store.dispatch({ type: 'focus', value: tool.id }));
+    responsiveLabel(control, tool.label, tool.id === 'tone' ? 'Tones' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
     control.setAttribute('aria-controls', `view-${tool.id}`);
     navigation.append(control);
     return control;
@@ -44,8 +45,14 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       : tool.id === 'tone'
         ? button('Play tone', audio.toggleTone)
         : button('Start metronome', audio.toggleMetronome);
+    responsiveLabel(title, tool.label.toUpperCase(), tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
     card.append(title, row(status, action));
-    if (tool.id === 'metronome') card.append(button('Tap tempo', audio.tapTempo));
+    if (tool.id === 'metronome') {
+      const tap = button('Tap tempo', audio.tapTempo);
+      tap.classList.add('tool-tap');
+      responsiveLabel(tap, 'Tap tempo', 'Tap');
+      card.append(tap);
+    }
     tools.append(card);
     return { title, status, action };
   });
@@ -62,17 +69,32 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   licenses.append(notice);
   const error = el('p');
   error.setAttribute('role', 'status');
-  footer.append(button('Stop all audio', audio.stopAll), error, availability, offline, createReleaseControls(), licenses);
+  const local = el('div', 'local-status');
+  local.append(el('span', 'mobile-only', 'On-device audio · '), offline);
+  const extra = el('details', 'footer-extra');
+  extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability, createReleaseControls(), licenses);
+  footer.append(local, error, extra);
+  const mobile = window.matchMedia('(max-width: 650px)');
+  const explorer = main.querySelector<HTMLElement>('.sample-panel')!;
+  const placeExtras = () => {
+    extra.open = !mobile.matches;
+    (mobile.matches ? extra : main.querySelector('#view-tuner')!).append(explorer);
+  };
+  mobile.addEventListener('change', placeExtras);
+  placeExtras();
   root.append(header, main, tools, footer, settings.node);
   store.subscribe((state) => {
     links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));
     error.textContent = state.audioError;
-    summaries[0]!.action.textContent = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus) ? 'Stop listening' : 'Start listening';
-    summaries[1]!.action.textContent = state.tonePlaying ? 'Stop tone' : 'Play tone';
+    const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
+    responsiveLabel(summaries[0]!.action, listening ? 'Stop listening' : 'Start listening', listening ? 'Mic on' : 'Mic off');
+    summaries[0]!.action.setAttribute('aria-pressed', String(listening));
+    responsiveLabel(summaries[1]!.action, state.tonePlaying ? 'Stop tone' : 'Play tone', state.tonePlaying ? 'Stop' : 'Play');
     summaries[0]!.status.textContent = state.micStatus !== 'idle' ? state.micStatus : state.manualHz === null ? 'Not listening' : `Sample · ${pitchText(state).note}`;
-    summaries[1]!.status.textContent = `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`;
-    summaries[2]!.title.textContent = `METRONOME · ${meterInfo(state).unit.toUpperCase()}`;
-    summaries[2]!.action.textContent = state.metronomePlaying ? 'Stop metronome' : 'Start metronome';
-    summaries[2]!.status.textContent = `${state.tempo} BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`;
+    responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));
+    responsiveLabel(summaries[2]!.title, `METRONOME · ${meterInfo(state).unit.toUpperCase()}`, 'Beat');
+    responsiveLabel(summaries[2]!.action, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? 'Pause' : 'Start');
+    responsiveLabel(summaries[2]!.status, `${state.tempo} BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`, `${state.tempo} BPM`);
+    if (pitchText(state).note !== '—') summaries[0]!.status.textContent = `${pitchText(state).note} · ${pitchText(state).detail.split(' · ')[1]!.replace(' cents', '¢')}`;
   });
 }

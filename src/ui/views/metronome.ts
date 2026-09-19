@@ -1,7 +1,7 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, numberInput, row, select, uno, view } from '../components.ts';
+import { button, el, field, heading, numberInput, responsiveLabel, row, select, uno, view, volumePopover } from '../components.ts';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
@@ -9,7 +9,10 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const meter = select(METERS, (value) => store.dispatch({ type: 'meter', value: value as Meter }));
   const mode = button('View · Uno', () => store.dispatch({ type: 'numbered', value: !store.get().numbered }));
   const top = el('div', 'metronome-heading');
-  top.append(title, row(field('Meter', meter), mode));
+  const meterField = field('Meter', meter);
+  meterField.classList.add('meter-field');
+  mode.classList.add('beat-mode');
+  top.append(title, row(meterField, mode));
   const body = el('div', 'metronome-body');
   const tempo = numberInput(LIMITS.tempo.min, LIMITS.tempo.max, 96);
   tempo.classList.add('tempo-input');
@@ -24,7 +27,12 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   up.setAttribute('aria-label', 'Increase tempo');
   const transport = el('div', 'tempo-controls');
   const play = button('Start metronome', audio.toggleMetronome);
-  transport.append(tempo, unit, row(down, button('Tap tempo', audio.tapTempo), up), play);
+  const tap = button('Tap tempo', audio.tapTempo);
+  responsiveLabel(tap, 'Tap tempo', 'Tap');
+  const tempoActions = row(down, tap, up);
+  tempoActions.classList.add('tempo-actions');
+  play.classList.add('metronome-play');
+  transport.append(tempo, unit, tempoActions, play);
   const friend = el('div', 'pulse-friend');
   friend.append(el('p', 'eyebrow', 'UNO PULSE'), uno());
   body.append(transport, friend);
@@ -50,13 +58,28 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   current.id = 'current-beat';
   const note = el('p', 'small muted', 'Tempo, meter, and subdivisions change at the next unscheduled beat. In 6/8, choose 3 per beat for eighth-note pulses.');
   note.id = 'metronome-availability';
-  node.append(top, beats, current, body, row(field('Subdivision', subdivision), accent, field('Click sound', sound), field('Metronome volume', volume)), note);
+  const subdivisionField = field('Subdivision', subdivision);
+  subdivisionField.classList.add('subdivision-field');
+  accent.classList.add('accent-control');
+  const soundField = field('Click sound', sound);
+  soundField.classList.add('sound-field');
+  const volumeField = field('Metronome volume', volume);
+  volumeField.classList.add('desktop-only');
+  const mobileVolume = volume.cloneNode() as HTMLInputElement;
+  mobileVolume.addEventListener('input', () => store.dispatch({ type: 'click-volume', value: Number(mobileVolume.value) }));
+  const compactVolume = volumePopover('Beat volume', mobileVolume);
+  compactVolume.node.classList.add('beat-volume');
+  const rhythmControls = row(subdivisionField, accent, soundField, volumeField, compactVolume.node);
+  rhythmControls.classList.add('rhythm-controls');
+  node.append(top, beats, current, body, rhythmControls, note);
   store.subscribe((state) => {
     node.hidden = state.focus !== 'metronome';
     const info = meterInfo(state);
-    play.textContent = state.metronomePlaying ? 'Stop metronome' : 'Start metronome';
+    responsiveLabel(play, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? 'Pause' : 'Start');
+    mobileVolume.value = String(state.clickVolume);
+    compactVolume.trigger.textContent = `Volume · ${state.clickVolume}%`;
     subdivision.value = String(state.subdivision);
-    accent.textContent = `Downbeat accent ${state.accent ? 'on' : 'off'}`;
+    responsiveLabel(accent, `Downbeat accent ${state.accent ? 'on' : 'off'}`, `Accent · ${state.accent ? '1' : 'Off'}`);
     accent.setAttribute('aria-pressed', String(state.accent));
     accent.disabled = state.meter === 'free';
     sound.value = state.clickSound;
@@ -66,7 +89,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     friend.dataset.side = state.currentBeat === null ? '' : state.currentBeat % 2 === 0 ? 'left' : 'right';
     meter.value = state.meter;
     if (document.activeElement !== tempo) tempo.value = String(state.tempo);
-    unit.textContent = `${info.unit} = ${state.tempo} BPM`;
+    responsiveLabel(unit, `${info.unit} = ${state.tempo} BPM`, `${info.unit} · BPM`);
     mode.textContent = `View · ${state.numbered ? 'Numbered' : 'Uno'}`;
     mode.disabled = state.meter === 'free';
     mode.setAttribute('aria-pressed', String(state.numbered));

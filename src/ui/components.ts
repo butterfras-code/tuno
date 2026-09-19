@@ -73,3 +73,25 @@ export function pitchText(state: PracticeState) {
     summary: `Concert ${noteName(reading.concertNote)} · Written ${noteName(reading.writtenNote)} · ${direction}`,
   };
 }
+
+/** Keep descriptive accessible names while using the shorter mobile captions. */
+export function responsiveLabel(node: HTMLElement, desktop: string, mobile: string) {
+  if (node.dataset.desktopLabel === desktop && node.dataset.mobileLabel === mobile) return;
+  node.dataset.desktopLabel = desktop;
+  node.dataset.mobileLabel = mobile;
+  if (node instanceof HTMLButtonElement) node.setAttribute('aria-label', desktop);
+  node.replaceChildren(el('span', 'desktop-label', desktop), el('span', 'mobile-label', mobile));
+}
+
+/** Compact volume button opens the existing range control without losing keyboard access. */
+export function volumePopover(label: string, input: HTMLInputElement) {
+  const wrapper = el('div', 'volume-popover mobile-only');
+  const popup = el('div', 'volume-popup');
+  popup.id = `${label.toLowerCase().replaceAll(' ', '-')}-popup`;
+  popup.setAttribute('popover', 'auto');
+  popup.append(field(label, input));
+  const trigger = button('Volume');
+  trigger.setAttribute('popovertarget', popup.id);
+  wrapper.append(trigger, popup);
+  return { node: wrapper, trigger };
+}

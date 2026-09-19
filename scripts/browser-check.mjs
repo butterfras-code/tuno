@@ -192,6 +192,58 @@ try {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${mode}: ${focus} overflow at ${width}px`);
       }
     }
+    // Mobile pickers share the sounding note, retain focus, and leave tools accessible.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    const tone = page.locator('#view-tone');
+    const noteTrigger = tone.locator('.note-picker-trigger');
+    const selectedBeforeBrowsing = await noteTrigger.textContent();
+    await tone.locator('.keyboard-heading .mobile-only').click();
+    await page.getByRole('button', { name: 'Browse octave 5', exact: true }).click();
+    assert.equal(await noteTrigger.textContent(), selectedBeforeBrowsing, 'Browsing must preserve the selected tone');
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    assert.equal(await tone.locator('.keyboard-heading .mobile-only').evaluate((node) => node === document.activeElement), true);
+    await noteTrigger.click();
+    await page.getByRole('button', { name: 'Play A5', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Play A5', exact: true }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);
+    await tone.locator('.note-picker-actions').getByRole('button', { name: 'Octave 5', exact: true }).click();
+    await page.getByRole('button', { name: 'Browse octave 4', exact: true }).click();
+    assert.match(await tone.locator('.octave-sounding').innerText(), /A5/);
+    await page.keyboard.press('Escape');
+    assert.equal(await tone.locator('.note-picker').isVisible(), true);
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    assert.equal(await noteTrigger.evaluate((node) => node === document.activeElement), true);
+    await tone.locator('.tone-output').getByRole('button', { name: 'Volume · 40%', exact: true }).click();
+    const toneVolume = page.getByLabel('Tone output volume', { exact: true });
+    await toneVolume.fill('63');
+    await page.keyboard.press('Escape');
+    assert.equal(await tone.locator('.tone-output').getByRole('button', { name: 'Volume · 63%', exact: true }).isVisible(), true);
+    await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
+    await page.getByLabel('Meter', { exact: true }).selectOption('free');
+    assert.equal(await page.locator('.beat-grid').isVisible(), false);
+    await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
+    assert.equal(await page.locator('.beat:visible').count(), 4);
+    await page.getByRole('button', { name: 'View · Numbered', exact: true }).click();
+    assert.equal(await page.locator('.beat-grid').isVisible(), false);
+    await page.getByRole('button', { name: 'View · Uno', exact: true }).click();
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
+        await nav.getByRole('button', { name: focus, exact: true }).click();
+        const bounds = await page.locator('.practice-surface').boundingBox();
+        assert.ok(bounds.height <= 485, `${mode}: ${focus} mobile surface must fit the design at ${width}px`);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      }
+      await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+      for (const trigger of [tone.locator('.note-picker-trigger'), tone.locator('.keyboard-heading .mobile-only')]) {
+        await trigger.click();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        assert.equal(await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
+      }
+    }
+    await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).click();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
@@ -210,6 +262,7 @@ try {
       await settings.getByLabel('Show Uno', { exact: true }).check();
       await settings.getByLabel('Written pitch', { exact: true }).selectOption('0');
       await settings.getByRole('button', { name: 'Save settings' }).click();
+      await page.locator('.footer-extra').evaluate((node) => { node.open = true; });
       await page.getByLabel('Frequency (Hz)', { exact: true }).fill('232.812775');
       await page.getByRole('button', { name: 'Check pitch' }).click();
       await page.getByText('Explore a sample pitch', { exact: true }).click();
