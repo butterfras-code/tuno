@@ -2,9 +2,9 @@ import { createReleaseControls } from '../distribution/release.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
-import { meterInfo, TOOLS, TUNER_ACCURACIES } from '../practice/state.ts';
+import { TOOLS, TUNER_ACCURACIES } from '../practice/state.ts';
 import type { PracticeStore } from '../practice/state.ts';
-import { button, el, pitchText, responsiveLabel, row } from './components.ts';
+import { button, el, pitchText, responsiveLabel } from './components.ts';
 import { createSettings } from './settings.ts';
 import { createTuner } from './views/tuner.ts';
 import { createTone } from './views/tone.ts';
@@ -24,12 +24,17 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   navigation.setAttribute('aria-label', 'Practice focus');
   const links = TOOLS.map((tool) => {
     const control = button(tool.label, () => store.dispatch({ type: 'focus', value: tool.id }));
-    responsiveLabel(control, tool.label, tool.id === 'tone' ? 'Tones' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
+    responsiveLabel(control, tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune', tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune');
+    control.setAttribute('aria-label', tool.label);
     control.setAttribute('aria-controls', `view-${tool.id}`);
     navigation.append(control);
     return control;
   });
-  header.append(brand, navigation, button('Settings', settings.open));
+  const tinker = button('Settings', settings.open);
+  responsiveLabel(tinker, 'Tinker', 'Tinker');
+  tinker.setAttribute('aria-label', 'Settings');
+  tinker.classList.add('tinker-control');
+  header.append(brand, navigation, tinker);
 
   const main = el('main', 'practice-surface');
   main.id = 'practice';
@@ -48,9 +53,18 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       : tool.id === 'tone'
         ? button('Play tone', audio.toggleTone)
         : button('Start metronome', audio.toggleMetronome);
-    responsiveLabel(title, tool.label.toUpperCase(), tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
-    card.append(title, row(status, action));
+    responsiveLabel(title, tool.id === 'tone' ? 'TONE' : tool.id === 'metronome' ? 'TEMPO' : 'TUNE', tool.id === 'tone' ? 'TONE' : tool.id === 'metronome' ? 'TEMPO' : 'TUNE');
+    const compact = el('div', 'compact-tools');
+    const compactControl = (label: string, control: HTMLElement) => {
+      const column = el('div', 'compact-tool');
+      column.append(el('span', 'compact-label', label), control);
+      compact.append(column);
+      return column;
+    };
+    card.append(title, compact);
     if (tool.id === 'tuner') {
+      compactControl('MIC', action);
+      compactControl('PITCH', status);
       const accuracy = el('div', 'accuracy-toggle');
       accuracy.setAttribute('role', 'group');
       accuracy.setAttribute('aria-label', 'Tuner accuracy');
@@ -64,14 +78,30 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
         return choice;
       });
       accuracy.prepend(icon);
-      card.append(accuracy);
-    }
-    if (tool.id === 'metronome') {
+      compactControl('ACCURACY', accuracy);
+      compact.append(el('div', 'compact-tool compact-tool--empty'));
+    } else if (tool.id === 'tone') {
+      compactControl('PLAY', action);
+      const volume = button('60%', () => store.dispatch({ type: 'focus', value: 'tone' }));
+      volume.classList.add('compact-value', 'compact-tone-volume');
+      compactControl('VOLUME', volume);
+      const note = button('B♭ ▾', () => store.dispatch({ type: 'focus', value: 'tone' }));
+      note.classList.add('compact-value', 'compact-tone-note');
+      compactControl('NOTE', note);
+      const octave = button('3 ▾', () => store.dispatch({ type: 'focus', value: 'tone' }));
+      octave.classList.add('compact-value', 'compact-tone-octave');
+      compactControl('OCTAVE', octave);
+    } else {
+      compactControl('START', action);
       status.append(tempoInput(store, 'Quick tempo (BPM)'), tempoStatus);
+      compactControl('TEMPO', status);
       const tap = button('Tap tempo', audio.tapTempo);
       tap.classList.add('tool-tap');
-      responsiveLabel(tap, 'Tap tempo', 'Tap');
-      card.append(tap);
+      responsiveLabel(tap, 'Tap tempo', '🐶');
+      compactControl('TAP', tap);
+      const subdivision = button('1 ▾', () => store.dispatch({ type: 'focus', value: 'metronome' }));
+      subdivision.classList.add('compact-value', 'compact-subdivision');
+      compactControl('SUBDIVISION', subdivision);
     }
     tools.append(card);
     return { title, status, action, tempoStatus };
@@ -94,14 +124,8 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   const extra = el('details', 'footer-extra');
   extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability, createReleaseControls(), licenses);
   footer.append(local, error, extra);
-  const mobile = window.matchMedia('(max-width: 650px)');
   const explorer = main.querySelector<HTMLElement>('.sample-panel')!;
-  const placeExtras = () => {
-    extra.open = !mobile.matches;
-    (mobile.matches ? extra : main.querySelector('#view-tuner')!).append(explorer);
-  };
-  mobile.addEventListener('change', placeExtras);
-  placeExtras();
+  extra.append(explorer);
   root.append(header, main, tools, footer, settings.node);
   store.subscribe((state) => {
     links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));
@@ -113,9 +137,13 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     responsiveLabel(summaries[1]!.action, state.tonePlaying ? 'Stop tone' : 'Play tone', state.tonePlaying ? 'Stop' : 'Play');
     summaries[0]!.status.textContent = state.micStatus !== 'idle' ? state.micStatus : state.manualHz === null ? 'Not listening' : `Sample · ${pitchText(state).note}`;
     responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));
-    responsiveLabel(summaries[2]!.title, `METRONOME · ${meterInfo(state).unit.toUpperCase()}`, 'Beat');
+    responsiveLabel(summaries[2]!.title, 'TEMPO', 'TEMPO');
     responsiveLabel(summaries[2]!.action, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? 'Pause' : 'Start');
     responsiveLabel(summaries[2]!.tempoStatus, ` BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`, ' BPM');
+    root.querySelector('.compact-tone-note')!.textContent = `${noteName(state.toneNote).replace(/\d+$/, '')} ▾`;
+    root.querySelector('.compact-tone-octave')!.textContent = `${state.octave} ▾`;
+    root.querySelector('.compact-tone-volume')!.textContent = `${state.toneVolume}%`;
+    root.querySelector('.compact-subdivision')!.textContent = `${state.subdivision} ▾`;
     if (pitchText(state).note !== '—') summaries[0]!.status.textContent = `${pitchText(state).note} · ${pitchText(state).detail.split(' · ')[1]!.replace(' cents', '¢')}`;
   });
 }
