@@ -1,6 +1,8 @@
 # Figma design handoff
+Figma Project:
+https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/tUno-%E2%80%94-Practice-with-a-friend?m=auto&t=sTX4k0dwu6eH7m9T-6
 
-Reviewed 2026-09-19. Source: [tUno — Practice with a friend](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). This records design intent and implementation planning. The first visual implementation is now in the application; audio and animation remain pending.
+ This records design intent and implementation planning. The first visual implementation is now in the application; audio and animation remain pending.
 
 ## Reviewed material
 
