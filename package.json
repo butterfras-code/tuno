@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.ts",
     "check": "npm run typecheck && npm test && npm run build",
-    "test:browser": "npm run build && node scripts/browser-check.mjs && node scripts/offline-check.mjs && node scripts/audio-render-check.mjs && node scripts/release-browser-check.mjs",
+    "test:browser": "npm run build && node scripts/browser-check.mjs && node scripts/tempo-browser-check.mjs && node scripts/offline-check.mjs && node scripts/audio-render-check.mjs && node scripts/release-browser-check.mjs",
     "verify": "node scripts/verify.mjs",
     "release:check": "node scripts/release-check.mjs"
   },
