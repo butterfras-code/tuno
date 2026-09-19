@@ -378,6 +378,7 @@ img { display: block; max-width: 100%; }
 .uno-looking .uno-head-front { opacity: 0; }
 .uno-looking .uno-head-left { opacity: 1; }
 .uno-looking .uno-head { transition-duration: 180ms; }
+.uno-tail-side { transform-origin: 150px 150px; }
 .uno-tail { transform-origin: 185.625px 246.464px; transition: transform 200ms ease-out; }
 .uno-playing .uno-tail { transition: none; }
 .uno-animated[data-pose='wag'] .uno-tail,
@@ -396,7 +397,7 @@ img { display: block; max-width: 100%; }
 .hold-progress::-moz-progress-bar { background: var(--color-accent); border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) {
   .uno-animated *, .uno-rest { animation: none !important; transition: none !important; }
-  .uno-tail, .uno-head { transform: none !important; }
+  .uno-tail-side, .uno-tail, .uno-head { transform: none !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pet-tempo[data-beat='left'] { box-shadow: inset 4px 0 var(--color-teal); }

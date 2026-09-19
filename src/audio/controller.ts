@@ -176,7 +176,8 @@ export function createAudioController(store: PracticeStore) {
     }
     if (visualBeat) {
       const fraction = Math.max(0, Math.min(1, (now - visualBeat.time) / visualBeat.duration));
-      const angle = 25 * Math.cos(Math.PI * (visualBeat.index + fraction));
+      // Return to the low endpoint on every beat and reach the high endpoint halfway through.
+      const angle = 25 * Math.cos(2 * Math.PI * fraction);
       pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index));
     }
     if (current) update({ currentBeat: current.beat, currentPart: current.part });
