@@ -82,7 +82,7 @@ export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
     micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, displayHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
     focus: 'tuner', tunerAccuracy: 'advanced', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
-    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40, toneSound: 'sine',
+    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40, toneSound: 'rich',
     tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, beatAccents: [true, false, false, false], clickVolume: 50, clickSound: 'click',
   });
   const listeners = new Set<(state: PracticeState) => void>();

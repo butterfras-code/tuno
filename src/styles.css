@@ -606,3 +606,15 @@ img { display: block; max-width: 100%; }
   .tone-output .control { min-width: 0; font-size: 12px; padding-inline: 4px; }
   .tone-output .volume-popover { min-width: 0; }
 }
+
+.tuner-options .tuner-mic { flex: 0 0 44px; padding: 0; display: grid; place-items: center; }
+.tuner-mic[aria-pressed='true'] .control-icon { filter: brightness(0) invert(1); }
+.tone-sound-field { position: relative; min-width: 0; }
+.tone-sound-field .field-label { position: absolute; top: 4px; left: 12px; font-size: 10px; pointer-events: none; }
+.tone-sound-field .tone-sound { width: 100%; padding-top: 18px; padding-bottom: 4px; }
+@media (max-width: 650px) {
+  .tuner-options { gap: 6px; }
+  .tuner-options .control { padding-inline: 6px; font-size: 12px; }
+  .tuner-options .tuner-mic { padding: 0; }
+  .tone-sound-field .field-label { left: 8px; }
+}

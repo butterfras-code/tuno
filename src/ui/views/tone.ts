@@ -3,7 +3,7 @@ import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
 import { LIMITS, toneHz } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, select, heading, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
+import { button, el, field, select, heading, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
 
 export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
@@ -24,9 +24,12 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   desktopVolume.node.classList.add('desktop-tone-volume');
   const sound = select(TONE_SOUNDS, value => store.dispatch({ type: 'tone-sound', value: value as ToneSound }));
   sound.setAttribute('aria-label', 'Tone sound');
-  sound.classList.add('tone-sound', 'desktop-only');
+  sound.classList.add('tone-sound');
+  const soundField = field('Sound', sound);
+  sound.setAttribute('aria-label', 'Tone sound');
+  soundField.className = 'tone-sound-field desktop-only';
   sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes.';
-  const controls = row(sustain, desktopVolume.node, sound, play);
+  const controls = row(sustain, desktopVolume.node, soundField, play);
   controls.classList.add('tone-controls');
   const notes = selectorPopover('Choose note', Array.from({ length: 12 }, (_, value) => ({ value, label: noteName(60 + value).replace(/\d+$/, '') })), value => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + Number(value) }); void audio.playTone(); });
   const notePicker = notes.trigger;
@@ -88,7 +91,10 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   mobileSound.setAttribute('aria-label', 'Tone output sound');
   mobileSound.classList.add('tone-sound');
   mobileSound.title = sound.title;
-  const outputControls = row(compactVolume.node, mobileSound, mobilePlay);
+  const mobileSoundField = field('Sound', mobileSound);
+  mobileSound.setAttribute('aria-label', 'Tone output sound');
+  mobileSoundField.className = 'tone-sound-field';
+  const outputControls = row(compactVolume.node, mobileSoundField, mobilePlay);
   outputControls.classList.add('tone-output', 'mobile-only');
   const primary = el('div', 'tone-primary');
   primary.append(top, controls, keyboardTop, keyboard, keyboardHint, outputControls);

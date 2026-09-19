@@ -16,9 +16,10 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     async close() {}
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     createAnalyser() { return { fftSize: 4096, disconnect() {}, getFloatTimeDomainData(data: Float32Array) { data.fill(0); } }; }
+    createPeriodicWave() { return {}; }
     createGain() { return { gain: parameter(), connect() {}, disconnect() {} }; }
     createOscillator() {
-      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, addEventListener() {}, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
+      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, type: 'sine', setPeriodicWave() { this.type = 'custom'; }, addEventListener() {}, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
       oscillators.push(osc); return osc;
     }
   }

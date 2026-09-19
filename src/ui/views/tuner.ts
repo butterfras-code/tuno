@@ -1,6 +1,7 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { animatedUno } from '../uno.ts';
 import { createTunerFeedback } from '../../practice/feedback.ts';
+import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
 import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
@@ -13,8 +14,11 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
   const display = button('Display', openSettings);
   responsiveLabel(display, 'Display', 'View');
   const listen = button('Start listening', audio.toggleMic);
-  listen.classList.add('desktop-only');
-  const options = row(transpose, calibration, display, listen);
+  listen.classList.add('tuner-mic');
+  const micIcon = el('img', 'control-icon');
+  Object.assign(micIcon, { src: micAsset, alt: '' });
+  listen.replaceChildren(micIcon);
+  const options = row(transpose, calibration, listen, display);
   options.classList.add('tuner-options');
   node.append(options);
 
@@ -77,7 +81,7 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
     const encouragementText = reading && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
-    const holdText = !live ? 'Listen to a note to earn a treat.'
+    const holdText = !live ? 'Hold a note to give Uno a treat'
       : state.micStatus === 'unreliable' || !fresh ? 'Listening…'
       : state.micStatus === 'no-signal' ? 'Play a note'
       : result.progress === 1 ? 'Nicely done!' : result.progress > 0 ? 'A treat is on its way…' : 'Hold your note steady.';
@@ -118,7 +122,10 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
   store.subscribe((state) => {
     node.hidden = state.focus !== 'tuner';
     const text = pitchText(state);
-    listen.textContent = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus) ? 'Stop listening' : 'Start listening';
+    const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
+    listen.setAttribute('aria-label', listening ? 'Stop listening' : 'Start listening');
+    listen.setAttribute('aria-pressed', String(listening));
+    listen.title = listening ? 'Stop listening' : 'Start listening';
     hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : state.micStatus} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
     caption.textContent = state.micStatus !== 'idle' ? 'Uno hears...' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
     note.textContent = text.note;
