@@ -236,7 +236,7 @@ img { display: block; max-width: 100%; }
   .piano-key--black { width: 44px; height: 104px; font-size: 13px; }
   .piano-key[aria-pressed='true'] { box-shadow: none; }
   .keyboard-hint { font-size: 12px; line-height: 1.3; margin-top: 8px; }
-  .tone-output { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .tone-output { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
   .volume-popover > .control { width: 100%; white-space: nowrap; }
 
 }
@@ -599,4 +599,10 @@ img { display: block; max-width: 100%; }
 .volume-popup input::-moz-range-progress { height: 4px; background: var(--color-accent); }
 @media (min-width: 1001px) {
   .rhythm-controls .control { text-align: left; padding-inline: 24px; }
+}
+
+.tone-sound { min-width: 0; }
+@media (max-width: 650px) {
+  .tone-output .control { min-width: 0; font-size: 12px; padding-inline: 4px; }
+  .tone-output .volume-popover { min-width: 0; }
 }

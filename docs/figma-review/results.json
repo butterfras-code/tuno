@@ -14,31 +14,31 @@
       "height": 820,
       "view": "tone",
       "pdfPage": 7,
-      "differentPixels": 40970,
-      "differentPercent": 4.46
+      "differentPixels": 48854,
+      "differentPercent": 5.32
     },
     {
       "width": 1120,
       "height": 820,
       "view": "tempo",
       "pdfPage": 8,
-      "differentPixels": 43118,
-      "differentPercent": 4.69
+      "differentPixels": 43142,
+      "differentPercent": 4.7
     },
     {
       "width": 1120,
       "height": 820,
       "view": "numbers",
       "pdfPage": 9,
-      "differentPixels": 31806,
-      "differentPercent": 3.46
+      "differentPixels": 31825,
+      "differentPercent": 3.47
     },
     {
       "width": 390,
       "height": 844,
       "view": "tune",
       "pdfPage": 12,
-      "differentPixels": 71885,
+      "differentPixels": 71890,
       "differentPercent": 21.84
     },
     {
@@ -46,24 +46,24 @@
       "height": 844,
       "view": "tone",
       "pdfPage": 13,
-      "differentPixels": 75425,
-      "differentPercent": 22.91
+      "differentPixels": 75669,
+      "differentPercent": 22.99
     },
     {
       "width": 390,
       "height": 844,
       "view": "tempo",
       "pdfPage": 14,
-      "differentPixels": 60948,
-      "differentPercent": 18.52
+      "differentPixels": 61139,
+      "differentPercent": 18.57
     },
     {
       "width": 390,
       "height": 844,
       "view": "numbers",
       "pdfPage": 15,
-      "differentPixels": 66302,
-      "differentPercent": 20.14
+      "differentPixels": 66492,
+      "differentPercent": 20.2
     }
   ]
 }

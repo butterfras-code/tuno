@@ -91,6 +91,22 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     await hiddenTone;
     assert.equal(store.get().tonePlaying, false);
     assert.equal(oscillators.length, count);
+    // Same-key sustain toggles also cancel an AudioContext resume still in flight.
+    audio.pressToneKey(60); audio.pressToneKey(60);
+    await Promise.resolve();
+    assert.equal(store.get().tonePlaying, false);
+    assert.equal(oscillators.length, count);
+    audio.pressToneKey(60); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true);
+    audio.pressToneKey(62); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true);
+    assert.equal(store.get().toneNote, 62);
+    audio.pressToneKey(62);
+    assert.equal(store.get().tonePlaying, false);
+    store.dispatch({ type: 'sustain', value: false });
+    audio.pressToneKey(62); await Promise.resolve();
+    audio.pressToneKey(62); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true, 'Sustain off retriggers the timed note');
   } finally {
     audio.dispose();
     if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', originalRaf); else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');

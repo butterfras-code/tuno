@@ -50,6 +50,13 @@ try {
     const nav = page.getByRole('navigation');
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
       await nav.getByRole('button', { name, exact: true }).click();
+      if (view === 'tone') {
+        await page.locator('.tone-sound:visible').selectOption('triangle');
+        await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
+        await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
+        await inspect(width, 'tone-playing-triangle');
+        await page.getByRole('button', { name: 'Stop tone', exact: true }).first().click();
+      }
       await inspect(width, view);
       await page.screenshot({ path: `${directory}/${engine.name()}-${width}-${view}.png`, fullPage: true });
     }

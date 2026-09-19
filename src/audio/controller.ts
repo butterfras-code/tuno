@@ -1,4 +1,4 @@
-import { createReferenceTone } from './tone.ts';
+import { createReferenceTone, setToneSound } from './tone.ts';
 import { detectPitch } from './detector.ts';
 import { createTimeline, createTapTempo } from '../music/rhythm.ts';
 import type { Pulse } from '../music/rhythm.ts';
@@ -6,6 +6,10 @@ import { scheduleClick } from './click.ts';
 import { toneHz, meterInfo } from '../practice/state.ts';
 import type { AudioState, PracticeStore } from '../practice/state.ts';
 import { PitchDisplay } from '../practice/pitch-display.ts';
+
+// The original SVG is the raised endpoint: rotating further up merges the tail into the body.
+export const TAIL_RAISED_ANGLE = 0;
+const TAIL_LOWERED_ANGLE = 25;
 
 /** Application-owned resources. Cancellation generations adapted from pitch-tracker. */
 export function createAudioController(store: PracticeStore) {
@@ -120,6 +124,7 @@ export function createAudioController(store: PracticeStore) {
   }
   function syncTone() {
     if (!oscillator || !gain || !context) return;
+    setToneSound(context, oscillator, store.get().toneSound);
     oscillator.frequency.setTargetAtTime(toneHz(store.get()), context.currentTime, 0.01);
     gain.gain.setTargetAtTime(store.get().toneVolume / 100 * 0.2, context.currentTime, 0.01);
   }
@@ -136,7 +141,7 @@ export function createAudioController(store: PracticeStore) {
       await ac.resume();
       if (generation !== toneGeneration) return;
       if (!oscillator) {
-        const voice = createReferenceTone(ac, toneHz(store.get()));
+        const voice = createReferenceTone(ac, toneHz(store.get()), store.get().toneSound);
         oscillator = voice.oscillator;
         gain = voice.gain;
       }
@@ -177,7 +182,7 @@ export function createAudioController(store: PracticeStore) {
     if (visualBeat) {
       const fraction = Math.max(0, Math.min(1, (now - visualBeat.time) / visualBeat.duration));
       // Return to the low endpoint on every beat and reach the high endpoint halfway through.
-      const angle = 25 * Math.cos(2 * Math.PI * fraction);
+      const angle = TAIL_RAISED_ANGLE + (TAIL_LOWERED_ANGLE - TAIL_RAISED_ANGLE) * (1 + Math.cos(2 * Math.PI * fraction)) / 2;
       pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index));
     }
     if (current) update({ currentBeat: current.beat, currentPart: current.part });
@@ -222,10 +227,10 @@ export function createAudioController(store: PracticeStore) {
   }
   function stopAll() { stopMic(); stopTone(); stopMetronome(); }
   let sustain = store.get().sustain;
-  let { toneNote, a4, toneVolume } = store.get();
+  let { toneNote, a4, toneVolume, toneSound } = store.get();
   const unsubscribe = store.subscribe((state) => {
-    if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume) {
-      toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume;
+    if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume || state.toneSound !== toneSound) {
+      toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume; toneSound = state.toneSound;
       syncTone();
     }
     if (sustain !== state.sustain) { sustain = state.sustain; scheduleRelease(); }
@@ -242,6 +247,11 @@ export function createAudioController(store: PracticeStore) {
     onTap(listener: () => void) { tapListeners.add(listener); return () => tapListeners.delete(listener); },
     tapTempo: () => { tapListeners.forEach(listener => listener()); const tempo = tap(performance.now()); if (tempo !== null) store.dispatch({ type: 'tempo', value: tempo }); },
     toggleMic: () => stream || store.get().micStatus === 'requesting' ? stopMic() : void startMic(),
+    pressToneKey(note: number) {
+      if (store.get().sustain && store.get().toneNote === note && (oscillator || tonePending)) { stopTone(); return; }
+      store.dispatch({ type: 'tone-note', value: note });
+      void playTone();
+    },
     toggleTone: () => oscillator || tonePending ? stopTone() : void playTone(),
     dispose() { stopAll(); unsubscribe(); pulseListeners.clear(); tapListeners.clear(); if (context) { context.onstatechange = null; void context.close(); } },
   };

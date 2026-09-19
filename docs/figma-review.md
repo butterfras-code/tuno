@@ -27,7 +27,7 @@ The mobile PDF places the tool strip at y=602 while the practice surface ends at
 
 The screenshots exercise the actual audio pipeline with a synthetic B-flat input. Pitch readouts, hold progress, microphone state, and reduced-motion beat feedback remain live. The PDF's example frequency/cents, shared volume values, and transport states are not always internally consistent; the app keeps these values consistent instead of hardcoding the examples. Native Meter/Sound/main Subdivision menus use the browser's picker; the lower shared selectors use the specified scrolling popovers.
 
-[Raw comparison measurements](figma-review/results.json) count pixels with more than 5% difference in any color channel. Desktop frames differ by 3.33–4.69%; mobile frames by 18.52–22.91%, predominantly because the entire lower tool strip moves and live state differs. These are unmasked full-frame measurements, **not a pixel-perfect pass claim**. Inspect the images to distinguish layout corrections from runtime differences.
+[Raw comparison measurements](figma-review/results.json) count pixels with more than 5% difference in any color channel. Desktop frames differ by 3.33–5.32%; mobile frames by 18.57–22.99%, predominantly because the entire lower tool strip moves and live state differs. These are unmasked full-frame measurements, **not a pixel-perfect pass claim**. Inspect the images to distinguish layout corrections from runtime differences.
 
 Physical microphones, speakers, Safari/iOS hardware, and production deployment still require the separate checks in [release instructions](releasing.md). Browser emulation does not establish physical-device acceptance.
 
@@ -42,4 +42,14 @@ node scripts/compare-figma.mjs '/path/to/tUno — Practice with a friend.pdf'
 
 The comparison command requires Poppler (`pdftoppm`) and ImageMagick (`magick`). It writes full screenshots, side-by-side comparisons, overlays, difference images, JSON measurements and an HTML index to `dist/validation/figma/`.
 
-The layout regression runs in Chromium and Firefox as part of `npm run verify`. It exercises 320, 360, 375, 390, 414, 430, 650, 768 and 1120px widths; checks visible control intersections and container/viewport overflow; opens the shared menus and volume slider; switches Uno/Numbers; toggles beat accents; edits 240 BPM; and starts/stops actual metronome playback. Each browser produces 54 layout checks and screenshots in `dist/validation/layout/`.
+The layout regression runs in Chromium and Firefox as part of `npm run verify`. It exercises 320, 360, 375, 390, 414, 430, 650, 768 and 1120px widths; checks visible control intersections and container/viewport overflow; opens the shared menus and volume slider; switches Uno/Numbers; toggles beat accents; edits 240 BPM; and starts/stops actual metronome playback. Each browser produces 63 layout checks and screenshots in `dist/validation/layout/`.
+
+## Sound and interaction follow-up
+
+PR #8 (`fccea0e`) is incorporated on this branch. Tone now offers Sine, Triangle and Rich between Volume and Play/Stop; metronome offers Click, Woodblock, Beep and Drum. The tone control is an intentional addition beyond the supplied PDF. Both responsive selectors share the same sound and change an active voice without changing pitch or volume.
+
+With Sustain on, pressing the sounding piano key stops it; another press starts it, and a different key changes pitch. Rapid repeated presses cancel pending audio startup. With Sustain off, key presses retrigger the timed note.
+
+Both tail modes use the original SVG pose as their raised endpoint, rather than curling the tail into the torso. Vertical motion lowers from that endpoint on each beat; sideways motion mirrors it without changing its height. Browser checks measure the transformed tail tip on both sides as well as its audio phase.
+
+The expanded layout checks also exercise the longest tone-sound name during playback at all nine widths. There are no placeholder controls or new design decisions requiring approval; the sound selector needs the planned Figma update.

@@ -1,8 +1,9 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
+import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
 import { LIMITS, toneHz } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, heading, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
+import { button, el, select, heading, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
 
 export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
@@ -21,7 +22,11 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   const desktopVolume = volumePopover('Tone volume', volume);
   desktopVolume.node.classList.remove('mobile-only');
   desktopVolume.node.classList.add('desktop-tone-volume');
-  const controls = row(sustain, play, desktopVolume.node);
+  const sound = select(TONE_SOUNDS, value => store.dispatch({ type: 'tone-sound', value: value as ToneSound }));
+  sound.setAttribute('aria-label', 'Tone sound');
+  sound.classList.add('tone-sound', 'desktop-only');
+  sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes.';
+  const controls = row(sustain, desktopVolume.node, sound, play);
   controls.classList.add('tone-controls');
   const notes = selectorPopover('Choose note', Array.from({ length: 12 }, (_, value) => ({ value, label: noteName(60 + value).replace(/\d+$/, '') })), value => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + Number(value) }); void audio.playTone(); });
   const notePicker = notes.trigger;
@@ -65,7 +70,7 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   // One octave of keys, kept mounted so selection changes preserve keyboard focus.
   const whiteSemitones = [0, 2, 4, 5, 7, 9, 11, 12, 14];
   const keys = Array.from({ length: 15 }, (_, semitone) => {
-    const key = button('', () => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + semitone }); void audio.playTone(); });
+    const key = button('', () => { audio.pressToneKey((store.get().octave + 1) * 12 + semitone); });
     const whiteIndex = whiteSemitones.indexOf(semitone);
     key.className = `piano-key ${whiteIndex < 0 ? 'piano-key--black' : 'piano-key--white'}`;
     if (semitone > 12) key.classList.add('piano-key--extension');
@@ -79,7 +84,11 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   mobileVolume.addEventListener('input', () => store.dispatch({ type: 'tone-volume', value: Number(mobileVolume.value) }));
   const compactVolume = volumePopover('Tone output volume', mobileVolume);
   const mobilePlay = button('Play tone', audio.toggleTone);
-  const outputControls = row(compactVolume.node, mobilePlay);
+  const mobileSound = select(TONE_SOUNDS, value => store.dispatch({ type: 'tone-sound', value: value as ToneSound }));
+  mobileSound.setAttribute('aria-label', 'Tone output sound');
+  mobileSound.classList.add('tone-sound');
+  mobileSound.title = sound.title;
+  const outputControls = row(compactVolume.node, mobileSound, mobilePlay);
   outputControls.classList.add('tone-output', 'mobile-only');
   const primary = el('div', 'tone-primary');
   primary.append(top, controls, keyboardTop, keyboard, keyboardHint, outputControls);
@@ -94,12 +103,11 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     sustain.textContent = `Sustain ${state.sustain ? 'on' : 'off'}`;
     sustain.setAttribute('aria-pressed', String(state.sustain));
     volume.value = String(state.toneVolume);
+    sound.value = mobileSound.value = state.toneSound;
     desktopVolume.trigger.textContent = `Volume ${state.toneVolume}%`;
     selectedName.textContent = noteName(state.toneNote);
-    notePicker.textContent = `Note · ${noteName(state.toneNote)}`;
-    octavePicker.textContent = `Octave ${state.octave} ↕`;
     mobileVolume.value = String(state.toneVolume);
-    compactVolume.trigger.textContent = `Volume · ${state.toneVolume}%`;
+    compactVolume.trigger.textContent = `Volume ${state.toneVolume}%`;
     mobilePlay.textContent = state.tonePlaying ? 'Stop tone' : 'Play tone';
     friend.hidden = !state.showUno;
     notes.update(state.toneNote % 12);

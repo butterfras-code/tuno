@@ -1,4 +1,5 @@
 import type { AudioController } from '../../audio/controller.ts';
+import { CLICK_SOUNDS, type ClickSound } from '../../music/click-sounds.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
 import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
@@ -62,12 +63,12 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const subdivision = select([
     ...Array.from({ length: 7 }, (_, i) => ({ value: i + 1, label: `Subdiv: ${i + 1}` })),
   ], (value) => store.dispatch({ type: 'subdivision', value: Number(value) }));
-  const sound = select([{ value: 'click', label: 'Click' }, { value: 'wood', label: 'Woodblock' }],
-    (value) => store.dispatch({ type: 'click-sound', value: value as 'click' | 'wood' }));
+  const sound = select(CLICK_SOUNDS,
+    (value) => store.dispatch({ type: 'click-sound', value: value as ClickSound }));
   const mobile = matchMedia('(max-width: 650px)');
   const syncLabels = () => {
     [...subdivision.options].forEach(option => { option.textContent = `${mobile.matches ? 'Subdiv' : 'Subdivision'}: ${option.value}`; });
-    [...sound.options].forEach(option => { option.textContent = `${mobile.matches ? '' : 'Sound · '}${option.value === 'wood' ? 'Woodblock' : 'Click'}`; });
+    [...sound.options].forEach(option => { option.textContent = `${mobile.matches ? '' : 'Sound · '}${CLICK_SOUNDS.find(sound => sound.value === option.value)!.label}`; });
   };
   mobile.addEventListener('change', syncLabels);
   syncLabels();
