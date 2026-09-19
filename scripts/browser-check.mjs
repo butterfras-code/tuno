@@ -30,6 +30,15 @@ try {
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
+    const advancedAccuracy = page.getByRole('button', { name: 'Advanced accuracy' });
+    const intermediateAccuracy = page.getByRole('button', { name: 'Intermediate accuracy' });
+    const beginnerAccuracy = page.getByRole('button', { name: 'Beginner accuracy' });
+    assert.equal(await advancedAccuracy.getAttribute('aria-pressed'), 'true');
+    await intermediateAccuracy.click();
+    assert.equal(await intermediateAccuracy.getAttribute('aria-pressed'), 'true');
+    await beginnerAccuracy.click();
+    assert.equal(await beginnerAccuracy.getAttribute('aria-pressed'), 'true');
+    await advancedAccuracy.click();
     if (mode === 'hosted') {
       await page.getByText('Offline ready', { exact: true }).waitFor();
       host.setAvailable(false);

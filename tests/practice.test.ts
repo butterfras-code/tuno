@@ -24,6 +24,15 @@ test('clearing manual input clears evidence without resetting reference-tone sel
   assert.equal(store.get().toneNote, 58);
 });
 
+test('tuner accuracy defaults to advanced and accepts the three supported levels', () => {
+  const store = createPracticeStore();
+  assert.equal(store.get().tunerAccuracy, 'advanced');
+  for (const value of ['intermediate', 'beginner', 'advanced'] as const) {
+    store.dispatch({ type: 'tuner-accuracy', value });
+    assert.equal(store.get().tunerAccuracy, value);
+  }
+});
+
 test('invalid control values never enter shared state', () => {
   const store = createPracticeStore();
   const original = store.get();

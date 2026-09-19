@@ -2,7 +2,7 @@ import type { AudioController } from '../../audio/controller.ts';
 import { animatedUno } from '../uno.ts';
 import { createTunerFeedback } from '../../practice/feedback.ts';
 import boneAsset from '../../assets/pitch-bone.svg';
-import { displayedHz, LIMITS, pitchReading, TRANSPOSITIONS } from '../../practice/state.ts';
+import { displayedHz, LIMITS, pitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
 import { button, el, field, numberInput, pitchText, responsiveLabel, row, view } from '../components.ts';
 
@@ -67,14 +67,15 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
     const live = ['listening', 'unreliable', 'no-signal'].includes(state.micStatus);
     const fresh = now - state.pitchUpdatedAt < 250;
     const reliable = live && fresh && state.micStatus === 'listening' && reading !== null;
-    const key = `${state.a4}:${state.transposition}`;
+    const accuracy = TUNER_ACCURACIES.find((option) => option.value === state.tunerAccuracy)!;
+    const key = `${state.a4}:${state.transposition}:${state.tunerAccuracy}`;
     if (live !== wasLive || key !== calibrationKey) animation.reset();
     wasLive = live; calibrationKey = key;
     const result = animation.update(now, reliable ? { note: reading.concertNote, cents: reading.cents } : null,
-      live && fresh && state.micStatus === 'no-signal');
+      live && fresh && state.micStatus === 'no-signal', accuracy.scale);
     dog.pose(result.pose);
     hold.value = live ? result.progress : 0;
-    const encouragementText = reliable && Math.abs(reading.cents) <= 8 ? 'Hold steady.'
+    const encouragementText = reliable && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
     const holdText = !live ? 'Listen to a note to earn a treat.'
