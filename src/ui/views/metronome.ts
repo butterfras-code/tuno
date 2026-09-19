@@ -1,7 +1,8 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, numberInput, responsiveLabel, row, select, uno, view, volumePopover } from '../components.ts';
+import { button, el, field, heading, responsiveLabel, row, select, uno, view, volumePopover } from '../components.ts';
+import { tempoInput } from '../tempo.ts';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
@@ -14,12 +15,8 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   mode.classList.add('beat-mode');
   top.append(title, row(meterField, mode));
   const body = el('div', 'metronome-body');
-  const tempo = numberInput(LIMITS.tempo.min, LIMITS.tempo.max, 96);
+  const tempo = tempoInput(store);
   tempo.classList.add('tempo-input');
-  tempo.setAttribute('aria-label', 'Tempo (BPM)');
-  tempo.addEventListener('change', () => {
-    if (tempo.reportValidity()) store.dispatch({ type: 'tempo', value: Number(tempo.value) });
-  });
   const unit = el('p', 'muted');
   const down = button('−', () => store.dispatch({ type: 'tempo', value: store.get().tempo - 1 }));
   const up = button('+', () => store.dispatch({ type: 'tempo', value: store.get().tempo + 1 }));
@@ -88,7 +85,6 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
       : `${state.meter === 'free' ? 'Pulse' : `Beat ${state.currentBeat + 1}${state.currentBeat === 0 ? ' · Downbeat' : ''}`} · Pulse ${state.currentPart + 1}`;
     friend.dataset.side = state.currentBeat === null ? '' : state.currentBeat % 2 === 0 ? 'left' : 'right';
     meter.value = state.meter;
-    if (document.activeElement !== tempo) tempo.value = String(state.tempo);
     responsiveLabel(unit, `${info.unit} = ${state.tempo} BPM`, `${info.unit} · BPM`);
     mode.textContent = `View · ${state.numbered ? 'Numbered' : 'Uno'}`;
     mode.disabled = state.meter === 'free';

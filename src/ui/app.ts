@@ -9,6 +9,7 @@ import { createSettings } from './settings.ts';
 import { createTuner } from './views/tuner.ts';
 import { createTone } from './views/tone.ts';
 import { createMetronome } from './views/metronome.ts';
+import { tempoInput } from './tempo.ts';
 
 /** Mount once. Views observe the same store and retain DOM/focus across updates. */
 export function mountApp(root: HTMLElement, store: PracticeStore) {
@@ -40,6 +41,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     const card = el('section', 'tool-card');
     const title = el('h2', 'eyebrow', tool.label.toUpperCase());
     const status = el('p', 'tool-status');
+    const tempoStatus = el('span');
     const action = tool.id === 'tuner'
       ? button('Start listening', audio.toggleMic)
       : tool.id === 'tone'
@@ -48,13 +50,14 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     responsiveLabel(title, tool.label.toUpperCase(), tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
     card.append(title, row(status, action));
     if (tool.id === 'metronome') {
+      status.append(tempoInput(store, 'Quick tempo (BPM)'), tempoStatus);
       const tap = button('Tap tempo', audio.tapTempo);
       tap.classList.add('tool-tap');
       responsiveLabel(tap, 'Tap tempo', 'Tap');
       card.append(tap);
     }
     tools.append(card);
-    return { title, status, action };
+    return { title, status, action, tempoStatus };
   });
   const footer = el('footer', 'app-footer');
   const availability = el('p', '', 'Reference tones and metronome clicks may be picked up by the microphone. Use headphones to compare.');
@@ -94,7 +97,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));
     responsiveLabel(summaries[2]!.title, `METRONOME · ${meterInfo(state).unit.toUpperCase()}`, 'Beat');
     responsiveLabel(summaries[2]!.action, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? 'Pause' : 'Start');
-    responsiveLabel(summaries[2]!.status, `${state.tempo} BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`, `${state.tempo} BPM`);
+    responsiveLabel(summaries[2]!.tempoStatus, ` BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`, ' BPM');
     if (pitchText(state).note !== '—') summaries[0]!.status.textContent = `${pitchText(state).note} · ${pitchText(state).detail.split(' · ')[1]!.replace(' cents', '¢')}`;
   });
 }
