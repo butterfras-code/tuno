@@ -104,10 +104,11 @@ try {
       const start = performance.now();
       function sample() {
         const tail = document.querySelector('.pet-tempo .uno-tail-side');
+        const angle = document.querySelector('.pet-tempo .uno-tail').style.transform;
         const dog = document.querySelector('.pet-tempo .uno-animated').getBoundingClientRect();
         const bounds = tail.getBoundingClientRect();
         samples.push({ beat: document.querySelector('.pet-tempo').dataset.beat, transform: tail.style.transform,
-          center: bounds.left + bounds.width / 2 - dog.left - dog.width / 2 });
+          angle, center: bounds.left + bounds.width / 2 - dog.left - dog.width / 2 });
         if (performance.now() - start > 1100) done(samples);
         else requestAnimationFrame(sample);
       }
@@ -116,6 +117,7 @@ try {
     assert.ok(sides.some(sample => sample.beat === 'left' && sample.transform === ''));
     assert.ok(sides.some(sample => sample.beat === 'right' && sample.transform === 'scaleX(-1)'));
     assert.ok(sides.every(sample => ['', 'scaleX(-1)'].includes(sample.transform)), 'tail mirrors across Uno rather than rotating in place');
+    assert.ok(sides.every(sample => sample.angle === 'rotate(-25deg)'), 'tail stays up on both sides');
     assert.ok(sides.some(sample => sample.center < 0) && sides.some(sample => sample.center > 0), 'tail crosses Uno centerline');
     await pet.dblclick();
     assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'mouse double-click also toggles tail motion');
