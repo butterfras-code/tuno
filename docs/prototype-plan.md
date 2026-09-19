@@ -130,3 +130,26 @@ Type checking, 13 unit tests, and both packaging outputs pass. Detector fixtures
 Controller tests cover delayed permissions after stop, duplicate starts, denial, independent microphone/tone ownership, transposition-independent tone frequency, and context interruption. Browser checks additionally exercise real Web Audio with synthetic input, live transposition, concurrent playback, silence clearing, and track release in hosted loopback and offline portable builds. Synthetic input replaces getUserMedia and does not establish hardware access or ordinary permission behavior.
 
 Remaining before accepting these increments: physical HTTPS/portable microphone and tone checks, managed Chromebook/Safari/Firefox matrix, actual interruption/background recovery, offline rendered-tone frequency measurement, detector foreground profiling, measured settling/stale-display latency, and any smoothing justified by those findings. Analysis currently uses a foreground 70 ms timer and 4,096-sample analyser; workers/worklets require profiling evidence. Hosted offline caching remains the following increment.
+
+## Offline and metronome implementation — 2026-09-19
+
+The next two increments now implement hosted offline support and functional timekeeping:
+
+- Hosted worker installation caches HTML/JS/CSS with per-file integrity checks and a shared build version; readiness checks actual entries, failed installs remove incomplete caches, and matching missing files can be repaired online. Updates wait for all existing tabs to close. Portable first launch remains independent of workers/networking.
+- Metronome start/stop and tap tempo work in both the focused view and dock. Settings include 30–240 BPM, free pulse/3/4/4/4/6/8, 1–4 pulses per beat, independent downbeat accent, two synthesized sounds, and volume. Compound BPM is explicitly dotted quarter; three subdivisions produce eighth notes in 6/8.
+- Scheduled clicks and current-beat/downbeat indicators share the audio timeline. Audio survives focus changes and coexists with tone and capture. Stop-all and context interruption cancel queued clicks; a long scheduler stall stops for explicit restart instead of emitting catch-up bursts. Static Uno side cues and text work with reduced motion; tail animation remains deferred.
+- Live input updates preserve an in-progress tempo edit. Rhythm changes apply at the next unscheduled beat, with a new bar when changing meter. Previously scheduled sound/volume settings can take up to the 150 ms lookahead to change.
+
+Validation: type checking, 19 unit tests, production packaging and extended Chromium browser checks pass. Pure rhythm tests cover simple/compound grouping, subdivisions, tempo/meter transitions, 10,000 pulses of arithmetic drift, and tap reset/outliers. Controller tests cover repeated metronome starts, cancelled pending starts, independent microphone stop, and context interruption.
+
+| Automated evidence | Result and limit |
+| --- | --- |
+| Hosted loopback, prepared then closed/reopened offline | Core views and synthetic input/tone/metronome work after fresh offline navigation |
+| Relocated portable file, offline first launch | Same core checks pass, with no subresource requests |
+| Update lifecycle | A downloaded update stays waiting during tone playback and while another tab remains; after all tabs close the new version opens offline; unrelated-scope caches survive |
+| Cache failures | Missing file prevents readiness offline and repairs on online reload; a failed essential-resource fetch discards installation cache and reports failure |
+| Concurrent scheduler | 13 clicks at 1/6-second spacing in each distribution while synthetic pitch analysis, tone playback, view switching and 20 ms UI load run; all starts scheduled in advance (minimum observed lead 50 ms in the initial run). Scheduled-time intervals agree within 0.01 ms; this is not measured speaker-output latency |
+| Rendered audio | OfflineAudioContext at 44.1/48 kHz, both sounds: 12 pulse onsets within 1 ms of expected times; downbeat/beat/subdivision amplitudes ordered correctly; volume zero produces silence |
+| Deliberate 500 ms UI stall | Metronome stops and displays explicit restart guidance in both builds |
+
+Physical microphone/audio routes, HTTPS deployment, managed Chromebook, physical Safari, desktop Firefox, real acoustic leakage, and classroom readability remain untested. These results do not close physical acceptance for the earlier tuner increments or establish background continuity. The next implementation slice is integrated prototype/release validation, including installation/download affordances and measured device tolerances.

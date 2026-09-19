@@ -1,8 +1,9 @@
+import type { AudioController } from '../../audio/controller.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, numberInput, row, select, unavailableButton, uno, view } from '../components.ts';
+import { button, el, field, heading, numberInput, row, select, uno, view } from '../components.ts';
 
-export function createMetronome(store: PracticeStore) {
+export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
   const title = heading('Find your rhythm.', 'A steady beat. A familiar friend.');
   const meter = select(METERS, (value) => store.dispatch({ type: 'meter', value: value as Meter }));
@@ -22,27 +23,49 @@ export function createMetronome(store: PracticeStore) {
   down.setAttribute('aria-label', 'Decrease tempo');
   up.setAttribute('aria-label', 'Increase tempo');
   const transport = el('div', 'tempo-controls');
-  transport.append(tempo, unit, row(down, unavailableButton('Tap tempo', 'metronome-availability'), up),
-    unavailableButton('Start metronome', 'metronome-availability'));
+  const play = button('Start metronome', audio.toggleMetronome);
+  transport.append(tempo, unit, row(down, button('Tap tempo', audio.tapTempo), up), play);
   const friend = el('div', 'pulse-friend');
   friend.append(el('p', 'eyebrow', 'UNO PULSE'), uno());
   body.append(transport, friend);
   const beats = el('ol', 'beat-grid');
-  beats.setAttribute('aria-label', 'Meter preview');
+  beats.setAttribute('aria-label', 'Meter beats');
   const beatItems = Array.from({ length: 4 }, (_, index) => {
     const beat = el('li', 'beat');
     beat.append(el('span', 'beat-number', String(index + 1)), el('span', 'eyebrow', index === 0 ? 'DOWNBEAT' : 'BEAT'));
     beats.append(beat);
     return beat;
   });
-  const note = el('p', 'small muted', 'Rhythm preview only. Metronome playback and tap tempo arrive in the next slice.');
+  const subdivision = select([
+    { value: 1, label: 'Beat only' }, { value: 2, label: '2 per beat' },
+    { value: 3, label: '3 per beat' }, { value: 4, label: '4 per beat' },
+  ], (value) => store.dispatch({ type: 'subdivision', value: Number(value) }));
+  const accent = button('Downbeat accent on', () => store.dispatch({ type: 'accent', value: !store.get().accent }));
+  const sound = select([{ value: 'click', label: 'Click' }, { value: 'wood', label: 'Wood' }],
+    (value) => store.dispatch({ type: 'click-sound', value: value as 'click' | 'wood' }));
+  const volume = el('input');
+  Object.assign(volume, { type: 'range', min: '0', max: '100', step: '1' });
+  volume.addEventListener('input', () => store.dispatch({ type: 'click-volume', value: Number(volume.value) }));
+  const current = el('p', 'current-beat', 'Stopped');
+  current.id = 'current-beat';
+  const note = el('p', 'small muted', 'Tempo, meter, and subdivisions change at the next unscheduled beat. In 6/8, choose 3 per beat for eighth-note pulses.');
   note.id = 'metronome-availability';
-  node.append(top, beats, body, note);
+  node.append(top, beats, current, body, row(field('Subdivision', subdivision), accent, field('Click sound', sound), field('Metronome volume', volume)), note);
   store.subscribe((state) => {
     node.hidden = state.focus !== 'metronome';
     const info = meterInfo(state);
+    play.textContent = state.metronomePlaying ? 'Stop metronome' : 'Start metronome';
+    subdivision.value = String(state.subdivision);
+    accent.textContent = `Downbeat accent ${state.accent ? 'on' : 'off'}`;
+    accent.setAttribute('aria-pressed', String(state.accent));
+    accent.disabled = state.meter === 'free';
+    sound.value = state.clickSound;
+    volume.value = String(state.clickVolume);
+    current.textContent = !state.metronomePlaying ? 'Stopped' : state.currentBeat === null ? 'Starting…'
+      : `${state.meter === 'free' ? 'Pulse' : `Beat ${state.currentBeat + 1}${state.currentBeat === 0 ? ' · Downbeat' : ''}`} · Pulse ${state.currentPart + 1}`;
+    friend.dataset.side = state.currentBeat === null ? '' : state.currentBeat % 2 === 0 ? 'left' : 'right';
     meter.value = state.meter;
-    tempo.value = String(state.tempo);
+    if (document.activeElement !== tempo) tempo.value = String(state.tempo);
     unit.textContent = `${info.unit} = ${state.tempo} BPM`;
     mode.textContent = `View · ${state.numbered ? 'Numbered' : 'Uno'}`;
     mode.disabled = state.meter === 'free';
@@ -50,7 +73,10 @@ export function createMetronome(store: PracticeStore) {
     node.classList.toggle('metronome--numbered', state.numbered);
     beats.hidden = !state.numbered;
     beats.style.setProperty('--beats', String(info.beats || 4));
-    beatItems.forEach((beat, index) => { beat.hidden = index >= info.beats; });
+    beatItems.forEach((beat, index) => {
+      beat.hidden = index >= info.beats;
+      beat.setAttribute('aria-current', String(state.currentBeat === index));
+    });
     friend.hidden = !state.showUno;
     down.disabled = state.tempo === LIMITS.tempo.min;
     up.disabled = state.tempo === LIMITS.tempo.max;

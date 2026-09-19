@@ -80,3 +80,7 @@ Global tokens, shared control helpers, one practice-state store, and the shared 
 Desktop layout follows the Figma palette, type, artwork, and composition. Responsive adaptations use wrapping navigation, stacked tool cards, smaller static Uno artwork, and a horizontally scrollable keyboard with touch-sized keys. Settings/Display share one native dialog with explicit Save/Cancel, calibration, transposition, and Uno visibility. This is an implementation choice for the previously unspecified dialog contents.
 
 Intentional departures from the static examples: accurate sample frequency/cents values, unavailable transport, no invented hold progress, no unverified offline-ready label, and outlined downbeat identity without claiming an active beat. Rhythm subdivisions, accents, sound selection, and audio volumes beyond the reference-tone setting remain part of metronome implementation.
+
+## Audio/offline follow-up — 2026-09-19
+
+The preview-only transport descriptions above record the initial visual pass. Microphone, reference tone, and metronome controls now invoke the shared audio controller, and hosted readiness is verified by its worker. Metronome settings add subdivisions, downbeat accent, sound, and independent volume; current beats use an outline and readable text. Uno remains static with side cues; tail animation and tuner reward transitions are still follow-ups. See the prototype plan for automated evidence and physical-device gaps.

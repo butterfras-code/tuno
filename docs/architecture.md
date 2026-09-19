@@ -2,7 +2,7 @@
 
 ## Decision
 
-Maintain two releases in parallel from shared source: a hosted, downloadable app and an offline-only portable HTML file. Both are required delivery formats for the core tuner, metronome, and reference tones. This is the chosen direction; implementation and device verification are still ahead.
+Maintain two releases in parallel from shared source: a hosted, downloadable app and an offline-only portable HTML file. Both are required delivery formats for the core tuner, metronome, and reference tones. Both artifacts and hosted caching are implemented; physical-device verification remains ahead.
 
 ## Hosted app
 
@@ -35,4 +35,12 @@ Preferences and future student records belong to browser storage, not the downlo
 - Test microphone permissions, interruptions, and real input on supported Chromium, WebKit/Safari, and Firefox devices.
 - Publish measured limitations and launch instructions alongside releases.
 
-No implementation or browser-support claim is implied by this architecture document; results belong in the prototype plan as validation proceeds.
+## Implemented execution and update model
+
+One application-owned AudioContext serves capture, tone, and metronome. A 70 ms foreground analysis timer feeds 4,096-sample frames to the adapted detector. A separate 25 ms scheduler places synthesized clicks up to 150 ms ahead on the audio clock. Animation frames only read that timeline for beat identity; they do not schedule audio. Tempo/subdivision changes apply at beat boundaries, and meter changes begin a new bar there. Missed scheduling beyond the allowed lateness stops the metronome for explicit recovery. No background-playback guarantee is made.
+
+Production hosted builds generate a service worker and content-derived version, shared with portable HTML metadata. Installation atomically caches the essential HTML/JS/CSS using generated SHA-256 integrity values. Cache names include registration scope and version. Activation deletes only older caches for that scope. Workers never call skipWaiting: every existing application tab must close before an update activates, preserving concurrent practice across tabs. There is no forced page reload. The first worker claims the page after installation.
+
+The page reports readiness only when its controlling worker confirms all required cache entries and the matching version. Missing entries can be repaired online with integrity checks; failed preparation and verification stay explicit. Portable files exit before worker registration, and development builds disable registration. No runtime remote assets or sound files are needed.
+
+Validation results and remaining device limitations belong in the prototype plan.

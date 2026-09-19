@@ -9,8 +9,10 @@ import { chromium } from 'playwright';
 const hosted = new URL('../dist/hosted/', import.meta.url);
 const files = new Map([
   ['/practice/', ['index.html', 'text/html']],
+  ['/practice/index.html', ['index.html', 'text/html']],
   ['/practice/app.js', ['app.js', 'text/javascript']],
   ['/practice/app.css', ['app.css', 'text/css']],
+  ['/practice/sw.js', ['sw.js', 'text/javascript']],
 ]);
 const server = createServer(async (request, response) => {
   const file = files.get(request.url);
@@ -34,7 +36,7 @@ try {
     ['portable', pathToFileURL(relocated).href],
   ]) {
     const context = await browser.newContext({ offline: mode === 'portable', viewport: { width: 1120, height: 1000 } });
-    const page = await context.newPage();
+    let page = await context.newPage();
     const errors = [];
     const requests = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -44,7 +46,15 @@ try {
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
-    assert.equal(await page.getByText('Offline ready', { exact: true }).count(), 0);
+    if (mode === 'hosted') {
+      await page.getByText('Offline ready', { exact: true }).waitFor();
+      await context.setOffline(true);
+      await page.close();
+      page = await context.newPage();
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(url);
+      await page.getByText('Offline ready', { exact: true }).waitFor();
+    }
     await page.getByText('Explore a sample pitch', { exact: true }).click();
     await page.getByLabel('Frequency (Hz)', { exact: true }).fill('233.08188075904496');
     await page.getByRole('button', { name: 'Check pitch' }).click();
@@ -66,9 +76,9 @@ try {
     const nav = page.getByRole('navigation', { name: 'Practice focus' });
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
     await page.getByRole('button', { name: 'Select F♯3', exact: true }).click();
-    const selectedFrequency = await page.locator('.selected-tone').innerText();
+    const selectedFrequency = await page.locator('.selected-note').innerText();
     await page.getByRole('button', { name: '+ Octave', exact: true }).click();
-    assert.equal(await page.locator('.selected-tone').innerText(), selectedFrequency);
+    assert.equal(await page.locator('.selected-note').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await page.getByRole('button', { name: 'Sustain on', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'Sustain off', exact: true }).evaluate((node) => node === document.activeElement), true);
@@ -79,7 +89,7 @@ try {
     assert.equal(await page.locator('.beat:visible').count(), 2);
     assert.equal(await page.getByText('Dotted quarter = 108 BPM', { exact: true }).isVisible(), true);
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
-    assert.equal(await page.locator('.selected-tone').innerText(), selectedFrequency);
+    assert.equal(await page.locator('.selected-note').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
     assert.equal(await page.locator('.pitch-note').innerText(), 'C4');
@@ -94,6 +104,12 @@ try {
     await page.getByRole('button', { name: 'Stop all audio' }).click();
     // Real Web Audio graph with synthetic input; this does not test permission or hardware.
     await page.evaluate(() => {
+      window.scheduledClicks = [];
+      const originalStart = OscillatorNode.prototype.start;
+      OscillatorNode.prototype.start = function(time = 0) {
+        if (time > 0 && this.frequency.value >= 750) window.scheduledClicks.push({ time, now: this.context.currentTime, frequency: this.frequency.value });
+        return originalStart.call(this, time);
+      };
       const ac = new AudioContext();
       const osc = ac.createOscillator();
       const gain = ac.createGain();
@@ -110,15 +126,46 @@ try {
     await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
     await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    if (await page.getByRole('button', { name: 'Sustain off', exact: true }).isVisible()) await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
     await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
     await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
     assert.equal(await page.locator('.pitch-note').innerText(), 'B4');
+    await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
+    await page.getByLabel('Tempo (BPM)', { exact: true }).fill('120');
+    await page.waitForTimeout(200);
+    assert.equal(await page.getByLabel('Tempo (BPM)', { exact: true }).inputValue(), '120', 'Live pitch updates must not overwrite an edit');
+    await page.getByLabel('Tempo (BPM)', { exact: true }).press('Tab');
+    await page.getByLabel('Subdivision', { exact: true }).selectOption('3');
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
+    for (const focus of ['Tuner', 'Reference tone', 'Metronome', 'Tuner', 'Metronome']) {
+      await nav.getByRole('button', { name: focus, exact: true }).click();
+      await page.evaluate(() => { const until = performance.now() + 20; while (performance.now() < until) { /* Controlled foreground load. */ } });
+    }
+    await page.waitForFunction(() => window.scheduledClicks.length >= 13);
+    const clicks = await page.evaluate(() => window.scheduledClicks);
+    for (let i = 1; i < clicks.length; i++) assert.ok(Math.abs(clicks[i].time - clicks[i - 1].time - 1 / 6) < 0.00001);
+    assert.ok(clicks.every((click) => click.time >= click.now), 'Clicks must be scheduled ahead of playback');
+    assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 750, 750, 1000, 750, 750, 1500]);
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
+    // Change focus and settings while input analysis and clicks continue.
+    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).isVisible(), true);
     await page.evaluate(() => { window.testInput.gain.gain.value = 0; });
     await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 1000 });
     await page.getByRole('button', { name: 'Stop all audio' }).click();
     assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
     await page.evaluate(() => window.testInput.ac.close());
+    const stoppedClicks = await page.evaluate(() => window.scheduledClicks.length);
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => window.scheduledClicks.length), stoppedClicks);
+    assert.equal(await page.locator('#current-beat').textContent(), 'Stopped');
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
+    await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate scheduler underrun. */ } });
+    await page.getByText('Metronome timing was interrupted. Start it again to resume a steady beat.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Stop all audio' }).click();
+    console.log(`${mode}: ${clicks.length} clicks at 1/6-second spacing during pitch analysis, tone playback and UI activity; minimum scheduling lead ${(Math.min(...clicks.map((click) => click.time - click.now)) * 1000).toFixed(1)} ms; long stall stops playback.`);
 
     // Fonts and exact Figma vectors must decode inside both distributions.
     const assets = await page.evaluate(async () => {

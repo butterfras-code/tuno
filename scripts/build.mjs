@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,7 @@ const options = {
   entryPoints: ['src/main.ts'],
   bundle: true,
   loader: { '.svg': 'dataurl', '.ttf': 'dataurl' },
-  define: { FONT_LICENSES: JSON.stringify((await Promise.all([
+  define: { HOSTED_OFFLINE_ENABLED: String(!dev), FONT_LICENSES: JSON.stringify((await Promise.all([
     readFile(path.join(root, 'src/assets/fonts/nunito-OFL.txt'), 'utf8'),
     readFile(path.join(root, 'src/assets/fonts/nunito-sans-OFL.txt'), 'utf8'),
   ])).join('\n\n')) },
@@ -51,10 +52,16 @@ const options = {
           readFile(path.join(hosted, 'app.js'), 'utf8'),
           readFile(path.join(hosted, 'app.css'), 'utf8'),
         ]);
+        const worker = await readFile(path.join(root, 'src/distribution/service-worker.js'), 'utf8');
+        const version = createHash('sha256').update(template + js + css + worker).digest('hex').slice(0, 16);
         const render = (styles, scripts) => template
+          .replace('<!-- version -->', `<meta name="tuno-version" content="${version}">`)
           .replace('<!-- styles -->', () => styles)
           .replace('<!-- scripts -->', () => scripts);
         const html = render(`<style>${css}</style>`, `<script>${js}</script>`);
+        const hostedHtml = render('<link rel="stylesheet" href="./app.css">', '<script defer src="./app.js"></script>');
+        const integrity = Object.fromEntries(Object.entries({ 'index.html': hostedHtml, 'app.js': js, 'app.css': css })
+          .map(([name, contents]) => [name, 'sha256-' + createHash('sha256').update(contents).digest('base64')]));
         // esbuild escapes script/style closing sequences for safe inline embedding.
         // Reject resource-bearing markup/CSS; runtime requests are checked in browser tests.
         if (/<[^>]+\s(?:src|srcset)\s*=/i.test(template) || /<link\b/i.test(template)
@@ -63,11 +70,9 @@ const options = {
           throw new Error('Portable HTML contains an unsupported resource reference.');
         }
         await Promise.all([
-          writeFile(path.join(hosted, 'index.html'), render(
-            '<link rel="stylesheet" href="./app.css">',
-            '<script defer src="./app.js"></script>',
-          )),
+          writeFile(path.join(hosted, 'index.html'), hostedHtml),
           writeFile(path.join(portable, 'tuno.html'), html),
+          ...(!dev ? [writeFile(path.join(hosted, 'sw.js'), worker.replace('__BUILD_VERSION__', version).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity)))] : []),
           writeFile(path.join(root, 'dist/build-meta.json'), JSON.stringify(result.metafile, null, 2)),
         ]);
       });

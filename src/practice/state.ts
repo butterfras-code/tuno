@@ -27,7 +27,7 @@ export const LIMITS = {
 } as const;
 export type Settings = Readonly<{ a4: number; transposition: number; showUno: boolean }>;
 export type MicStatus = 'idle' | 'requesting' | 'listening' | 'no-signal' | 'unreliable' | 'error' | 'interrupted';
-export type AudioState = Readonly<{ micStatus: MicStatus; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; audioError: string }>;
+export type AudioState = Readonly<{ micStatus: MicStatus; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; metronomePlaying: boolean; currentBeat: number | null; currentPart: number; audioError: string }>;
 export type PracticeState = Settings & AudioState & Readonly<{
   focus: Focus;
   manualHz: number | null;
@@ -38,6 +38,10 @@ export type PracticeState = Settings & AudioState & Readonly<{
   tempo: number;
   meter: Meter;
   numbered: boolean;
+  subdivision: number;
+  accent: boolean;
+  clickVolume: number;
+  clickSound: 'click' | 'wood';
 }>;
 export type Action =
   | { type: 'audio'; value: Partial<AudioState> }
@@ -50,7 +54,11 @@ export type Action =
   | { type: 'tone-volume'; value: number }
   | { type: 'tempo'; value: number }
   | { type: 'meter'; value: Meter }
-  | { type: 'numbered'; value: boolean };
+  | { type: 'numbered'; value: boolean }
+  | { type: 'subdivision'; value: number }
+  | { type: 'accent'; value: boolean }
+  | { type: 'click-volume'; value: number }
+  | { type: 'click-sound'; value: 'click' | 'wood' };
 
 function inRange(value: number, min: number, max: number, integer = false): boolean {
   return Number.isFinite(value) && value >= min && value <= max && (!integer || Number.isInteger(value));
@@ -58,10 +66,10 @@ function inRange(value: number, min: number, max: number, integer = false): bool
 
 export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
-    micStatus: 'idle', liveHz: null, rms: 0, quality: 0, tonePlaying: false, audioError: '',
+    micStatus: 'idle', liveHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
     focus: 'tuner', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
     showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40,
-    tempo: 96, meter: 'free', numbered: false,
+    tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, clickVolume: 50, clickSound: 'click',
   });
   const listeners = new Set<(state: PracticeState) => void>();
   return {
@@ -99,6 +107,16 @@ export function createPracticeStore() {
         case 'meter':
           if (!METERS.some((meter) => meter.value === action.value)) return;
           patch = { meter: action.value, numbered: action.value !== 'free' }; break;
+        case 'subdivision':
+          if (![1, 2, 3, 4].includes(action.value)) return;
+          patch = { subdivision: action.value }; break;
+        case 'accent': patch = { accent: action.value }; break;
+        case 'click-volume':
+          if (!inRange(action.value, 0, 100, true)) return;
+          patch = { clickVolume: action.value }; break;
+        case 'click-sound':
+          if (!['click', 'wood'].includes(action.value)) return;
+          patch = { clickSound: action.value }; break;
         case 'numbered': patch = { numbered: action.value }; break;
       }
       state = Object.freeze({ ...state, ...patch });

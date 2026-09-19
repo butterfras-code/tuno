@@ -1,5 +1,8 @@
 import { detectPitch } from './detector.ts';
-import { toneHz } from '../practice/state.ts';
+import { createTimeline, createTapTempo } from '../music/rhythm.ts';
+import type { Pulse } from '../music/rhythm.ts';
+import { scheduleClick } from './click.ts';
+import { toneHz, meterInfo } from '../practice/state.ts';
 import type { AudioState, PracticeStore } from '../practice/state.ts';
 
 /** Application-owned resources. Cancellation generations adapted from pitch-tracker. */
@@ -14,13 +17,21 @@ export function createAudioController(store: PracticeStore) {
   let toneGeneration = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let toneTimer: ReturnType<typeof setTimeout> | undefined;
+  let metronomeGeneration = 0;
+  let metronomePending = false;
+  let metronomeTimer: ReturnType<typeof setTimeout> | undefined;
+  let visualFrame = 0;
+  let timeline: ReturnType<typeof createTimeline> | undefined;
+  let visualQueue: Pulse[] = [];
+  const clicks = new Set<ReturnType<typeof scheduleClick>>();
+  const tap = createTapTempo();
   const buffer = new Float32Array(4096);
   const update = (value: Partial<AudioState>) => store.dispatch({ type: 'audio', value });
   function audioContext() {
     if (!context) {
       context = new AudioContext();
       context.onstatechange = () => {
-        if (context?.state !== 'running' && (stream || oscillator)) {
+        if (context?.state !== 'running' && (stream || oscillator || timeline)) {
           stopAll();
           update({ micStatus: 'interrupted', audioError: 'Audio interrupted. Start listening or play a tone to resume.' });
         }
@@ -127,13 +138,73 @@ export function createAudioController(store: PracticeStore) {
       update({ audioError: error instanceof Error ? error.message : 'Unable to play tone.' });
     }
   }
-  function stopAll() { stopMic(); stopTone(); }
+  function stopMetronome() {
+    metronomeGeneration++;
+    metronomePending = false;
+    clearTimeout(metronomeTimer);
+    if (visualFrame) cancelAnimationFrame(visualFrame);
+    visualFrame = 0;
+    timeline = undefined;
+    visualQueue = [];
+    for (const click of clicks) click.stop();
+    clicks.clear();
+    update({ metronomePlaying: false, currentBeat: null, currentPart: 0 });
+  }
+  function renderBeat() {
+    if (!timeline || !context) return;
+    // Audio events drive beat identity; rendering never schedules sound.
+    const stamp = context.getOutputTimestamp?.();
+    const now = stamp?.contextTime || context.currentTime;
+    let current: Pulse | undefined;
+    while (visualQueue.length && visualQueue[0]!.time <= now) current = visualQueue.shift();
+    if (current) update({ currentBeat: current.beat, currentPart: current.part });
+    visualFrame = requestAnimationFrame(renderBeat);
+  }
+  function scheduleBeats() {
+    if (!timeline || !context) return;
+    if (timeline.time < context.currentTime - 0.05) {
+      stopMetronome();
+      update({ audioError: 'Metronome timing was interrupted. Start it again to resume a steady beat.' });
+      return;
+    }
+    while (timeline.time < context.currentTime + 0.15) {
+      const state = store.get();
+      const pulse = timeline.next({ tempo: state.tempo, beats: meterInfo(state).beats, subdivision: state.subdivision });
+      const click = scheduleClick(context, pulse, state);
+      clicks.add(click);
+      click.oscillator.addEventListener('ended', () => clicks.delete(click), { once: true });
+      visualQueue.push(pulse);
+    }
+    metronomeTimer = setTimeout(scheduleBeats, 25);
+  }
+  async function startMetronome() {
+    if (timeline || metronomePending) return;
+    const generation = ++metronomeGeneration;
+    metronomePending = true;
+    update({ audioError: '' });
+    try {
+      const ac = audioContext();
+      await ac.resume();
+      if (generation !== metronomeGeneration) return;
+      timeline = createTimeline(ac.currentTime + 0.05);
+      update({ metronomePlaying: true });
+      scheduleBeats();
+      renderBeat();
+    } catch (error) {
+      if (generation !== metronomeGeneration) return;
+      stopMetronome();
+      update({ audioError: error instanceof Error ? error.message : 'Unable to start metronome.' });
+    } finally { if (generation === metronomeGeneration) metronomePending = false; }
+  }
+  function stopAll() { stopMic(); stopTone(); stopMetronome(); }
   let sustain = store.get().sustain;
   const unsubscribe = store.subscribe((state) => {
     syncTone();
     if (sustain !== state.sustain) { sustain = state.sustain; scheduleRelease(); }
   });
-  return { startMic, stopMic, playTone, stopTone, stopAll,
+  return { startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
+    toggleMetronome: () => timeline || metronomePending ? stopMetronome() : void startMetronome(),
+    tapTempo: () => { const tempo = tap(performance.now()); if (tempo !== null) store.dispatch({ type: 'tempo', value: tempo }); },
     toggleMic: () => stream || store.get().micStatus === 'requesting' ? stopMic() : void startMic(),
     toggleTone: () => oscillator ? stopTone() : void playTone(),
     dispose() { stopAll(); unsubscribe(); if (context) { context.onstatechange = null; void context.close(); } },

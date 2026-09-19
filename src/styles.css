@@ -179,3 +179,8 @@ img { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+.beat[aria-current="true"] { outline: 3px solid var(--color-teal); outline-offset: 3px; }
+.current-beat { text-align: center; font-weight: 700; }
+.pulse-friend[data-side="left"] { border-left: 4px solid var(--color-teal); border-right: 4px solid transparent; }
+.pulse-friend[data-side="right"] { border-right: 4px solid var(--color-teal); border-left: 4px solid transparent; }

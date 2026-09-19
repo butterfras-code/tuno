@@ -5,7 +5,7 @@ import { createAudioController } from '../src/audio/controller.ts';
 
 // Browser boundary doubles exercise cancellation and ownership, not physical audio.
 test('audio cancellation, coexistence, settings, disconnect and interruption', async () => {
-  const parameter = () => ({ value: 0, setValueAtTime(v: number) { this.value = v; }, linearRampToValueAtTime(v: number) { this.value = v; }, setTargetAtTime(v: number) { this.value = v; }, cancelScheduledValues() {} });
+  const parameter = () => ({ value: 0, setValueAtTime(v: number) { this.value = v; }, linearRampToValueAtTime(v: number) { this.value = v; }, setTargetAtTime(v: number) { this.value = v; }, exponentialRampToValueAtTime(v: number) { this.value = v; }, cancelScheduledValues() {} });
   const oscillators: { frequency: ReturnType<typeof parameter>; stopped: boolean }[] = [];
   let ac: FakeContext;
   class FakeContext {
@@ -18,10 +18,14 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     createAnalyser() { return { fftSize: 4096, disconnect() {}, getFloatTimeDomainData(data: Float32Array) { data.fill(0); } }; }
     createGain() { return { gain: parameter(), connect() {}, disconnect() {} }; }
     createOscillator() {
-      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
+      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, addEventListener() {}, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
       oscillators.push(osc); return osc;
     }
   }
+  const originalRaf = Object.getOwnPropertyDescriptor(globalThis, 'requestAnimationFrame');
+  const originalCancelRaf = Object.getOwnPropertyDescriptor(globalThis, 'cancelAnimationFrame');
+  Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: () => 1 });
+  Object.defineProperty(globalThis, 'cancelAnimationFrame', { configurable: true, value: () => {} });
   const originalAudio = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
   const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   let resolve!: (value: unknown) => void;
@@ -60,8 +64,26 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.match(store.get().audioError, /disconnected/);
     deny = true; await audio.startMic(); assert.equal(store.get().micStatus, 'error');
     assert.match(store.get().audioError, /permission denied/);
+    await audio.startMetronome();
+    const count = oscillators.length;
+    await audio.startMetronome();
+    assert.equal(oscillators.length, count);
+    assert.equal(store.get().metronomePlaying, true);
+    audio.stopMic();
+    store.dispatch({ type: 'focus', value: 'tuner' });
+    assert.equal(store.get().metronomePlaying, true);
+    ac!.state = 'suspended'; ac!.onstatechange?.();
+    assert.equal(store.get().metronomePlaying, false);
+    assert.equal(store.get().currentBeat, null);
+    const pendingBeat = audio.startMetronome();
+    audio.stopAll();
+    await pendingBeat;
+    assert.equal(store.get().metronomePlaying, false);
+    assert.equal(oscillators.length, count);
   } finally {
     audio.dispose();
+    if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', originalRaf); else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');
+    if (originalCancelRaf) Object.defineProperty(globalThis, 'cancelAnimationFrame', originalCancelRaf); else Reflect.deleteProperty(globalThis, 'cancelAnimationFrame');
     if (originalAudio) Object.defineProperty(globalThis, 'AudioContext', originalAudio); else Reflect.deleteProperty(globalThis, 'AudioContext');
     if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator); else Reflect.deleteProperty(globalThis, 'navigator');
   }

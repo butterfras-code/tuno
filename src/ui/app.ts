@@ -1,3 +1,4 @@
+import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
 import { meterInfo, TOOLS } from '../practice/state.ts';
@@ -29,7 +30,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   const main = el('main', 'practice-surface');
   main.id = 'practice';
   main.tabIndex = -1;
-  main.append(createTuner(store, settings.open, audio), createTone(store, audio), createMetronome(store));
+  main.append(createTuner(store, settings.open, audio), createTone(store, audio), createMetronome(store, audio));
   const tools = el('aside', 'tool-strip');
   tools.setAttribute('aria-label', 'Practice tools');
   const summaries = TOOLS.map((tool) => {
@@ -40,15 +41,18 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       ? button('Start listening', audio.toggleMic)
       : tool.id === 'tone'
         ? button('Play tone', audio.toggleTone)
-        : button('Preview', () => store.dispatch({ type: 'focus', value: 'metronome' }));
+        : button('Start metronome', audio.toggleMetronome);
     card.append(title, row(status, action));
+    if (tool.id === 'metronome') card.append(button('Tap tempo', audio.tapTempo));
     tools.append(card);
     return { title, status, action };
   });
   const footer = el('footer', 'app-footer');
-  const availability = el('p', '', 'Reference tones may be picked up by the microphone. Use headphones to compare. Metronome playback is coming next.');
+  const availability = el('p', '', 'Reference tones may be picked up by the microphone. Use headphones to compare.');
   availability.id = 'audio-availability';
-  const offline = el('p', 'teal', location.protocol === 'file:' ? 'Self-contained offline file' : 'Hosted offline setup is coming next');
+  const offline = el('p', 'teal');
+  offline.id = 'offline-status';
+  prepareOffline(offline);
   const licenses = el('details', 'licenses');
   licenses.append(el('summary', '', 'Font licenses'));
   // Included in both artifacts so the portable font distribution retains its notices.
@@ -66,6 +70,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     summaries[0]!.status.textContent = state.micStatus !== 'idle' ? state.micStatus : state.manualHz === null ? 'Not listening' : `Sample · ${pitchText(state).note}`;
     summaries[1]!.status.textContent = `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`;
     summaries[2]!.title.textContent = `METRONOME · ${meterInfo(state).unit.toUpperCase()}`;
-    summaries[2]!.status.textContent = `${state.tempo} BPM`;
+    summaries[2]!.action.textContent = state.metronomePlaying ? 'Stop metronome' : 'Start metronome';
+    summaries[2]!.status.textContent = `${state.tempo} BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`;
   });
 }
