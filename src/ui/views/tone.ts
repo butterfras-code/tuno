@@ -1,8 +1,9 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
+import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
 import { LIMITS, toneHz } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, pitchText, responsiveLabel, row, uno, view, volumePopover } from '../components.ts';
+import { button, el, field, heading, pitchText, responsiveLabel, row, select, uno, view, volumePopover } from '../components.ts';
 
 export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
@@ -22,7 +23,11 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   const volumeValue = el('output', 'small');
   volumeLabel.append(volumeValue);
   const play = button('Play tone', audio.toggleTone);
-  const controls = row(sustain, play, volumeLabel);
+  const sound = select(TONE_SOUNDS, (value) => store.dispatch({ type: 'tone-sound', value: value as ToneSound }));
+  sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes.';
+  const soundField = field('Tone sound', sound);
+  soundField.classList.add('tone-sound');
+  const controls = row(sustain, soundField, play, volumeLabel);
   controls.classList.add('tone-controls');
   const notePicker = button('', () => showPanel('note'));
   notePicker.classList.add('note-picker-trigger', 'mobile-only');
@@ -161,12 +166,13 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   store.subscribe((state) => {
     node.hidden = state.focus !== 'tone';
     if (node.hidden && panel !== 'keyboard') showPanel('keyboard', false);
-    sustain.textContent = `Sustain ${state.sustain ? 'on' : 'off'}`;
+    responsiveLabel(sustain, `Sustain ${state.sustain ? 'on' : 'off'}`, `Hold ${state.sustain ? 'on' : 'off'}`);
     sustain.setAttribute('aria-pressed', String(state.sustain));
     volume.value = String(state.toneVolume);
+    sound.value = state.toneSound;
     volumeValue.textContent = `${state.toneVolume}%`;
     selectedName.textContent = noteName(state.toneNote);
-    notePicker.textContent = `Note · ${noteName(state.toneNote)}`;
+    responsiveLabel(notePicker, `Choose note · ${noteName(state.toneNote)}`, noteName(state.toneNote));
     octavePicker.textContent = `Octave ${state.octave} ↕`;
     mobileVolume.value = String(state.toneVolume);
     compactVolume.trigger.textContent = `Volume · ${state.toneVolume}%`;

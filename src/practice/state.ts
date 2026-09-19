@@ -1,4 +1,6 @@
 import { DEFAULT_A4_HZ, identifyPitch, noteFrequency } from '../music/pitch.ts';
+import { CLICK_SOUNDS, type ClickSound } from '../music/click-sounds.ts';
+import { TONE_SOUNDS, type ToneSound } from '../music/tone-sounds.ts';
 
 export const TOOLS = [
   { id: 'tuner', label: 'Tuner' },
@@ -42,13 +44,14 @@ export type PracticeState = Settings & AudioState & Readonly<{
   octave: number;
   sustain: boolean;
   toneVolume: number;
+  toneSound: ToneSound;
   tempo: number;
   meter: Meter;
   numbered: boolean;
   subdivision: number;
   accent: boolean;
   clickVolume: number;
-  clickSound: 'click' | 'wood';
+  clickSound: ClickSound;
 }>;
 export type Action =
   | { type: 'audio'; value: Partial<AudioState> }
@@ -60,13 +63,14 @@ export type Action =
   | { type: 'octave'; value: number }
   | { type: 'sustain'; value: boolean }
   | { type: 'tone-volume'; value: number }
+  | { type: 'tone-sound'; value: ToneSound }
   | { type: 'tempo'; value: number }
   | { type: 'meter'; value: Meter }
   | { type: 'numbered'; value: boolean }
   | { type: 'subdivision'; value: number }
   | { type: 'accent'; value: boolean }
   | { type: 'click-volume'; value: number }
-  | { type: 'click-sound'; value: 'click' | 'wood' };
+  | { type: 'click-sound'; value: ClickSound };
 
 function inRange(value: number, min: number, max: number, integer = false): boolean {
   return Number.isFinite(value) && value >= min && value <= max && (!integer || Number.isInteger(value));
@@ -76,7 +80,7 @@ export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
     micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, displayHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
     focus: 'tuner', tunerAccuracy: 'advanced', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
-    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40,
+    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40, toneSound: 'sine',
     tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, clickVolume: 50, clickSound: 'click',
   });
   const listeners = new Set<(state: PracticeState) => void>();
@@ -112,6 +116,9 @@ export function createPracticeStore() {
         case 'tone-volume':
           if (!inRange(action.value, 0, 100, true)) return;
           patch = { toneVolume: action.value }; break;
+        case 'tone-sound':
+          if (!TONE_SOUNDS.some((sound) => sound.value === action.value)) return;
+          patch = { toneSound: action.value }; break;
         case 'tempo':
           if (!inRange(action.value, LIMITS.tempo.min, LIMITS.tempo.max, true)) return;
           patch = { tempo: action.value }; break;
@@ -126,7 +133,7 @@ export function createPracticeStore() {
           if (!inRange(action.value, 0, 100, true)) return;
           patch = { clickVolume: action.value }; break;
         case 'click-sound':
-          if (!['click', 'wood'].includes(action.value)) return;
+          if (!CLICK_SOUNDS.some((sound) => sound.value === action.value)) return;
           patch = { clickSound: action.value }; break;
         case 'numbered': patch = { numbered: action.value }; break;
       }

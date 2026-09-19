@@ -1,4 +1,5 @@
 import type { AudioController } from '../../audio/controller.ts';
+import { CLICK_SOUNDS, type ClickSound } from '../../music/click-sounds.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
 import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
@@ -56,8 +57,8 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     { value: 3, label: '3 per beat' }, { value: 4, label: '4 per beat' },
   ], (value) => store.dispatch({ type: 'subdivision', value: Number(value) }));
   const accent = button('Downbeat accent on', () => store.dispatch({ type: 'accent', value: !store.get().accent }));
-  const sound = select([{ value: 'click', label: 'Click' }, { value: 'wood', label: 'Wood' }],
-    (value) => store.dispatch({ type: 'click-sound', value: value as 'click' | 'wood' }));
+  const sound = select(CLICK_SOUNDS,
+    (value) => store.dispatch({ type: 'click-sound', value: value as ClickSound }));
   const volume = el('input');
   Object.assign(volume, { type: 'range', min: '0', max: '100', step: '1' });
   volume.addEventListener('input', () => store.dispatch({ type: 'click-volume', value: Number(volume.value) }));

@@ -199,6 +199,13 @@ try {
       await page.setViewportSize({ width, height: 1000 });
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
         await nav.getByRole('button', { name: focus, exact: true }).click();
+        if (focus === 'Reference tone' || focus === 'Metronome') {
+          const sound = page.getByLabel(focus === 'Reference tone' ? 'Tone sound' : 'Click sound', { exact: true });
+          for (const value of focus === 'Reference tone' ? ['sine', 'triangle', 'rich'] : ['click', 'wood', 'beep', 'drum']) {
+            await sound.selectOption(value);
+            assert.equal(await sound.inputValue(), value);
+          }
+        }
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${mode}: ${focus} overflow at ${width}px`);
       }
     }

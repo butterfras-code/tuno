@@ -1,4 +1,4 @@
-import { createReferenceTone } from './tone.ts';
+import { createReferenceTone, setToneSound } from './tone.ts';
 import { detectPitch } from './detector.ts';
 import { createTimeline, createTapTempo } from '../music/rhythm.ts';
 import type { Pulse } from '../music/rhythm.ts';
@@ -120,6 +120,7 @@ export function createAudioController(store: PracticeStore) {
   }
   function syncTone() {
     if (!oscillator || !gain || !context) return;
+    setToneSound(context, oscillator, store.get().toneSound);
     oscillator.frequency.setTargetAtTime(toneHz(store.get()), context.currentTime, 0.01);
     gain.gain.setTargetAtTime(store.get().toneVolume / 100 * 0.2, context.currentTime, 0.01);
   }
@@ -136,7 +137,7 @@ export function createAudioController(store: PracticeStore) {
       await ac.resume();
       if (generation !== toneGeneration) return;
       if (!oscillator) {
-        const voice = createReferenceTone(ac, toneHz(store.get()));
+        const voice = createReferenceTone(ac, toneHz(store.get()), store.get().toneSound);
         oscillator = voice.oscillator;
         gain = voice.gain;
       }
@@ -222,10 +223,10 @@ export function createAudioController(store: PracticeStore) {
   }
   function stopAll() { stopMic(); stopTone(); stopMetronome(); }
   let sustain = store.get().sustain;
-  let { toneNote, a4, toneVolume } = store.get();
+  let { toneNote, a4, toneVolume, toneSound } = store.get();
   const unsubscribe = store.subscribe((state) => {
-    if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume) {
-      toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume;
+    if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume || state.toneSound !== toneSound) {
+      toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume; toneSound = state.toneSound;
       syncTone();
     }
     if (sustain !== state.sustain) { sustain = state.sustain; scheduleRelease(); }
