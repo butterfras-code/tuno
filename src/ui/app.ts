@@ -2,7 +2,7 @@ import { createReleaseControls } from '../distribution/release.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
-import { meterInfo, TOOLS } from '../practice/state.ts';
+import { meterInfo, TOOLS, TUNER_ACCURACIES } from '../practice/state.ts';
 import type { PracticeStore } from '../practice/state.ts';
 import { button, el, pitchText, responsiveLabel, row } from './components.ts';
 import { createSettings } from './settings.ts';
@@ -37,6 +37,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   main.append(createTuner(store, settings.open, audio), createTone(store, audio), createMetronome(store, audio));
   const tools = el('aside', 'tool-strip');
   tools.setAttribute('aria-label', 'Practice tools');
+  let accuracyButtons: HTMLButtonElement[] = [];
   const summaries = TOOLS.map((tool) => {
     const card = el('section', 'tool-card');
     const title = el('h2', 'eyebrow', tool.label.toUpperCase());
@@ -49,6 +50,22 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
         : button('Start metronome', audio.toggleMetronome);
     responsiveLabel(title, tool.label.toUpperCase(), tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Beat' : 'Tuner');
     card.append(title, row(status, action));
+    if (tool.id === 'tuner') {
+      const accuracy = el('div', 'accuracy-toggle');
+      accuracy.setAttribute('role', 'group');
+      accuracy.setAttribute('aria-label', 'Tuner accuracy');
+      const icon = el('span', 'accuracy-icon', '◎');
+      icon.setAttribute('aria-hidden', 'true');
+      accuracyButtons = TUNER_ACCURACIES.map((option) => {
+        const choice = button(option.label, () => store.dispatch({ type: 'tuner-accuracy', value: option.value }));
+        choice.classList.add('accuracy-choice');
+        choice.setAttribute('aria-label', `${option.value[0]!.toUpperCase()}${option.value.slice(1)} accuracy`);
+        accuracy.append(choice);
+        return choice;
+      });
+      accuracy.prepend(icon);
+      card.append(accuracy);
+    }
     if (tool.id === 'metronome') {
       status.append(tempoInput(store, 'Quick tempo (BPM)'), tempoStatus);
       const tap = button('Tap tempo', audio.tapTempo);
@@ -92,6 +109,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
     responsiveLabel(summaries[0]!.action, listening ? 'Stop listening' : 'Start listening', listening ? 'Mic on' : 'Mic off');
     summaries[0]!.action.setAttribute('aria-pressed', String(listening));
+    accuracyButtons.forEach((choice, index) => choice.setAttribute('aria-pressed', String(TUNER_ACCURACIES[index]!.value === state.tunerAccuracy)));
     responsiveLabel(summaries[1]!.action, state.tonePlaying ? 'Stop tone' : 'Play tone', state.tonePlaying ? 'Stop' : 'Play');
     summaries[0]!.status.textContent = state.micStatus !== 'idle' ? state.micStatus : state.manualHz === null ? 'Not listening' : `Sample · ${pitchText(state).note}`;
     responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));

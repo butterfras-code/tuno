@@ -46,6 +46,19 @@ test('5/8 cent hysteresis and 150ms grace pause progress without pose flicker', 
   f.set({ note: 69, cents: 5 });
   assert.equal(f.advance(250).pose, 'wag');
 });
+test('intermediate and beginner scales relax both edges of the accuracy window', () => {
+  const intermediate = createTunerFeedback();
+  intermediate.update(0, { note: 69, cents: 5.5 }, false, 1.1);
+  assert.equal(intermediate.update(250, { note: 69, cents: 8.8 }, false, 1.1).pose, 'wag');
+
+  const beginner = createTunerFeedback();
+  beginner.update(0, { note: 69, cents: 6 }, false, 1.2);
+  assert.equal(beginner.update(250, { note: 69, cents: 9.6 }, false, 1.2).pose, 'wag');
+
+  const advanced = createTunerFeedback();
+  advanced.update(0, { note: 69, cents: 5.5 });
+  assert.equal(advanced.update(250, { note: 69, cents: 5.5 }).pose, 'rest');
+});
 test('silence, sustained out-of-tune input and stable new notes rearm rewards', () => {
   for (const reason of ['silence', 'out', 'note']) {
     const f = fixture();

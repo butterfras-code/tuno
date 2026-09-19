@@ -20,7 +20,7 @@ export function createTunerFeedback() {
       previous = null; zone = false; held = 0; badSince = silentSince = outSince = null;
       note = rewardedNote = caughtAt = null; pose = 'rest'; wasGood = false;
     },
-    update(now: number, evidence: FeedbackEvidence, silent = false) {
+    update(now: number, evidence: FeedbackEvidence, silent = false, toleranceScale = 1) {
       const dt = previous === null ? 0 : Math.max(0, now - previous);
       previous = now;
       if (dt > 250) { held = 0; wasGood = false; }
@@ -30,7 +30,7 @@ export function createTunerFeedback() {
       if (evidence === null) noteSince = now;
       if (silent) silentSince ??= now;
       else silentSince = null;
-      zone = evidence !== null && Math.abs(evidence.cents) <= (zone ? 8 : 5);
+      zone = evidence !== null && Math.abs(evidence.cents) <= (zone ? 8 : 5) * toleranceScale;
       if (evidence !== null && !zone) outSince ??= now;
       else outSince = null;
       if (zone) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createPracticeStore, meterInfo, pitchReading, toneHz } from '../src/practice/state.ts';
+import { createPracticeStore, meterInfo, pitchReading, rawPitchReading, toneHz } from '../src/practice/state.ts';
 
 test('focus and octave browsing preserve selected pitch and settings', () => {
   const store = createPracticeStore();
@@ -22,6 +22,22 @@ test('clearing manual input clears evidence without resetting reference-tone sel
   store.dispatch({ type: 'pitch', value: null });
   assert.equal(pitchReading(store.get()), null);
   assert.equal(store.get().toneNote, 58);
+});
+
+test('live display pitch stays separate from raw reward evidence', () => {
+  const store = createPracticeStore();
+  store.dispatch({ type: 'audio', value: { micStatus: 'listening', liveHz: 440, displayHz: 880 } });
+  assert.equal(pitchReading(store.get())?.concertNote, 81);
+  assert.equal(rawPitchReading(store.get())?.concertNote, 69);
+});
+
+test('tuner accuracy defaults to advanced and accepts the three supported levels', () => {
+  const store = createPracticeStore();
+  assert.equal(store.get().tunerAccuracy, 'advanced');
+  for (const value of ['intermediate', 'beginner', 'advanced'] as const) {
+    store.dispatch({ type: 'tuner-accuracy', value });
+    assert.equal(store.get().tunerAccuracy, value);
+  }
 });
 
 test('invalid control values never enter shared state', () => {
