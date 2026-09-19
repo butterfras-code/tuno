@@ -10,6 +10,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 ## Project documents
 
+- [Hosting setup](docs/hosting.md): Cloudflare Pages, tuno.cc, automatic production deployments, and the feature-branch/PR workflow.
 - [Release validation](docs/release-validation.md): candidate thresholds, automated results, and remaining device checks.
 - [Release instructions](docs/releasing.md): verification, artifacts, and deployment handoff.
 - [Project charter](docs/charter.md): why tUno exists, who it serves, and the principles that guide scope.
