@@ -1,6 +1,6 @@
 import unoAsset from '../assets/uno-happy.svg';
 import { noteName } from '../music/pitch.ts';
-import { pitchReading } from '../practice/state.ts';
+import { pitchReading, displayedHz } from '../practice/state.ts';
 import type { PracticeState } from '../practice/state.ts';
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = ''): HTMLElementTagNameMap[K] {
@@ -68,7 +68,7 @@ export function pitchText(state: PracticeState) {
   const direction = cents === 0 ? 'In tune' : `${Math.abs(cents).toFixed(1)} cents ${cents > 0 ? 'sharp' : 'flat'}`;
   return {
     note: noteName(reading.writtenNote),
-    detail: `${state.manualHz!.toFixed(1)} Hz · ${signed} cents`,
+    detail: `${displayedHz(state)!.toFixed(1)} Hz · ${signed} cents`,
     direction,
     summary: `Concert ${noteName(reading.concertNote)} · Written ${noteName(reading.writtenNote)} · ${direction}`,
   };

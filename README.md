@@ -6,13 +6,14 @@ tUno aims to make a dependable tuner, metronome, and reference tones available w
 
 tUno will ship as a hosted, downloadable app and, in parallel, a self-contained offline HTML file. Both releases share the same core practice tools.
 
-The app now implements the Figma visual foundation: a responsive tuner, reference-note keyboard, and metronome preview with shared controls and session state. Manual pitch input, calibration, transposition, note/octave selection, volume/sustain settings, and tempo/meter previews work. Microphone capture, audio playback, animated rewards, and hosted offline caching remain ahead.
+The app now implements the Figma visual foundation: a responsive tuner, reference-note keyboard, and metronome preview with shared controls and session state. Manual pitch input, calibration, transposition, note/octave selection, volume/sustain settings, and tempo/meter previews work. Microphone capture, live pitch detection, and reference-tone playback are now connected. Animated rewards, metronome playback, and hosted offline caching remain ahead. Physical-device audio validation is pending.
 
 ## Project documents
 
 - [Project charter](docs/charter.md): why tUno exists, who it serves, and the principles that guide scope.
 - [Distribution architecture](docs/architecture.md): the hosted app and portable HTML releases, their shared core, and offline guarantees.
 - [Prototype plan](docs/prototype-plan.md): what to build first and how to decide whether it works well enough.
+- [Approved design direction](docs/design-summary.md): identity, corrected pitch colors, and interaction decisions.
 - [Figma design handoff](docs/design-handoff.md): reviewed screens, visual tokens, interaction contracts, and first-slice integration.
 
 Read these in order. Keep commitments in the charter, distribution decisions in the architecture, and implementation milestones and validation results in the prototype plan. Add architecture decisions as implementation establishes them, rather than documenting an imagined finished system.
@@ -28,7 +29,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Audio transport is visibly unavailable in this design pass.
+Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Use **Start listening** for microphone input, select a piano key to play it, and use **Stop all audio** to release capture and stop output. Sustain off plays a 1.2-second tone.
 
 ```sh
 npm run check

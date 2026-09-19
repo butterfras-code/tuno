@@ -43,7 +43,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
-    assert.equal(await page.getByRole('button', { name: 'Mic off' }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
     assert.equal(await page.getByText('Offline ready', { exact: true }).count(), 0);
     await page.getByText('Explore a sample pitch', { exact: true }).click();
     await page.getByLabel('Frequency (Hz)', { exact: true }).fill('233.08188075904496');
@@ -90,6 +90,35 @@ try {
     await page.getByRole('button', { name: 'Clear sample' }).click();
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
+
+    await page.getByRole('button', { name: 'Stop all audio' }).click();
+    // Real Web Audio graph with synthetic input; this does not test permission or hardware.
+    await page.evaluate(() => {
+      const ac = new AudioContext();
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const destination = ac.createMediaStreamDestination();
+      osc.frequency.value = 440;
+      gain.gain.value = 0.2;
+      osc.connect(gain).connect(destination);
+      osc.start();
+      window.testInput = { ac, gain, destination };
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
+        await ac.resume(); return destination.stream;
+      } });
+    });
+    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
+    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    assert.equal(await page.locator('.pitch-note').innerText(), 'B4');
+    await page.evaluate(() => { window.testInput.gain.gain.value = 0; });
+    await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 1000 });
+    await page.getByRole('button', { name: 'Stop all audio' }).click();
+    assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
+    await page.evaluate(() => window.testInput.ac.close());
 
     // Fonts and exact Figma vectors must decode inside both distributions.
     const assets = await page.evaluate(async () => {

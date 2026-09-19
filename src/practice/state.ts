@@ -26,7 +26,9 @@ export const LIMITS = {
   tempo: { min: 30, max: 240 },
 } as const;
 export type Settings = Readonly<{ a4: number; transposition: number; showUno: boolean }>;
-export type PracticeState = Settings & Readonly<{
+export type MicStatus = 'idle' | 'requesting' | 'listening' | 'no-signal' | 'unreliable' | 'error' | 'interrupted';
+export type AudioState = Readonly<{ micStatus: MicStatus; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; audioError: string }>;
+export type PracticeState = Settings & AudioState & Readonly<{
   focus: Focus;
   manualHz: number | null;
   toneNote: number;
@@ -38,6 +40,7 @@ export type PracticeState = Settings & Readonly<{
   numbered: boolean;
 }>;
 export type Action =
+  | { type: 'audio'; value: Partial<AudioState> }
   | { type: 'focus'; value: Focus }
   | { type: 'pitch'; value: number | null }
   | { type: 'settings'; value: Settings }
@@ -55,6 +58,7 @@ function inRange(value: number, min: number, max: number, integer = false): bool
 
 export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
+    micStatus: 'idle', liveHz: null, rms: 0, quality: 0, tonePlaying: false, audioError: '',
     focus: 'tuner', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
     showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40,
     tempo: 96, meter: 'free', numbered: false,
@@ -70,6 +74,7 @@ export function createPracticeStore() {
     dispatch(action: Action) {
       let patch: Partial<PracticeState>;
       switch (action.type) {
+        case 'audio': patch = action.value; break;
         case 'focus': patch = { focus: action.value }; break;
         case 'pitch':
           if (action.value !== null && !inRange(action.value, LIMITS.frequency.min, LIMITS.frequency.max)) return;
@@ -102,7 +107,10 @@ export function createPracticeStore() {
   };
 }
 export type PracticeStore = ReturnType<typeof createPracticeStore>;
-export const pitchReading = (state: PracticeState) => state.manualHz === null
-  ? null : identifyPitch(state.manualHz, state.a4, state.transposition);
+export const displayedHz = (state: PracticeState) => state.micStatus === 'idle' ? state.manualHz : state.liveHz;
+export const pitchReading = (state: PracticeState) => {
+  const hz = displayedHz(state);
+  return hz === null ? null : identifyPitch(hz, state.a4, state.transposition);
+};
 export const toneHz = (state: PracticeState) => noteFrequency(state.toneNote, state.a4);
 export const meterInfo = (state: PracticeState) => METERS.find((meter) => meter.value === state.meter)!;

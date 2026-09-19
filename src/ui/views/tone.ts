@@ -1,15 +1,16 @@
+import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
 import { LIMITS, toneHz } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, pitchText, row, unavailableButton, view } from '../components.ts';
+import { button, el, field, heading, pitchText, row, view } from '../components.ts';
 
-export function createTone(store: PracticeStore) {
+export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
   const top = el('div', 'tone-heading');
   const mini = el('div', 'mini-pitch');
   const miniNote = el('p', 'mini-note');
   const miniStatus = el('p', 'small teal');
-  mini.append(el('p', 'eyebrow', 'SAMPLE TUNER'), miniNote, miniStatus);
+  mini.append(el('p', 'eyebrow', 'TUNER'), miniNote, miniStatus);
   top.append(heading('Find your note.', 'Choose a key. Find a note to practice.'), mini);
   const sustain = button('Sustain on', () => store.dispatch({ type: 'sustain', value: !store.get().sustain }));
   const volume = el('input');
@@ -19,7 +20,8 @@ export function createTone(store: PracticeStore) {
   volumeLabel.classList.add('volume-control');
   const volumeValue = el('output', 'small');
   volumeLabel.append(volumeValue);
-  const controls = row(sustain, unavailableButton('Play tone', 'audio-availability'), volumeLabel);
+  const play = button('Play tone', audio.toggleTone);
+  const controls = row(sustain, play, volumeLabel);
 
   const selected = el('div', 'selected-tone');
   const selectedName = el('p', 'selected-note');
@@ -51,7 +53,7 @@ export function createTone(store: PracticeStore) {
   // One octave of keys, kept mounted so selection changes preserve keyboard focus.
   const whiteSemitones = [0, 2, 4, 5, 7, 9, 11, 12];
   const keys = Array.from({ length: 13 }, (_, semitone) => {
-    const key = button('', () => store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + semitone }));
+    const key = button('', () => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + semitone }); void audio.playTone(); });
     const whiteIndex = whiteSemitones.indexOf(semitone);
     key.className = `piano-key ${whiteIndex < 0 ? 'piano-key--black' : 'piano-key--white'}`;
     if (whiteIndex >= 0) key.style.gridColumn = String(whiteIndex + 1);
@@ -60,7 +62,7 @@ export function createTone(store: PracticeStore) {
     return key;
   });
   node.append(top, controls, keyboardTop, keyboard,
-    el('p', 'small muted', 'Concert-pitch keys · Browsing octaves keeps your selected note. Scroll the keyboard on small screens. Playback is coming next.'));
+    el('p', 'small muted', 'Concert-pitch keys · Browsing octaves keeps your selected note. Scroll the keyboard on small screens. Sustain off plays a short 1.2-second tone.'));
 
   store.subscribe((state) => {
     node.hidden = state.focus !== 'tone';
@@ -69,10 +71,11 @@ export function createTone(store: PracticeStore) {
     volume.value = String(state.toneVolume);
     volumeValue.textContent = `${state.toneVolume}%`;
     selectedName.textContent = noteName(state.toneNote);
-    selectedDetail.textContent = `Selected · ${toneHz(state).toFixed(1)} Hz`;
+    play.textContent = state.tonePlaying ? 'Stop tone' : 'Play tone';
+    selectedDetail.textContent = `${state.tonePlaying ? 'Playing' : 'Selected'} · ${toneHz(state).toFixed(1)} Hz`;
     const pitch = pitchText(state);
     miniNote.textContent = pitch.note;
-    miniStatus.textContent = state.manualHz === null ? 'No sample' : pitch.direction;
+    miniStatus.textContent = state.micStatus !== 'idle' ? `${state.micStatus} · ${pitch.direction}` : state.manualHz === null ? 'No sample' : pitch.direction;
     decrease.disabled = state.octave === LIMITS.octave.min;
     increase.disabled = state.octave === LIMITS.octave.max;
     for (const item of octaves) item.setAttribute('aria-pressed', String(Number(item.textContent) === state.octave));

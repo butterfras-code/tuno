@@ -117,3 +117,16 @@ Implemented against base revision `fbba413`: shared design tokens and controls, 
 - Browser checks exercise all three focus views at widths 1120, 768, 390, and 320 without page overflow; the piano scrolls within its container. Settings cancellation restores focus, shared updates preserve the active control, and reduced-motion preference is honored.
 - Desktop and mobile screenshots were visually reviewed against the Figma references. Mobile layout and Settings dialog are implementation adaptations because no corresponding frames were supplied.
 - Physical microphone/audio routes, actual managed devices, Safari, and Firefox remain untested. These visual checks do not imply audio readiness or hosted offline support.
+
+## Audio implementation progress — 2026-09-19
+
+After merging remote design notes and tracking the missing visual foundation files, the next two implementation increments now have working code:
+
+1. Application-owned microphone/reference-tone controller, shared focused/dock controls, explicit start/stop and stop-all, independent cancellation, gain ramps, short-tone/sustain behavior, volume/calibration updates, disconnected-input and interrupted-context states.
+2. Adapted pitch-tracker YIN detector connected to live note/cents/frequency feedback, separate RMS/quality evidence, silence/unreliable rejection, and clearing on every rejected frame. No display smoothing or reward/hold behavior is added yet. Manual sample controls are disabled while live input owns the display.
+
+Type checking, 13 unit tests, and both packaging outputs pass. Detector fixtures cover 55, 65.406, 110, 233.082, 440, 880, 1,600, and 1,760 Hz at 44.1/48 kHz with peak scale 0.2 and harmonics `[1]` or `[0.5, 1, 0.4, 0.2]`, within five cents. Noise uses seeded uniform amplitude 0.2; low-amplitude rejection uses 0.001. These discrete fixtures do not establish a measured instrument range. The upper-boundary octave failure found during adaptation was corrected by including its rounded period candidate.
+
+Controller tests cover delayed permissions after stop, duplicate starts, denial, independent microphone/tone ownership, transposition-independent tone frequency, and context interruption. Browser checks additionally exercise real Web Audio with synthetic input, live transposition, concurrent playback, silence clearing, and track release in hosted loopback and offline portable builds. Synthetic input replaces getUserMedia and does not establish hardware access or ordinary permission behavior.
+
+Remaining before accepting these increments: physical HTTPS/portable microphone and tone checks, managed Chromebook/Safari/Firefox matrix, actual interruption/background recovery, offline rendered-tone frequency measurement, detector foreground profiling, measured settling/stale-display latency, and any smoothing justified by those findings. Analysis currently uses a foreground 70 ms timer and 4,096-sample analyser; workers/worklets require profiling evidence. Hosted offline caching remains the following increment.

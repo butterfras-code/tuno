@@ -1,6 +1,6 @@
 # Dependency provenance
 
-The current application and equal-tempered pitch calculations were written in this repository. No upstream detector or sounds have been copied. Local Figma artwork and fonts are bundled as described below. The browser application has no runtime package dependencies.
+The current application and equal-tempered pitch calculations were written in this repository. The detector and signal fixtures now adapt code from the user-owned pitch-tracker repository. Local Figma artwork and fonts are bundled as described below. The browser application has no runtime package dependencies.
 
 Development dependencies are pinned in `package.json`; exact transitive versions and registry integrity hashes are recorded in `package-lock.json`. The initial inventory below uses the installed package manifests.
 
@@ -29,3 +29,13 @@ Imported 2026-09-19. SVG exports are retained byte-for-byte from the user-suppli
 | `src/assets/fonts/nunito-sans.ttf` | [Google Fonts Nunito Sans source](https://github.com/google/fonts/tree/main/ofl/nunitosans) | Unmodified `NunitoSans[YTLC,opsz,wdth,wght].ttf`, SIL Open Font License 1.1; notice in `nunito-sans-OFL.txt`. |
 
 Font filenames were simplified locally; font data and internal names were not modified. Both complete font notices are included in both built artifacts via the Font licenses footer. Asset requests never depend on expiring Figma links or a font CDN at runtime. Confirm the eventual project artwork license before an open-source release.
+
+## Pitch-tracker reuse — 2026-09-19
+
+Source: local sibling `pitch-tracker`, revision `75214e7452f286fa50ac317ed06f5c552025275e`, reused at the owner's explicit request.
+
+- `src/audio/detector.ts` adapts `src/domain/pitch.ts` YIN detection and Butterworth filtering. It returns separate frequency, RMS, and YIN quality evidence, extends the candidate range to 1,760 Hz, and includes the upper-boundary period candidate. Quality is a periodicity measure, not a calibrated probability.
+- `tests/fixtures/pitch-signal.ts` retains the deterministic upstream fixture generator. Regression cases cover clean and overtone-rich signals, silence, noise, and low amplitude.
+- `src/audio/controller.ts` adapts microphone cancellation generations, capture constraints, disconnected-track cleanup, and gain-ramp patterns from `src/audio/microphone.ts`. The controller is rewritten around tUno's store; teacher scoring and DOM dependencies are excluded. Microphone and tone have independent cancellation.
+
+No license file was found in the source checkout. This reuse is authorized by the owner for this project; it does not establish a public redistribution license. Source and project licensing remain unresolved before public release. No runtime dependencies were added.
