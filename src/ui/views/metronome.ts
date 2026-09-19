@@ -4,6 +4,7 @@ import type { Meter, PracticeStore } from '../../practice/state.ts';
 import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
 import { petTempo } from '../pet-tempo.ts';
 import { tempoInput } from '../tempo.ts';
+import dragHintAsset from '../../assets/tempo-drag-hint.svg';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
@@ -19,21 +20,29 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const tempo = tempoInput(store);
   tempo.classList.add('tempo-input');
   const unit = el('p', 'muted');
-  const down = button('−', () => store.dispatch({ type: 'tempo', value: store.get().tempo - 1 }));
-  const up = button('+', () => store.dispatch({ type: 'tempo', value: store.get().tempo + 1 }));
-  down.setAttribute('aria-label', 'Decrease tempo');
-  up.setAttribute('aria-label', 'Increase tempo');
+  const nudge = (amount: number) => button(`${amount > 0 ? '+' : '−'}${Math.abs(amount)}`, () => {
+    const { min, max } = LIMITS.tempo;
+    store.dispatch({ type: 'tempo', value: Math.max(min, Math.min(max, store.get().tempo + amount)) });
+  });
+  const down1 = nudge(-1);
+  const down5 = nudge(-5);
+  const up1 = nudge(1);
+  const up5 = nudge(5);
+  const increase = row(up1, up5);
+  const decrease = row(down1, down5);
+  increase.classList.add('tempo-nudges', 'tempo-nudges--increase');
+  decrease.classList.add('tempo-nudges', 'tempo-nudges--decrease');
   const transport = el('div', 'tempo-controls');
   const play = button('Start metronome', audio.toggleMetronome);
-  const tap = button('Tap tempo', audio.tapTempo);
-  responsiveLabel(tap, 'Tap tempo', 'Tap');
-  const tempoActions = row(down, tap, up);
-  tempoActions.classList.add('tempo-actions');
   play.classList.add('metronome-play');
-  transport.append(tempo, unit, tempoActions, play);
+  transport.append(increase, tempo, unit, decrease);
   const friend = el('div', 'pulse-friend');
-  friend.append(el('p', 'eyebrow', 'UNO PULSE'), petTempo(store, audio));
-  body.append(transport, friend);
+  friend.append(petTempo(store, audio), el('p', 'tempo-pet-hint', 'Pet Uno to tap tempo'));
+  const sharedTempo = el('div', 'tempo-and-uno');
+  const dragHint = el('img', 'tempo-drag-hint') as HTMLImageElement;
+  Object.assign(dragHint, { src: dragHintAsset, alt: '', draggable: false });
+  sharedTempo.append(transport, dragHint, friend);
+  body.append(sharedTempo, play);
   const beats = el('ol', 'beat-grid');
   beats.setAttribute('aria-label', 'Meter beats');
   const beatItems = Array.from({ length: 4 }, (_, index) => {
@@ -98,8 +107,10 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
       beat.setAttribute('aria-current', String(state.currentBeat === index));
     });
     friend.hidden = !state.showUno;
-    down.disabled = state.tempo === LIMITS.tempo.min;
-    up.disabled = state.tempo === LIMITS.tempo.max;
+    down1.disabled = state.tempo === LIMITS.tempo.min;
+    down5.disabled = state.tempo === LIMITS.tempo.min;
+    up1.disabled = state.tempo === LIMITS.tempo.max;
+    up5.disabled = state.tempo === LIMITS.tempo.max;
     title.querySelector('h2')!.textContent = state.numbered ? 'Make every beat count.' : 'Find your rhythm.';
   });
   return node;
