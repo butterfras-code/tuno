@@ -58,6 +58,7 @@ try {
       await touch.detach();
     }
     await pet.tap();
+    await page.waitForTimeout(320);
     assert.equal(await page.evaluate(() => window.nods), 2, 'touch tap nods once');
     await tempo.fill('240'); await tempo.press('Enter');
     await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x, y - 80); await page.mouse.up();
@@ -87,7 +88,7 @@ try {
       function sample() {
         const context = window.beatContext;
         const now = context.getOutputTimestamp?.().contextTime || context.currentTime;
-        samples.push({ time: now, angle: Number(document.querySelector('.pet-tempo .uno-tail').style.transform.match(/rotate\(([-\d.]+)/)?.[1]) });
+        samples.push({ time: now, angle: Number(document.querySelector('.pet-tempo .uno-tail').style.transform.match(/rotate\(([-\d.e+]+)/)?.[1]) });
         if (performance.now() - start > 2300) done({ samples, first: window.clickTimes[0] });
         else requestAnimationFrame(sample);
       }
@@ -95,7 +96,37 @@ try {
     }));
     const valid = samples.samples.filter(s => s.time >= samples.first && Number.isFinite(s.angle));
     assert.ok(valid.length > 30);
-    assert.ok(valid.every(s => Math.abs(s.angle - 25 * Math.cos(Math.PI * (s.time - samples.first) / 0.5)) < 5), 'tail follows audio phase through 3/4 bar boundary, not subdivisions');
+    assert.ok(valid.every(s => Math.abs(s.angle - 12.5 * (1 + Math.cos(2 * Math.PI * (s.time - samples.first) / 0.5))) < 5), 'tail is down on each beat and up halfway through, independent of subdivisions');
+    await pet.tap(); await page.waitForTimeout(80); await pet.tap();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
+    const sides = await page.evaluate(() => new Promise(done => {
+      const samples = [];
+      const start = performance.now();
+      function sample() {
+        const tail = document.querySelector('.pet-tempo .uno-tail-side');
+        const angle = document.querySelector('.pet-tempo .uno-tail').style.transform;
+        const dog = document.querySelector('.pet-tempo .uno-animated').getBoundingClientRect();
+        const bounds = tail.getBoundingClientRect();
+        const tip = new DOMPoint(243, 193.895).matrixTransform(tail.querySelector('path').getScreenCTM());
+        samples.push({ beat: document.querySelector('.pet-tempo').dataset.beat, transform: tail.style.transform,
+          angle, tipY: (tip.y - dog.top) / dog.height, tipX: (tip.x - dog.left) / dog.width, center: bounds.left + bounds.width / 2 - dog.left - dog.width / 2 });
+        if (performance.now() - start > 1100) done(samples);
+        else requestAnimationFrame(sample);
+      }
+      requestAnimationFrame(sample);
+    }));
+    assert.ok(sides.some(sample => sample.beat === 'left' && sample.transform === ''));
+    assert.ok(sides.some(sample => sample.beat === 'right' && sample.transform === 'scaleX(-1)'));
+    assert.ok(sides.every(sample => ['', 'scaleX(-1)'].includes(sample.transform)), 'tail mirrors across Uno rather than rotating in place');
+    assert.ok(sides.every(sample => sample.angle === 'rotate(0deg)'), 'tail stays up on both sides');
+    assert.ok(sides.some(sample => sample.center < 0) && sides.some(sample => sample.center > 0), 'tail crosses Uno centerline');
+    assert.ok(sides.every(sample => Math.abs(sample.tipY - 193.895 / 320) < 0.002), 'both sides retain the original raised SVG tip height');
+    assert.ok(sides.some(sample => sample.tipX < 0.25) && sides.some(sample => sample.tipX > 0.75), 'tail tip stays distinct from the torso on each side');
+    await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-tail-sides.png` });
+    await pet.dblclick();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'mouse double-click also toggles tail motion');
+    await pet.dblclick();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.waitForTimeout(60);
     assert.match(await pet.getAttribute('data-beat'), /left|right/);

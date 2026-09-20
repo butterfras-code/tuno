@@ -1,22 +1,34 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { animatedUno } from '../uno.ts';
 import { createTunerFeedback } from '../../practice/feedback.ts';
+import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
-import { displayedHz, LIMITS, pitchReading, TRANSPOSITIONS } from '../../practice/state.ts';
-import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, field, numberInput, pitchText, responsiveLabel, row, view } from '../components.ts';
+import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
+import type { PracticeStore, Settings } from '../../practice/state.ts';
+import { button, el, field, numberInput, pitchText, responsiveLabel, row, view, selectorPopover, volumePopover } from '../components.ts';
 
-export function createTuner(store: PracticeStore, openSettings: () => void, audio: AudioController) {
+export function createTuner(store: PracticeStore, audio: AudioController) {
   const node = view('tuner', 'Tuner');
-  const transpose = button('Concert pitch', openSettings);
-  const calibration = button('A4 = 440 Hz', openSettings);
-  const display = button('Display', openSettings);
-  responsiveLabel(display, 'Display', 'View');
+  const updateSettings = (patch: Partial<Settings>) => {
+    const { a4, transposition, showUno } = store.get();
+    store.dispatch({ type: 'settings', value: { a4, transposition, showUno, ...patch } });
+  };
+  const transposition = selectorPopover('Transposition', TRANSPOSITIONS, value => updateSettings({ transposition: Number(value) }));
+  const reference = el('input');
+  Object.assign(reference, { type: 'range', min: '432', max: '448', step: '1', value: String(store.get().a4) });
+  reference.addEventListener('input', () => updateSettings({ a4: Number(reference.value) }));
+  const calibration = volumePopover('A4 reference (Hz)', reference, { heading: 'Pitch reference', formatValue: value => `${value} Hz` });
+  calibration.node.classList.remove('mobile-only');
+  calibration.node.classList.add('tuner-reference');
+  const showUno = button('Show Uno', () => updateSettings({ showUno: !store.get().showUno }));
   const listen = button('Start listening', audio.toggleMic);
-  listen.classList.add('desktop-only');
-  const options = row(transpose, calibration, display, listen);
+  listen.classList.add('tuner-mic');
+  const micIcon = el('img', 'control-icon');
+  Object.assign(micIcon, { src: micAsset, alt: '' });
+  listen.replaceChildren(micIcon);
+  const options = row(listen, transposition.trigger, calibration.node, showUno);
   options.classList.add('tuner-options');
-  node.append(options);
+  node.append(options, transposition.popup);
 
   const body = el('div', 'tuner-body');
   const readout = el('div', 'pitch-readout');
@@ -55,8 +67,6 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
   friend.append(encouragement, dog.node, el('p', 'friend-caption', 'A little practice. A good friend.'), holdCaption, hold);
   const animation = createTunerFeedback();
   let frame = 0;
-  let previousTime = 0;
-  let smoothCents: number | null = null;
   let lastReward = 0;
   let wasLive = false;
   let calibrationKey = '';
@@ -64,37 +74,34 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
     frame = 0;
     const state = store.get();
     const reading = pitchReading(state);
+    const rawReading = rawPitchReading(state);
     const live = ['listening', 'unreliable', 'no-signal'].includes(state.micStatus);
     const fresh = now - state.pitchUpdatedAt < 250;
-    const reliable = live && fresh && state.micStatus === 'listening' && reading !== null;
-    const key = `${state.a4}:${state.transposition}`;
+    const reliable = live && fresh && state.micStatus === 'listening' && rawReading !== null;
+    const accuracy = TUNER_ACCURACIES.find((option) => option.value === state.tunerAccuracy)!;
+    const key = `${state.a4}:${state.transposition}:${state.tunerAccuracy}`;
     if (live !== wasLive || key !== calibrationKey) animation.reset();
     wasLive = live; calibrationKey = key;
-    const result = animation.update(now, reliable ? { note: reading.concertNote, cents: reading.cents } : null,
-      live && fresh && state.micStatus === 'no-signal');
+    const result = animation.update(now, reliable ? { note: rawReading.concertNote, cents: rawReading.cents } : null,
+      live && fresh && state.micStatus === 'no-signal', accuracy.scale);
     dog.pose(result.pose);
     hold.value = live ? result.progress : 0;
-    const encouragementText = reliable && Math.abs(reading.cents) <= 8 ? 'Hold steady.'
+    const encouragementText = reading && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
-    const holdText = !live ? 'Listen to a note to earn a treat.'
+    const holdText = !live ? 'Hold a note to give Uno a treat'
       : state.micStatus === 'unreliable' || !fresh ? 'Listening…'
       : state.micStatus === 'no-signal' ? 'Play a note'
       : result.progress === 1 ? 'Nicely done!' : result.progress > 0 ? 'A treat is on its way…' : 'Hold your note steady.';
     if (holdCaption.textContent !== holdText) holdCaption.textContent = holdText;
-    marker.hidden = !reading || (live && !reliable);
-    if (reading) {
-      const dt = previousTime ? now - previousTime : 0;
-      smoothCents = smoothCents === null ? reading.cents : smoothCents + (reading.cents - smoothCents) * (1 - Math.exp(-dt / 80));
-      marker.style.top = `${50 - smoothCents}%`;
-    } else smoothCents = null;
+    marker.hidden = !reading;
+    if (reading) marker.style.top = `${50 - reading.cents}%`;
     if (result.reward !== lastReward) { lastReward = result.reward; dog.catch(marker); }
-    previousTime = now;
-    if (!document.hidden && (live || (!node.hidden && reading !== null && Math.abs((smoothCents ?? 0) - reading.cents) > 0.01))) frame = requestAnimationFrame(animate);
+    if (!document.hidden && live) frame = requestAnimationFrame(animate);
   }
   const wake = () => { if (!frame && !document.hidden) frame = requestAnimationFrame(animate); };
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { cancelAnimationFrame(frame); frame = 0; animation.reset(); previousTime = 0; smoothCents = null; }
+    if (document.hidden) { cancelAnimationFrame(frame); frame = 0; animation.reset(); }
     else wake();
   });
   body.append(readout, lane, friend);
@@ -123,20 +130,38 @@ export function createTuner(store: PracticeStore, openSettings: () => void, audi
   store.subscribe((state) => {
     node.hidden = state.focus !== 'tuner';
     const text = pitchText(state);
-    listen.textContent = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus) ? 'Stop listening' : 'Start listening';
+    const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
+    listen.setAttribute('aria-label', listening ? 'Stop listening' : 'Start listening');
+    listen.setAttribute('aria-pressed', String(listening));
+    listen.title = listening ? 'Stop listening' : 'Start listening';
     hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : state.micStatus} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
-    caption.textContent = state.micStatus !== 'idle' ? 'LIVE TUNER' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
+    caption.textContent = state.micStatus !== 'idle' ? 'Uno hears...' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);
-    feedback.textContent = text.direction;
+    const reading = pitchReading(state);
+    const centered = reading !== null && Math.abs(reading.cents) <= 8 * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
+    const cents = reading ? `${reading.cents < 0 ? '−' : reading.cents > 0 ? '+' : ''}${Math.abs(reading.cents).toFixed(0)}` : '';
+    responsiveLabel(feedback, centered ? 'Right there. Hold steady.' : text.direction, centered ? `${cents} cents · In tune` : text.direction);
     summary.textContent = state.micStatus === 'idle' ? text.summary : 'Stop listening to explore manual samples.';
     input.disabled = check.disabled = clear.disabled = state.micStatus !== 'idle';
-    transpose.textContent = TRANSPOSITIONS.find((option) => option.value === state.transposition)!.label;
-    responsiveLabel(calibration, `A4 = ${state.a4} Hz`, `${state.a4} Hz`);
+    const transposeLabel = TRANSPOSITIONS.find(option => option.value === state.transposition)!.label;
+    transposition.update(state.transposition);
+    const compact = state.transposition === 0 ? 'Concert pitch' : `${({ 2: 'B♭', 9: 'E♭', 7: 'F' } as Record<number, string>)[state.transposition]} (+${state.transposition})`;
+    responsiveLabel(transposition.trigger, `${transposeLabel} ▾`, `${compact} ▾`);
+    transposition.trigger.setAttribute('aria-label', 'Transposition');
+    // Keep a sixteen-hertz window even when the settings dialog supplies another reference.
+    const referenceMin = state.a4 < 432 || state.a4 > 448 ? Math.max(LIMITS.a4.min, Math.min(state.a4 - 8, LIMITS.a4.max - 16)) : 432;
+    if (state.a4 < Number(reference.min) || state.a4 > Number(reference.max)) {
+      reference.min = String(referenceMin); reference.max = String(referenceMin + 16);
+    }
+    reference.value = String(state.a4);
+    calibration.trigger.textContent = `${state.a4} Hz`;
+    calibration.trigger.setAttribute('aria-label', `A4 = ${state.a4} Hz`);
+    showUno.setAttribute('aria-pressed', String(state.showUno));
     friend.hidden = !state.showUno;
     body.classList.toggle('tuner-body--no-friend', !state.showUno);
     // Missing evidence clears immediately, without waiting for the next paint.
-    if (!pitchReading(state)) { marker.hidden = true; smoothCents = null; }
+    if (!pitchReading(state)) marker.hidden = true;
     wake();
   });
   return node;

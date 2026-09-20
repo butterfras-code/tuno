@@ -1,4 +1,6 @@
 import { DEFAULT_A4_HZ, identifyPitch, noteFrequency } from '../music/pitch.ts';
+import { CLICK_SOUNDS, type ClickSound } from '../music/click-sounds.ts';
+import { TONE_SOUNDS, type ToneSound } from '../music/tone-sounds.ts';
 
 export const TOOLS = [
   { id: 'tuner', label: 'Tuner' },
@@ -8,9 +10,9 @@ export const TOOLS = [
 export type Focus = typeof TOOLS[number]['id'];
 export const TRANSPOSITIONS = [
   { value: 0, label: 'Concert pitch' },
-  { value: 2, label: 'B-flat instrument (+2)' },
-  { value: 9, label: 'E-flat instrument (+9)' },
-  { value: 7, label: 'F instrument (+7)' },
+  { value: 2, label: 'B-flat instrument' },
+  { value: 9, label: 'E-flat instrument' },
+  { value: 7, label: 'F instrument' },
 ] as const;
 export const METERS = [
   { value: 'free', label: 'Free pulse', beats: 0, unit: 'Quarter note' },
@@ -19,6 +21,12 @@ export const METERS = [
   { value: '6/8', label: '6/8', beats: 2, unit: 'Dotted quarter' },
 ] as const;
 export type Meter = typeof METERS[number]['value'];
+export const TUNER_ACCURACIES = [
+  { value: 'beginner', label: 'BEG', scale: 1.38 },
+  { value: 'intermediate', label: 'INT', scale: 1.2 },
+  { value: 'advanced', label: 'ADV', scale: 1.1 },
+] as const;
+export type TunerAccuracy = typeof TUNER_ACCURACIES[number]['value'];
 export const LIMITS = {
   frequency: { min: 1, max: 24000 },
   a4: { min: 400, max: 480 },
@@ -27,38 +35,44 @@ export const LIMITS = {
 } as const;
 export type Settings = Readonly<{ a4: number; transposition: number; showUno: boolean }>;
 export type MicStatus = 'idle' | 'requesting' | 'listening' | 'no-signal' | 'unreliable' | 'error' | 'interrupted';
-export type AudioState = Readonly<{ micStatus: MicStatus; pitchUpdatedAt: number; liveHz: number | null; rms: number; quality: number; tonePlaying: boolean; metronomePlaying: boolean; currentBeat: number | null; currentPart: number; audioError: string }>;
+export type AudioState = Readonly<{ micStatus: MicStatus; pitchUpdatedAt: number; liveHz: number | null; displayHz: number | null; rms: number; quality: number; tonePlaying: boolean; metronomePlaying: boolean; currentBeat: number | null; currentPart: number; audioError: string }>;
 export type PracticeState = Settings & AudioState & Readonly<{
   focus: Focus;
+  tunerAccuracy: TunerAccuracy;
   manualHz: number | null;
   toneNote: number;
   octave: number;
   sustain: boolean;
   toneVolume: number;
+  toneSound: ToneSound;
   tempo: number;
   meter: Meter;
   numbered: boolean;
   subdivision: number;
   accent: boolean;
+  beatAccents: readonly boolean[];
   clickVolume: number;
-  clickSound: 'click' | 'wood';
+  clickSound: ClickSound;
 }>;
 export type Action =
   | { type: 'audio'; value: Partial<AudioState> }
   | { type: 'focus'; value: Focus }
+  | { type: 'tuner-accuracy'; value: TunerAccuracy }
   | { type: 'pitch'; value: number | null }
   | { type: 'settings'; value: Settings }
   | { type: 'tone-note'; value: number }
   | { type: 'octave'; value: number }
   | { type: 'sustain'; value: boolean }
   | { type: 'tone-volume'; value: number }
+  | { type: 'tone-sound'; value: ToneSound }
   | { type: 'tempo'; value: number }
   | { type: 'meter'; value: Meter }
   | { type: 'numbered'; value: boolean }
   | { type: 'subdivision'; value: number }
   | { type: 'accent'; value: boolean }
+  | { type: 'beat-accent'; value: number }
   | { type: 'click-volume'; value: number }
-  | { type: 'click-sound'; value: 'click' | 'wood' };
+  | { type: 'click-sound'; value: ClickSound };
 
 function inRange(value: number, min: number, max: number, integer = false): boolean {
   return Number.isFinite(value) && value >= min && value <= max && (!integer || Number.isInteger(value));
@@ -66,10 +80,10 @@ function inRange(value: number, min: number, max: number, integer = false): bool
 
 export function createPracticeStore() {
   let state: PracticeState = Object.freeze({
-    micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
-    focus: 'tuner', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
-    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40,
-    tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, clickVolume: 50, clickSound: 'click',
+    micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, displayHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
+    focus: 'tuner', tunerAccuracy: 'advanced', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
+    showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40, toneSound: 'rich',
+    tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, beatAccents: [true, false, false, false], clickVolume: 50, clickSound: 'click',
   });
   const listeners = new Set<(state: PracticeState) => void>();
   return {
@@ -84,6 +98,9 @@ export function createPracticeStore() {
       switch (action.type) {
         case 'audio': patch = action.value; break;
         case 'focus': patch = { focus: action.value }; break;
+        case 'tuner-accuracy':
+          if (!TUNER_ACCURACIES.some((accuracy) => accuracy.value === action.value)) return;
+          patch = { tunerAccuracy: action.value }; break;
         case 'pitch':
           if (action.value !== null && !inRange(action.value, LIMITS.frequency.min, LIMITS.frequency.max)) return;
           patch = { manualHz: action.value }; break;
@@ -101,6 +118,9 @@ export function createPracticeStore() {
         case 'tone-volume':
           if (!inRange(action.value, 0, 100, true)) return;
           patch = { toneVolume: action.value }; break;
+        case 'tone-sound':
+          if (!TONE_SOUNDS.some((sound) => sound.value === action.value)) return;
+          patch = { toneSound: action.value }; break;
         case 'tempo':
           if (!inRange(action.value, LIMITS.tempo.min, LIMITS.tempo.max, true)) return;
           patch = { tempo: action.value }; break;
@@ -108,14 +128,17 @@ export function createPracticeStore() {
           if (!METERS.some((meter) => meter.value === action.value)) return;
           patch = { meter: action.value, numbered: action.value !== 'free' }; break;
         case 'subdivision':
-          if (![1, 2, 3, 4].includes(action.value)) return;
+          if (![1, 2, 3, 4, 5, 6, 7].includes(action.value)) return;
           patch = { subdivision: action.value }; break;
-        case 'accent': patch = { accent: action.value }; break;
+        case 'accent': patch = { accent: action.value, beatAccents: [action.value, ...state.beatAccents.slice(1)] }; break;
+        case 'beat-accent':
+          if (!inRange(action.value, 0, 3, true)) return;
+          patch = { beatAccents: state.beatAccents.map((value, index) => index === action.value ? !value : value) }; break;
         case 'click-volume':
           if (!inRange(action.value, 0, 100, true)) return;
           patch = { clickVolume: action.value }; break;
         case 'click-sound':
-          if (!['click', 'wood'].includes(action.value)) return;
+          if (!CLICK_SOUNDS.some((sound) => sound.value === action.value)) return;
           patch = { clickSound: action.value }; break;
         case 'numbered': patch = { numbered: action.value }; break;
       }
@@ -125,10 +148,13 @@ export function createPracticeStore() {
   };
 }
 export type PracticeStore = ReturnType<typeof createPracticeStore>;
-export const displayedHz = (state: PracticeState) => state.micStatus === 'idle' ? state.manualHz : state.liveHz;
+export const displayedHz = (state: PracticeState) => state.micStatus === 'idle' ? state.manualHz : state.displayHz;
 export const pitchReading = (state: PracticeState) => {
   const hz = displayedHz(state);
   return hz === null ? null : identifyPitch(hz, state.a4, state.transposition);
 };
+export const rawPitchReading = (state: PracticeState) => state.liveHz === null
+  ? null
+  : identifyPitch(state.liveHz, state.a4, state.transposition);
 export const toneHz = (state: PracticeState) => noteFrequency(state.toneNote, state.a4);
 export const meterInfo = (state: PracticeState) => METERS.find((meter) => meter.value === state.meter)!;

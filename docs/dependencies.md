@@ -19,12 +19,13 @@ The project source license remains undecided. `private: true` prevents accidenta
 
 ## Bundled visual assets
 
-Imported 2026-09-19. SVG exports are retained byte-for-byte from the user-supplied [tUno Figma design](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2):
+Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). Exports are retained byte-for-byte except where the table notes coordinate adaptation for the established 300px animation canvas:
 
 | Local asset | Origin | Rights/provenance |
 | --- | --- | --- |
-| `src/assets/uno-happy.svg` | Tuner instance `5:68`, inner artwork `I5:68;4:3` | User-provided project artwork; Figma describes it as an initial vector study from Uno reference photos. No independent third-party license was supplied. |
+| `src/assets/uno-happy.svg` | Shared component `4:2`, inner artwork `4:3` | User-provided project artwork; the current 320px tail path is scaled into the existing 300px animation canvas. Figma describes it as an initial vector study from Uno reference photos. No independent third-party license was supplied. |
 | `src/assets/pitch-bone.svg` | Tuner marker `5:66` | User-provided project artwork; retained exact export. |
+| `src/assets/tempo-drag-hint.svg` | Metronome gesture hint `45:401` | User-provided project artwork; retained exact vector geometry for the visible hold/drag affordance. |
 | `src/assets/fonts/nunito.ttf` | [Google Fonts Nunito source](https://github.com/google/fonts/tree/main/ofl/nunito) | Unmodified `Nunito[wght].ttf`, SIL Open Font License 1.1; notice in `nunito-OFL.txt`. |
 | `src/assets/fonts/nunito-sans.ttf` | [Google Fonts Nunito Sans source](https://github.com/google/fonts/tree/main/ofl/nunitosans) | Unmodified `NunitoSans[YTLC,opsz,wdth,wght].ttf`, SIL Open Font License 1.1; notice in `nunito-sans-OFL.txt`. |
 
@@ -56,4 +57,4 @@ Additional unmodified SVG exports from the same user-owned Figma file:
 | `src/assets/uno-beg.svg` | Raised-paw artwork `7:193` |
 | `src/assets/uno-head-left.svg` | Left-facing head `32:478` |
 
-`src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. Export files remain unchanged; only DOM grouping and coordinate scaling happen at runtime. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.
+`src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. The current Figma tail is coordinate-scaled into the retained 300px happy-sit canvas; the other exports remain unchanged. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.
