@@ -1,17 +1,33 @@
 import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
-import { LIMITS, toneHz } from '../../practice/state.ts';
+import boneAsset from '../../assets/pitch-bone.svg';
+import { LIMITS, toneHz, pitchReading } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, field, select, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
+import { button, el, micStatusText, field, select, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
 
 export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
   const top = el('div', 'tone-heading');
   const mini = el('div', 'mini-pitch');
   const miniNote = el('p', 'mini-note');
-  const miniStatus = el('p', 'small teal');
-  mini.append(el('p', 'eyebrow', 'Uno hears...'), miniNote, miniStatus);
+  const miniStatus = el('p', 'mini-status');
+  const miniFeedback = el('p', 'mini-feedback teal');
+  const miniReadout = el('div', 'mini-readout');
+  miniReadout.append(miniStatus, miniNote, miniFeedback);
+  const lane = el('div', 'mini-lane');
+  lane.setAttribute('aria-hidden', 'true');
+  lane.append(el('span', 'mini-flat', '♭'), el('div', 'mini-gradient'), el('div', 'mini-center'), el('span', 'mini-sharp', '♯'));
+  for (const cents of [-50, -25, 0, 25, 50]) {
+    const tick = el('span', 'mini-tick');
+    tick.style.left = `${50 + cents}%`;
+    lane.append(tick);
+  }
+  const marker = el('img', 'mini-marker');
+  Object.assign(marker, { src: boneAsset, alt: '' });
+  marker.hidden = true;
+  lane.append(marker);
+  mini.append(el('p', 'eyebrow', 'Uno hears...'), miniReadout, lane);
   const friend = uno('tone-friend mobile-only');
   top.append(mini, friend);
   const sustain = button('Sustain on', () => store.dispatch({ type: 'sustain', value: !store.get().sustain }));
@@ -128,7 +144,11 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     selectedDetail.textContent = `${toneHz(state).toFixed(1)} Hz`;
     const pitch = pitchText(state);
     miniNote.textContent = pitch.note;
-    miniStatus.textContent = state.micStatus !== 'idle' ? `${state.micStatus} · ${pitch.direction}` : state.manualHz === null ? 'No sample' : pitch.direction;
+    miniStatus.textContent = state.micStatus !== 'idle' ? micStatusText(state.micStatus) : state.manualHz === null ? 'Activate Mic' : 'Sample';
+    const reading = pitchReading(state);
+    miniFeedback.textContent = reading ? pitch.direction : '';
+    marker.hidden = !reading;
+    if (reading) marker.style.left = `${50 + Math.max(-50, Math.min(50, reading.cents))}%`;
     decrease.disabled = state.octave === LIMITS.octave.min;
     increase.disabled = state.octave === LIMITS.octave.max;
     keys.forEach((key, semitone) => {

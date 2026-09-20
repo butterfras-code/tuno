@@ -61,9 +61,13 @@ export function heading(title: string, subtitle: string): HTMLDivElement {
   node.append(el('h2', '', title), el('p', 'muted', subtitle));
   return node;
 }
+export function micStatusText(status: PracticeState['micStatus']) {
+  return status === 'unreliable' ? 'None' : status;
+}
+
 export function pitchText(state: PracticeState) {
   const reading = pitchReading(state);
-  if (!reading) return { note: '—', detail: 'No pitch selected', direction: 'Ready when you are.', summary: 'No sample' };
+  if (!reading) return { note: '—', detail: 'No pitch selected', direction: 'Ready when you are.', summary: 'Activate Mic' };
   const cents = Math.abs(reading.cents) < 0.05 ? 0 : reading.cents;
   const signed = `${cents > 0 ? '+' : cents < 0 ? '−' : ''}${Math.abs(cents).toFixed(1)}`;
   const direction = cents === 0 ? 'In tune' : `${Math.abs(cents).toFixed(1)} cents ${cents > 0 ? 'sharp' : 'flat'}`;

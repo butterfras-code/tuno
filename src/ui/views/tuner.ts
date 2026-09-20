@@ -5,7 +5,7 @@ import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
 import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
 import type { PracticeStore, Settings } from '../../practice/state.ts';
-import { button, el, field, numberInput, pitchText, responsiveLabel, row, view, selectorPopover, volumePopover } from '../components.ts';
+import { button, el, micStatusText, field, numberInput, pitchText, responsiveLabel, row, view, selectorPopover, volumePopover } from '../components.ts';
 
 export function createTuner(store: PracticeStore, audio: AudioController) {
   const node = view('tuner', 'Tuner');
@@ -131,7 +131,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     listen.setAttribute('aria-label', listening ? 'Stop listening' : 'Start listening');
     listen.setAttribute('aria-pressed', String(listening));
     listen.title = listening ? 'Stop listening' : 'Start listening';
-    hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : state.micStatus} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
+    hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : micStatusText(state.micStatus)} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
     caption.textContent = state.micStatus !== 'idle' ? 'Uno hears...' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);

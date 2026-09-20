@@ -7,7 +7,7 @@ import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
 import { LIMITS, TOOLS, TUNER_ACCURACIES } from '../practice/state.ts';
 import type { PracticeStore } from '../practice/state.ts';
-import { button, el, pitchText, responsiveLabel, selectorPopover, volumePopover } from './components.ts';
+import { button, el, micStatusText, pitchText, responsiveLabel, selectorPopover, volumePopover } from './components.ts';
 import { createSettings } from './settings.ts';
 import { createTuner } from './views/tuner.ts';
 import { createTone } from './views/tone.ts';
@@ -121,7 +121,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   error.setAttribute('role', 'status');
   const local = el('div', 'local-status');
   const privacy = el('span');
-  responsiveLabel(privacy, 'Microphone stays on this device', 'On-device audio · ');
+  privacy.textContent = 'No data leaves your device. Free and Ad-Free.';
   local.append(privacy, offline);
   const extra = el('details', 'footer-extra');
   extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability);
@@ -138,7 +138,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     summaries[0]!.action.setAttribute('aria-pressed', String(listening));
     accuracyPicker.update(state.tunerAccuracy);
     iconLabel(summaries[1]!.action, state.tonePlaying ? 'Stop tone' : 'Play tone', state.tonePlaying ? stopAsset : playAsset);
-    summaries[0]!.status.textContent = state.micStatus !== 'idle' ? state.micStatus : state.manualHz === null ? '—' : `Sample · ${pitchText(state).note}`;
+    summaries[0]!.status.textContent = state.micStatus !== 'idle' ? micStatusText(state.micStatus) : state.manualHz === null ? '—' : `Sample · ${pitchText(state).note}`;
     responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));
     responsiveLabel(summaries[2]!.title, 'TEMPO', 'TEMPO');
     iconLabel(summaries[2]!.action, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? stopAsset : playAsset);

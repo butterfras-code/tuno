@@ -31,9 +31,9 @@ test('live display pitch stays separate from raw reward evidence', () => {
   assert.equal(rawPitchReading(store.get())?.concertNote, 69);
 });
 
-test('tuner accuracy defaults to advanced and accepts the three supported levels', () => {
+test('tuner accuracy defaults to beginner and accepts the three supported levels', () => {
   const store = createPracticeStore();
-  assert.equal(store.get().tunerAccuracy, 'advanced');
+  assert.equal(store.get().tunerAccuracy, 'beginner');
   for (const value of ['intermediate', 'beginner', 'advanced'] as const) {
     store.dispatch({ type: 'tuner-accuracy', value });
     assert.equal(store.get().tunerAccuracy, value);
