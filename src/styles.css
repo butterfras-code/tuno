@@ -212,10 +212,8 @@ img { display: block; max-width: 100%; }
   /* Reference tone and its two in-place pickers. */
   #view-tone { padding: 0; }
   .tone-primary { padding: 16px 16px 0; }
-  .tone-heading { display: block; position: relative; height: 94px; margin: 0; padding: 2px; }
-  .tone-heading .view-heading { max-width: calc(100% - 76px); }
-  .tone-heading .view-heading > p { display: none; }
-  .tone-friend { position: absolute; right: -2px; top: -8px; width: 102px; height: 102px; }
+  .tone-heading { display: block; position: relative; height: 64px; margin: 0; padding: 2px; }
+  .tone-friend { position: absolute; right: -2px; top: -8px; width: 64px; height: 64px; }
   .mini-pitch { background: none; padding: 0; margin-top: 8px; min-width: 0; }
   .mini-pitch .eyebrow { font: 700 10px var(--font-heading); }
   .mini-note { display: inline; font-size: 15px; color: var(--color-teal); }
@@ -250,8 +248,7 @@ img { display: block; max-width: 100%; }
   .tool-card:first-child { grid-template-columns: minmax(0, 1fr) 70px; }
   .accuracy-icon { display: none; }
   .accuracy-choice { min-width: 40px; padding-inline: 5px; }
-  .tone-heading h2 { font-size: 21px; }
-  .tone-friend { width: 82px; height: 94px; }
+  .tone-friend { width: 64px; height: 64px; }
   .tone-controls .control, .tone-output .control { font-size: 14px; padding-inline: 6px; }
   .rhythm-controls .control, .meter-field .control { font-size: 14px; }
   .note-picker-caption { font-size: 13px; }
@@ -374,7 +371,7 @@ img { display: block; max-width: 100%; }
 .footer-extra > summary { display: block; cursor: pointer; }
 .app-footer { height: auto; }
 #view-metronome { position: relative; padding: 26px 32px 33px; }
-.metronome-heading { display: flex; align-items: start; justify-content: space-between; min-height: 66px; flex-wrap: nowrap; }
+.metronome-heading { display: flex; align-items: start; justify-content: center; min-height: 66px; flex-wrap: nowrap; }
 .metronome-heading .control-row { display: flex; flex-wrap: nowrap; gap: 12px; }
 .metronome-heading .field-label, .rhythm-controls .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .meter-field { position: relative; width: 110px; }
@@ -427,8 +424,6 @@ img { display: block; max-width: 100%; }
   .brand { flex-basis: 100%; }
   .tool-card { padding-inline: 8px; }
   .compact-tool > .control, .compact-tool > .tool-status { font-size: 10px; }
-  .metronome-heading .view-heading { max-width: 45%; }
-  .metronome-heading h2 { font-size: 26px; }
   .meter-field, .beat-mode { width: 125px; }
 }
 @media (max-width: 650px) {
@@ -451,7 +446,6 @@ img { display: block; max-width: 100%; }
   .app-footer { padding-top: 14px; }
   #view-metronome { padding: 12px 16px; min-height: 484px; }
   .metronome-heading { display: block; min-height: 44px; }
-  .metronome-heading .view-heading { display: none; }
   .metronome-heading .control-row { display: grid; grid-template-columns: 145fr 173fr; gap: 8px; }
   .meter-field, .beat-mode, .metronome--numbered .meter-field, .metronome--numbered .beat-mode { position: static; width: 100%; font-size: 16px; }
   .metronome-heading .control, .rhythm-controls .control { min-height: 44px; height: 44px; padding: 8px; }
@@ -512,9 +506,9 @@ img { display: block; max-width: 100%; }
 @media (max-width: 650px) { .beat-hint { top: 62px; } .local-status { gap: 4px; } }
 /* Tone follows the same 546px desktop surface as Tune and Tempo. */
 @media (min-width: 651px) {
-  .tone-heading { height: 67px; margin-bottom: 24px; }
-  .tone-heading .view-heading > p { display: none; }
-  .mini-pitch { min-width: 151px; margin-right: 105px; }
+  .tone-heading { margin-bottom: 16px; }
+  .mini-pitch { display: flex; align-items: center; gap: 12px; padding: 0; background: none; }
+  .mini-pitch .mini-note { margin: 0; }
   .tone-controls { height: 49px; }
   .keyboard-heading { margin: 32px 0 24px; height: 52px; justify-content: start; gap: 150px; }
   .selected-note { font-size: 40px; }
@@ -532,7 +526,6 @@ img { display: block; max-width: 100%; }
   .tuner-body { grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1fr); gap: 16px; }
   .tuner-friend .uno { width: 100%; max-width: 240px; }
   .keyboard-heading { gap: 24px; justify-content: space-between; }
-  .mini-pitch { margin-right: 0; }
 }
 /* The tempo readout and hint occupy separate grid tracks at every width. */
 .tempo-input { min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; text-align: center; font-family: var(--font-heading); font-weight: 700; appearance: textfield; font-variant-numeric: tabular-nums; }
@@ -573,7 +566,6 @@ img { display: block; max-width: 100%; }
 .beat-mode { padding-inline: 8px; white-space: nowrap; }
 .beat-mode[aria-pressed='true'] { background: var(--color-tint); color: var(--color-ink); }
 @media (min-width: 651px) {
-  .metronome--numbered .view-heading > p { display: none; }
   .beat-grid { top: 96px; width: 422px; gap: 18px; }
   .beat { max-width: 92px; height: 54px; border-radius: 28px; }
   .beat button { font-size: 28px; line-height: 54px; }

@@ -2,21 +2,20 @@ import type { AudioController } from '../../audio/controller.ts';
 import { CLICK_SOUNDS, type ClickSound } from '../../music/click-sounds.ts';
 import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
-import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
+import { button, el, field, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
 import { petTempo } from '../pet-tempo.ts';
 import { tempoDrag, tempoInput } from '../tempo.ts';
 import dragHintAsset from '../../assets/tempo-drag-hint.svg';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
-  const title = heading('Find your rhythm.', 'A steady beat. A familiar friend.');
   const meter = select(METERS.map(item => ({ ...item, label: String(item.beats || 1) })), (value) => store.dispatch({ type: 'meter', value: value as Meter }));
   const mode = button('View · Uno', () => store.dispatch({ type: 'numbered', value: !store.get().numbered }));
   const top = el('div', 'metronome-heading');
   const meterField = field('Meter', meter);
   meterField.classList.add('meter-field');
   mode.classList.add('beat-mode');
-  top.append(title, row(meterField, mode));
+  top.append(row(meterField, mode));
   const body = el('div', 'metronome-body');
   const pet = petTempo(store, audio);
   const tempo = tempoInput(store, 'Tempo (BPM)', pet.look);
@@ -133,7 +132,6 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     down5.disabled = state.tempo === LIMITS.tempo.min;
     up1.disabled = state.tempo === LIMITS.tempo.max;
     up5.disabled = state.tempo === LIMITS.tempo.max;
-    title.querySelector('h2')!.textContent = state.numbered ? 'Make every beat count.' : 'Find your rhythm.';
   });
   return node;
 }

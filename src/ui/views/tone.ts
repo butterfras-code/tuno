@@ -3,7 +3,7 @@ import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
 import { LIMITS, toneHz } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
-import { button, el, field, select, heading, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
+import { button, el, field, select, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
 
 export function createTone(store: PracticeStore, audio: AudioController) {
   const node = view('tone', 'Reference tone');
@@ -13,7 +13,7 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   const miniStatus = el('p', 'small teal');
   mini.append(el('p', 'eyebrow', 'Uno hears...'), miniNote, miniStatus);
   const friend = uno('tone-friend mobile-only');
-  top.append(heading('Find your note.', 'Choose a key. Find a note to practice.'), mini, friend);
+  top.append(mini, friend);
   const sustain = button('Sustain on', () => store.dispatch({ type: 'sustain', value: !store.get().sustain }));
   const volume = el('input');
   Object.assign(volume, { type: 'range', min: '0', max: '100', step: '1' });
