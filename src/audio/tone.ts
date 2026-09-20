@@ -5,7 +5,7 @@ const partials = {
   // Rounded reed blend: prominent odd harmonics, softer even harmonics and a gentle rolloff.
   sweet: [0, 1, 0.18, 0.48, 0.10, 0.20, 0.045, 0.08, 0.02, 0.025],
   // Brighter reed/brass blend: a fuller series with more upper-harmonic presence.
-  clear: [0, 1, 0.25, 0.37, 0.38, 0.28, 0.19, 0.22, 0.27, 0.035],
+  clear: [0, 1, 0.65, 0.50, 0.38, 0.28, 0.19, 0.12, 0.07, 0.035],
 } as const;
 
 const oscillatorSounds = new WeakMap<OscillatorNode, ToneSound>();

@@ -82,6 +82,7 @@ try {
     assert.equal(await page.locator('.note-picker-trigger').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await page.getByRole('button', { name: 'Sustain on', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0, 'Turning sustain off immediately stops the sounding tone');
     assert.equal(await page.getByRole('button', { name: 'Sustain off', exact: true }).evaluate((node) => node === document.activeElement), true);
     await selectTool('Metronome');
     await page.getByLabel('Tempo (BPM)', { exact: true }).fill('108');
@@ -220,7 +221,7 @@ try {
     assert.equal(await noteTrigger.textContent(), selectedBeforeBrowsing, 'Browsing must preserve the selected tone');
     assert.equal(await tone.getByRole('button', { name: 'Browse octave', exact: true }).evaluate(node => node === document.activeElement), true);
     await noteTrigger.click();
-    await page.getByRole('menuitemradio', { name: 'A', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: 'A5', exact: true }).click();
     assert.match(await noteTrigger.textContent(), /A5/);
     await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
     await tone.getByRole('button', { name: 'Browse octave', exact: true }).click();

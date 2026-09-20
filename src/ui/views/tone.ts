@@ -47,7 +47,8 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes. Sweet: rounded clarinet/sax-like reeds. Clear: bright oboe/trumpet-like overtones.';
   const controls = row(play, sustain, desktopVolume.node, soundField);
   controls.classList.add('tone-controls');
-  const notes = selectorPopover('Choose note', Array.from({ length: 12 }, (_, value) => ({ value, label: noteName(60 + value).replace(/\d+$/, '') })), value => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + Number(value) }); void audio.playTone(); });
+  const notes = selectorPopover('Choose note', Array.from({ length: 73 }, (_, index) => ({ value: 24 + index, label: noteName(24 + index) })), value => { store.dispatch({ type: 'tone-note', value: Number(value) }); void audio.playTone(); });
+  notes.popup.classList.add('tone-note-popup');
   const notePicker = notes.trigger;
   notePicker.classList.add('note-picker-trigger');
   notePicker.setAttribute('aria-controls', notes.popup.id);
@@ -60,6 +61,9 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   const keyboardTop = el('div', 'keyboard-heading');
   const octaveMenu = selectorPopover('Browse octave', Array.from({ length: LIMITS.octave.max }, (_, i) => ({ value: i + 1, label: String(i + 1) })), value => store.dispatch({ type: 'octave', value: Number(value) }));
   const octavePicker = octaveMenu.trigger;
+  octavePicker.classList.add('keyboard-octave-picker');
+  const keyboardLabel = el('span', 'keyboard-octave-label', 'Keyboard');
+  const octaveValue = el('span');
   octavePicker.setAttribute('aria-controls', octaveMenu.popup.id);
   decrease.textContent = '−';
   decrease.setAttribute('aria-label', '− Octave');
@@ -134,9 +138,10 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     sound.value = state.toneSound;
     desktopVolume.trigger.textContent = `Volume ${state.toneVolume}%`;
     friend.hidden = !state.showUno;
-    notes.update(state.toneNote % 12, noteName(state.toneNote));
+    notes.update(state.toneNote);
     octaveMenu.update(state.octave);
-    octavePicker.textContent = `Octave ${state.octave}`;
+    octaveValue.textContent = `Octave ${state.octave}`;
+    octavePicker.replaceChildren(keyboardLabel, octaveValue);
     responsiveLabel(keyboardHint,
       'Choose an octave above · Use − / +',
       `Swipe keys to explore · ${noteName(state.toneNote)} ${state.tonePlaying ? 'keeps sounding' : 'selected'}`);

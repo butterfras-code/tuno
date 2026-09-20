@@ -116,7 +116,17 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.equal(store.get().toneNote, 62);
     audio.pressToneKey(62);
     assert.equal(store.get().tonePlaying, false);
+    await audio.playTone();
     store.dispatch({ type: 'sustain', value: false });
+    assert.equal(store.get().tonePlaying, false, 'Turning sustain off immediately stops the sounding tone');
+    assert.equal(oscillators.at(-1)!.stopped, true);
+    store.dispatch({ type: 'sustain', value: true });
+    const voicesBeforePendingTone = oscillators.length;
+    const pendingTone = audio.playTone();
+    store.dispatch({ type: 'sustain', value: false });
+    await pendingTone;
+    assert.equal(store.get().tonePlaying, false, 'Turning sustain off cancels pending playback');
+    assert.equal(oscillators.length, voicesBeforePendingTone);
     audio.pressToneKey(62); await Promise.resolve();
     assert.equal(store.get().tonePlaying, true, 'Sustain off plays while the key is held');
     audio.releaseToneKey(62);

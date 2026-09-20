@@ -243,7 +243,11 @@ export function createAudioController(store: PracticeStore) {
       toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume; toneSound = state.toneSound;
       syncTone();
     }
-    if (sustain !== state.sustain) { sustain = state.sustain; scheduleRelease(); }
+    if (sustain !== state.sustain) {
+      sustain = state.sustain;
+      if (sustain) scheduleRelease();
+      else stopTone();
+    }
   });
   return { interrupt() {
     const active = stream || oscillator || tonePending || timeline || metronomePending || store.get().micStatus === 'requesting';
