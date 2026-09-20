@@ -9,19 +9,20 @@ export function scheduleClick(context: BaseAudioContext, pulse: Pulse, settings:
   const accented = pulse.downbeat && settings.accent;
   const beep = settings.clickSound === 'beep';
   const drum = settings.clickSound === 'drum';
+  const subdivisionPitch = pulse.part > 0 ? 2 : 1;
   const duration = drum ? 0.06 : 0.04;
   oscillator.type = beep ? 'square' : drum || settings.clickSound === 'wood' ? 'triangle' : 'sine';
   if (drum) {
     // A fast pitch drop gives a tight tom attack; triangle overtones add definition.
-    oscillator.frequency.setValueAtTime(accented ? 720 : 480, pulse.time);
-    oscillator.frequency.exponentialRampToValueAtTime(accented ? 240 : 160, pulse.time + 0.025);
+    oscillator.frequency.setValueAtTime((accented ? 720 : 480) * subdivisionPitch, pulse.time);
+    oscillator.frequency.exponentialRampToValueAtTime((accented ? 240 : 160) * subdivisionPitch, pulse.time + 0.025);
   } else {
-    oscillator.frequency.value = beep ? (accented ? 1760 : 1320) : accented ? 1500 : pulse.part === 0 ? 1000 : 750;
+    oscillator.frequency.value = (beep ? (accented ? 2080 : 1560) : accented ? 1500 : 1000) * subdivisionPitch;
   }
   // Square waves carry more energy, so reduce their gain to balance the choices.
-  const level = settings.clickVolume / 100 * (accented ? 0.3 : pulse.part === 0 ? 0.2 : 0.1) * (beep ? 0.55 : 1);
+  const level = settings.clickVolume / 100 * (accented ? 0.3 : pulse.part === 0 ? 0.2 : 0.1) * (beep ? 0.65 : 1);
   gain.gain.setValueAtTime(0, pulse.time);
-  gain.gain.linearRampToValueAtTime(level, pulse.time + 0.002);
+  gain.gain.linearRampToValueAtTime(level, pulse.time + (beep ? 0.001 : 0.002));
   if (level > 0) gain.gain.exponentialRampToValueAtTime(0.00001, pulse.time + duration - 0.005);
   gain.gain.setValueAtTime(0, pulse.time + duration);
   oscillator.connect(gain);
