@@ -154,8 +154,10 @@ try {
       assert.equal(await page.locator('#view-tuner').isVisible(), true);
       await page.screenshot({ path: `${directory}/${engine.name()}-${width}-independent.png`, fullPage: true });
       await page.setViewportSize({ width: 1120, height: 900 });
-      assert.equal(await page.locator('.tool-card:visible').count(), 3);
+      await page.waitForFunction(() => [...document.querySelectorAll('.tool-card')].filter(node => node.checkVisibility()).length === 3);
       await page.setViewportSize({ width, height: 900 });
+      await page.getByRole('tab', { name: 'Tone', exact: true }).waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('.tool-card')].filter(node => node.checkVisibility()).length === 1);
       assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
       assert.equal(await page.locator('#view-tuner').isVisible(), true);
       await selectTool('Metronome');
