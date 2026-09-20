@@ -28,7 +28,7 @@ const options = {
   absWorkingDir: root,
   entryPoints: ['src/main.ts'],
   bundle: true,
-  loader: { '.svg': 'dataurl', '.ttf': 'dataurl' },
+  loader: { '.svg': 'dataurl', '.ttf': 'dataurl', '.txt': 'text' },
   define: { HOSTED_OFFLINE_ENABLED: String(!dev), FONT_LICENSES: JSON.stringify((await Promise.all([
     readFile(path.join(root, 'src/assets/fonts/nunito-OFL.txt'), 'utf8'),
     readFile(path.join(root, 'src/assets/fonts/nunito-sans-OFL.txt'), 'utf8'),
@@ -65,9 +65,16 @@ const options = {
           readFile(path.join(hosted, 'app.css'), 'utf8'),
         ]);
         const worker = await readFile(path.join(root, 'src/distribution/service-worker.js'), 'utf8');
-        const version = createHash('sha256').update(template + js + css + worker + manifest + packageInfo.version).update(icons['icon-192.png']).update(icons['icon-512.png']).digest('hex').slice(0, 16);
+        let revision = 'unknown';
+        let dirty = true;
+        try {
+          revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+          dirty = Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim());
+        } catch { /* Source archives may not have Git metadata. */ }
+        const sourceUrl = /^[a-f0-9]{40}$/.test(revision) ? `https://github.com/butterfras-code/tuno/tree/${revision}` : 'https://github.com/butterfras-code/tuno';
+        const version = createHash('sha256').update(template + js + css + worker + manifest + packageInfo.version + sourceUrl).update(icons['icon-192.png']).update(icons['icon-512.png']).digest('hex').slice(0, 16);
         const render = (styles, scripts) => template
-          .replace('<!-- version -->', `<meta name="tuno-version" content="${version}"><meta name="tuno-release" content="${packageInfo.version}">`)
+          .replace('<!-- version -->', `<meta name="tuno-version" content="${version}"><meta name="tuno-release" content="${packageInfo.version}"><meta name="tuno-source" content="${sourceUrl}">`)
           .replace('<!-- styles -->', () => styles)
           .replace('<!-- scripts -->', () => scripts);
         const html = render(`<style>${css}</style>`, `<script>${js}</script>`);
@@ -88,12 +95,6 @@ const options = {
         }
         const workerSource = worker.replace('__BUILD_VERSION__', version).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));
         const allHosted = { ...resources, ...(!dev ? { 'sw.js': workerSource } : {}) };
-        let revision = 'unknown';
-        let dirty = true;
-        try {
-          revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-          dirty = Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim());
-        } catch { /* Source archives may not have Git metadata. */ }
         const checksums = Object.fromEntries(Object.entries(allHosted).map(([name, contents]) => [name, createHash('sha256').update(contents).digest('hex')]));
         await Promise.all([
           ...Object.entries(allHosted).map(([name, contents]) => writeFile(path.join(hosted, name), contents)),

@@ -1,4 +1,5 @@
 import './information.css';
+import projectLicense from '../../LICENSE.txt';
 import { createReleaseControls } from '../distribution/release.ts';
 import { button, el } from './components.ts';
 
@@ -44,9 +45,17 @@ export function createInformationControls() {
     link.href = `https://github.com/google/fonts/blob/main/ofl/${path}/OFL.txt`;
     fontSources.append(link);
   }
+  const projectTerms = el('details', 'licenses');
+  projectTerms.append(el('summary', '', 'GNU GPLv3 license'), el('pre', 'license-text', projectLicense));
+  const source = el('a', '', 'Source code for this version');
+  source.href = document.querySelector<HTMLMetaElement>('meta[name="tuno-source"]')?.content
+    ?? 'https://github.com/butterfras-code/tuno';
+  const sourceParagraph = el('p');
+  sourceParagraph.append(source);
   const about = createDialog('about-information', 'About tUno', [
     el('p', '', 'A tuner, reference tone, and metronome for practicing with a friend. Free to use, with no ads.'),
-    el('p', '', 'Project source and Uno artwork licenses are still being chosen. No public redistribution license has been granted yet.'),
+    el('p', '', 'Copyright © 2026 Justin Butterfras. tUno’s code and original artwork are licensed under the GNU General Public License, version 3 (GPLv3). You can share and change them under that license. There is no warranty.'),
+    sourceParagraph, projectTerms,
     el('p', '', 'Bundled fonts include their complete license notices below.'), fontSources, licenses,
   ]);
   const supportLink = () => {

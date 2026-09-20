@@ -37,7 +37,7 @@ Teacher check-ins are an important follow-on workflow and an architectural consi
 
 ## Open decisions
 
-- Choose a source license, review upstream provenance, and document asset attribution.
+- Use GPLv3 for project code and original artwork, retain upstream licenses, and document asset attribution.
 - Establish the minimum supported device/browser versions and practical pitch range from testing.
 
 ## Success

@@ -74,4 +74,4 @@ For each trial, record device/model, OS and browser versions, school policy rest
 4. Record five minutes of clicks during concurrent practice and UI activity. Initial target: zero missed clicks and interval error ≤5 ms; separate scheduling error, recording uncertainty and output latency. Final device tolerances must be accepted from measurements.
 5. Compare speakers and headphones for false pitch detections, CPU/glitches and volume behavior. Verify keyboard-only operation, zoom, reduced motion, small-screen controls and actual projection-distance readability.
 
-The prototype remains unaccepted until these device results, final physical tolerances and source/artwork redistribution licensing are resolved. Teacher records and animated rewards are not part of this release candidate.
+The prototype remains unaccepted until these device results and final physical tolerances are resolved, and the GPLv3 corresponding source is available for the distributed build. Teacher records and animated rewards are not part of this release candidate.

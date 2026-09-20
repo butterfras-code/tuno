@@ -41,7 +41,11 @@ try {
     await dialog.waitFor();
     if (name === 'About') {
       await dialog.getByText('Font licenses', { exact: true }).click();
-      assert.match(await dialog.locator('.license-text').textContent(), /SIL OPEN FONT LICENSE/);
+      assert.match(await dialog.locator('details').filter({ hasText: 'Font licenses' }).locator('.license-text').textContent(), /SIL OPEN FONT LICENSE/);
+      await dialog.getByText('GNU GPLv3 license', { exact: true }).click();
+      assert.equal(await dialog.locator('details').filter({ hasText: 'GNU GPLv3 license' }).locator('.license-text').textContent(), await readFile(new URL('../LICENSE.txt', import.meta.url), 'utf8'));
+      const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
+      assert.equal(await dialog.getByRole('link', { name: 'Source code for this version' }).getAttribute('href'), `https://github.com/butterfras-code/tuno/tree/${release.revision}`);
     }
     if (name === 'Uno' || name === 'Support') {
       assert.equal(await dialog.getByRole('link', { name: 'Support on Ko-fi' }).getAttribute('href'), 'https://ko-fi.com/qjayapp');

@@ -21,7 +21,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 Read these in order. Keep commitments in the charter, distribution decisions in the architecture, and implementation milestones and validation results in the prototype plan. Add architecture decisions as implementation establishes them, rather than documenting an imagined finished system.
 
-Open-source distribution is intended; the project source license remains undecided. Bundled artwork/font provenance and font licenses are recorded in [dependency provenance](docs/dependencies.md).
+Copyright © 2026 Justin Butterfras. tUno’s code, documentation, and original artwork are licensed under the [GNU General Public License, version 3 only](LICENSE.txt) (`GPL-3.0-only`), without warranty. You may redistribute and modify them under those terms. Bundled fonts retain SIL Open Font License 1.1; design-reference photographs retain their existing rights and are not covered by this grant. See [dependency provenance](docs/dependencies.md) for scope and third-party notices. Both app formats include the complete GPLv3 text and a source-code link in About.
 
 ## Development
 

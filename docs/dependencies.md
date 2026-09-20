@@ -15,7 +15,7 @@ Development dependencies are pinned in `package.json`; exact transitive versions
 
 Platform-specific tool binaries are development tooling as well. Browser binaries downloaded for Playwright are test infrastructure and are not shipped in either app artifact. Retain upstream licenses if redistributing tools or their binaries.
 
-The project source license remains undecided. `private: true` prevents accidental npm publication, and `UNLICENSED` records the current absence of a license grant; neither selects the eventual open-source license. Select that license and update this inventory before distributing adapted third-party code or assets. The browser bundle contains project source, generated bundler scaffolding, and the artwork/fonts below. No new npm dependencies were added for the design implementation.
+The project code, documentation, and original artwork are licensed under GNU GPL version 3 only (`GPL-3.0-only`); see [the full license](../LICENSE.txt). Copyright © 2026 Justin Butterfras. `private: true` continues to prevent accidental npm publication. Bundled fonts retain their SIL Open Font License 1.1 terms; development dependencies retain the licenses listed above. Design-reference photographs retain their existing rights and are excluded from the project license grant. The browser bundle contains project source, generated bundler scaffolding, and the artwork/fonts below. No new npm dependencies were added for the design implementation.
 
 ## Bundled visual assets
 
@@ -23,13 +23,13 @@ Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma
 
 | Local asset | Origin | Rights/provenance |
 | --- | --- | --- |
-| `src/assets/uno-happy.svg` | Shared component `4:2`, inner artwork `4:3` | User-provided project artwork; the current 320px tail path is scaled into the existing 300px animation canvas. Figma describes it as an initial vector study from Uno reference photos. No independent third-party license was supplied. |
+| `src/assets/uno-happy.svg` | Shared component `4:2`, inner artwork `4:3` | User-provided project artwork; the current 320px tail path is scaled into the existing 300px animation canvas. Figma describes it as an initial vector study from Uno reference photos. Covered by the project’s GPLv3 grant. |
 | `src/assets/pitch-bone.svg` | Tuner marker `5:66` | User-provided project artwork; retained exact export. |
 | `src/assets/tempo-drag-hint.svg` | Metronome gesture hint `45:401` | User-provided project artwork; retained exact vector geometry for the visible hold/drag affordance. |
 | `src/assets/fonts/nunito.ttf` | [Google Fonts Nunito source](https://github.com/google/fonts/tree/main/ofl/nunito) | Unmodified `Nunito[wght].ttf`, SIL Open Font License 1.1; notice in `nunito-OFL.txt`. |
 | `src/assets/fonts/nunito-sans.ttf` | [Google Fonts Nunito Sans source](https://github.com/google/fonts/tree/main/ofl/nunitosans) | Unmodified `NunitoSans[YTLC,opsz,wdth,wght].ttf`, SIL Open Font License 1.1; notice in `nunito-sans-OFL.txt`. |
 
-Font filenames were simplified locally; font data and internal names were not modified. Both complete font notices are included in both built artifacts via Font licenses in the About dialog. Asset requests never depend on expiring Figma links or a font CDN at runtime. Confirm the eventual project artwork license before an open-source release.
+Font filenames were simplified locally; font data and internal names were not modified. Both complete font notices are included in both built artifacts via Font licenses in the About dialog. Asset requests never depend on expiring Figma links or a font CDN at runtime. Original project artwork is covered by the project’s GPLv3 grant.
 
 ## Pitch-tracker reuse — 2026-09-19
 
@@ -39,7 +39,7 @@ Source: local sibling `pitch-tracker`, revision `75214e7452f286fa50ac317ed06f5c5
 - `tests/fixtures/pitch-signal.ts` retains the deterministic upstream fixture generator. Regression cases cover clean and overtone-rich signals, silence, noise, and low amplitude.
 - `src/audio/controller.ts` adapts microphone cancellation generations, capture constraints, disconnected-track cleanup, and gain-ramp patterns from `src/audio/microphone.ts`. The controller is rewritten around tUno's store; teacher scoring and DOM dependencies are excluded. Microphone and tone have independent cancellation.
 
-No license file was found in the source checkout. This reuse is authorized by the owner for this project; it does not establish a public redistribution license. Source and project licensing remain unresolved before public release. No runtime dependencies were added.
+No license file was found in the source checkout. The owner authorized this reuse and subsequently selected GPLv3 for tUno, including these project adaptations; this does not relicense the separate upstream checkout. No runtime dependencies were added.
 
 ## Installation assets — 2026-09-19
 

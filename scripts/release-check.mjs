@@ -14,6 +14,7 @@ for (const format of ['hosted/index.html', 'portable/tuno.html']) {
   const html = await readFile(new URL(format, dist), 'utf8');
   assert.ok(html.includes(`name="tuno-version" content="${release.build}"`));
   assert.ok(html.includes(`name="tuno-release" content="${release.version}"`));
+  assert.ok(html.includes(`name="tuno-source" content="https://github.com/butterfras-code/tuno/tree/${release.revision}"`));
 }
 const manifest = JSON.parse(await readFile(new URL('hosted/manifest.webmanifest', dist), 'utf8'));
 assert.equal(manifest.start_url, './');
