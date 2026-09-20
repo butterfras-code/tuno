@@ -16,9 +16,12 @@ export const TRANSPOSITIONS = [
 ] as const;
 export const METERS = [
   { value: 'free', label: 'Free pulse', beats: 0, unit: 'Quarter note' },
+  { value: '6/8', label: '6/8', beats: 2, unit: 'Dotted quarter' },
   { value: '3/4', label: '3/4', beats: 3, unit: 'Quarter note' },
   { value: '4/4', label: '4/4', beats: 4, unit: 'Quarter note' },
-  { value: '6/8', label: '6/8', beats: 2, unit: 'Dotted quarter' },
+  { value: '5/4', label: '5/4', beats: 5, unit: 'Quarter note' },
+  { value: '6/4', label: '6/4', beats: 6, unit: 'Quarter note' },
+  { value: '7/4', label: '7/4', beats: 7, unit: 'Quarter note' },
 ] as const;
 export type Meter = typeof METERS[number]['value'];
 export const TUNER_ACCURACIES = [
@@ -83,7 +86,7 @@ export function createPracticeStore() {
     micStatus: 'idle', pitchUpdatedAt: 0, liveHz: null, displayHz: null, rms: 0, quality: 0, tonePlaying: false, metronomePlaying: false, currentBeat: null, currentPart: 0, audioError: '',
     focus: 'tuner', tunerAccuracy: 'advanced', manualHz: null, a4: DEFAULT_A4_HZ, transposition: 0,
     showUno: true, toneNote: 58, octave: 3, sustain: true, toneVolume: 40, toneSound: 'rich',
-    tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, beatAccents: [true, false, false, false], clickVolume: 50, clickSound: 'click',
+    tempo: 96, meter: 'free', numbered: false, subdivision: 1, accent: true, beatAccents: [true, false, false, false, false, false, false], clickVolume: 50, clickSound: 'click',
   });
   const listeners = new Set<(state: PracticeState) => void>();
   return {
@@ -132,7 +135,7 @@ export function createPracticeStore() {
           patch = { subdivision: action.value }; break;
         case 'accent': patch = { accent: action.value, beatAccents: [action.value, ...state.beatAccents.slice(1)] }; break;
         case 'beat-accent':
-          if (!inRange(action.value, 0, 3, true)) return;
+          if (!inRange(action.value, 0, state.beatAccents.length - 1, true)) return;
           patch = { beatAccents: state.beatAccents.map((value, index) => index === action.value ? !value : value) }; break;
         case 'click-volume':
           if (!inRange(action.value, 0, 100, true)) return;

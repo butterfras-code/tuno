@@ -29,12 +29,12 @@ export function createAudioController(store: PracticeStore) {
   let metronomeTimer: ReturnType<typeof setTimeout> | undefined;
   let visualFrame = 0;
   let timeline: ReturnType<typeof createTimeline> | undefined;
-  type VisualPulse = Pulse & { duration: number; index: number };
+  type VisualPulse = Pulse & { duration: number; index: number; accented: boolean };
   let visualQueue: VisualPulse[] = [];
   let beatIndex = -1;
   let beatDuration = 0;
   let visualBeat: VisualPulse | undefined;
-  const pulseListeners = new Set<(angle: number, playing: boolean, beatIndex: number | null) => void>();
+  const pulseListeners = new Set<(angle: number, playing: boolean, beatIndex: number | null, accent: number) => void>();
   const tapListeners = new Set<() => void>();
   const clicks = new Set<ReturnType<typeof scheduleClick>>();
   const tap = createTapTempo();
@@ -165,7 +165,7 @@ export function createAudioController(store: PracticeStore) {
     visualQueue = [];
     visualBeat = undefined;
     beatIndex = -1;
-    pulseListeners.forEach(listener => listener(0, false, null));
+    pulseListeners.forEach(listener => listener(0, false, null, 0));
     for (const click of clicks) click.stop();
     clicks.clear();
     update({ metronomePlaying: false, currentBeat: null, currentPart: 0 });
@@ -184,7 +184,12 @@ export function createAudioController(store: PracticeStore) {
       const fraction = Math.max(0, Math.min(1, (now - visualBeat.time) / visualBeat.duration));
       // Return to the low endpoint on every beat and reach the high endpoint halfway through.
       const angle = TAIL_RAISED_ANGLE + (TAIL_LOWERED_ANGLE - TAIL_RAISED_ANGLE) * (1 + Math.cos(2 * Math.PI * fraction)) / 2;
-      pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index));
+      // A quick lift and soft return, sampled from the same audible beat as the tail.
+      const elapsed = Math.max(0, now - visualBeat.time);
+      const accentDuration = Math.min(0.24, visualBeat.duration * 0.7);
+      const progress = Math.min(1, elapsed / accentDuration);
+      const accent = visualBeat.accented ? (progress < 0.2 ? progress / 0.2 : (1 - progress) / 0.8) : 0;
+      pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index, accent));
     }
     if (current) update({ currentBeat: current.beat, currentPart: current.part });
     visualFrame = requestAnimationFrame(renderBeat);
@@ -199,11 +204,12 @@ export function createAudioController(store: PracticeStore) {
     while (timeline.time < context.currentTime + 0.15) {
       const state = store.get();
       const pulse = timeline.next({ tempo: state.tempo, beats: meterInfo(state).beats, subdivision: state.subdivision });
-      const click = scheduleClick(context, { ...pulse, downbeat: meterInfo(state).beats > 0 && pulse.part === 0 && !!state.beatAccents[pulse.beat] }, { ...state, accent: true });
+      const accented = meterInfo(state).beats > 0 && pulse.part === 0 && !!state.beatAccents[pulse.beat];
+      const click = scheduleClick(context, { ...pulse, downbeat: accented }, { ...state, accent: true });
       clicks.add(click);
       click.oscillator.addEventListener('ended', () => clicks.delete(click), { once: true });
       if (pulse.part === 0) { beatIndex++; beatDuration = 60 / state.tempo; }
-      visualQueue.push({ ...pulse, index: beatIndex, duration: beatDuration });
+      visualQueue.push({ ...pulse, index: beatIndex, duration: beatDuration, accented });
     }
     metronomeTimer = setTimeout(scheduleBeats, 25);
   }
@@ -218,6 +224,8 @@ export function createAudioController(store: PracticeStore) {
       if (generation !== metronomeGeneration) return;
       timeline = createTimeline(ac.currentTime + 0.05);
       update({ metronomePlaying: true });
+      // Move from rest immediately, including before the first scheduled click.
+      pulseListeners.forEach(listener => listener(TAIL_LOWERED_ANGLE, true, 0, 0));
       scheduleBeats();
       renderBeat();
     } catch (error) {
@@ -242,7 +250,7 @@ export function createAudioController(store: PracticeStore) {
     if (active) { stopAll(); update({ micStatus: 'interrupted', audioError: 'Practice paused while tUno was hidden. Start a tool to resume.' }); }
   }, startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
     toggleMetronome: () => timeline || metronomePending ? stopMetronome() : void startMetronome(),
-    onPulseFrame(listener: (angle: number, playing: boolean, beatIndex: number | null) => void) {
+    onPulseFrame(listener: (angle: number, playing: boolean, beatIndex: number | null, accent: number) => void) {
       pulseListeners.add(listener);
       return () => pulseListeners.delete(listener);
     },

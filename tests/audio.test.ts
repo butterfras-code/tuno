@@ -25,7 +25,8 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
   }
   const originalRaf = Object.getOwnPropertyDescriptor(globalThis, 'requestAnimationFrame');
   const originalCancelRaf = Object.getOwnPropertyDescriptor(globalThis, 'cancelAnimationFrame');
-  Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: () => 1 });
+  let renderFrame: FrameRequestCallback | undefined;
+  Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: (callback: FrameRequestCallback) => { renderFrame = callback; return 1; } });
   Object.defineProperty(globalThis, 'cancelAnimationFrame', { configurable: true, value: () => {} });
   const originalAudio = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
   const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -65,7 +66,18 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.match(store.get().audioError, /disconnected/);
     deny = true; await audio.startMic(); assert.equal(store.get().micStatus, 'error');
     assert.match(store.get().audioError, /permission denied/);
+    store.dispatch({ type: 'meter', value: '4/4' });
+    const startupFrames: { angle: number; playing: boolean; index: number | null; accent: number }[] = [];
+    audio.onPulseFrame((angle, playing, index, accent) => startupFrames.push({ angle, playing, index, accent }));
     await audio.startMetronome();
+    assert.deepEqual(startupFrames[0], { angle: 25, playing: true, index: 0, accent: 0 }, 'tail moves before the first scheduled click');
+    store.dispatch({ type: 'beat-accent', value: 0 });
+    ac!.currentTime = 0.098;
+    renderFrame!(0);
+    assert.ok(startupFrames.at(-1)!.accent > 0.99, 'face follows the scheduled audible accent even when its toggle changes afterward');
+    ac!.currentTime = 0.3;
+    renderFrame!(0);
+    assert.equal(startupFrames.at(-1)!.accent, 0, 'face settles before the next beat');
     const count = oscillators.length;
     await audio.startMetronome();
     assert.equal(oscillators.length, count);

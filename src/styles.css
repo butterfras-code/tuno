@@ -280,7 +280,7 @@ img { display: block; max-width: 100%; }
 .uno-head-left { opacity: 0; }
 .uno-looking .uno-head-front { opacity: 0; }
 .uno-looking .uno-head-left { opacity: 1; }
-.uno-looking .uno-head { transition-duration: 180ms; }
+.uno-looking .uno-head { transition-duration: 0ms; }
 .uno-tail-side { transform-origin: 150px 150px; }
 .uno-tail { transform-origin: 185.625px 246.464px; transition: transform 200ms ease-out; }
 .uno-playing .uno-tail { transition: none; }
@@ -290,9 +290,12 @@ img { display: block; max-width: 100%; }
 @keyframes uno-wag { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
 .uno-reward { position: absolute; width: 30%; height: auto; left: 35%; top: 45%; opacity: 0; pointer-events: none; transition: opacity 300ms ease-in-out; }
 .uno-animated[data-pose='catch'] .uno-reward { opacity: 1; transition: none; }
-.pet-tempo { display: inline-flex; padding: 0; border: 0; border-radius: 24px; background: transparent; touch-action: none; cursor: grab; color: inherit; }
-.pet-tempo:active { cursor: grabbing; }
-.pet-tempo:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+.pet-tempo { display: inline-flex; padding: 0; border: 0; border-radius: 24px; background: transparent; color: inherit; }
+.pet-head, .pet-body { position: absolute; padding: 0; border: 0; border-radius: 24px; background: transparent; appearance: none; -webkit-tap-highlight-color: transparent; touch-action: none; cursor: pointer; }
+.pet-head { left: 15%; top: 0; width: 75%; height: 48%; }
+.pet-body { left: 20%; top: 48%; width: 70%; height: 52%; }
+.tempo-drag-area { position: absolute; grid-column: 2 / 3; top: 0; left: 0; width: calc(100% + 24px); height: 100%; z-index: 2; padding: 0; border: 0; background: transparent; touch-action: none; cursor: ns-resize; }
+.pet-head:focus-visible, .pet-body:focus-visible, .tempo-drag-area:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .hold-caption { font-size: 13px; margin: 8px 0 10px; }
 .hold-progress { appearance: none; border: 0; width: 100%; max-width: 236px; height: 7px; border-radius: 4px; overflow: hidden; background: var(--color-tint); }
 .hold-progress::-webkit-progress-bar { background: var(--color-tint); }
@@ -374,7 +377,9 @@ img { display: block; max-width: 100%; }
 .metronome-heading { display: flex; align-items: start; justify-content: space-between; min-height: 66px; flex-wrap: nowrap; }
 .metronome-heading .control-row { display: flex; flex-wrap: nowrap; gap: 12px; }
 .metronome-heading .field-label, .rhythm-controls .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.meter-field { width: 110px; }
+.meter-field { position: relative; width: 110px; }
+.meter-field::before { content: 'Meter:'; position: absolute; left: calc(50% - 33px); top: 50%; transform: translateY(-50%); pointer-events: none; font-weight: 700; }
+.meter-field select.control { padding-left: 48px; }
 .beat-mode { width: 178px; }
 .metronome-body { display: flex; position: relative; justify-content: center; padding: 20px 0 0; height: 372px; }
 .tempo-and-uno { position: relative; display: grid; grid-template-columns: 127.2px 10.6px 279.84px; gap: 4px; align-items: start; height: 280px; transform: none; }
@@ -557,6 +562,7 @@ img { display: block; max-width: 100%; }
 }
 .beat-grid { z-index: 1; }
 .beat { background: var(--color-tint); }
+.metronome-heading .meter-field { position: relative; }
 .meter-field select, .rhythm-controls select { appearance: none; text-align: center; padding-inline: 8px; }
 .piano-key--extension { display: none; }
 @media (max-width: 650px) {

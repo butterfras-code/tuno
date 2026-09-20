@@ -91,7 +91,8 @@ The Figma screen depicts the expanded rail, not a working gesture. Its collapsed
 ## 5. Metronome
 
 - Uno is primary in the simple/free-pulse presentation; his tail provides the beat visualization.
-- The tail is down on each beat and up halfway through. Double-clicking or double-tapping Uno switches to a left/right beat toggle mirrored across the character's centerline. Motion must follow the same musical timeline as the audible pulse.
+- The tail is down on each beat and up halfway through. Double-clicking or double-tapping Uno’s body switches to a left/right beat toggle mirrored across the character's centerline. Motion must follow the same musical timeline as the audible pulse.
+- Head taps nod and set tempo on contact. Dragging the BPM number or the strip beside the vertical drag marker adjusts tempo and turns Uno left.
 - Selecting a time signature brings numbered beats forward and shrinks Uno into a secondary position.
 - Provide a view control to restore the larger Uno presentation without silently changing the musical settings.
 - Distinguish the current beat and downbeat using labels/shapes as well as color.

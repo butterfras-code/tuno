@@ -84,6 +84,11 @@ try {
     const accent = page.getByRole('button', { name: 'Accent beat 3', exact: true });
     await accent.click(); assert.equal(await accent.getAttribute('aria-pressed'), 'true');
     await accent.click(); assert.equal(await accent.getAttribute('aria-pressed'), 'false');
+    const meter = page.getByLabel('Meter', { exact: true });
+    assert.deepEqual(await meter.locator('option').allTextContents(), ['1', '2', '3', '4', '5', '6', '7']);
+    await meter.selectOption('7/4');
+    assert.equal(await page.locator('.beat:visible').count(), 7);
+    await page.getByRole('button', { name: 'Accent beat 7', exact: true }).click();
     await inspect(width, 'numbers-240');
     await page.screenshot({ path: `${directory}/${engine.name()}-${width}-numbers.png`, fullPage: true });
     await tempo.fill('96'); await tempo.press('Enter');
