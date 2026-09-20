@@ -1,0 +1,10 @@
+.information-dialog { line-height: 1.6; }
+.install-popover { margin: auto; box-shadow: 0 12px 48px #342f2d33; }
+.install-popover::backdrop { background: #342f2d33; }
+.information-dialog > p { margin-block: 16px; }
+.information-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.information-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.information-navigation .control { min-height: 36px; height: auto; padding: 4px 2px; border: 0; background: transparent; box-shadow: none; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.information-placeholder { color: var(--color-muted); }
+.app-header .install-control { flex-shrink: 0; }
+.information-dialog .release-controls .control-row { justify-content: flex-start; flex-wrap: wrap; }

@@ -11,6 +11,7 @@ const browser = await engine.launch();
 const findings = [];
 try {
   const page = await browser.newPage();
+  await page.addInitScript(() => localStorage.removeItem('tuno.preferences.v1'));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const inspect = async (width, view) => {
@@ -21,13 +22,13 @@ try {
         if (!el.checkVisibility() || !el.getBoundingClientRect().width) return false;
         return true;
       };
-      const controls = [...document.querySelectorAll('nav button, main button, main select, main input:not([type=range]), .tool-strip button, .tool-strip input')]
+      const controls = [...document.querySelectorAll('.install-control, nav button, main button, main select, main input:not([type=range]), .tool-strip button, .tool-strip input')]
         .filter(el => visible(el) && !el.closest('.piano, [popover]'));
       for (const el of controls) {
         const box = el.getBoundingClientRect();
         const name = el.getAttribute('aria-label') || el.textContent;
         if (box.left < -1 || box.right > innerWidth + 1) issues.push(`${name}: outside viewport`);
-        const parent = el.closest('.practice-surface, .tool-card, nav').getBoundingClientRect();
+        const parent = el.closest('.practice-surface, .tool-card, .tool-strip, nav, .app-header').getBoundingClientRect();
         if (box.left < parent.left - 1 || box.right > parent.right + 1 || box.top < parent.top - 1 || box.bottom > parent.bottom + 1) issues.push(`${name}: outside container`);
       }
       for (let i = 0; i < controls.length; i++) for (let j = i + 1; j < controls.length; j++) {
@@ -44,9 +45,13 @@ try {
     await page.setViewportSize({ width, height: width === 1120 ? 820 : 900 });
     await page.goto(host.url);
     await page.evaluate(() => document.fonts.ready);
-    const nav = page.getByRole('navigation');
+    const selectTool = async name => {
+      if (width <= 650) await page.getByRole('tab', { name: { Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' }[name], exact: true }).click();
+      else await page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
+    };
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
-      await nav.getByRole('button', { name, exact: true }).click();
+      await selectTool(name);
+      assert.equal(await page.locator('.tool-card:visible').count(), width <= 650 ? 1 : 3);
       if (view === 'tone') {
         const rows = await page.locator('#view-tone').evaluate(node => {
           const bounds = element => { const { x, y, width } = element.getBoundingClientRect(); return { x, y, width }; };
@@ -92,7 +97,8 @@ try {
     await inspect(width, 'numbers-240');
     await page.screenshot({ path: `${directory}/${engine.name()}-${width}-numbers.png`, fullPage: true });
     await tempo.fill('96'); await tempo.press('Enter');
-    for (const [trigger, option] of [['Tuner accuracy', 'BEG'], ['Note', 'A'], ['Octave', '4'], ['Quick subdivision', '7']]) {
+    for (const [trigger, option, focus] of [['Tuner accuracy', 'BEG', 'Tuner'], ['Note', 'A', 'Reference tone'], ['Octave', '4', 'Reference tone'], ['Quick subdivision', '7', 'Metronome']]) {
+      await selectTool(focus);
       await page.getByRole('button', { name: trigger, exact: true }).click();
       const menu = page.locator('.selector-popup:popover-open');
       const bounds = await menu.boundingBox();
@@ -100,18 +106,33 @@ try {
       assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 901);
       await menu.getByRole('menuitemradio', { name: option, exact: true }).click();
       assert.equal(await menu.count(), 0);
-      assert.equal(await page.locator('#view-metronome').isVisible(), true, 'Quick selectors preserve focus view');
+      assert.equal(await page.locator(`#view-${{ Tuner: 'tuner', 'Reference tone': 'tone', Metronome: 'metronome' }[focus]}`).isVisible(), true, 'Quick selectors preserve focus view');
     }
+    await selectTool('Reference tone');
     await page.locator('.tool-card').nth(1).getByRole('button', { name: '40%', exact: true }).click();
     const slider = page.getByLabel('Quick tone volume', { exact: true });
     await slider.fill('63'); await slider.press('ArrowRight');
     await page.screenshot({ path: `${directory}/${engine.name()}-${width}-volume.png`, fullPage: true });
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('.tool-card').nth(1).getByRole('button', { name: '64%', exact: true }).isVisible(), true);
+    await selectTool('Metronome');
     await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
     await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await inspect(width, 'playing');
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
+    if (width <= 650) {
+      await page.getByRole('tab', { name: 'Tempo', exact: true }).focus();
+      await page.keyboard.press('Home');
+      assert.equal(await page.getByRole('tab', { name: 'Tune', exact: true }).getAttribute('aria-selected'), 'true');
+      await page.keyboard.press('ArrowRight');
+      assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
+      assert.equal(await page.locator('.tool-card').nth(1).getByRole('button', { name: '64%', exact: true }).isVisible(), true);
+      await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Play tone', exact: true }).click();
+      await selectTool('Metronome');
+      await selectTool('Reference tone');
+      await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).click();
+      await selectTool('Metronome');
+    }
     assert.ok(await page.locator('.tool-tap img').getAttribute('src').then(src => src.startsWith('data:image/svg+xml')));
   }
   assert.deepEqual(errors, []);

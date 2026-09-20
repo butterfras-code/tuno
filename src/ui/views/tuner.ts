@@ -63,7 +63,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   hold.value = 0;
   hold.setAttribute('aria-label', 'Steady pitch hold');
   const dog = animatedUno();
-  dog.pose('rest');
+  dog.pose('sleep');
   friend.append(encouragement, dog.node, el('p', 'friend-caption', 'A little practice. A good friend.'), holdCaption, hold);
   const animation = createTunerFeedback();
   let frame = 0;
@@ -84,7 +84,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     wasLive = live; calibrationKey = key;
     const result = animation.update(now, reliable ? { note: rawReading.concertNote, cents: rawReading.cents } : null,
       live && fresh && state.micStatus === 'no-signal', accuracy.scale);
-    dog.pose(result.pose);
+    dog.pose(live ? result.pose : 'sleep');
     hold.value = live ? result.progress : 0;
     const encouragementText = reading && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';

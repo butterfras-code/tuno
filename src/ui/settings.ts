@@ -21,7 +21,7 @@ export function createSettings(store: PracticeStore) {
   const cancel = button('Cancel', () => dialog.close());
   form.append(field('A4 reference (Hz)', calibration), field('Written pitch', transposition),
     el('p', 'small muted', 'Transposition changes the displayed note. Reference-tone keys stay in concert pitch.'),
-    display, el('p', 'small muted', 'Settings last for this session. Reduced motion follows your device preference.'), row(cancel, save));
+    display, el('p', 'small muted', 'Settings are saved in this browser when storage is available. Clear site data to remove them. Reduced motion follows your device preference.'), row(cancel, save));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;

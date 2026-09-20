@@ -19,7 +19,7 @@ The project source license remains undecided. `private: true` prevents accidenta
 
 ## Bundled visual assets
 
-Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). Exports are retained byte-for-byte except where the table notes coordinate adaptation for the established 300px animation canvas:
+Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). Exports retain their original geometry except for the coordinate adaptation and issue #15 refinements documented below:
 
 | Local asset | Origin | Rights/provenance |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma
 | `src/assets/fonts/nunito.ttf` | [Google Fonts Nunito source](https://github.com/google/fonts/tree/main/ofl/nunito) | Unmodified `Nunito[wght].ttf`, SIL Open Font License 1.1; notice in `nunito-OFL.txt`. |
 | `src/assets/fonts/nunito-sans.ttf` | [Google Fonts Nunito Sans source](https://github.com/google/fonts/tree/main/ofl/nunitosans) | Unmodified `NunitoSans[YTLC,opsz,wdth,wght].ttf`, SIL Open Font License 1.1; notice in `nunito-sans-OFL.txt`. |
 
-Font filenames were simplified locally; font data and internal names were not modified. Both complete font notices are included in both built artifacts via the Font licenses footer. Asset requests never depend on expiring Figma links or a font CDN at runtime. Confirm the eventual project artwork license before an open-source release.
+Font filenames were simplified locally; font data and internal names were not modified. Both complete font notices are included in both built artifacts via Font licenses in the About dialog. Asset requests never depend on expiring Figma links or a font CDN at runtime. Confirm the eventual project artwork license before an open-source release.
 
 ## Pitch-tracker reuse — 2026-09-19
 
@@ -49,7 +49,7 @@ The manifest and install-event behavior follow [MDN's installability guidance](h
 
 ## Uno animation assets — 2026-09-19
 
-Additional unmodified SVG exports from the same user-owned Figma file:
+Additional SVG exports from the same user-owned Figma file:
 
 | Asset | Figma node |
 | --- | --- |
@@ -57,4 +57,4 @@ Additional unmodified SVG exports from the same user-owned Figma file:
 | `src/assets/uno-beg.svg` | Raised-paw artwork `7:193` |
 | `src/assets/uno-head-left.svg` | Left-facing head `32:478` |
 
-`src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. The current Figma tail is coordinate-scaled into the retained 300px happy-sit canvas; the other exports remain unchanged. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.
+`src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. The current Figma tail is coordinate-scaled into the retained 300px happy-sit canvas; the beg and left-head exports remain unchanged. Issue #15 refines the rest window and adds a closed eye plus moon/stars for the microphone-off scene. The volume slider bone (`src/assets/volume-bone.svg`) has also been redrawn for a cleaner small-size silhouette. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.

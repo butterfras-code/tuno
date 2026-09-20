@@ -32,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
+Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. On mobile, Tune/Tone/Tempo tabs share one control card. Preferences are saved in browser storage when available; clearing site data removes them. Reloading never starts the microphone or audio. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
 
 ```sh
 npm run check
@@ -49,7 +49,7 @@ npm run verify
 - `dist/hosted/`: serve this directory over HTTPS for deployment; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
 - `dist/portable/tuno.html`: open this single file directly in a browser, including offline. It contains the same JavaScript and CSS as the hosted build.
 
-The hosted page offers **Download offline HTML**, and **Install tUno** when the browser offers installation. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
+The header **Install** button explains offline use and offers **Download offline HTML**, plus **Install tUno** when the browser offers installation. Footer dialogs contain About, Uno, Support, and Privacy information; tribute text and the Ko-fi link are placeholders pending final content. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
 
 Build outputs are ignored by Git. The build script owns and replaces `dist/`; stop the development server before running a production build or browser checks. Its ES2022 output target is a tooling choice, not a minimum-browser support claim.
 
@@ -59,9 +59,9 @@ Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the appl
 
 - `src/tokens.css`: global Figma colors, typography, spacing, and radii; `src/styles.css` defines shared controls and responsive layouts.
 - `src/practice/state.ts`: one application-owned store, typed actions, validation limits, tool/meter definitions, and derived pitch/frequency values. Views do not own duplicate practice state.
-- `src/ui/components.ts`: shared semantic DOM controls, labels, artwork, and pitch formatting. `src/ui/app.ts` owns the header, focus navigation, tool strip, footer, and one settings dialog.
+- `src/ui/components.ts`: shared semantic DOM controls, labels, artwork, and pitch formatting. `src/ui/app.ts` owns the header, focus navigation, tool strip, footer, and settings and information dialogs.
 - `src/ui/views/`: focused presentations mounted once and updated in place. Editing a control preserves DOM focus; switching views preserves session values.
-- `src/assets/`: exact Figma SVG exports and local font files/notices. The build embeds these assets as data URLs in both distributions and includes the font notices in a collapsible footer.
+- `src/assets/`: Figma-derived SVG artwork and local font files/notices. The build embeds these assets as data URLs in both distributions and includes complete font notices in the About dialog.
 
 `src/audio/controller.ts` owns microphone, reference tone, and metronome resources. `src/music/rhythm.ts` defines beat/subdivision timing and tap tempo; `src/audio/click.ts` synthesizes click envelopes. `src/distribution/` handles hosted caching and readiness, with no portable-file worker dependency.
 

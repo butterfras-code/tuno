@@ -67,8 +67,9 @@ export function animatedUno() {
   head.append(front, left);
   sit.append(paths[0]!, tailSide, body, paws, beg, paths[6]!, paths[7]!, head);
   svg.replaceChildren(sit);
-  const rest = el('img', 'uno-rest');
-  Object.assign(rest, { src: restAsset, alt: '', draggable: false });
+  const rest = artwork(restAsset);
+  rest.setAttribute('class', 'uno-rest');
+  rest.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   const bone = el('img', 'uno-reward');
   Object.assign(bone, { src: boneAsset, alt: '', draggable: false });
   node.append(svg, rest, bone);
@@ -78,9 +79,9 @@ export function animatedUno() {
   const accent = (strength: number) => {
     const amount = reduced.matches ? 0 : Math.max(0, Math.min(1, strength));
     for (const { ears, brows } of faces) {
-      brows.forEach(brow => { brow.style.transform = amount ? `translateY(${-5 * amount}px)` : ''; });
+      brows.forEach(brow => { brow.style.transform = amount ? `translateY(${-2 * amount}px)` : ''; });
       ears.forEach((ear, index) => {
-        ear.style.transform = amount ? `translateY(${3 * amount}px) rotate(${(index === 0 ? -12 : 12) * amount}deg)` : '';
+        ear.style.transform = amount ? `translateY(${1 * amount}px) rotate(${(index === 0 ? -4 : 4) * amount}deg)` : '';
       });
     }
   };

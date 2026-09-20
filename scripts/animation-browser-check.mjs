@@ -16,8 +16,11 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(url);
-    const nav = page.getByRole('navigation');
-    const focus = name => nav.getByRole('button', { name, exact: true }).click();
+    const focus = async name => {
+      const tab = page.getByRole('tab', { name: { Tuner: 'Tune', Tone: 'Tone', Metronome: 'Tempo' }[name], exact: true });
+      if (await tab.isVisible()) await tab.click();
+      else await page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
+    };
     await focus('Metronome');
     await page.evaluate(() => {
       window.nods = 0;
@@ -184,7 +187,7 @@ try {
       requestAnimationFrame(sample);
     }));
     for (const beat of [0, 2]) {
-      assert.ok(accents.some(frame => frame.beat === beat && frame.brows.every(y => y < -2) && frame.ears.every(y => y > 1)), 'accent lifts both poses’ brows and lowers their ears');
+      assert.ok(accents.some(frame => frame.beat === beat && frame.brows.every(y => y < -0.8 && y >= -2) && frame.ears.every(y => y > 0.3 && y <= 1)), 'accent lifts both poses’ brows and lowers their ears');
     }
     assert.ok(accents.some(frame => frame.beat === 1), 'sample includes an unaccented beat');
     assert.ok(accents.filter(frame => frame.beat === 1 || frame.beat === 3).every(frame => [...frame.brows, ...frame.ears].every(y => y === 0)), 'unaccented beats and their subdivisions leave the face at rest');
@@ -209,6 +212,9 @@ try {
         return animate.apply(this, args);
       };
     });
+    assert.equal(await page.locator('.tuner-friend .uno').getAttribute('data-pose'), 'sleep');
+    assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true);
+    assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
     const pose = value => page.waitForFunction(value => document.querySelector('.tuner-friend .uno').dataset.pose === value, value);
     await pose('wag'); await pose('beg'); await page.waitForTimeout(320);
@@ -221,13 +227,17 @@ try {
     assert.equal(await page.evaluate(() => window.rewards), 1);
     await page.evaluate(() => { window.signal.gain.gain.value = 0; });
     await pose('rest'); await page.waitForTimeout(250);
+    assert.equal(await page.locator('.tuner-friend .uno-rest-eye').first().isVisible(), true, 'silence while listening leaves Uno awake');
+    assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), false);
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.evaluate(() => { window.signal.gain.gain.value = 0.2; });
     await pose('catch');
     assert.equal(await page.evaluate(() => window.rewards), 1, 'reduced motion catch is static');
     await page.getByRole('button', { name: 'Stop listening', exact: true }).first().click();
-    await pose('rest');
+    await pose('sleep');
+    assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true, 'stopping the microphone closes Uno’s eye');
+    assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.evaluate(() => window.signal.ac.close());
     assert.deepEqual(errors, []);
     await context.close();

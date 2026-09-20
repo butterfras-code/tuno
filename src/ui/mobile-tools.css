@@ -1,0 +1,14 @@
+.mobile-tool-tabs { display: none; }
+@media (max-width: 650px) {
+  .focus-navigation > .control:not(.tinker-control) { display: none; }
+  .app-header .focus-navigation { display: flex; width: auto; height: auto; padding: 0; background: none; grid-column: auto; }
+  .tool-strip { display: block; padding: 6px; border-radius: var(--radius-card); background: var(--color-surface); }
+  .mobile-tool-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
+  .mobile-tool-tabs .control { min-width: 0; min-height: 44px; padding: 8px 4px; border-radius: 11px; background: transparent; }
+  .mobile-tool-tabs .control[aria-selected='true'] { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; }
+  .tool-strip .tool-card, .tool-strip .tool-card:first-child, .tool-strip .tool-card:not(:last-child) { display: block; height: auto; min-height: 64px; padding: 8px 2px 2px; border-radius: 0; }
+  .tool-strip .tool-card[hidden] { display: none; }
+  .tool-strip .tool-card > .eyebrow { display: none; }
+  .tool-strip .compact-tools { height: 58px; }
+  .tool-strip .compact-tool > .control, .tool-strip .compact-tool > .tool-status { min-height: 44px; height: 44px; }
+}

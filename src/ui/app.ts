@@ -2,7 +2,6 @@ import tapHeadAsset from '../assets/uno-tap-head.svg';
 import micAsset from '../assets/mic.svg';
 import playAsset from '../assets/play.svg';
 import stopAsset from '../assets/stop.svg';
-import { createReleaseControls } from '../distribution/release.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
@@ -14,6 +13,8 @@ import { createTuner } from './views/tuner.ts';
 import { createTone } from './views/tone.ts';
 import { createMetronome } from './views/metronome.ts';
 import { tempoInput } from './tempo.ts';
+import { createMobileTools } from './mobile-tools.ts';
+import { createInformationControls } from './information.ts';
 
 /** Mount once. Views observe the same store and retain DOM/focus across updates. */
 export function mountApp(root: HTMLElement, store: PracticeStore) {
@@ -21,6 +22,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   window.addEventListener('pagehide', audio.stopAll);
   document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
   const settings = createSettings(store);
+  const information = createInformationControls();
   const header = el('header', 'app-header');
   const brand = el('div', 'brand');
   brand.append(el('h1', 'wordmark', 'tUno'), el('p', 'tagline', 'Practice with a friend.'));
@@ -39,7 +41,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   tinker.setAttribute('aria-label', 'Settings');
   tinker.classList.add('tinker-control');
   navigation.append(tinker);
-  header.append(brand, navigation);
+  header.append(brand, navigation, information.installButton);
 
   const main = el('main', 'practice-surface');
   main.id = 'practice';
@@ -108,17 +110,13 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     tools.append(card);
     return { title, status, action, tempoStatus };
   });
+  createMobileTools(tools, store);
   const footer = el('footer', 'app-footer');
   const availability = el('p', '', 'Reference tones and metronome clicks may be picked up by the microphone. Use headphones to compare.');
   availability.id = 'audio-availability';
   const offline = el('p', 'teal');
   offline.id = 'offline-status';
   prepareOffline(offline);
-  const licenses = el('details', 'licenses');
-  licenses.append(el('summary', '', 'Font licenses'));
-  // Included in both artifacts so the portable font distribution retains its notices.
-  const notice = el('pre', 'license-text', FONT_LICENSES);
-  licenses.append(notice);
   const error = el('p');
   error.setAttribute('role', 'status');
   const local = el('div', 'local-status');
@@ -126,12 +124,12 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   responsiveLabel(privacy, 'Microphone stays on this device', 'On-device audio · ');
   local.append(privacy, offline);
   const extra = el('details', 'footer-extra');
-  extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability, createReleaseControls(), licenses);
-  footer.append(local, error);
+  extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability);
+  footer.append(local, error, information.footerNavigation);
   settings.node.append(extra);
   const explorer = main.querySelector<HTMLElement>('.sample-panel')!;
   extra.append(explorer);
-  root.append(header, main, tools, footer, settings.node, ...popups);
+  root.append(header, main, tools, footer, settings.node, ...popups, ...information.dialogs);
   store.subscribe((state) => {
     links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));
     error.textContent = state.audioError;

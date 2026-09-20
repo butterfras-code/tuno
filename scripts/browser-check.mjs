@@ -62,7 +62,12 @@ try {
     assert.equal(await page.getByRole('button', { name: 'A4 = 440 Hz', exact: true }).isVisible(), true);
 
     const nav = page.getByRole('navigation', { name: 'Practice focus' });
-    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    const selectTool = async name => {
+      const tab = page.getByRole('tab', { name: ({ Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' })[name], exact: true });
+      if (await tab.isVisible()) await tab.click();
+      else await nav.getByRole('button', { name, exact: true }).click();
+    };
+    await selectTool('Reference tone');
     await page.getByRole('button', { name: 'Select F♯3', exact: true }).click();
     const soundingKey = page.getByRole('button', { name: 'Select F♯3', exact: true });
     await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
@@ -78,16 +83,16 @@ try {
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await page.getByRole('button', { name: 'Sustain on', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'Sustain off', exact: true }).evaluate((node) => node === document.activeElement), true);
-    await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
+    await selectTool('Metronome');
     await page.getByLabel('Tempo (BPM)', { exact: true }).fill('108');
     await page.getByLabel('Tempo (BPM)', { exact: true }).press('Tab');
     await page.getByLabel('Meter', { exact: true }).selectOption('6/8');
     assert.equal(await page.locator('.beat:visible').count(), 2);
     assert.equal(await page.getByLabel('Tempo (BPM)', { exact: true }).inputValue(), '108');
-    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    await selectTool('Reference tone');
     assert.equal(await page.locator('.note-picker-trigger').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
-    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    await selectTool('Tuner');
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
 
@@ -117,13 +122,13 @@ try {
     await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
     const settlingMs = await page.evaluate(() => performance.now() - window.inputStarted);
     assert.ok(settlingMs <= 500, `${mode}: settling ${settlingMs} ms`);
-    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    await selectTool('Reference tone');
     if (await page.getByRole('button', { name: 'Sustain off', exact: true }).isVisible()) await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
     await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
     await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
-    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    await selectTool('Tuner');
     assert.equal(await page.locator('.pitch-note').innerText(), 'B4');
-    await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
+    await selectTool('Metronome');
     await page.getByLabel('Tempo (BPM)', { exact: true }).fill('120');
     await page.waitForTimeout(200);
     assert.equal(await page.getByLabel('Tempo (BPM)', { exact: true }).inputValue(), '120', 'Live pitch updates must not overwrite an edit');
@@ -131,7 +136,7 @@ try {
     await page.getByLabel('Subdivision', { exact: true }).selectOption('3');
     await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
     for (const focus of ['Tuner', 'Reference tone', 'Metronome', 'Tuner', 'Metronome']) {
-      await nav.getByRole('button', { name: focus, exact: true }).click();
+      await selectTool(focus);
       await page.evaluate(() => { const until = performance.now() + 20; while (performance.now() < until) { /* Controlled foreground load. */ } });
     }
     await page.waitForFunction(() => window.scheduledClicks.length >= 13);
@@ -141,7 +146,7 @@ try {
     assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 750, 750, 1000, 750, 750, 1500]);
     await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     // Change focus and settings while input analysis and clicks continue.
-    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    await selectTool('Tuner');
     assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).isVisible(), true);
     await page.evaluate(() => { window.silenceStarted = performance.now(); window.testInput.gain.gain.value = 0; });
     await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 500 });
@@ -193,7 +198,7 @@ try {
     for (const width of [1120, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
-        await nav.getByRole('button', { name: focus, exact: true }).click();
+        await selectTool(focus);
         if (focus === 'Reference tone' || focus === 'Metronome') {
           const sound = page.getByLabel(focus === 'Reference tone' ? 'Tone sound' : 'Click sound', { exact: true });
           for (const value of focus === 'Reference tone' ? ['sine', 'triangle', 'rich'] : ['click', 'wood', 'beep', 'drum']) {
@@ -206,7 +211,7 @@ try {
     }
     // Mobile pickers share the sounding note, retain focus, and leave tools accessible.
     await page.setViewportSize({ width: 390, height: 844 });
-    await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+    await selectTool('Reference tone');
     const tone = page.locator('#view-tone');
     const noteTrigger = tone.locator('.note-picker-trigger');
     const selectedBeforeBrowsing = await noteTrigger.textContent();
@@ -229,7 +234,7 @@ try {
     await toneVolume.fill('63');
     await page.keyboard.press('Escape');
     assert.equal(await tone.locator('.tone-controls').getByRole('button', { name: 'Volume 63%', exact: true }).isVisible(), true);
-    await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
+    await selectTool('Metronome');
     await page.getByLabel('Meter', { exact: true }).selectOption('free');
     assert.equal(await page.locator('.beat-grid').isVisible(), false);
     await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
@@ -240,12 +245,12 @@ try {
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
-        await nav.getByRole('button', { name: focus, exact: true }).click();
+        await selectTool(focus);
         const bounds = await page.locator('.practice-surface').boundingBox();
         assert.ok(bounds.height <= 485, `${mode}: ${focus} mobile surface must fit the design at ${width}px`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       }
-      await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
+      await selectTool('Reference tone');
       for (const trigger of [tone.locator('.note-picker-trigger'), tone.getByRole('button', { name: 'Browse octave', exact: true })]) {
         await trigger.click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -256,7 +261,7 @@ try {
     await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).click();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
-    await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+    await selectTool('Tuner');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await settings.getByLabel('Show Uno', { exact: true }).uncheck();
     await settings.getByRole('button', { name: 'Save settings' }).click();
@@ -275,7 +280,7 @@ try {
       for (const width of [1120, 390]) {
         await page.setViewportSize({ width, height: 900 });
         for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
-          await nav.getByRole('button', { name: focus, exact: true }).click();
+          await selectTool(focus);
           await page.screenshot({ path: join(directory, `${focus.replaceAll(' ', '-')}-${width}.png`), fullPage: true });
         }
       }

@@ -11,7 +11,8 @@ try {
         const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1120, height: 1000 }, hasTouch: mobile });
         const page = await context.newPage();
         await page.goto(host.url);
-        await page.getByRole('navigation').getByRole('button', { name: 'Metronome', exact: true }).click();
+        if (mobile) await page.getByRole('tab', { name: 'Tempo', exact: true }).click();
+        else await page.getByRole('navigation').getByRole('button', { name: 'Metronome', exact: true }).click();
         await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
         const main = page.getByLabel('Tempo (BPM)', { exact: true });
         const quick = page.getByLabel('Quick tempo (BPM)', { exact: true });

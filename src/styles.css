@@ -657,3 +657,13 @@ img { display: block; max-width: 100%; }
 }
 
 .tone-controls .control { height: 56px; }
+
+/* Rest remains awake while listening; microphone-off has its own night scene. */
+.uno-animated[data-pose='sleep'] .uno-sit { opacity: 0; }
+.uno-animated[data-pose='sleep'] .uno-rest { opacity: 1; }
+.uno-window-night, .uno-sleep-eye { display: none; }
+.uno-animated[data-pose='sleep'] .uno-window-sky { fill: #45445f; }
+.uno-animated[data-pose='sleep'] .uno-window-hills { fill: #66677a; }
+.uno-animated[data-pose='sleep'] .uno-window-night,
+.uno-animated[data-pose='sleep'] .uno-sleep-eye { display: inline; }
+.uno-animated[data-pose='sleep'] .uno-rest-eye { display: none; }

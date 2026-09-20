@@ -19,6 +19,33 @@ try {
   await page.goto(host.url);
   assert.equal(await page.evaluate(() => isSecureContext), true);
   await page.getByText('Offline ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'A4 reference (Hz)' }).fill('442');
+  await page.getByRole('button', { name: 'Save settings', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  assert.equal(await page.getByRole('spinbutton', { name: 'A4 reference (Hz)' }).inputValue(), '442');
+  assert.equal(await page.getByRole('button', { name: 'Stop listening', exact: true }).count(), 0);
+  await page.getByRole('spinbutton', { name: 'A4 reference (Hz)' }).fill('440');
+  await page.getByRole('button', { name: 'Save settings', exact: true }).click();
+  const installControl = page.getByRole('button', { name: 'Install', exact: true });
+  await installControl.click();
+  await page.getByRole('dialog', { name: 'Keep tUno close' }).waitFor();
+  assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).isVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await installControl.evaluate((button) => document.activeElement === button), true);
+  for (const [name, title] of [['About', 'About tUno'], ['Uno', 'Meet Uno'], ['Support', 'Support tUno'], ['Privacy', 'Your privacy']]) {
+    const trigger = page.getByRole('button', { name, exact: true });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: title, exact: true });
+    await dialog.waitFor();
+    if (name === 'About') {
+      await dialog.getByText('Font licenses', { exact: true }).click();
+      assert.match(await dialog.locator('.license-text').textContent(), /SIL OPEN FONT LICENSE/);
+    }
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    assert.equal(await trigger.evaluate((button) => document.activeElement === button), true);
+  }
   const version = await page.locator('meta[name="tuno-version"]').getAttribute('content');
   const manifest = await page.evaluate(async () => (await fetch(document.querySelector('link[rel="manifest"]').href)).json());
   assert.equal(manifest.display, 'standalone');
@@ -28,8 +55,9 @@ try {
   }
   host.setAvailable(false);
   await context.setOffline(true);
+  await installControl.click();
   const downloading = page.waitForEvent('download');
-  await page.locator('a', { hasText: 'Download offline HTML' }).evaluate((link) => link.click());
+  await page.getByRole('link', { name: 'Download offline HTML' }).click();
   const download = await downloading;
   assert.equal(download.suggestedFilename(), `tuno-${version}.html`);
   const saved = join(temp, download.suggestedFilename());
@@ -80,7 +108,7 @@ try {
   assert.deepEqual(requests.filter((request) => request !== fileUrl), []);
   await fileContext.close();
   await context.close();
-  console.log(`${engineName}: localhost HTTPS manifest/icons, offline download, matching file launch/playback, and simulated install lifecycle passed.`);
+  console.log(`${engineName}: accessible install/footer dialogs, localhost HTTPS manifest/icons, offline download, matching file launch/playback, and simulated install lifecycle passed.`);
 } finally {
   await browser.close();
   await host.close();

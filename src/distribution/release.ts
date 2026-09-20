@@ -75,9 +75,6 @@ export function createReleaseControls() {
     install.hidden = true;
     result.textContent = 'tUno installed.';
   });
-  const help = el('details');
-  help.append(el('summary', '', 'Install or keep an offline copy'), el('p', 'small',
-    'Use Install tUno when offered, or your browser’s Install app / Add to Home Screen menu where available. Wait for Offline ready before reopening without a connection. Download offline HTML saves a separate copy you can move and open directly; keep that file to use it again.'));
-  node.append(row(download, install), result, help, label);
+  node.append(row(download, install), result, label);
   return node;
 }
