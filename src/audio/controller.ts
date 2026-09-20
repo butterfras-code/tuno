@@ -109,6 +109,7 @@ export function createAudioController(store: PracticeStore) {
   function stopTone() {
     toneGeneration++;
     tonePending = false;
+    heldToneNote = undefined;
     clearTimeout(toneTimer);
     if (oscillator && gain && context) {
       const oldOsc = oscillator, oldGain = gain;
@@ -130,7 +131,7 @@ export function createAudioController(store: PracticeStore) {
   }
   function scheduleRelease() {
     clearTimeout(toneTimer);
-    if (oscillator && !store.get().sustain) toneTimer = setTimeout(stopTone, 1200);
+    if (oscillator && !store.get().sustain && heldToneNote === undefined) toneTimer = setTimeout(stopTone, 1200);
   }
   async function playTone() {
     const generation = ++toneGeneration;
@@ -226,6 +227,7 @@ export function createAudioController(store: PracticeStore) {
     } finally { if (generation === metronomeGeneration) metronomePending = false; }
   }
   function stopAll() { stopMic(); stopTone(); stopMetronome(); }
+  let heldToneNote: number | undefined;
   let sustain = store.get().sustain;
   let { toneNote, a4, toneVolume, toneSound } = store.get();
   const unsubscribe = store.subscribe((state) => {
@@ -249,8 +251,12 @@ export function createAudioController(store: PracticeStore) {
     toggleMic: () => stream || store.get().micStatus === 'requesting' ? stopMic() : void startMic(),
     pressToneKey(note: number) {
       if (store.get().sustain && store.get().toneNote === note && (oscillator || tonePending)) { stopTone(); return; }
+      heldToneNote = store.get().sustain ? undefined : note;
       store.dispatch({ type: 'tone-note', value: note });
       void playTone();
+    },
+    releaseToneKey(note: number) {
+      if (!store.get().sustain && heldToneNote === note) stopTone();
     },
     toggleTone: () => oscillator || tonePending ? stopTone() : void playTone(),
     dispose() { stopAll(); unsubscribe(); pulseListeners.clear(); tapListeners.clear(); if (context) { context.onstatechange = null; void context.close(); } },

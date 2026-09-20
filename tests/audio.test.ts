@@ -106,8 +106,15 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.equal(store.get().tonePlaying, false);
     store.dispatch({ type: 'sustain', value: false });
     audio.pressToneKey(62); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true, 'Sustain off plays while the key is held');
+    audio.releaseToneKey(62);
+    assert.equal(store.get().tonePlaying, false, 'Sustain off stops when the key is released');
     audio.pressToneKey(62); await Promise.resolve();
-    assert.equal(store.get().tonePlaying, true, 'Sustain off retriggers the timed note');
+    audio.pressToneKey(64); await Promise.resolve();
+    audio.releaseToneKey(62);
+    assert.equal(store.get().tonePlaying, true, 'Releasing an older key does not stop the current note');
+    audio.releaseToneKey(64);
+    assert.equal(store.get().tonePlaying, false);
   } finally {
     audio.dispose();
     if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', originalRaf); else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');

@@ -48,7 +48,7 @@ The layout regression runs in Chromium and Firefox as part of `npm run verify`. 
 
 PR #8 (`fccea0e`) is incorporated on this branch. Tone now offers Sine, Triangle and Rich between Volume and Play/Stop; metronome offers Click, Woodblock, Beep and Drum. The tone control is an intentional addition beyond the supplied PDF. Both responsive selectors share the same sound and change an active voice without changing pitch or volume.
 
-With Sustain on, pressing the sounding piano key stops it; another press starts it, and a different key changes pitch. Rapid repeated presses cancel pending audio startup. With Sustain off, key presses retrigger the timed note.
+With Sustain on, pressing the sounding piano key stops it; another press starts it, and a different key changes pitch. Rapid repeated presses cancel pending audio startup. With Sustain off, a piano key sounds while held and stops on release.
 
 Both tail modes use the original SVG pose as their raised endpoint, rather than curling the tail into the torso. Vertical motion lowers from that endpoint on each beat; sideways motion mirrors it without changing its height. Browser checks measure the transformed tail tip on both sides as well as its audio phase.
 

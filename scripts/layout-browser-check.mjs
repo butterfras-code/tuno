@@ -19,10 +19,7 @@ try {
       if (document.documentElement.scrollWidth > innerWidth) issues.push('horizontal overflow');
       const visible = el => {
         if (!el.checkVisibility() || !el.getBoundingClientRect().width) return false;
-        const rail = el.closest('.octave-rail');
-        if (!rail) return true;
-        const box = el.getBoundingClientRect(), clip = rail.getBoundingClientRect();
-        return box.top >= clip.top && box.bottom <= clip.bottom;
+        return true;
       };
       const controls = [...document.querySelectorAll('nav button, main button, main select, main input:not([type=range]), .tool-strip button, .tool-strip input')]
         .filter(el => visible(el) && !el.closest('.piano, [popover]'));
@@ -51,6 +48,24 @@ try {
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
       await nav.getByRole('button', { name, exact: true }).click();
       if (view === 'tone') {
+        const rows = await page.locator('#view-tone').evaluate(node => {
+          const bounds = element => { const { x, y, width } = element.getBoundingClientRect(); return { x, y, width }; };
+          return {
+            top: [...node.querySelector('.tone-controls').children].map(bounds),
+            bottom: [...node.querySelector('.keyboard-heading').children].map(bounds),
+          };
+        });
+        assert.ok(rows.top.every(box => Math.abs(box.y - rows.top[0].y) < 1), 'Top controls share one row');
+        assert.ok(Math.abs(rows.bottom[0].x - rows.top[0].x) < 1, 'Note aligns with Play');
+        assert.ok(Math.abs(rows.bottom[0].width - rows.top[0].width) < 1, 'Note matches Play width');
+        assert.ok(Math.abs(rows.bottom[1].x - rows.top[1].x) < 1, 'Octave aligns with Sustain');
+        assert.ok(Math.abs(rows.bottom[1].x + rows.bottom[1].width - rows.top[3].x - rows.top[3].width) < 1, 'Octave spans remaining controls');
+        const key = page.locator('.piano-key--white').first();
+        const selectedNote = (await key.getAttribute('aria-label')).replace('Select ', '');
+        await key.click();
+        await page.locator('.note-picker-trigger').filter({ hasText: selectedNote }).waitFor();
+        const stop = page.locator('.tone-controls').getByRole('button', { name: 'Stop tone', exact: true });
+        if (await stop.count()) await stop.click();
         await page.locator('.tone-sound:visible').selectOption('triangle');
         await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
         await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();

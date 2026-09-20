@@ -27,29 +27,28 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   sound.classList.add('tone-sound');
   const soundField = field('Sound', sound);
   sound.setAttribute('aria-label', 'Tone sound');
-  soundField.className = 'tone-sound-field desktop-only';
+  soundField.className = 'tone-sound-field';
   sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes.';
-  const controls = row(sustain, desktopVolume.node, soundField, play);
+  const controls = row(play, sustain, desktopVolume.node, soundField);
   controls.classList.add('tone-controls');
   const notes = selectorPopover('Choose note', Array.from({ length: 12 }, (_, value) => ({ value, label: noteName(60 + value).replace(/\d+$/, '') })), value => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + Number(value) }); void audio.playTone(); });
   const notePicker = notes.trigger;
-  notePicker.classList.add('note-picker-trigger', 'mobile-only');
+  notePicker.classList.add('note-picker-trigger');
   notePicker.setAttribute('aria-controls', notes.popup.id);
-  controls.prepend(notePicker);
 
   const selected = el('div', 'selected-tone');
-  const selectedName = el('p', 'selected-note');
   const selectedDetail = el('p', 'muted');
-  selected.append(selectedName, selectedDetail);
+  selected.append(notePicker, selectedDetail);
   const decrease = button('− Octave', () => store.dispatch({ type: 'octave', value: store.get().octave - 1 }));
   const increase = button('+ Octave', () => store.dispatch({ type: 'octave', value: store.get().octave + 1 }));
   const keyboardTop = el('div', 'keyboard-heading');
   const octaveMenu = selectorPopover('Browse octave', Array.from({ length: LIMITS.octave.max }, (_, i) => ({ value: i + 1, label: String(i + 1) })), value => store.dispatch({ type: 'octave', value: Number(value) }));
   const octavePicker = octaveMenu.trigger;
-  octavePicker.classList.add('mobile-only');
   octavePicker.setAttribute('aria-controls', octaveMenu.popup.id);
-  responsiveLabel(decrease, '− Octave', '−');
-  responsiveLabel(increase, '+ Octave', '+');
+  decrease.textContent = '−';
+  decrease.setAttribute('aria-label', '− Octave');
+  increase.textContent = '+';
+  increase.setAttribute('aria-label', '+ Octave');
   keyboardTop.append(selected, row(decrease, octavePicker, increase));
 
   const keyboard = el('div', 'keyboard-layout');
@@ -58,22 +57,42 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   piano.setAttribute('role', 'group');
   piano.setAttribute('aria-label', 'Concert-pitch keyboard');
   scroll.append(piano);
-  const rail = el('div', 'octave-rail');
-  rail.setAttribute('role', 'group');
-  rail.setAttribute('aria-label', 'Browse octaves');
-  rail.append(el('p', 'eyebrow', 'OCTAVE'));
-  const octaves: HTMLButtonElement[] = [];
-  for (let octave = LIMITS.octave.max; octave >= LIMITS.octave.min; octave--) {
-    const item = button(String(octave), () => store.dispatch({ type: 'octave', value: octave }));
-    item.setAttribute('aria-label', `Octave ${octave}`);
-    octaves.push(item);
-    rail.append(item);
-  }
-  keyboard.append(scroll, rail);
+  keyboard.append(scroll);
   // One octave of keys, kept mounted so selection changes preserve keyboard focus.
   const whiteSemitones = [0, 2, 4, 5, 7, 9, 11, 12, 14];
   const keys = Array.from({ length: 15 }, (_, semitone) => {
-    const key = button('', () => { audio.pressToneKey((store.get().octave + 1) * 12 + semitone); });
+    let activeNote: number | undefined;
+    let suppressClick = false;
+    const note = () => (store.get().octave + 1) * 12 + semitone;
+    const press = () => {
+      activeNote = note();
+      audio.pressToneKey(activeNote);
+    };
+    const release = () => {
+      if (activeNote !== undefined) audio.releaseToneKey(activeNote);
+      activeNote = undefined;
+    };
+    const key = button('', () => {
+      if (suppressClick) { suppressClick = false; return; }
+      audio.pressToneKey(note());
+    });
+    key.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || store.get().sustain) return;
+      suppressClick = true;
+      key.setPointerCapture(event.pointerId);
+      press();
+    });
+    key.addEventListener('pointerup', release);
+    key.addEventListener('pointercancel', release);
+    key.addEventListener('contextmenu', event => event.preventDefault());
+    key.addEventListener('keydown', event => {
+      if (store.get().sustain || event.repeat || (event.key !== ' ' && event.key !== 'Enter')) return;
+      suppressClick = true;
+      press();
+    });
+    key.addEventListener('keyup', event => {
+      if (event.key === ' ' || event.key === 'Enter') release();
+    });
     const whiteIndex = whiteSemitones.indexOf(semitone);
     key.className = `piano-key ${whiteIndex < 0 ? 'piano-key--black' : 'piano-key--white'}`;
     if (semitone > 12) key.classList.add('piano-key--extension');
@@ -83,21 +102,8 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     return key;
   });
   const keyboardHint = el('p', 'keyboard-hint small muted');
-  const mobileVolume = volume.cloneNode() as HTMLInputElement;
-  mobileVolume.addEventListener('input', () => store.dispatch({ type: 'tone-volume', value: Number(mobileVolume.value) }));
-  const compactVolume = volumePopover('Tone output volume', mobileVolume);
-  const mobilePlay = button('Play tone', audio.toggleTone);
-  const mobileSound = select(TONE_SOUNDS, value => store.dispatch({ type: 'tone-sound', value: value as ToneSound }));
-  mobileSound.setAttribute('aria-label', 'Tone output sound');
-  mobileSound.classList.add('tone-sound');
-  mobileSound.title = sound.title;
-  const mobileSoundField = field('Sound', mobileSound);
-  mobileSound.setAttribute('aria-label', 'Tone output sound');
-  mobileSoundField.className = 'tone-sound-field';
-  const outputControls = row(compactVolume.node, mobileSoundField, mobilePlay);
-  outputControls.classList.add('tone-output', 'mobile-only');
   const primary = el('div', 'tone-primary');
-  primary.append(top, controls, keyboardTop, keyboard, keyboardHint, outputControls);
+  primary.append(top, controls, keyboardTop, keyboard, keyboardHint);
 
   node.append(primary, notes.popup, octaveMenu.popup);
 
@@ -109,28 +115,22 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     sustain.textContent = `Sustain ${state.sustain ? 'on' : 'off'}`;
     sustain.setAttribute('aria-pressed', String(state.sustain));
     volume.value = String(state.toneVolume);
-    sound.value = mobileSound.value = state.toneSound;
+    sound.value = state.toneSound;
     desktopVolume.trigger.textContent = `Volume ${state.toneVolume}%`;
-    selectedName.textContent = noteName(state.toneNote);
-    mobileVolume.value = String(state.toneVolume);
-    compactVolume.trigger.textContent = `Volume ${state.toneVolume}%`;
-    mobilePlay.textContent = state.tonePlaying ? 'Stop tone' : 'Play tone';
     friend.hidden = !state.showUno;
-    notes.update(state.toneNote % 12);
+    notes.update(state.toneNote % 12, noteName(state.toneNote));
     octaveMenu.update(state.octave);
-    notePicker.textContent = `Note · ${noteName(state.toneNote)}`;
-    octavePicker.textContent = `Octave ${state.octave} ↕`;
+    octavePicker.textContent = `Octave ${state.octave}`;
     responsiveLabel(keyboardHint,
-      'Drag the octave handle · Scroll or use − / +',
+      'Choose an octave above · Use − / +',
       `Swipe keys to explore · ${noteName(state.toneNote)} ${state.tonePlaying ? 'keeps sounding' : 'selected'}`);
     play.textContent = state.tonePlaying ? 'Stop tone' : 'Play tone';
-    selectedDetail.textContent = `${state.tonePlaying ? 'Playing' : 'Selected'} · ${toneHz(state).toFixed(1)} Hz`;
+    selectedDetail.textContent = `${toneHz(state).toFixed(1)} Hz`;
     const pitch = pitchText(state);
     miniNote.textContent = pitch.note;
     miniStatus.textContent = state.micStatus !== 'idle' ? `${state.micStatus} · ${pitch.direction}` : state.manualHz === null ? 'No sample' : pitch.direction;
     decrease.disabled = state.octave === LIMITS.octave.min;
     increase.disabled = state.octave === LIMITS.octave.max;
-    for (const item of octaves) item.setAttribute('aria-pressed', String(Number(item.textContent) === state.octave));
     keys.forEach((key, semitone) => {
       const note = (state.octave + 1) * 12 + semitone;
       const name = noteName(note);

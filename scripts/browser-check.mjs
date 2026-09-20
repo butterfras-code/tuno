@@ -72,9 +72,9 @@ try {
     await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
     await page.getByRole('button', { name: 'Select G3', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).first().isVisible(), true);
-    const selectedFrequency = await page.locator('.selected-note').innerText();
+    const selectedFrequency = await page.locator('.note-picker-trigger').innerText();
     await page.getByRole('button', { name: '+ Octave', exact: true }).click();
-    assert.equal(await page.locator('.selected-note').innerText(), selectedFrequency);
+    assert.equal(await page.locator('.note-picker-trigger').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await page.getByRole('button', { name: 'Sustain on', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'Sustain off', exact: true }).evaluate((node) => node === document.activeElement), true);
@@ -85,7 +85,7 @@ try {
     assert.equal(await page.locator('.beat:visible').count(), 2);
     assert.equal(await page.getByLabel('Tempo (BPM)', { exact: true }).inputValue(), '108');
     await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
-    assert.equal(await page.locator('.selected-note').innerText(), selectedFrequency);
+    assert.equal(await page.locator('.note-picker-trigger').innerText(), selectedFrequency);
     assert.equal(await page.getByRole('button', { name: 'Select C4', exact: true }).isVisible(), true);
     await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
@@ -195,7 +195,7 @@ try {
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
         await nav.getByRole('button', { name: focus, exact: true }).click();
         if (focus === 'Reference tone' || focus === 'Metronome') {
-          const sound = page.getByLabel(focus === 'Reference tone' ? (width <= 650 ? 'Tone output sound' : 'Tone sound') : 'Click sound', { exact: true });
+          const sound = page.getByLabel(focus === 'Reference tone' ? 'Tone sound' : 'Click sound', { exact: true });
           for (const value of focus === 'Reference tone' ? ['sine', 'triangle', 'rich'] : ['click', 'wood', 'beep', 'drum']) {
             await sound.selectOption(value);
             assert.equal(await sound.inputValue(), value);
@@ -224,11 +224,11 @@ try {
     await noteTrigger.click();
     await page.keyboard.press('Escape');
     assert.equal(await noteTrigger.evaluate(node => node === document.activeElement), true);
-    await tone.locator('.tone-output').getByRole('button', { name: 'Volume 40%', exact: true }).click();
-    const toneVolume = page.getByLabel('Tone output volume', { exact: true });
+    await tone.locator('.tone-controls').getByRole('button', { name: 'Volume 40%', exact: true }).click();
+    const toneVolume = page.getByLabel('Tone volume', { exact: true });
     await toneVolume.fill('63');
     await page.keyboard.press('Escape');
-    assert.equal(await tone.locator('.tone-output').getByRole('button', { name: 'Volume 63%', exact: true }).isVisible(), true);
+    assert.equal(await tone.locator('.tone-controls').getByRole('button', { name: 'Volume 63%', exact: true }).isVisible(), true);
     await nav.getByRole('button', { name: 'Metronome', exact: true }).click();
     await page.getByLabel('Meter', { exact: true }).selectOption('free');
     assert.equal(await page.locator('.beat-grid').isVisible(), false);
@@ -246,7 +246,7 @@ try {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       }
       await nav.getByRole('button', { name: 'Reference tone', exact: true }).click();
-      for (const trigger of [tone.locator('.note-picker-trigger'), tone.locator('.keyboard-heading .mobile-only')]) {
+      for (const trigger of [tone.locator('.note-picker-trigger'), tone.getByRole('button', { name: 'Browse octave', exact: true })]) {
         await trigger.click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         assert.equal(await page.locator('.tool-strip').getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);

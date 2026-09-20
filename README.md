@@ -32,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Use **Start listening** for microphone input, select a piano key to play it, and use **Stop all audio** to release capture and stop output. Sustain off plays a 1.2-second tone. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
+Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
 
 ```sh
 npm run check
