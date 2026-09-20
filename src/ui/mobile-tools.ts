@@ -1,17 +1,21 @@
 import './mobile-tools.css';
 import { TOOLS } from '../practice/state.ts';
-import type { PracticeStore } from '../practice/state.ts';
+import type { Focus } from '../practice/state.ts';
 import { button, el } from './components.ts';
 
 /** Reuse each live control panel so changing tabs never restarts audio. */
-export function createMobileTools(tools: HTMLElement, store: PracticeStore) {
+export function createMobileTools(tools: HTMLElement) {
+  let selectedTool: Focus = 'tuner';
   const panels = [...tools.querySelectorAll<HTMLElement>('.tool-card')];
   const tabs = el('div', 'mobile-tool-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Practice tool controls');
   const mobile = window.matchMedia('(max-width: 650px)');
   const controls = TOOLS.map((tool, index) => {
-    const tab = button(tool.id === 'tuner' ? 'Tune' : tool.id === 'tone' ? 'Tone' : 'Tempo', () => store.dispatch({ type: 'focus', value: tool.id }));
+    const tab = button(tool.id === 'tuner' ? 'Tune' : tool.id === 'tone' ? 'Tone' : 'Tempo', () => {
+      selectedTool = tool.id;
+      update();
+    });
     tab.id = `tool-tab-${tool.id}`;
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-controls', `tool-panel-${tool.id}`);
@@ -33,7 +37,7 @@ export function createMobileTools(tools: HTMLElement, store: PracticeStore) {
   tools.prepend(tabs);
   let previousLayout = '';
   const update = () => {
-    const focus = store.get().focus;
+    const focus = selectedTool;
     const layout = `${mobile.matches}:${focus}`;
     if (layout === previousLayout) return;
     previousLayout = layout;
@@ -52,5 +56,5 @@ export function createMobileTools(tools: HTMLElement, store: PracticeStore) {
     });
   };
   mobile.addEventListener('change', update);
-  store.subscribe(update);
+  update();
 }

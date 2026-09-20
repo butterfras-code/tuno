@@ -110,7 +110,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     tools.append(card);
     return { title, status, action, tempoStatus };
   });
-  createMobileTools(tools, store);
+  createMobileTools(tools);
   const footer = el('footer', 'app-footer');
   const availability = el('p', '', 'Reference tones and metronome clicks may be picked up by the microphone. Use headphones to compare.');
   availability.id = 'audio-availability';

@@ -46,8 +46,8 @@ try {
     await page.goto(host.url);
     await page.evaluate(() => document.fonts.ready);
     const selectTool = async name => {
+      await page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
       if (width <= 650) await page.getByRole('tab', { name: { Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' }[name], exact: true }).click();
-      else await page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
     };
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
       await selectTool(name);
@@ -124,6 +124,19 @@ try {
     await inspect(width, 'playing');
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
     if (width <= 650) {
+      const nav = page.getByRole('navigation', { name: 'Practice focus' });
+      for (const [name, view] of [['Tuner', 'tuner'], ['Reference tone', 'tone'], ['Metronome', 'metronome']]) {
+        const selectedBefore = await page.getByRole('tab', { selected: true }).textContent();
+        await nav.getByRole('button', { name, exact: true }).click();
+        assert.equal(await page.getByRole('tab', { selected: true }).textContent(), selectedBefore, 'Main navigation preserves quick panel');
+        for (const quick of ['Tune', 'Tone', 'Tempo']) {
+          await page.getByRole('tab', { name: quick, exact: true }).click();
+          assert.equal(await page.locator(`#view-${view}`).isVisible(), true, 'Quick tabs preserve main view');
+          assert.equal(await nav.getByRole('button', { name, exact: true }).getAttribute('aria-pressed'), 'true');
+          assert.equal(await page.locator('.tool-card:visible').count(), 1);
+          await inspect(width, `${view}-quick-${quick.toLowerCase()}`);
+        }
+      }
       await page.getByRole('tab', { name: 'Tempo', exact: true }).focus();
       await page.keyboard.press('Home');
       assert.equal(await page.getByRole('tab', { name: 'Tune', exact: true }).getAttribute('aria-selected'), 'true');
@@ -131,9 +144,20 @@ try {
       assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
       assert.equal(await page.locator('.tool-card').nth(1).getByRole('button', { name: '64%', exact: true }).isVisible(), true);
       await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Play tone', exact: true }).click();
-      await selectTool('Metronome');
-      await selectTool('Reference tone');
+      assert.equal(await page.locator('#view-metronome').isVisible(), true, 'Quick tone playback leaves main Tempo view visible');
+      await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+      await nav.getByRole('button', { name: 'Tuner', exact: true }).click();
+      assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
+      await page.getByRole('tab', { name: 'Tempo', exact: true }).click();
+      await page.getByRole('tab', { name: 'Tone', exact: true }).click();
       await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).click();
+      assert.equal(await page.locator('#view-tuner').isVisible(), true);
+      await page.screenshot({ path: `${directory}/${engine.name()}-${width}-independent.png`, fullPage: true });
+      await page.setViewportSize({ width: 1120, height: 900 });
+      assert.equal(await page.locator('.tool-card:visible').count(), 3);
+      await page.setViewportSize({ width, height: 900 });
+      assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
+      assert.equal(await page.locator('#view-tuner').isVisible(), true);
       await selectTool('Metronome');
     }
     assert.ok(await page.locator('.tool-tap img').getAttribute('src').then(src => src.startsWith('data:image/svg+xml')));
