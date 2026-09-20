@@ -35,7 +35,19 @@ self.addEventListener('fetch', (event) => {
   if (!RESOURCES.includes(key)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    return await cache.match(key) || fetch(event.request);
+    const cached = await cache.match(key);
+    if (!cached) return fetch(event.request);
+    // Hosts can redirect index.html to the scope root during precaching.
+    // Navigation requests use redirect: 'manual' and reject a followed redirect.
+    // Rebuild the verified cached response to remove its redirect history.
+    if (cached.redirected && event.request.redirect !== 'follow') {
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers: cached.headers,
+      });
+    }
+    return cached;
   })());
 });
 self.addEventListener('message', (event) => {

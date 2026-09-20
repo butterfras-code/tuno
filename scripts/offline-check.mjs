@@ -13,6 +13,11 @@ let online = true;
 const resources = new Map(await Promise.all((await readdir(root)).map(async (name) => [name, await readFile(new URL(name, root))])));
 const server = createServer((request, response) => {
   if (!online) { response.destroy(); return; }
+  // Cloudflare Pages canonicalizes index.html before the worker caches it.
+  if (request.url === '/practice/index.html') {
+    response.writeHead(308, { Location: '/practice/' }).end();
+    return;
+  }
   const name = request.url === '/practice/' ? 'index.html' : request.url.replace('/practice/', '').replace(revision, version);
   if (!resources.has(name)) { response.writeHead(404).end(); return; }
   if (failCss && name === 'app.css') { response.writeHead(503).end(); return; }
@@ -36,6 +41,10 @@ try {
   let page = await context.newPage();
   await page.goto(url);
   await page.getByText('Offline ready', { exact: true }).waitFor();
+  for (let refresh = 0; refresh < 3; refresh++) {
+    await page.reload();
+    await page.getByText('Offline ready', { exact: true }).waitFor();
+  }
   await page.evaluate(() => caches.open('tuno:unrelated-scope:keep'));
   await page.getByRole('button', { name: 'Play tone', exact: true }).click();
   await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
@@ -58,6 +67,8 @@ try {
   await page.goto(url);
   await page.getByText('Offline ready', { exact: true }).waitFor();
   assert.equal(await page.locator('meta[name="tuno-version"]').getAttribute('content'), revision);
+  await page.reload();
+  await page.getByText('Offline ready', { exact: true }).waitFor();
   assert.ok((await page.evaluate(() => caches.keys())).includes('tuno:unrelated-scope:keep'));
   await page.evaluate(async () => {
     const keys = await caches.keys();
@@ -80,7 +91,7 @@ try {
   assert.equal(await brokenPage.getByText('Offline ready', { exact: true }).count(), 0);
   assert.equal((await brokenPage.evaluate(() => caches.keys())).length, 0, 'Failed installation must discard its partial cache');
   await failed.close();
-  console.log('Hosted offline: update waits across active tabs, activates after closure, reopens offline, preserves other scopes, detects missing cache, and reports failed installation.');
+  console.log('Hosted offline: refreshes redirected cached HTML online and offline, update waits across active tabs, activates after closure, reopens offline, preserves other scopes, detects missing cache, and reports failed installation.');
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
