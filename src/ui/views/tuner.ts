@@ -56,7 +56,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
 
   const friend = el('div', 'tuner-friend');
   const encouragement = el('p', 'hold-feedback mobile-only teal', 'Ready when you are.');
-  const holdCaption = el('p', 'hold-caption muted', 'Play a note to begin.');
+  const holdCaption = el('p', 'hold-caption muted', 'Wake Uno! (Turn on mic above)');
   holdCaption.setAttribute('role', 'status');
   const hold = el('progress', 'hold-progress');
   hold.max = 1;
@@ -64,7 +64,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   hold.setAttribute('aria-label', 'Steady pitch hold');
   const dog = animatedUno();
   dog.pose('sleep');
-  friend.append(encouragement, dog.node, el('p', 'friend-caption', 'A little practice. A good friend.'), holdCaption, hold);
+  friend.append(encouragement, dog.node, el('p', 'friend-caption', 'A little practice. A good friend.'), hold, holdCaption);
   const animation = createTunerFeedback();
   let frame = 0;
   let lastReward = 0;
@@ -89,10 +89,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     const encouragementText = reading && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
-    const holdText = !live ? 'Hold a note to give Uno a treat'
-      : state.micStatus === 'unreliable' || !fresh ? 'Listening…'
-      : state.micStatus === 'no-signal' ? 'Play a note'
-      : result.progress === 1 ? 'Nicely done!' : result.progress > 0 ? 'A treat is on its way…' : 'Hold your note steady.';
+    const holdText = live ? 'Hold a note to give Uno a treat' : 'Wake Uno! (Turn on mic above)';
     if (holdCaption.textContent !== holdText) holdCaption.textContent = holdText;
     marker.hidden = !reading;
     if (reading) marker.style.top = `${50 - reading.cents}%`;

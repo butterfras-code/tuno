@@ -213,6 +213,9 @@ try {
       };
     });
     assert.equal(await page.locator('.tuner-friend .uno').getAttribute('data-pose'), 'sleep');
+    const hint = page.locator('.hold-caption');
+    assert.equal(await hint.textContent(), 'Wake Uno! (Turn on mic above)');
+    assert.equal(await hint.evaluate(node => node.previousElementSibling?.classList.contains('hold-progress')), true);
     assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true);
     assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
@@ -224,6 +227,8 @@ try {
     await page.waitForTimeout(500);
     await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-catch.png` });
     await pose('happy'); await page.waitForTimeout(2800);
+    assert.equal(await hint.isVisible(), true);
+    assert.equal(await hint.textContent(), 'Hold a note to give Uno a treat');
     assert.equal(await page.evaluate(() => window.rewards), 1);
     await page.evaluate(() => { window.signal.gain.gain.value = 0; });
     await pose('rest'); await page.waitForTimeout(250);
@@ -236,6 +241,7 @@ try {
     assert.equal(await page.evaluate(() => window.rewards), 1, 'reduced motion catch is static');
     await page.getByRole('button', { name: 'Stop listening', exact: true }).first().click();
     await pose('sleep');
+    assert.equal(await hint.textContent(), 'Wake Uno! (Turn on mic above)');
     assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true, 'stopping the microphone closes Uno’s eye');
     assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.evaluate(() => window.signal.ac.close());
