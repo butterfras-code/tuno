@@ -166,6 +166,34 @@ try {
         await page.waitForTimeout(220);
       }
     }
+    await tempo.fill('240'); await tempo.press('Enter');
+    await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
+    await page.getByRole('button', { name: 'Accent beat 3', exact: true }).click();
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
+    const accents = await page.evaluate(() => new Promise(done => {
+      const frames = [];
+      const start = performance.now();
+      const sample = () => {
+        const dog = document.querySelector('.pet-tempo');
+        const dy = selector => [...dog.querySelectorAll(selector)].map(node => new DOMMatrix(getComputedStyle(node).transform).m42);
+        frames.push({ beat: [...document.querySelectorAll('.beat')].findIndex(node => node.getAttribute('aria-current') === 'true'),
+          brows: dy('.uno-eyebrow'), ears: dy('.uno-ear') });
+        if (performance.now() - start > 1600) done(frames);
+        else requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }));
+    for (const beat of [0, 2]) {
+      assert.ok(accents.some(frame => frame.beat === beat && frame.brows.every(y => y < -2) && frame.ears.every(y => y > 1)), 'accent lifts both poses’ brows and lowers their ears');
+    }
+    assert.ok(accents.some(frame => frame.beat === 1), 'sample includes an unaccented beat');
+    assert.ok(accents.filter(frame => frame.beat === 1 || frame.beat === 3).every(frame => [...frame.brows, ...frame.ears].every(y => y === 0)), 'unaccented beats and their subdivisions leave the face at rest');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.waitForTimeout(300);
+    assert.ok(await pet.locator('.uno-eyebrow, .uno-ear').evaluateAll(nodes => nodes.every(node => !node.style.transform)), 'reduced motion clears accent animation');
+    await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    assert.ok(await pet.locator('.uno-eyebrow, .uno-ear').evaluateAll(nodes => nodes.every(node => !node.style.transform)), 'stop resets the face');
     await focus('Tuner');
     await page.evaluate(() => {
       const ac = new AudioContext();

@@ -46,6 +46,22 @@ export function animatedUno() {
   front.append(...paths.slice(8));
   const left = artwork(leftAsset);
   left.setAttribute('class', 'uno-head-left');
+  // Both head poses share the same feature order: face, ears, eyebrows, eyes.
+  const features = (face: Element, pivots: [string, string]) => {
+    const parts = [...face.children];
+    const wrap = (index: number, name: string) => {
+      const layer = group(name);
+      parts[index]!.replaceWith(layer);
+      layer.append(parts[index]!);
+      return layer;
+    };
+    const ears = [wrap(1, 'uno-ear uno-ear-left'), wrap(2, 'uno-ear uno-ear-right')];
+    ears.forEach((ear, index) => { ear.style.transformOrigin = pivots[index]!; });
+    const brows = [wrap(3, 'uno-eyebrow'), wrap(4, 'uno-eyebrow')];
+    return { ears, brows };
+  };
+  const faces = [features(front, ['105.938px 60.9375px', '187.5px 60.9375px']),
+    features(left.firstElementChild!, ['50px 31px', '118px 28px'])];
   // Figma head bounds in the 320px source, scaled to the retained 300px sit.
   for (const [key, value] of Object.entries({ x: 68.4375, y: 33.75, width: 150, height: 136.875 })) left.setAttribute(key, String(value));
   head.append(front, left);
@@ -59,9 +75,19 @@ export function animatedUno() {
   let nod: Animation | undefined;
   let flight: Animation | undefined;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  reduced.addEventListener('change', () => { nod?.cancel(); flight?.cancel(); });
+  const accent = (strength: number) => {
+    const amount = reduced.matches ? 0 : Math.max(0, Math.min(1, strength));
+    for (const { ears, brows } of faces) {
+      brows.forEach(brow => { brow.style.transform = amount ? `translateY(${-5 * amount}px)` : ''; });
+      ears.forEach((ear, index) => {
+        ear.style.transform = amount ? `translateY(${3 * amount}px) rotate(${(index === 0 ? -12 : 12) * amount}deg)` : '';
+      });
+    }
+  };
+  reduced.addEventListener('change', () => { nod?.cancel(); flight?.cancel(); accent(0); });
   return {
     node,
+    accent,
     pose(value: UnoPose) { if (node.dataset.pose !== value) node.dataset.pose = value; },
     tail(angle: number, playing: boolean, mirrored = false) {
       node.classList.toggle('uno-playing', playing);
