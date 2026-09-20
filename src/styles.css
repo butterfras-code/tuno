@@ -280,7 +280,7 @@ img { display: block; max-width: 100%; }
 .uno-head-left { opacity: 0; }
 .uno-looking .uno-head-front { opacity: 0; }
 .uno-looking .uno-head-left { opacity: 1; }
-.uno-looking .uno-head { transition-duration: 180ms; }
+.uno-looking .uno-head { transition-duration: 0ms; }
 .uno-tail-side { transform-origin: 150px 150px; }
 .uno-tail { transform-origin: 185.625px 246.464px; transition: transform 200ms ease-out; }
 .uno-playing .uno-tail { transition: none; }
@@ -290,9 +290,12 @@ img { display: block; max-width: 100%; }
 @keyframes uno-wag { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
 .uno-reward { position: absolute; width: 30%; height: auto; left: 35%; top: 45%; opacity: 0; pointer-events: none; transition: opacity 300ms ease-in-out; }
 .uno-animated[data-pose='catch'] .uno-reward { opacity: 1; transition: none; }
-.pet-tempo { display: inline-flex; padding: 0; border: 0; border-radius: 24px; background: transparent; touch-action: none; cursor: grab; color: inherit; }
-.pet-tempo:active { cursor: grabbing; }
-.pet-tempo:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+.pet-tempo { display: inline-flex; padding: 0; border: 0; border-radius: 24px; background: transparent; color: inherit; }
+.pet-head, .pet-body { position: absolute; padding: 0; border: 0; border-radius: 24px; background: transparent; touch-action: none; cursor: pointer; }
+.pet-head { left: 15%; top: 0; width: 75%; height: 48%; }
+.pet-body { left: 20%; top: 48%; width: 70%; height: 52%; }
+.tempo-drag-area { position: absolute; grid-column: 2 / 3; top: 0; left: 0; width: calc(100% + 24px); height: 100%; z-index: 2; padding: 0; border: 0; background: transparent; touch-action: none; cursor: ns-resize; }
+.pet-head:focus-visible, .pet-body:focus-visible, .tempo-drag-area:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .hold-caption { font-size: 13px; margin: 8px 0 10px; }
 .hold-progress { appearance: none; border: 0; width: 100%; max-width: 236px; height: 7px; border-radius: 4px; overflow: hidden; background: var(--color-tint); }
 .hold-progress::-webkit-progress-bar { background: var(--color-tint); }

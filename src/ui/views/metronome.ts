@@ -4,7 +4,7 @@ import { LIMITS, METERS, meterInfo } from '../../practice/state.ts';
 import type { Meter, PracticeStore } from '../../practice/state.ts';
 import { button, el, field, heading, responsiveLabel, row, select, view, volumePopover } from '../components.ts';
 import { petTempo } from '../pet-tempo.ts';
-import { tempoInput } from '../tempo.ts';
+import { tempoDrag, tempoInput } from '../tempo.ts';
 import dragHintAsset from '../../assets/tempo-drag-hint.svg';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
@@ -18,7 +18,8 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   mode.classList.add('beat-mode');
   top.append(title, row(meterField, mode));
   const body = el('div', 'metronome-body');
-  const tempo = tempoInput(store);
+  const pet = petTempo(store, audio);
+  const tempo = tempoInput(store, 'Tempo (BPM)', pet.look);
   tempo.classList.add('tempo-input');
   const unit = el('p', 'muted', 'BPM');
   const reading = el('div', 'tempo-reading');
@@ -40,13 +41,25 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   play.classList.add('metronome-play');
   transport.append(increase, reading, decrease);
   const friend = el('div', 'pulse-friend');
-  friend.append(petTempo(store, audio));
+  friend.append(pet.node);
   const petHint = el('p', 'tempo-pet-hint');
-  responsiveLabel(petHint, 'Pet Uno to tap tempo', 'Pet Uno: Head to tap tempo, 2 on body changes tail');
+  responsiveLabel(petHint, 'Tap head for tempo · Double-tap body for tail', 'Head: tap tempo · Body: double-tap tail');
   const sharedTempo = el('div', 'tempo-and-uno');
   const dragHint = el('img', 'tempo-drag-hint') as HTMLImageElement;
   Object.assign(dragHint, { src: dragHintAsset, alt: '', draggable: false });
-  sharedTempo.append(transport, dragHint, friend);
+  const dragArea = button('Drag to adjust tempo');
+  dragArea.className = 'tempo-drag-area';
+  dragArea.setAttribute('aria-label', 'Drag to adjust tempo');
+  dragArea.textContent = '';
+  tempoDrag(dragArea, store, pet.look);
+  dragArea.addEventListener('keydown', event => {
+    if (['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].includes(event.key)) {
+      event.preventDefault();
+      const direction = event.key === 'ArrowUp' || event.key === 'ArrowRight' ? 1 : -1;
+      store.dispatch({ type: 'tempo', value: Math.max(LIMITS.tempo.min, Math.min(LIMITS.tempo.max, store.get().tempo + direction)) });
+    }
+  });
+  sharedTempo.append(transport, dragHint, friend, dragArea);
   body.append(sharedTempo, petHint);
   const beatHint = el('p', 'beat-hint muted', 'Touch to toggle accents');
   const beats = el('ol', 'beat-grid');

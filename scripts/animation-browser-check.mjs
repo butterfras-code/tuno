@@ -28,44 +28,60 @@ try {
       };
     });
     const pet = page.locator('.pet-tempo');
+    const head = pet.locator('.pet-head');
+    const body = pet.locator('.pet-body');
     const tempo = page.getByLabel('Tempo (BPM)', { exact: true });
-    await pet.press('Enter');
-    assert.equal(await page.evaluate(() => window.nods), 1, 'keyboard taps nod');
-    await page.waitForTimeout(300);
-    const box = await pet.boundingBox();
-    const x = box.x + box.width / 2, y = box.y + box.height / 2;
-    await page.mouse.move(x, y); await page.mouse.down();
-    await page.waitForTimeout(340);
-    assert.equal(await page.locator('.pet-tempo .uno-looking').count(), 1);
-    await page.mouse.move(x, y - 80, { steps: 5 });
-    assert.equal(await tempo.inputValue(), '116');
-    await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-drag.png` });
+    await head.press('Enter');
+    assert.equal(await page.evaluate(() => window.nods), 1, 'keyboard head taps nod');
+    const headBox = await head.boundingBox();
+    await page.mouse.move(headBox.x + headBox.width / 2, headBox.y + headBox.height / 2);
+    await page.mouse.down();
+    assert.equal(await page.evaluate(() => window.nods), 2, 'head nods on contact before release');
     await page.mouse.up();
-    assert.equal(await page.locator('.pet-tempo .uno-looking').count(), 0);
-    assert.equal(await page.evaluate(() => window.nods), 1, 'hold/drag suppresses tap');
-    await page.mouse.move(x, y); await page.mouse.down();
-    await page.mouse.move(x, y + 40, { steps: 3 }); await page.mouse.up();
-    assert.equal(await tempo.inputValue(), '106', 'movement starts dragging before long press');
-    assert.equal(await page.evaluate(() => window.nods), 1);
-    if (engine === chromium) {
-      const touch = await context.newCDPSession(page);
-      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
-      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 40 }] });
-      assert.equal(await tempo.inputValue(), '116');
-      await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
-      assert.equal(await page.locator('.pet-tempo .uno-looking').count(), 0);
-      assert.equal(await page.evaluate(() => window.nods), 1);
-      await touch.detach();
-    }
-    await pet.tap();
     await page.waitForTimeout(320);
-    assert.equal(await page.evaluate(() => window.nods), 2, 'touch tap nods once');
-    await tempo.fill('240'); await tempo.press('Enter');
-    await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x, y - 80); await page.mouse.up();
-    assert.equal(await tempo.inputValue(), '240');
+    assert.equal(await page.evaluate(() => window.nods), 2, 'head tap nods only once');
+    await head.dblclick();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'head double taps never switch the tail');
+    const beforeBody = await page.evaluate(() => window.nods);
+    const beforeBodyTempo = await tempo.inputValue();
+    await body.tap(); await page.waitForTimeout(80); await body.tap();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'sides', 'body double taps switch the tail');
+    assert.equal(await page.evaluate(() => window.nods), beforeBody, 'body taps never nod');
+    assert.equal(await tempo.inputValue(), beforeBodyTempo, 'body taps never set tempo');
+    await body.press('Enter');
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'body keyboard activation switches the tail');
+
+    for (const target of [tempo, page.locator('.tempo-drag-area')]) {
+      await tempo.fill('96'); await tempo.press('Enter');
+      await tempo.click();
+      const box = await target.boundingBox();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      await page.mouse.move(x, y); await page.mouse.down();
+      assert.equal(await pet.locator('.uno-looking').count(), 0, 'contact alone does not turn the head');
+      await page.mouse.move(x, y - 60, { steps: 5 });
+      assert.equal(await tempo.inputValue(), '106');
+      assert.equal(await pet.locator('.uno-looking').count(), 1, 'dragging tempo turns the head left');
+      assert.equal(await pet.locator('.uno-head').evaluate(node => getComputedStyle(node).transitionDuration), '0s', 'drag follows without smoothing');
+      await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-drag.png` });
+      await page.mouse.up();
+      assert.equal(await pet.locator('.uno-looking').count(), 0, 'release restores the head');
+      if (engine === chromium) {
+        const touch = await context.newCDPSession(page);
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 60 }] });
+        assert.equal(await tempo.inputValue(), '116');
+        assert.equal(await pet.locator('.uno-looking').count(), 1);
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+        assert.equal(await pet.locator('.uno-looking').count(), 0, 'touch cancellation restores the head');
+        await touch.detach();
+      }
+    }
+    const beforeTouch = await page.evaluate(() => window.nods);
+    await head.tap();
+    assert.equal(await page.evaluate(() => window.nods), beforeTouch + 1, 'touch head tap nods immediately');
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await pet.press('Enter');
-    assert.equal(await page.evaluate(() => window.nods), 2, 'reduced motion suppresses nod');
+    await head.press('Enter'); await head.tap();
+    assert.equal(await page.evaluate(() => window.nods), beforeTouch + 1, 'reduced motion suppresses nod');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
 
     await page.setViewportSize({ width: 1120, height: 1000 });
@@ -97,7 +113,7 @@ try {
     const valid = samples.samples.filter(s => s.time >= samples.first && Number.isFinite(s.angle));
     assert.ok(valid.length > 30);
     assert.ok(valid.every(s => Math.abs(s.angle - 12.5 * (1 + Math.cos(2 * Math.PI * (s.time - samples.first) / 0.5))) < 5), 'tail is down on each beat and up halfway through, independent of subdivisions');
-    await pet.tap(); await page.waitForTimeout(80); await pet.tap();
+    await body.tap(); await page.waitForTimeout(80); await body.tap();
     assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
     const sides = await page.evaluate(() => new Promise(done => {
       const samples = [];
@@ -123,9 +139,9 @@ try {
     assert.ok(sides.every(sample => Math.abs(sample.tipY - 193.895 / 320) < 0.002), 'both sides retain the original raised SVG tip height');
     assert.ok(sides.some(sample => sample.tipX < 0.25) && sides.some(sample => sample.tipX > 0.75), 'tail tip stays distinct from the torso on each side');
     await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-tail-sides.png` });
-    await pet.dblclick();
+    await body.dblclick();
     assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'mouse double-click also toggles tail motion');
-    await pet.dblclick();
+    await body.dblclick();
     assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.waitForTimeout(60);
