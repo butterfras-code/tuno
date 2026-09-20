@@ -43,6 +43,13 @@ try {
       await dialog.getByText('Font licenses', { exact: true }).click();
       assert.match(await dialog.locator('.license-text').textContent(), /SIL OPEN FONT LICENSE/);
     }
+    if (name === 'Uno' || name === 'Support') {
+      assert.equal(await dialog.getByRole('link', { name: 'Support on Ko-fi' }).getAttribute('href'), 'https://ko-fi.com/qjayapp');
+    }
+    if (name === 'Uno') {
+      assert.match(await dialog.textContent(), /Uno was my first dog and my best friend\. Always the goodest boy\./);
+      assert.match(await dialog.textContent(), /giving time or service to your local animal shelter/);
+    }
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     assert.equal(await trigger.evaluate((button) => document.activeElement === button), true);
   }

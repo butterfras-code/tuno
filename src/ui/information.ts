@@ -49,9 +49,16 @@ export function createInformationControls() {
     el('p', '', 'Project source and Uno artwork licenses are still being chosen. No public redistribution license has been granted yet.'),
     el('p', '', 'Bundled fonts include their complete license notices below.'), fontSources, licenses,
   ]);
+  const supportLink = () => {
+    const link = el('a', 'control', 'Support on Ko-fi');
+    link.href = 'https://ko-fi.com/qjayapp';
+    return link;
+  };
   const uno = createDialog('uno-information', 'Meet Uno', [
-    el('p', '', 'Uno is the friend at the heart of tUno.'),
-    el('p', 'information-placeholder', 'A personal tribute to Uno is coming soon.'),
+    el('p', '', 'Uno was my first dog and my best friend. Always the goodest boy.'),
+    el('p', '', 'I was sick of being sad when reminded of him, so now he can bring a little joy into our lives every day.'),
+    el('p', '', 'If you find value in this project, please consider giving time or service to your local animal shelter—or, if you must, supporting this project via the link below so I can make more cute things.'),
+    supportLink(),
   ]);
   const privacy = createDialog('privacy-information', 'Your privacy', [
     el('p', '', 'Your microphone helps tUno hear a note. That sound stays on your device. tUno does not record it or send it to a server.'),
@@ -60,7 +67,8 @@ export function createInformationControls() {
   ]);
   const support = createDialog('support-information', 'Support tUno', [
     el('p', '', 'tUno is free and ad-free.'),
-    el('p', 'information-placeholder', 'A Ko-fi support link is coming soon.'),
+    el('p', '', 'If you find value in this project, please consider giving time or service to your local animal shelter. You can also support more cute things on Ko-fi.'),
+    supportLink(),
   ]);
   const footerNavigation = el('nav', 'information-navigation');
   footerNavigation.setAttribute('aria-label', 'About and support');

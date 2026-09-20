@@ -70,7 +70,10 @@ try {
         await key.click();
         await page.locator('.note-picker-trigger').filter({ hasText: selectedNote }).waitFor();
         const stop = page.locator('.tone-controls').getByRole('button', { name: 'Stop tone', exact: true });
-        if (await stop.count()) await stop.click();
+        // The note label updates before AudioContext.resume() finishes, especially in Firefox.
+        // Wait for the key's requested playback before stopping it and testing Play again.
+        await stop.waitFor();
+        await stop.click();
         await page.locator('.tone-sound:visible').selectOption('triangle');
         await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
         await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();

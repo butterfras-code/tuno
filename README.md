@@ -49,7 +49,7 @@ npm run verify
 - `dist/hosted/`: serve this directory over HTTPS for deployment; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
 - `dist/portable/tuno.html`: open this single file directly in a browser, including offline. It contains the same JavaScript and CSS as the hosted build.
 
-The header **Install** button explains offline use and offers **Download offline HTML**, plus **Install tUno** when the browser offers installation. Footer dialogs contain About, Uno, Support, and Privacy information; tribute text and the Ko-fi link are placeholders pending final content. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
+The header **Install** button explains offline use and offers **Download offline HTML**, plus **Install tUno** when the browser offers installation. Footer dialogs contain About, a tribute to Uno, Support with a Ko-fi link, and Privacy information. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
 
 Build outputs are ignored by Git. The build script owns and replaces `dist/`; stop the development server before running a production build or browser checks. Its ES2022 output target is a tooling choice, not a minimum-browser support claim.
 

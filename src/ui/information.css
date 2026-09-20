@@ -5,6 +5,5 @@
 .information-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
 .information-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 .information-navigation .control { min-height: 36px; height: auto; padding: 4px 2px; border: 0; background: transparent; box-shadow: none; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-.information-placeholder { color: var(--color-muted); }
 .app-header .install-control { flex-shrink: 0; }
 .information-dialog .release-controls .control-row { justify-content: flex-start; flex-wrap: wrap; }
