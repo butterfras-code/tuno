@@ -44,7 +44,7 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   const soundField = field('Sound', sound);
   sound.setAttribute('aria-label', 'Tone sound');
   soundField.className = 'tone-sound-field';
-  sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes.';
+  sound.title = 'Sine: pure tone. Triangle: gentle overtones. Rich: stronger overtones for low notes. Sweet: rounded clarinet/sax-like reeds. Clear: bright oboe/trumpet-like overtones.';
   const controls = row(play, sustain, desktopVolume.node, soundField);
   controls.classList.add('tone-controls');
   const notes = selectorPopover('Choose note', Array.from({ length: 12 }, (_, value) => ({ value, label: noteName(60 + value).replace(/\d+$/, '') })), value => { store.dispatch({ type: 'tone-note', value: (store.get().octave + 1) * 12 + Number(value) }); void audio.playTone(); });

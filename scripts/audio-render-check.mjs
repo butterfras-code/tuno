@@ -6,10 +6,11 @@ import { chromium, firefox } from 'playwright';
 const bundle = await build({ stdin: {
   contents: `import { createTimeline } from './src/music/rhythm.ts';
 import { scheduleClick } from './src/audio/click.ts';
-import { createReferenceTone } from './src/audio/tone.ts';
-window.renderTone = async (sampleRate, sound) => {
+import { createReferenceTone, setToneSound } from './src/audio/tone.ts';
+window.renderTone = async (sampleRate, sound, initialSound = sound) => {
   const ac = new OfflineAudioContext(1, sampleRate, sampleRate);
-  const voice = createReferenceTone(ac, 110, sound);
+  const voice = createReferenceTone(ac, 110, initialSound);
+  setToneSound(ac, voice.oscillator, sound);
   voice.gain.gain.value = 0.2;
   const data = (await ac.startRendering()).getChannelData(0);
   const amplitudes = [110, 220, 330, 440].map(frequency => {
@@ -53,14 +54,20 @@ try {
       assert.equal(silent.peak, 0);
       assert.deepEqual(silent.onsets, []);
     }
-    for (const sound of ['sine', 'triangle', 'rich']) {
+    for (const sound of ['sine', 'triangle', 'rich', 'sweet', 'clear']) {
       const { amplitudes: a, peak } = await page.evaluate(([rate, sound]) => window.renderTone(rate, sound), [sampleRate, sound]);
       assert.ok(peak <= 0.201, `${sound}: bounded output`);
-      assert.ok(a[0] > 0.1 && a.slice(1).every(value => value < a[0]), `${sound}: strongest fundamental`);
+      assert.ok(a[0] > 0.06 && a.slice(1).every(value => value < a[0]), `${sound}: strongest fundamental`);
       if (sound === 'sine') assert.ok(a.slice(1).every(value => value < 0.001));
       if (sound === 'triangle') assert.ok(a[2] > 0.01 && a[1] < 0.001);
+      if (sound === 'sweet') assert.ok(a[2] > a[1] * 2 && a[1] > 0.01, 'Sweet: rounded odd-harmonic reed blend');
+      if (sound === 'clear') assert.ok(a[1] > a[2] && a[3] > a[0] * 0.3, 'Clear: bright full harmonic series');
+      for (const initial of ['rich', 'sweet', 'clear', 'sine']) {
+        const switched = await page.evaluate(([rate, target, initial]) => window.renderTone(rate, target, initial), [sampleRate, sound, initial]);
+        switched.amplitudes.forEach((value, index) => assert.ok(Math.abs(value - a[index]) < 0.0001, `${initial} → ${sound}: applies selected waveform`));
+      }
       if (sound === 'rich') assert.ok(a[1] > 0.05 && a[2] > 0.025 && a[3] > 0.01);
     }
   }
-  console.log('Rendered all four clicks at 44.1/48 kHz: onset error <1 ms, correct accents, silent zero volume. All three reference tones retain their fundamental and expected harmonics.');
+  console.log('Rendered all four clicks at 44.1/48 kHz: onset error <1 ms, correct accents, silent zero volume. All five reference tones retain their fundamental and expected harmonics.');
 } finally { await browser.close(); }

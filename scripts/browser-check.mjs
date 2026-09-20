@@ -201,7 +201,7 @@ try {
         await selectTool(focus);
         if (focus === 'Reference tone' || focus === 'Metronome') {
           const sound = page.getByLabel(focus === 'Reference tone' ? 'Tone sound' : 'Click sound', { exact: true });
-          for (const value of focus === 'Reference tone' ? ['sine', 'triangle', 'rich'] : ['click', 'wood', 'beep', 'drum']) {
+          for (const value of focus === 'Reference tone' ? ['sine', 'triangle', 'rich', 'sweet', 'clear'] : ['click', 'wood', 'beep', 'drum']) {
             await sound.selectOption(value);
             assert.equal(await sound.inputValue(), value);
           }
