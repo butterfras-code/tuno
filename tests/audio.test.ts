@@ -65,7 +65,10 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.match(store.get().audioError, /disconnected/);
     deny = true; await audio.startMic(); assert.equal(store.get().micStatus, 'error');
     assert.match(store.get().audioError, /permission denied/);
+    const startupFrames: { angle: number; playing: boolean; index: number | null }[] = [];
+    audio.onPulseFrame((angle, playing, index) => startupFrames.push({ angle, playing, index }));
     await audio.startMetronome();
+    assert.deepEqual(startupFrames[0], { angle: 25, playing: true, index: 0 }, 'tail moves before the first scheduled click');
     const count = oscillators.length;
     await audio.startMetronome();
     assert.equal(oscillators.length, count);

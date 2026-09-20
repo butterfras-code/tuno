@@ -69,7 +69,7 @@ export function petTempo(store: PracticeStore, audio: AudioController) {
   store.subscribe(state => { if (state.focus !== 'metronome' || !state.showUno) cancel(); });
   audio.onTap(() => { if (!looking && store.get().showUno && store.get().focus === 'metronome') dog.nod(); });
   audio.onPulseFrame((angle, playing, index) => {
-    const mirrored = sideToSide && index !== null && index % 2 === 1;
+    const mirrored = sideToSide && index !== null && index % 2 === 0;
     dog.tail(sideToSide && playing ? TAIL_RAISED_ANGLE : angle, playing, mirrored);
     const side = index === null ? '' : index % 2 === 0 ? 'left' : 'right';
     if (node.dataset.beat !== side) node.dataset.beat = side;

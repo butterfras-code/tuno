@@ -131,8 +131,8 @@ try {
       }
       requestAnimationFrame(sample);
     }));
-    assert.ok(sides.some(sample => sample.beat === 'left' && sample.transform === ''));
-    assert.ok(sides.some(sample => sample.beat === 'right' && sample.transform === 'scaleX(-1)'));
+    assert.ok(sides.some(sample => sample.beat === 'left' && sample.transform === 'scaleX(-1)'));
+    assert.ok(sides.some(sample => sample.beat === 'right' && sample.transform === ''));
     assert.ok(sides.every(sample => ['', 'scaleX(-1)'].includes(sample.transform)), 'tail mirrors across Uno rather than rotating in place');
     assert.ok(sides.every(sample => sample.angle === 'rotate(0deg)'), 'tail stays up on both sides');
     assert.ok(sides.some(sample => sample.center < 0) && sides.some(sample => sample.center > 0), 'tail crosses Uno centerline');
@@ -150,6 +150,22 @@ try {
     assert.equal(await page.locator('.pet-tempo .uno-tail').evaluate(node => getComputedStyle(node).transform), 'none');
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
     await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await tempo.fill('30'); await tempo.press('Enter');
+    for (const motion of ['bounce', 'sides']) {
+      if (await pet.getAttribute('data-tail-motion') !== motion) await body.press('Enter');
+      for (let restart = 0; restart < 2; restart++) {
+        await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
+        await page.waitForFunction(motion => {
+          const dog = document.querySelector('.pet-tempo');
+          if (!dog.querySelector('.uno-playing')) return false;
+          return motion === 'sides'
+            ? dog.querySelector('.uno-tail-side').style.transform === 'scaleX(-1)'
+            : Number(dog.querySelector('.uno-tail').style.transform.match(/rotate\(([-\d.e+]+)/)?.[1]) > 20;
+        }, motion, { timeout: 700 });
+        await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
+        await page.waitForTimeout(220);
+      }
+    }
     await focus('Tuner');
     await page.evaluate(() => {
       const ac = new AudioContext();

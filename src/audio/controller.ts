@@ -218,6 +218,8 @@ export function createAudioController(store: PracticeStore) {
       if (generation !== metronomeGeneration) return;
       timeline = createTimeline(ac.currentTime + 0.05);
       update({ metronomePlaying: true });
+      // Move from rest immediately, including before the first scheduled click.
+      pulseListeners.forEach(listener => listener(TAIL_LOWERED_ANGLE, true, 0));
       scheduleBeats();
       renderBeat();
     } catch (error) {

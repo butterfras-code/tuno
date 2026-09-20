@@ -377,7 +377,9 @@ img { display: block; max-width: 100%; }
 .metronome-heading { display: flex; align-items: start; justify-content: space-between; min-height: 66px; flex-wrap: nowrap; }
 .metronome-heading .control-row { display: flex; flex-wrap: nowrap; gap: 12px; }
 .metronome-heading .field-label, .rhythm-controls .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.meter-field { width: 110px; }
+.meter-field { position: relative; width: 110px; }
+.meter-field::before { content: 'Meter:'; position: absolute; left: calc(50% - 33px); top: 50%; transform: translateY(-50%); pointer-events: none; font-weight: 700; }
+.meter-field select.control { padding-left: 48px; }
 .beat-mode { width: 178px; }
 .metronome-body { display: flex; position: relative; justify-content: center; padding: 20px 0 0; height: 372px; }
 .tempo-and-uno { position: relative; display: grid; grid-template-columns: 127.2px 10.6px 279.84px; gap: 4px; align-items: start; height: 280px; transform: none; }
@@ -560,6 +562,7 @@ img { display: block; max-width: 100%; }
 }
 .beat-grid { z-index: 1; }
 .beat { background: var(--color-tint); }
+.metronome-heading .meter-field { position: relative; }
 .meter-field select, .rhythm-controls select { appearance: none; text-align: center; padding-inline: 8px; }
 .piano-key--extension { display: none; }
 @media (max-width: 650px) {

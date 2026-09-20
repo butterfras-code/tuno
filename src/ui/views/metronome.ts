@@ -10,7 +10,7 @@ import dragHintAsset from '../../assets/tempo-drag-hint.svg';
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
   const title = heading('Find your rhythm.', 'A steady beat. A familiar friend.');
-  const meter = select(METERS.map(item => ({ ...item, label: `Meter: ${item.beats || 1}` })), (value) => store.dispatch({ type: 'meter', value: value as Meter }));
+  const meter = select(METERS.map(item => ({ ...item, label: String(item.beats || 1) })), (value) => store.dispatch({ type: 'meter', value: value as Meter }));
   const mode = button('View · Uno', () => store.dispatch({ type: 'numbered', value: !store.get().numbered }));
   const top = el('div', 'metronome-heading');
   const meterField = field('Meter', meter);
@@ -64,7 +64,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const beatHint = el('p', 'beat-hint muted', 'Touch to toggle accents');
   const beats = el('ol', 'beat-grid');
   beats.setAttribute('aria-label', 'Meter beats');
-  const beatItems = Array.from({ length: 4 }, (_, index) => {
+  const beatItems = Array.from({ length: 7 }, (_, index) => {
     const beat = el('li', 'beat');
     const toggle = button(String(index + 1), () => store.dispatch({ type: 'beat-accent', value: index }));
     toggle.classList.add('beat-number');
