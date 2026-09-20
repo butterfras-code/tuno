@@ -6,6 +6,22 @@ import { chromium, firefox } from 'playwright';
 const bundle = await build({ stdin: {
   contents: `import { createTimeline } from './src/music/rhythm.ts';
 import { scheduleClick } from './src/audio/click.ts';
+import { createReferenceTone } from './src/audio/tone.ts';
+window.renderTone = async (sampleRate, sound) => {
+  const ac = new OfflineAudioContext(1, sampleRate, sampleRate);
+  const voice = createReferenceTone(ac, 110, sound);
+  voice.gain.gain.value = 0.2;
+  const data = (await ac.startRendering()).getChannelData(0);
+  const amplitudes = [110, 220, 330, 440].map(frequency => {
+    let real = 0, imaginary = 0;
+    for (let i = 0; i < data.length; i++) {
+      real += data[i] * Math.cos(2 * Math.PI * frequency * i / sampleRate);
+      imaginary += data[i] * Math.sin(2 * Math.PI * frequency * i / sampleRate);
+    }
+    return 2 * Math.hypot(real, imaginary) / data.length;
+  });
+  return { amplitudes, peak: data.reduce((peak, value) => Math.max(peak, Math.abs(value)), 0) };
+};
 window.renderClicks = async (sampleRate, volume, sound) => {
   const ac = new OfflineAudioContext(1, sampleRate * 3, sampleRate);
   const timeline = createTimeline(0.1);
@@ -27,7 +43,7 @@ try {
   const page = await browser.newPage();
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   for (const sampleRate of [44100, 48000]) {
-    for (const sound of ['click', 'wood']) {
+    for (const sound of ['click', 'wood', 'beep', 'drum']) {
       const result = await page.evaluate(([rate, sound]) => window.renderClicks(rate, 50, sound), [sampleRate, sound]);
       assert.equal(result.onsets.length, 12);
       result.onsets.forEach((time, index) => assert.ok(Math.abs(time - (0.1 + index / 6)) < 0.001));
@@ -37,6 +53,14 @@ try {
       assert.equal(silent.peak, 0);
       assert.deepEqual(silent.onsets, []);
     }
+    for (const sound of ['sine', 'triangle', 'rich']) {
+      const { amplitudes: a, peak } = await page.evaluate(([rate, sound]) => window.renderTone(rate, sound), [sampleRate, sound]);
+      assert.ok(peak <= 0.201, `${sound}: bounded output`);
+      assert.ok(a[0] > 0.1 && a.slice(1).every(value => value < a[0]), `${sound}: strongest fundamental`);
+      if (sound === 'sine') assert.ok(a.slice(1).every(value => value < 0.001));
+      if (sound === 'triangle') assert.ok(a[2] > 0.01 && a[1] < 0.001);
+      if (sound === 'rich') assert.ok(a[1] > 0.05 && a[2] > 0.025 && a[3] > 0.01);
+    }
   }
-  console.log('Rendered clicks: 12 pulses at 44.1/48 kHz for both sounds; onset error <1 ms, correct accents, and silent zero volume.');
+  console.log('Rendered all four clicks at 44.1/48 kHz: onset error <1 ms, correct accents, silent zero volume. All three reference tones retain their fundamental and expected harmonics.');
 } finally { await browser.close(); }

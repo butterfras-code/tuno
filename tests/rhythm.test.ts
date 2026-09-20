@@ -55,3 +55,22 @@ test('tap tempo uses the latest four intervals', () => {
   for (const time of [0, 1000, 2000, 3000, 3500]) tap(time);
   assert.equal(tap(4000), 80);
 });
+test('numbered accents persist across presentation changes and subdivisions reach seven', () => {
+  const store = createPracticeStore();
+  store.dispatch({ type: 'meter', value: '4/4' });
+  store.dispatch({ type: 'beat-accent', value: 2 });
+  store.dispatch({ type: 'numbered', value: false });
+  store.dispatch({ type: 'focus', value: 'tone' });
+  assert.deepEqual(store.get().beatAccents, [true, false, true, false]);
+  store.dispatch({ type: 'beat-accent', value: 9 });
+  assert.deepEqual(store.get().beatAccents, [true, false, true, false]);
+  store.dispatch({ type: 'subdivision', value: 7 });
+  assert.equal(store.get().subdivision, 7);
+  store.dispatch({ type: 'subdivision', value: 8 });
+  assert.equal(store.get().subdivision, 7);
+  const timeline = createTimeline(0);
+  const pulses = Array.from({ length: 8 }, () => timeline.next({ tempo: 60, beats: 4, subdivision: 7 }));
+  assert.equal(pulses[6]!.part, 6);
+  assert.equal(pulses[7]!.beat, 1);
+  assert.ok(Math.abs(pulses[7]!.time - 1) < 1e-12);
+});

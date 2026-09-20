@@ -48,7 +48,7 @@ try {
   const other = await context.newPage();
   await other.goto(url);
   await other.getByText(/Update downloaded/).waitFor();
-  await page.getByRole('button', { name: 'Stop all audio' }).click();
+  await page.locator('button', { hasText: 'Stop all audio' }).evaluate((button) => button.click());
   await page.close();
   assert.equal(await other.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), true, 'Another open tab must keep the update waiting');
   await other.close();

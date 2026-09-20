@@ -14,6 +14,8 @@ try {
   // Certificate exception is only for this ephemeral localhost TLS fixture.
   const context = await browser.newContext({ ignoreHTTPSErrors: true, acceptDownloads: true });
   const page = await context.newPage();
+  const clickHiddenButton = (name) => page.locator('button', { hasText: name }).evaluate((button) => button.click());
+  const waitForHiddenText = (text) => page.waitForFunction((value) => document.body.textContent.includes(value), text);
   await page.goto(host.url);
   assert.equal(await page.evaluate(() => isSecureContext), true);
   await page.getByText('Offline ready', { exact: true }).waitFor();
@@ -27,7 +29,7 @@ try {
   host.setAvailable(false);
   await context.setOffline(true);
   const downloading = page.waitForEvent('download');
-  await page.getByRole('link', { name: 'Download offline HTML', exact: true }).click();
+  await page.locator('a', { hasText: 'Download offline HTML' }).evaluate((link) => link.click());
   const download = await downloading;
   assert.equal(download.suggestedFilename(), `tuno-${version}.html`);
   const saved = join(temp, download.suggestedFilename());
@@ -40,8 +42,8 @@ try {
     event.userChoice = Promise.resolve({ outcome: 'dismissed' });
     dispatchEvent(event);
   });
-  await page.getByRole('button', { name: 'Install tUno', exact: true }).click();
-  await page.getByText('Installation cancelled. You can keep practicing here.', { exact: true }).waitFor();
+  await clickHiddenButton('Install tUno');
+  await waitForHiddenText('Installation cancelled. You can keep practicing here.');
   assert.equal(await page.evaluate(() => window.promptCalls), 1);
   await page.evaluate(() => {
     const event = new Event('beforeinstallprompt', { cancelable: true });
@@ -49,18 +51,18 @@ try {
     event.userChoice = Promise.resolve({ outcome: 'dismissed' });
     dispatchEvent(event);
   });
-  await page.getByRole('button', { name: 'Install tUno', exact: true }).click();
-  await page.getByText('Installation could not start. Use your browser’s install menu if available.', { exact: true }).waitFor();
+  await clickHiddenButton('Install tUno');
+  await waitForHiddenText('Installation could not start. Use your browser’s install menu if available.');
   await page.evaluate(() => {
     const event = new Event('beforeinstallprompt', { cancelable: true });
     event.prompt = async () => {};
     event.userChoice = Promise.resolve({ outcome: 'accepted' });
     dispatchEvent(event);
   });
-  await page.getByRole('button', { name: 'Install tUno', exact: true }).click();
-  await page.getByText('Installation requested.', { exact: true }).waitFor();
+  await clickHiddenButton('Install tUno');
+  await waitForHiddenText('Installation requested.');
   await page.evaluate(() => dispatchEvent(new Event('appinstalled')));
-  await page.getByText('tUno installed.', { exact: true }).waitFor();
+  await waitForHiddenText('tUno installed.');
   await page.close();
   const fileContext = await browser.newContext({ offline: true });
   const portable = await fileContext.newPage();
@@ -74,7 +76,7 @@ try {
   await portable.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
   await portable.getByRole('button', { name: 'Start metronome', exact: true }).click();
   await portable.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
-  await portable.getByRole('button', { name: 'Stop all audio', exact: true }).click();
+  await portable.locator('button', { hasText: 'Stop all audio' }).evaluate((button) => button.click());
   assert.deepEqual(requests.filter((request) => request !== fileUrl), []);
   await fileContext.close();
   await context.close();

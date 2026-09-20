@@ -16,9 +16,10 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     async close() {}
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     createAnalyser() { return { fftSize: 4096, disconnect() {}, getFloatTimeDomainData(data: Float32Array) { data.fill(0); } }; }
+    createPeriodicWave() { return {}; }
     createGain() { return { gain: parameter(), connect() {}, disconnect() {} }; }
     createOscillator() {
-      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, addEventListener() {}, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
+      const osc = { frequency: parameter(), stopped: false, onended: null as (() => void) | null, type: 'sine', setPeriodicWave() { this.type = 'custom'; }, addEventListener() {}, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; this.onended?.(); } };
       oscillators.push(osc); return osc;
     }
   }
@@ -91,6 +92,22 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     await hiddenTone;
     assert.equal(store.get().tonePlaying, false);
     assert.equal(oscillators.length, count);
+    // Same-key sustain toggles also cancel an AudioContext resume still in flight.
+    audio.pressToneKey(60); audio.pressToneKey(60);
+    await Promise.resolve();
+    assert.equal(store.get().tonePlaying, false);
+    assert.equal(oscillators.length, count);
+    audio.pressToneKey(60); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true);
+    audio.pressToneKey(62); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true);
+    assert.equal(store.get().toneNote, 62);
+    audio.pressToneKey(62);
+    assert.equal(store.get().tonePlaying, false);
+    store.dispatch({ type: 'sustain', value: false });
+    audio.pressToneKey(62); await Promise.resolve();
+    audio.pressToneKey(62); await Promise.resolve();
+    assert.equal(store.get().tonePlaying, true, 'Sustain off retriggers the timed note');
   } finally {
     audio.dispose();
     if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', originalRaf); else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');

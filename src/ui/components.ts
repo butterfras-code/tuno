@@ -1,3 +1,4 @@
+import boneAsset from '../assets/volume-bone.svg';
 import unoAsset from '../assets/uno-happy.svg';
 import { noteName } from '../music/pitch.ts';
 import { pitchReading, displayedHz } from '../practice/state.ts';
@@ -84,14 +85,74 @@ export function responsiveLabel(node: HTMLElement, desktop: string, mobile: stri
 }
 
 /** Compact volume button opens the existing range control without losing keyboard access. */
-export function volumePopover(label: string, input: HTMLInputElement) {
+export function volumePopover(label: string, input: HTMLInputElement, options: { heading?: string; formatValue?: (value: string) => string } = {}) {
+  const formatValue = options.formatValue ?? ((value: string) => `${value}%`);
+  // Base64 avoids embedded SVG quotes invalidating a CSS url() token.
+  const thumb = boneAsset.includes(';base64,') ? boneAsset : `data:image/svg+xml;base64,${btoa(decodeURIComponent(boneAsset.slice(boneAsset.indexOf(',') + 1)))}`;
+  input.style.setProperty('--volume-thumb', `url("${thumb}")`);
   const wrapper = el('div', 'volume-popover mobile-only');
   const popup = el('div', 'volume-popup');
   popup.id = `${label.toLowerCase().replaceAll(' ', '-')}-popup`;
   popup.setAttribute('popover', 'auto');
-  popup.append(field(label, input));
+  const value = el('output', '', formatValue(input.value || '0'));
+  const title = el('div', 'volume-popup-heading');
+  title.append(el('span', '', options.heading ?? 'Volume'), value);
+  input.setAttribute('aria-label', label);
+  popup.append(title, input, el('p', 'small muted', 'Drag the bone or use arrow keys'));
+  const updateValue = () => {
+    value.textContent = formatValue(input.value);
+    const percent = (Number(input.value) - Number(input.min || 0)) / (Number(input.max || 100) - Number(input.min || 0)) * 100;
+    input.style.setProperty('--volume-percent', `${percent}%`);
+  };
+  input.addEventListener('input', updateValue);
   const trigger = button('Volume');
   trigger.setAttribute('popovertarget', popup.id);
+  popup.addEventListener('toggle', event => {
+    if (event.newState !== 'open') return;
+    updateValue();
+    const box = trigger.getBoundingClientRect();
+    popup.style.left = `${Math.max(8, Math.min(box.left, innerWidth - popup.offsetWidth - 8))}px`;
+    popup.style.top = `${box.bottom + popup.offsetHeight + 8 < innerHeight ? box.bottom + 6 : Math.max(8, box.top - popup.offsetHeight - 6)}px`;
+    input.focus();
+  });
   wrapper.append(trigger, popup);
   return { node: wrapper, trigger };
+}
+
+/** Shared, anchored selector. Native popover dismissal preserves keyboard focus. */
+let popupId = 0;
+export function selectorPopover(label: string, options: readonly { value: string | number; label: string }[], onChange: (value: string) => void) {
+  const trigger = button(label);
+  trigger.setAttribute('aria-label', label);
+  trigger.setAttribute('aria-haspopup', 'menu');
+  const popup = el('div', 'selector-popup');
+  popup.id = `selector-${++popupId}`;
+  popup.setAttribute('popover', 'auto');
+  popup.setAttribute('role', 'menu');
+  popup.setAttribute('aria-label', label);
+  trigger.setAttribute('popovertarget', popup.id);
+  const choices = options.map(option => {
+    const choice = button(option.label, () => { onChange(String(option.value)); popup.hidePopover(); trigger.focus(); });
+    choice.setAttribute('role', 'menuitemradio');
+    popup.append(choice);
+    return choice;
+  });
+  popup.addEventListener('toggle', event => {
+    trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+    if (event.newState !== 'open') return;
+    const box = trigger.getBoundingClientRect();
+    popup.style.width = `${Math.max(120, box.width)}px`;
+    popup.style.left = `${Math.max(8, Math.min(box.left, innerWidth - popup.offsetWidth - 8))}px`;
+    popup.style.top = `${box.bottom + popup.offsetHeight + 8 < innerHeight ? box.bottom + 6 : Math.max(8, box.top - popup.offsetHeight - 6)}px`;
+    (choices.find(choice => choice.getAttribute('aria-checked') === 'true') || choices[0])?.focus();
+  });
+  popup.addEventListener('keydown', event => {
+    const index = choices.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'ArrowDown' ? (index + 1) % choices.length : event.key === 'ArrowUp' ? (index - 1 + choices.length) % choices.length : event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : -1;
+    if (next >= 0) { event.preventDefault(); choices[next]!.focus(); }
+  });
+  return { trigger, popup, update(value: string | number, text?: string) {
+    trigger.textContent = `${text ?? options.find(option => String(option.value) === String(value))?.label ?? value} ▾`;
+    choices.forEach((choice, index) => choice.setAttribute('aria-checked', String(String(options[index]!.value) === String(value))));
+  } };
 }
