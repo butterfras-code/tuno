@@ -121,7 +121,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   error.setAttribute('role', 'status');
   const local = el('div', 'local-status');
   const privacy = el('span');
-  privacy.textContent = 'No data leaves your device. Free and Ad-Free.';
+  privacy.textContent = 'Your microphone audio and practice data stay on your device. Free and Ad-Free.';
   local.append(privacy, offline);
   const extra = el('details', 'footer-extra');
   extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability);
