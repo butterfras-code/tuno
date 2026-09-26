@@ -1,0 +1,24 @@
+{
+  "build": "71a0158acf65565e",
+  "revision": "0b6310b90734a6ac9ecc698e4abafc659bde4eba",
+  "dirty": true,
+  "browser": "firefox 155.0",
+  "measuredAt": "2026-09-26T10:44:48.849Z",
+  "route": "Synthetic microphone and virtual audio output",
+  "measurements": [
+    {
+      "mode": "hosted",
+      "settlingMs": 246,
+      "silenceClearMs": 141,
+      "clicks": 13,
+      "minimumLeadMs": 49.99999999999982
+    },
+    {
+      "mode": "portable",
+      "settlingMs": 262,
+      "silenceClearMs": 156,
+      "clicks": 13,
+      "minimumLeadMs": 50.00000000000004
+    }
+  ]
+}

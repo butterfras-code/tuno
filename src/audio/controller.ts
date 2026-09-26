@@ -45,7 +45,7 @@ export function createAudioController(store: PracticeStore) {
     if (!context) {
       context = new AudioContext();
       context.onstatechange = () => {
-        if (context?.state !== 'running' && (stream || oscillator || timeline)) {
+        if (context?.state !== 'running' && (stream || oscillator || tonePending || timeline || metronomePending || store.get().micStatus === 'requesting')) {
           stopAll();
           update({ micStatus: 'interrupted', audioError: 'Audio interrupted. Start listening, play a tone, or start the metronome to resume.' });
         }

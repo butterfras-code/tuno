@@ -20,3 +20,17 @@ test('rejects silence, noise and below-gate input', () => {
     assert.equal(detectPitch(signal, 48000, 0.005).frequency, null);
   }
 });
+
+test('fractional periods do not select an octave-down match for weak fundamentals', () => {
+  for (const sampleRate of [44100, 48000]) {
+    for (const frequency of [1547.2883666416267, 1661.2187903197805, 1683.435868870075]) {
+      for (const phase of [0, 1, 91, 92]) {
+        for (const harmonics of [[0.1, 1, 0.4, 0.2], [0, 1, 0.4, 0.2]]) {
+          const result = detectPitch(pitchSignal({ frequency, sampleRate, phase, harmonics }), sampleRate, 0.005);
+          assert.ok(result.frequency);
+          assert.ok(Math.abs(1200 * Math.log2(result.frequency / frequency)) < 5);
+        }
+      }
+    }
+  }
+});

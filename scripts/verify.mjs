@@ -16,6 +16,7 @@ function run(label, command, args, env = process.env) {
 let passed = false;
 try {
   run('typecheck, unit tests, build', process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'check']);
+  run('extended synthetic pitch benchmark', process.execPath, ['scripts/pitch-benchmark.ts', '--check']);
   run('release integrity', process.execPath, ['scripts/release-check.mjs']);
   for (const browser of ['chromium', 'firefox']) {
     for (const check of ['browser-check', 'layout-browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'audio-render-check', 'performance-check', 'release-browser-check']) {

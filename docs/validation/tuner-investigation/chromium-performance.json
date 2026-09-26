@@ -1,0 +1,73 @@
+{
+  "build": "71a0158acf65565e",
+  "revision": "0b6310b90734a6ac9ecc698e4abafc659bde4eba",
+  "dirty": true,
+  "measuredAt": "2026-09-26T10:41:34.072Z",
+  "browser": "chromium 153.0.8010.12",
+  "os": "linux 7.2.4-3-cachyos",
+  "cpu": "Intel(R) Core(TM) i7-14700K",
+  "route": "Synthetic input / OfflineAudioContext, no physical audio",
+  "frames": 244,
+  "maxCents": 1.3949114721319928,
+  "analysisMedianMs": 1.7999999523162842,
+  "analysisP95Ms": 1.9000000953674316,
+  "analysisMaxMs": 4.099999904632568,
+  "renderedTones": [
+    {
+      "sampleRate": 44100,
+      "a4": 400,
+      "measured": 400.00000620828683,
+      "cents": 0.00002686999379777161,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 44100,
+      "a4": 440,
+      "measured": 439.999986477761,
+      "cents": 0.00005320491114720348,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 44100,
+      "a4": 442,
+      "measured": 441.9999925515907,
+      "cents": 0.00002917407221936756,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 44100,
+      "a4": 480,
+      "measured": 480.0000055386633,
+      "cents": 0.000019976505031651207,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 48000,
+      "a4": 400,
+      "measured": 399.99997604697126,
+      "cents": 0.00010367075052499235,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 48000,
+      "a4": 440,
+      "measured": 439.9999832229986,
+      "cents": 0.00006601117412157075,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 48000,
+      "a4": 442,
+      "measured": 442.00001603010634,
+      "cents": 0.00006278702597063415,
+      "tailPeak": 0
+    },
+    {
+      "sampleRate": 48000,
+      "a4": 480,
+      "measured": 479.9999892264274,
+      "cents": 0.0000388574500135051,
+      "tailPeak": 0
+    }
+  ]
+}

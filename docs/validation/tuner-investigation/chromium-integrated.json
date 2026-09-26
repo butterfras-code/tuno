@@ -1,0 +1,24 @@
+{
+  "build": "71a0158acf65565e",
+  "revision": "0b6310b90734a6ac9ecc698e4abafc659bde4eba",
+  "dirty": true,
+  "browser": "chromium 153.0.8010.12",
+  "measuredAt": "2026-09-26T10:44:25.860Z",
+  "route": "Synthetic microphone and virtual audio output",
+  "measurements": [
+    {
+      "mode": "hosted",
+      "settlingMs": 257.40000009536743,
+      "silenceClearMs": 139.09999990463257,
+      "clicks": 13,
+      "minimumLeadMs": 50.00000000000004
+    },
+    {
+      "mode": "portable",
+      "settlingMs": 256.2999999523163,
+      "silenceClearMs": 155.90000009536743,
+      "clicks": 13,
+      "minimumLeadMs": 39.33333333333322
+    }
+  ]
+}
