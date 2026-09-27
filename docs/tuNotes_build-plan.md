@@ -1,6 +1,6 @@
 # tuNotes staged build plan
 
-Status: Stage 0 implemented as a local technical preview, 2026-09-26. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. Stages 1–8 remain unimplemented.
+Status: Stages 0–1 implemented as a local Practice preview, 2026-09-26. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. Stages 2–8 remain unimplemented.
 
 Use the existing repository and short-lived feature branches/worktrees. Each stage should be reviewable in a PR, with shared-code refactors separated from behavior changes where practical. Merge/push to `main` publishes automatically and requires publication authorization. An integration branch may collect preview stages when main must not expose unfinished navigation. Do not create a permanent second development trunk.
 
@@ -42,6 +42,8 @@ Stage 0 implementation: separate entries at `src/main.ts` and `src/apps/tunotes/
 4. Connect Uno progress using default benchmark, positive error feedback and reduced motion.
 
 Exit evidence: treble C4/bass C4 ledger geometry is correct; all natural staff positions are exhaustively mapped; a bag visits its whole pool; single-note pools terminate selection; one prompt cannot submit twice; errors reveal then advance; pauses exclude inactive response time; Practice runs from a moved/renamed portable file offline. Browser checks cover narrow phone, tablet and laptop, focus, zoom, feedback and Uno cleanup. No persistence dependency.
+
+Stage 1 implementation: explicit written spelling and four-clef position fixtures, six validated C-major staff pools, original bundled SVG notation, injected-clock/RNG Practice engine, stable A–G controls, automatic or self-paced feedback, pause/resume/finish and in-memory results. Uno uses a separate correct-count policy with the default benchmark of 10. [Practice validation](validation/tunotes-practice.md) records browser/offline coverage and the remaining teacher/device review; technical implementation does not imply classroom acceptance.
 
 ## Stage 2 — full presets and optional durable progress
 

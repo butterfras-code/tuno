@@ -10,7 +10,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 ## Project documents
 
-- [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 0 shared foundation.
+- [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 1 Practice preview ([validation](docs/validation/tunotes-practice.md)).
 
 - [Hosting setup](docs/hosting.md): Cloudflare Pages, tuno.cc, automatic production deployments, and the feature-branch/PR workflow.
 - [Release validation](docs/release-validation.md): candidate thresholds, automated results, and remaining device checks.

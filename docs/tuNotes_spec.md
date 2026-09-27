@@ -1,6 +1,6 @@
 # tuNotes product and implementation specification
 
-Status: Stage 0 shared foundation implemented, 2026-09-26. The technical preview contains a home shell and independent hosted/portable builds. Gameplay and all later-stage requirements below remain planned.
+Status: Stages 0–1 implemented as a local Practice preview, 2026-09-26. Independent hosted/portable builds now include treble/bass C-major Practice. Profiles, persistence, full key/accidental controls, adaptation, Challenge and Flow remain planned. See [Stage 1 validation](validation/tunotes-practice.md) for automated evidence and remaining human acceptance.
 
 This is the implementation reference derived from the [initial specification](tuNotes_initial-spec.md) and [design conversation](tuNotes_chat.txt), reviewed against repository revision `c3759c8f08ce400c67443d1673f4175e2d088a31`. Preserve those inputs as design history. The [staged build plan](tuNotes_build-plan.md) defines delivery order and acceptance gates.
 
