@@ -59,7 +59,7 @@ Shared Uno renderer/pose types, Uno styles, embedded fonts, generic DOM helpers,
 
 Both manifests use relative identities resolving to distinct app roots, including under nested prefixes. Cache names include app ID, scope URL, and content build. Only a worker’s own obsolete caches are deleted. The root worker explicitly excludes `notes/` and only serves its enumerated files; missing resources receive no HTML fallback. Readiness verifies worker URL, app ID and build, so a root-controlled first visit cannot claim tuNotes is ready. Integrity precaching and deferred update activation apply independently to both apps.
 
-The release manifest retains legacy tUno fields and adds an `apps` map with separate checksums/build IDs and common release/source metadata. Each portable bundle includes shared source independently and needs no sibling file. tuNotes provides memory-only Practice and remains absent from tUno navigation. This is a local preview, not publication or classroom acceptance.
+The release manifest retains legacy tUno fields and adds an `apps` map with separate checksums/build IDs and common release/source metadata. Each portable bundle includes shared source independently and needs no sibling file. tuNotes provides Practice with optional local profiles and backup and remains absent from tUno navigation. This is a local preview, not publication or classroom acceptance.
 
 
 ## tuNotes Practice (Stage 1)
@@ -71,3 +71,11 @@ The release manifest retains legacy tUno fields and adds an `apps` map with sepa
 `ui/practice-view.ts` keeps A–G buttons mounted across prompts, consumes physical key presses, captures pointer prompt tokens, and rejects queued events from before a new prompt or Resume. Global shortcuts leave editable controls alone. Visibility loss pauses play. Removing the view disposes its interval, document listeners and shared Uno renderer. `engine/progress.ts` supplies positive, once-per-run milestones against the frozen default benchmark of 10; tuner feedback remains separate. Stage 2 will add history-dependent benchmarks and full key/accidental rendering.
 
 The staff’s accessible description identifies clef, C major and position without naming the target before feedback. This offers a positional alternative, not equivalent nonvisual music reading. Browser automation covers focus, 44-pixel controls, responsive layouts, 200% zoom and reduced motion; screen-reader and physical-device acceptance remain manual.
+
+## tuNotes presets and local progress (Stage 2)
+
+`domain/presets.ts` expands explicit written positions, content, key and accidental policies into finite unique pools. Built-in clef presets and teacher-reviewed instrument Starters share this normalization with Custom. Instrument transposition metadata is independent of letter-answer spelling. `ui/staff.ts` uses original vector accidental glyphs and clef-specific signature placement tables; note accidentals cancel or alter the signature independently on every prompt.
+
+`persistence/store.ts` owns the `tunotes:data:v1` snapshot and strict backup validation/migration. Guest has no persisted observations or results. Named profiles have bounded versioned pitch observations and summaries; comparison fingerprints include preset ID/version, clef, key, policy, exact spelled pool, activity, adaptive toggle and input method. Uno freezes its benchmark at session start using the last five uninterrupted comparable sessions reaching 20 answers. Practice records the first-20 correct count separately from unbounded-session aggregate totals.
+
+Setup saves configuration and Custom definitions independently of progress. Answer observations update memory immediately and debounce storage writes; Finish, visibility loss and disposal flush pending saves. Import validates before replacement and writes once before changing memory; failure preserves both previous snapshots. Corrupt/blocked/full storage uses memory with an explanation and export. No active game is restored. Export is compact JSON capped at 5 MiB through bounded records and oldest-history pruning. See [Stage 2 validation](validation/tunotes-stage2.md).

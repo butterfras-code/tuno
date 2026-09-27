@@ -1,10 +1,12 @@
 import type { UnoPose } from '../../../shared/ui/uno-pose.ts';
 export const DEFAULT_BENCHMARK = 10;
 export class NotesProgress {
+  readonly benchmark: number;
+  constructor(benchmark = DEFAULT_BENCHMARK) { this.benchmark = Math.max(10, benchmark); }
   private earned = 0;
   private streaks = new Set<number>();
   update(correct: number, streak: number) {
-    const milestone = Math.min(5, Math.floor(correct / DEFAULT_BENCHMARK * 5));
+    const milestone = Math.min(5, Math.floor(correct / this.benchmark * 5));
     const fresh = milestone > this.earned;
     this.earned = Math.max(this.earned, milestone);
     const streakReward = [5, 10, 20].includes(streak) && !this.streaks.has(streak);

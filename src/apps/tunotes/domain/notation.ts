@@ -35,3 +35,23 @@ export function positionDescription(position: number) {
   if (position >= 0 && position <= 8) return `${['first', 'second', 'third', 'fourth', 'fifth'][Math.floor(position / 2)]} ${position % 2 ? 'space' : 'line'} from bottom`;
   return `${Math.abs(position < 0 ? position : position - 8)} half-space steps ${position < 0 ? 'below' : 'above'} staff`;
 }
+
+export const keyNames = ['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#'] as const;
+export function keySignature(name: string): KeySignature {
+  const index = (keyNames as readonly string[]).indexOf(name);
+  if (index < 0) throw new Error('Choose a supported major key.');
+  return Object.freeze({ tonic: parsePitch(`${name}4`), fifths: index - 7, mode: 'major' });
+}
+export function keyName(key: KeySignature) { return keyNames[key.fifths + 7]!; }
+export function keyAccidental(letter: Letter, key: KeySignature): Accidental {
+  const order = key.fifths > 0 ? 'FCGDAEB' : 'BEADGCF';
+  return order.slice(0, Math.abs(key.fifths)).includes(letter) ? key.fifths > 0 ? 1 : -1 : 0;
+}
+export function chromatic(p: WrittenPitch) { return (p.octave + 1) * 12 + [0, 2, 4, 5, 7, 9, 11][letters.indexOf(p.letter)]! + p.accidental; }
+// Standard engraving placements, in half-spaces from each clef's bottom line.
+export const keyPositions: Record<Clef, { sharp: readonly number[]; flat: readonly number[] }> = {
+  treble: { sharp: [8,5,9,6,3,7,4], flat: [4,7,3,6,2,5,1] },
+  bass: { sharp: [6,3,7,4,1,5,2], flat: [2,5,1,4,0,3,-1] },
+  alto: { sharp: [7,4,8,5,2,6,3], flat: [3,6,2,5,1,4,0] },
+  tenor: { sharp: [2,6,3,7,4,8,5], flat: [5,8,4,7,3,6,2] },
+};

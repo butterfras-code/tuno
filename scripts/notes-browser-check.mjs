@@ -17,15 +17,15 @@ const expected = page => page.locator('.staff').getAttribute('aria-label').then(
   return (label.startsWith('treble') ? 'EFGABCDEF' : 'GABCDEFG A'.replaceAll(' ', ''))[position];
 });
 const count = async (page, attempts) => assert.match(await page.locator('#practice-counts').textContent(), new RegExp(`/ ${attempts} attempts`));
-const running = page => page.waitForFunction(() => document.querySelector('.answer').getAttribute('aria-disabled') === 'false');
+const running = page => page.waitForFunction(() => document.querySelector('.answer-natural:not(.answer-unavailable)').getAttribute('aria-disabled') === 'false');
 async function lostKeyup(page) {
   let attempts = 0;
   for (const loss of ['blur', 'visibility']) for (const [key, code] of [['a', 'KeyA'], ['Enter', 'Enter'], [' ', 'Space']]) {
-    const answer = page.getByRole('button', { name: 'A', exact: true });
+    const answer = page.getByRole('button', { name: 'A', exact: true }).first();
     await answer.focus();
     const press = repeat => answer.dispatchEvent('keydown', { key, code, repeat, bubbles: true });
     await press(false); await count(page, ++attempts);
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
     // Model a release outside the page: deliberately omit document keyup.
     await page.evaluate(loss => {
       if (loss === 'blur') window.dispatchEvent(new Event('blur'));
@@ -36,11 +36,11 @@ async function lostKeyup(page) {
         document.dispatchEvent(new Event('visibilitychange'));
       }
     }, loss);
-    if (loss === 'visibility') await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    if (loss === 'visibility') await page.getByRole('button', { name: 'Resume', exact: true }).first().click();
     await answer.focus();
     await press(true); await count(page, attempts); // still-held auto-repeat remains rejected
     await press(false); await count(page, ++attempts); // first fresh press must work
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
     await press(true); await count(page, attempts);
     await answer.dispatchEvent('keyup', { key, code, bubbles: true });
   }
@@ -49,64 +49,64 @@ async function loop(page, mode) {
   page.setDefaultTimeout(10000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   assert.equal(await page.locator('#preset').inputValue(), 'treble-lines-and-spaces');
-  assert.equal(await page.locator('#preset option').count(), 6);
+  assert.equal(await page.locator('#preset option').count(), 56);
   await page.locator('#self-paced').check();
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
-  assert.equal(await page.locator('.answers button').allTextContents().then(a => a.join('')), 'ABCDEFG');
+  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  assert.equal(await page.locator('.answers .answer-natural').allTextContents().then(a => a.join('')), 'CDEFGABC');
   assert.equal(await page.locator('h2:focus').count(), 1);
   const seen = new Set([await page.locator('.staff').getAttribute('aria-label')]);
   const answer = await expected(page);
   assert.ok(answer);
   await page.keyboard.down(answer.toLowerCase());
   await count(page, 1);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   await page.keyboard.down(answer.toLowerCase()); // held through feedback must not submit again
   await count(page, 1); await page.keyboard.up(answer.toLowerCase());
   seen.add(await page.locator('.staff').getAttribute('aria-label'));
   const wrongFor = await expected(page); const wrong = wrongFor === 'A' ? 'B' : 'A';
-  await page.getByRole('button', { name: wrong, exact: true }).click();
+  await page.getByRole('button', { name: wrong, exact: true }).first().click();
   await count(page, 2); assert.match(await page.locator('#feedback').textContent(), new RegExp(`That note is ${wrongFor}`));
-  await page.getByRole('button', { name: wrong, exact: true }).click({ force: true }); await count(page, 2);
+  await page.getByRole('button', { name: wrong, exact: true }).first().click({ force: true }); await count(page, 2);
   // Pointer pressed during locked feedback cannot click into the next card.
   await page.evaluate(() => { window.oldPress = new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }); });
-  await page.getByRole('button', { name: 'A', exact: true }).dispatchEvent('pointerdown', { pointerId: 1 });
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'A', exact: true }).dispatchEvent('click', { detail: 1 }); await count(page, 2);
+  await page.getByRole('button', { name: 'A', exact: true }).first().dispatchEvent('pointerdown', { pointerId: 1 });
+  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
+  await page.getByRole('button', { name: 'A', exact: true }).first().dispatchEvent('click', { detail: 1 }); await count(page, 2);
   await page.evaluate(() => document.dispatchEvent(window.oldPress)); await count(page, 2); await page.keyboard.up('a');
-  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).first().click();
   await page.keyboard.press('a'); await count(page, 2); assert.equal(await page.locator('.staff').isVisible(), false);
-  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume', exact: true }).first().click();
   // Visibility event fixture: browser hidden state is injected; does not claim physical OS/tab acceptance.
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange')); });
-  assert.equal(await page.getByRole('button', { name: 'Resume', exact: true }).count(), 1);
+  assert.equal(await page.getByRole('button', { name: 'Resume', exact: true }).first().count(), 1);
   await page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
-  assert.equal(await page.getByRole('button', { name: 'Resume', exact: true }).count(), 1);
-  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Resume', exact: true }).first().count(), 1);
+  await page.getByRole('button', { name: 'Resume', exact: true }).first().click();
   for (let i = 0; i < 10; i++) {
     const current = await expected(page); seen.add(await page.locator('.staff').getAttribute('aria-label'));
     if (i === 6) assert.equal(seen.size, 9);
     await page.keyboard.press(current.toLowerCase());
-    if (i < 9) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    if (i < 9) await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   }
   assert.equal(seen.size, 9);
   await page.waitForFunction(() => document.querySelector('.uno').dataset.pose === 'happy');
-  await page.getByRole('button', { name: 'Finish', exact: true }).click();
+  await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   assert.match(await page.locator('#result-summary').textContent(), /11 correct \/ 12 attempts · Accuracy 92% · Best streak 10/);
   assert.equal(await page.locator('h2:focus').textContent(), 'Practice results');
-  await page.getByRole('button', { name: 'Retry', exact: true }).click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await count(page, 0);
   await lostKeyup(page);
-  await page.getByRole('button', { name: 'Finish', exact: true }).click();
-  await page.getByRole('button', { name: 'Retry', exact: true }).click(); await count(page, 0);
-  await page.getByRole('button', { name: 'Finish', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit setup', exact: true }).click();
+  await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await page.locator('#preset').selectOption('bass-spaces'); await page.locator('#self-paced').uncheck();
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
+  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const bass = await expected(page); await page.keyboard.press(bass.toLowerCase()); await running(page);
-  const bad = (await expected(page)) === 'A' ? 'B' : 'A'; await page.keyboard.press(bad.toLowerCase());
+  const bad = (await expected(page)) === 'A' ? 'C' : 'A'; await page.keyboard.press(bad.toLowerCase());
   assert.match(await page.locator('#feedback').textContent(), /That note is/);
   await page.waitForTimeout(350); assert.equal(await page.locator('.answer').first().getAttribute('aria-disabled'), 'true');
   await running(page); await count(page, 2);
-  await page.getByRole('button', { name: 'A', exact: true }).focus(); await page.keyboard.press('Space'); await count(page, 3);
+  await page.getByRole('button', { name: 'A', exact: true }).first().focus(); await page.keyboard.press('Space'); await count(page, 3);
   for (const width of [360, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -118,14 +118,15 @@ async function loop(page, mode) {
   await page.setViewportSize({ width: 640, height: 450 });
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  await page.getByRole('button', { name: 'Finish', exact: true }).click();
-  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
-  await page.locator('#preset').focus(); await page.keyboard.press('Tab');
+  await page.locator('#preset').focus();
+  for (let tabs = 0; tabs < 5 && !await page.locator('#self-paced:focus').count(); tabs++) await page.keyboard.press('Tab');
   assert.equal(await page.locator('#self-paced:focus').count(), 1);
   assert.notEqual(await page.locator('#self-paced').evaluate(node => getComputedStyle(node).outlineStyle), 'none');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
+  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   for (let i = 0; i < 10; i++) { await page.keyboard.press((await expected(page)).toLowerCase()); await running(page); }
   await page.waitForFunction(() => document.querySelector('.uno').dataset.pose === 'happy');
   assert.equal(await page.locator('.uno').evaluate(node => node.getAnimations({ subtree: true }).filter(a => a.playState === 'running').length), 0);
@@ -171,9 +172,9 @@ try {
   if (name === 'chromium') {
     const touch = await browser.newContext({ offline: true, hasTouch: true, viewport: { width: 390, height: 844 } });
     const p = await touch.newPage(); await p.goto(pathToFileURL(file).href);
-    await p.getByRole('button', { name: 'Start Practice', exact: true }).tap();
-    await p.getByRole('button', { name: await expected(p), exact: true }).tap(); await count(p, 1);
-    await p.getByRole('button', { name: 'Finish', exact: true }).tap(); assert.match(await p.locator('#result-summary').textContent(), /1 correct \/ 1 attempts/);
+    await p.getByRole('button', { name: 'Start Practice', exact: true }).first().tap();
+    await p.getByRole('button', { name: await expected(p), exact: true }).first().tap(); await count(p, 1);
+    await p.getByRole('button', { name: 'Finish', exact: true }).first().tap(); assert.match(await p.locator('#result-summary').textContent(), /1 correct \/ 1 attempts/);
     await touch.close(); results.push('Emulated touch Start → answer → Finish passed');
   }
   const release = JSON.parse(await readFile('dist/release.json', 'utf8'));

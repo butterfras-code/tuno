@@ -45,12 +45,12 @@ test('middle-C ledger geometry and exterior spaces', () => {
   assert.equal(staffGeometry(parsePitch('C7'), 'treble').ledgers.length, 5);
 });
 test('six presets normalize to exact finite C-major pools', () => {
-  assert.deepEqual(presets.map(p => p.pool.map(pitchLabel)), [
+  assert.deepEqual(presets.slice(0,6).map(p => p.pool.map(pitchLabel)), [
     ['E4','G4','B4','D5','F5'], ['F4','A4','C5','E5'], ['E4','F4','G4','A4','B4','C5','D5','E5','F5'],
     ['G2','B2','D3','F3','A3'], ['A2','C3','E3','G3'], ['G2','A2','B2','C3','D3','E3','F3','G3','A3'],
   ]);
   assert.equal(defaultPreset.id, 'treble-lines-and-spaces');
-  assert.ok(presets.every(p => p.key.fifths === 0 && Object.isFrozen(p.pool)));
+  assert.ok(presets.filter(p => !p.instrument).every(p => p.key.fifths === 0 && Object.isFrozen(p.pool)));
   for (const range of [['F5','E4'], ['F#4','F5'], ['H4','F5']] as const) assert.throws(() => normalizePreset({ ...defaultPreset, range }));
   assert.throws(() => normalizePreset({ ...defaultPreset, range: ['E4','E4'], content: 'spaces' }), /empty pool/);
 });

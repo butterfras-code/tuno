@@ -45,6 +45,9 @@ export class Practice {
   prompt = 1;
   pitch: WrittenPitch;
   correct = 0;
+  first20Correct = 0;
+  responseTotalMs = 0;
+  private submissions = 0;
   streak = 0;
   bestStreak = 0;
   interrupted = false;
@@ -55,7 +58,7 @@ export class Practice {
   }
   get token(): PromptToken { return { session: this.session, prompt: this.prompt }; }
   get observations(): readonly Observation[] { return this.records; }
-  get attempts() { return this.records.length; }
+  get attempts() { return this.submissions; }
   get accuracy() { return this.attempts ? this.correct / this.attempts : null; }
   get last() { return this.records.at(-1); }
   get activeMs() { return this.endTime ?? (this.state === 'paused' ? this.pausedAt : this.clock()) - this.origin - this.pausedMs; }
@@ -64,7 +67,10 @@ export class Practice {
     if (this.state !== 'running' || !this.matches(token)) return false;
     const now = this.activeMs;
     const correct = sameAnswer(this.pitch, answer);
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ ...answer }), correct, responseMs: now - this.promptStart, activity: 'practice', preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: 'practice', preset: this.preset.id }));
+    this.submissions++; this.responseTotalMs += now - this.promptStart;
+    if (correct && this.submissions <= 20) this.first20Correct++;
+    if (this.records.length > 100) this.records.shift();
     if (correct) { this.correct++; this.streak++; } else this.streak = 0;
     this.bestStreak = Math.max(this.bestStreak, this.streak);
     this.feedbackEnd = now + (correct ? 250 : 800); this.state = 'feedback'; return true;

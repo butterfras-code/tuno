@@ -1,6 +1,6 @@
 # tuNotes staged build plan
 
-Status: Stages 0–1 implemented as a local Practice preview, 2026-09-26. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. Stages 2–8 remain unimplemented.
+Status: Stages 0–2 implemented as a local Practice preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The in-phase Stage 2 answer-entry update below is implemented locally; its validation is recorded separately from the original dropdown preview. Stages 3–8 remain unimplemented.
 
 Use the existing repository and short-lived feature branches/worktrees. Each stage should be reviewable in a PR, with shared-code refactors separated from behavior changes where practical. Merge/push to `main` publishes automatically and requires publication authorization. An integration branch may collect preview stages when main must not expose unfinished navigation. Do not create a permanent second development trunk.
 
@@ -53,6 +53,22 @@ Stage 1 implementation: explicit written spelling and four-clef position fixture
 4. Implement export/validated replacement import, migrations, deletion and storage-failure fallback.
 
 Exit evidence: each preset expands into an exact tested pool; all key signatures/clefs have notation review fixtures; F versus F♯ and F♯ versus G♭ remain distinct; B♯/C♭ retain correct octave identity; changing key updates glyphs and accepted spelling together. Storage denial and corrupted data do not prevent play; valid backup round-trips between hosted and portable; oversized/malformed/future-schema import preserves existing data. tUno preference values survive tuNotes operations.
+
+Stage 2 implementation: 44 clef presets, 11 teacher-reviewed instrument Starters, all 15 major signatures and single-accidental policies, Custom preview/save, named opt-in profiles, bounded versioned observations/results, contextual first-20 Uno benchmarks, validated replacement backups and storage fallback. The teacher supplied revised written keys/ranges and sounding transposition anchors on 2026-09-27; these are recorded in the specification. Notation fixtures have developer review; physical-device and teacher engraving acceptance remain pending. See [Stage 2 validation](validation/tunotes-stage2.md).
+
+### In-phase update — answer entry (2026-09-27; implemented locally)
+
+Teacher review of the Stage 2 preview replaces the accidental dropdown with static, always-visible spelling targets. This is an update within Stage 2. The original Stage 2 evidence describes the earlier dropdown; see [answer-entry validation](validation/tunotes-input.md) for the revised controls. See [the answer-entry specification](tuNotes_spec.md#in-phase-stage-2-update--fixed-accidental-controls-2026-09-27).
+
+1. Build a fixed piano-like layout with a full half-key stagger: sharps above, naturals in the middle, flats below. The follow-up teacher correction removes B♯/C♭/E♯/F♭ from controls and exercise pools. Begin at the configured tonic and repeat it at the right edge; modified tonics stay on their sharp/flat row. Keep supported spellings visible and inactivate those outside the active pool without changing geometry or availability per prompt.
+2. Emphasize in-key spellings visually and rotate the octave only when the configured key changes. Per the teacher's implementation-time correction, unmodified letters always submit naturals: B is B♮, never B♭.
+3. Support one-tap/click submission and optional press-slide-release on the same visible targets for both mouse and touch, sharing spelling and submission logic. Keep later piano-keyboard presentation possible without adding it to this stage.
+4. Use the teacher-confirmed keyboard mapping: hold Up + letter for sharp, Down + letter for flat, Right + letter for natural; these are absolute alterations. Unmodified letters are natural. Ignore conflicting arrow modifiers, held/repeated submissions and shortcuts during text entry; show the mapping on screen. While a single arrow modifier is held, give its entire row a themed teal glow (Up: sharps; Down: flats; Right: naturals), muted on unavailable spellings. Show an Up/Right/Down keyboard keycap to the left of the matching row, highlighted with that row while held. Keep the keycaps visible when the note area scrolls on narrow screens. Clear both highlights on release, conflicting modifiers, pause, blur or visibility loss.
+5. Validate phone/tablet/desktop target sizes, fixed positions, disabled targets, key defaults, exact enharmonic spelling, mouse/touch sliding, cancellation, keyboard focus/repeat, and one submission per prompt. Compare usability with students; response time includes interface effort; physical-input speed comparisons remain future work, and current aggregate latency is not a standardized reading-speed assessment.
+
+Follow-up constraints: C♭ major is unavailable for new exercises; retain old saved configurations/history for editing and backup. Validate C and modified-tonic endpoints, duplicate submission, all supported key layouts, true half-key alignment, excluded-pitch filtering, and a full octave of 44px targets at 360px width.
+
+Stage 3 integration: animate newly enabled spelling targets in place when the active pool expands; respect reduced motion. Existing enabled targets do not move or animate as newly available merely because another octave is added. This requirement does not bring adaptive scheduling into Stage 2.
 
 ## Stage 3 — adaptive learning that can be explained
 
@@ -125,7 +141,7 @@ Gate: all inherited first-release features are implemented; required checks pass
 
 The spec selects working defaults so coding can start. Before the relevant stage is accepted, review these concrete choices:
 
-- Stage 1: one answer per card versus retry-on-error; alteration selector and keyboard mappings. The proposed single-submit rule makes accuracy comparable and prevents repeated guesses on a revealed card.
+- Stage 1: one answer per card versus retry-on-error; keyboard mappings (the original alteration selector is superseded by the in-phase Stage 2 update). The proposed single-submit rule makes accuracy comparable and prevents repeated guesses on a revealed card.
 - Stage 2: teacher-approved starter ranges/keys and notation fixtures; alto/tenor coverage; opt-in profiles and replacement-only import. These determine classroom meaning and data expectations.
 - Stage 3: adaptive thresholds and maximum envelopes. Tune against observations; speed remains separate from correctness mastery.
 - Stages 4–6: 80% Target floor, fixed feedback time, interruption qualification, equal-sized teams and per-member relay targets. These make competition deterministic; adjust the specification and tests together if classroom needs differ.
@@ -133,3 +149,12 @@ The spec selects working defaults so coding can start. Before the relevant stage
 - Stage 8: `/notes/` hosted location, navigation exposure and supported device evidence. Root service-worker scope and dual-app updates must be demonstrated before publication.
 
 Do not let pending classroom validation block independent technical stages, and do not mark unreviewed musical/device assumptions as validated. There is no effort estimate here: stage completion is based on observable acceptance, not elapsed time.
+
+## Preset/configurator refinement
+
+- Replace the long native preset dropdown with a compact accessible Clef/Instrument → selection → level dialog, plus saved/custom entry points.
+- Build graphical low/high staff editors with pointer and keyboard selection, endpoint accidental segments, linked clefs and confirmation for implicit mixed-clef activation.
+- Add Lines/Spaces/Both, additive Key/Flat/Natural/Sharp modifiers, ordered major keys, and explicit available-clef toggles.
+- Derive ledger descriptions from ranges; remove hidden ledger clipping from new configurations.
+- Extend normalization, exercise rendering, context identity and validated persistence for accidental boundaries, independent modifiers and multiple clefs; retain older configurations.
+- Validate domain semantics, persistence round trips, picker navigation, graphical input and responsive browser layouts, then run npm run check.
