@@ -1,3 +1,5 @@
+import { Challenge, validateRules } from '../engine/challenge.ts';
+import type { ChallengeRules, ChallengeEnd } from '../engine/challenge.ts';
 import { ALGORITHM_VERSION, activePool, expansionPlan } from '../engine/adaptive.ts';
 import type { Learning } from '../engine/adaptive.ts';
 import { normalizePreset, presets, fingerprint } from '../domain/presets.ts';
@@ -6,11 +8,11 @@ import { keySignature, keyName, parsePitch, pitchLabel, letters } from '../domai
 import type { ContinueAfter, Observation, Practice } from '../engine/practice.ts';
 export const STORAGE_KEY = 'tunotes:data:v1';
 export const MAX_BYTES = 5 * 1024 * 1024;
-export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
+export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; challenge?: { rules: ChallengeRules; end: ChallengeEnd; bestStreak: number }; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]>; learning?: Learning }
 export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean }
-export interface Snapshot { appId: 'tunotes'; schemaVersion: 3; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter } }
-export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 3, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
+export interface Snapshot { appId: 'tunotes'; schemaVersion: 4; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter } }
+export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 4, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
 function object(v: unknown, keys: string[]): Record<string, unknown> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail('Expected an object.');
@@ -42,12 +44,12 @@ function source(v: unknown): PresetSource {
 function observation(v: unknown): Observation {
   const o = object(v,['pitch','answer','correct','responseMs','activity','preset']);
   const p = object(o.pitch,['letter','accidental','octave']), a = object(o.answer,['letter','accidental']);
-  if (!letters.includes(p.letter as never) || !letters.includes(a.letter as never) || o.activity !== 'practice') fail('Invalid observation.');
+  if (!letters.includes(p.letter as never) || !letters.includes(a.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
   const answer = { letter: a.letter as typeof pitch.letter, accidental: integer(a.accidental,-1,1) as typeof pitch.accidental };
   const correct = boolean(o.correct);
   if (correct !== (pitch.letter === answer.letter && pitch.accidental === answer.accidental)) fail('Inconsistent observation.');
-  return { pitch, answer, correct, responseMs: number(o.responseMs), activity: 'practice', preset: id(o.preset) };
+  return { pitch, answer, correct, responseMs: number(o.responseMs), activity: o.activity as Observation['activity'], preset: id(o.preset) };
 }
 function exposure(value: unknown) {
   const p = object(value,['shown','skipped','completed']);
@@ -60,10 +62,10 @@ export function validateSnapshot(input: unknown): Snapshot {
   const o = object(input,['appId','schemaVersion','profiles','customPresets','configuration']);
   if (o.appId !== 'tunotes') fail('This is not a tuNotes backup.');
   const version = integer(o.schemaVersion);
-  if (version > 3) fail('This backup needs a newer version of tuNotes.');
+  if (version > 4) fail('This backup needs a newer version of tuNotes.');
   if (version === 0) {
     if (o.configuration !== undefined) fail('Version 0 backups cannot contain configuration.');
-    return validateSnapshot({ ...o, schemaVersion: 3, configuration: emptySnapshot().configuration });
+    return validateSnapshot({ ...o, schemaVersion: 4, configuration: emptySnapshot().configuration });
   }
   const customPresets = array(o.customPresets,100).map(source);
   unique([...presets.map(p => p.id), ...customPresets.map(p => p.id)]);
@@ -71,10 +73,22 @@ export function validateSnapshot(input: unknown): Snapshot {
   const profiles = array(o.profiles,32).map(value => {
     const p = object(value,['id','name','results','contexts','adaptive','preview']);
     const results = array(p.results,100).map(value => {
-      const r = object(value,['version','context','attempts','correct','first20','interrupted','at','activeMs','preview']);
+      const r = object(value,['version','context','attempts','correct','first20','interrupted','at','activeMs','preview','challenge']);
       if (r.version !== 1) fail('Unsupported result version.');
       const attempts = integer(r.attempts), correct = integer(r.correct,0,attempts);
-      return { version: 1 as const, context: validateContext(string(r.context,10000),validPresets), attempts, correct, first20: integer(r.first20,Math.max(0,correct-Math.max(0,attempts-20)),Math.min(20,correct)), interrupted: boolean(r.interrupted), at: integer(r.at), activeMs: number(r.activeMs), ...(r.preview === undefined ? {} : { preview: exposure(r.preview) }) };
+      let challenge: Result['challenge'];
+      if (r.challenge !== undefined) {
+        const c = object(r.challenge,['rules','end','bestStreak']);
+        const rules = validateRules(c.rules);
+        if (!['completed','timeout','partial'].includes(String(c.end))) fail('Invalid Challenge outcome.');
+        const end = c.end as ChallengeEnd, activeMs = integer(r.activeMs);
+        const limit = (rules.goal === 'timed' ? rules.seconds : rules.timeout) * 1000;
+        if (activeMs > limit || end === 'timeout' && (rules.goal !== 'target' || activeMs !== limit) || end === 'completed' && (rules.goal === 'timed' ? activeMs !== limit : correct !== rules.target || activeMs >= limit) || rules.goal === 'target' && (correct > rules.target || end !== 'completed' && correct >= rules.target)) fail('Inconsistent Challenge outcome.');
+        challenge = { rules, end, bestStreak: integer(c.bestStreak,0,correct) };
+      }
+      const context = validateContext(string(r.context,10000),validPresets);
+      if ((JSON.parse(context)[6] === 'challenge') !== Boolean(challenge)) fail('Challenge result needs rules and outcome.');
+      return { ...(challenge ? { challenge } : {}), version: 1 as const, context, attempts, correct, first20: integer(r.first20,Math.max(0,correct-Math.max(0,attempts-20)),Math.min(20,correct)), interrupted: boolean(r.interrupted), at: integer(r.at), activeMs: number(r.activeMs), ...(r.preview === undefined ? {} : { preview: exposure(r.preview) }) };
     });
     const contexts = array(p.contexts,128).map(value => {
       const c = object(value,['fingerprint','version','updated','notes','learning']);
@@ -82,7 +96,7 @@ export function validateSnapshot(input: unknown): Snapshot {
       const fp = validateContext(string(c.fingerprint,10000),validPresets);
       if (!c.notes || typeof c.notes !== 'object' || Array.isArray(c.notes)) fail('Invalid note history.');
       const parts = JSON.parse(fp);
-      const builtin = presets.find(preset => fingerprint(preset,true) === fp);
+      const builtin = presets.find(preset => fingerprint(preset,true,parts[6]) === fp);
       let learning: Learning | undefined;
       if (c.learning !== undefined) {
         const state = object(c.learning,['algorithmVersion','expansionCount']);
@@ -95,7 +109,7 @@ export function validateSnapshot(input: unknown): Snapshot {
       const notes: Record<string,Observation[]> = {};
       for (const [label, records] of entries) {
         const values = array(records,10).map(observation);
-        if (!allowed.includes(label) || !values.length || values.some(r => pitchLabel(r.pitch) !== label || r.preset !== parts[0])) fail('Note history references the wrong pitch or preset.');
+        if (!allowed.includes(label) || !values.length || values.some(r => pitchLabel(r.pitch) !== label || r.preset !== parts[0] || r.activity !== parts[6])) fail('Note history references the wrong pitch or preset.');
         notes[label] = values;
       }
       return { fingerprint: fp, version: 1 as const, updated: integer(c.updated), notes, ...(learning ? { learning } : {}) };
@@ -110,14 +124,14 @@ export function validateSnapshot(input: unknown): Snapshot {
   const profileId = c.profileId === null ? null : id(c.profileId);
   if (profileId !== null && !profiles.some(p => p.id === profileId)) fail('Selected profile does not exist.');
   const presetId = id(c.presetId); if (!validPresets.has(presetId)) fail('Selected preset does not exist.');
-  return { appId: 'tunotes', schemaVersion: 3, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
+  return { appId: 'tunotes', schemaVersion: 4, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
 }
 function validateContext(value: string, validPresets: Set<string>) {
   const parts: unknown = JSON.parse(value);
   if (!Array.isArray(parts) || ![9,10].includes(parts.length)) fail('Invalid practice context.');
   const [preset,version,clef,key,policy,pool,activity,adaptive,input] = parts;
   if (!validPresets.has(id(preset))) fail('History refers to a missing preset.');
-  if (version !== 1 || !['treble','bass','alto','tenor'].includes(String(clef)) || !['key-only','sharps','flats','both'].includes(String(policy)) || activity !== 'practice' || typeof adaptive !== 'boolean' || input !== 'letters') fail('Unsupported practice context.');
+  if (version !== 1 || !['treble','bass','alto','tenor'].includes(String(clef)) || !['key-only','sharps','flats','both'].includes(String(policy)) || !['practice','challenge'].includes(String(activity)) || typeof adaptive !== 'boolean' || input !== 'letters') fail('Unsupported practice context.');
   if (parts.length === 10) {
     const extra = object(parts[9],['version','clefs','modifiers']);
     const clefs = array(extra.clefs,4).map(v => string(v));
@@ -180,11 +194,15 @@ export class NotesStore {
   export() { return JSON.stringify(this.data); }
   profile() { return this.data.configuration.remember ? this.data.profiles.find(p => p.id === this.data.configuration.profileId) : undefined; }
   benchmark(preset: Preset, adaptive = false) { return Math.max(10,...(this.profile()?.results.filter(r => r.context === fingerprint(preset,adaptive) && r.attempts >= 20 && !r.interrupted).slice(-5).map(r => r.first20) ?? [])); }
+  challengeBenchmark(preset: Preset, adaptive: boolean, rules: ChallengeRules) {
+    if (rules.goal === 'target') return rules.target;
+    return Math.max(10,...(this.profile()?.results.filter(r => r.context === fingerprint(preset,adaptive,'challenge') && r.challenge?.end === 'completed' && !r.interrupted && r.attempts > 0 && JSON.stringify(r.challenge.rules) === JSON.stringify(rules)).slice(-5).map(r => r.correct) ?? []));
+  }
   observe(profileId: string | undefined, preset: Preset, observation: Observation, adaptive = false, learning?: Learning) {
     if (!profileId) return;
     this.update(data => {
       const p = data.profiles.find(p => p.id === profileId); if (!p) return;
-      const fp = fingerprint(preset,adaptive); let context = p.contexts.find(c => c.fingerprint === fp);
+      const fp = fingerprint(preset,adaptive,observation.activity); let context = p.contexts.find(c => c.fingerprint === fp);
       if (!context) { context = { fingerprint: fp, version: 1, updated: Date.now(), notes: {} }; p.contexts.push(context); }
       if (adaptive && learning) { if (context.learning && context.learning.algorithmVersion !== learning.algorithmVersion) context.notes = {}; context.learning = learning; }
       context.updated = Date.now(); const label = pitchLabel(observation.pitch);
@@ -193,10 +211,10 @@ export class NotesStore {
     },true);
   }
   record(profileId: string | undefined, session: Practice) {
-    if (!profileId || !session.attempts) return;
+    if (!profileId || !session.attempts && !(session instanceof Challenge)) return;
     this.update(data => {
       const p = data.profiles.find(p => p.id === profileId); if (!p) return;
-      p.results.push({ version: 1, context: fingerprint(session.preset,session.adaptive), attempts: session.attempts, correct: session.correct, first20: session.first20Correct, interrupted: session.interrupted, at: Date.now(), activeMs: session.activeMs, preview: session.preview });
+      p.results.push({ version: 1, context: fingerprint(session.preset,session.adaptive,session.activity), attempts: session.attempts, correct: session.correct, first20: session.first20Correct, interrupted: session.interrupted, at: Date.now(), activeMs: session instanceof Challenge ? Math.floor(session.activeMs) : session.activeMs, ...(session instanceof Challenge ? { challenge: { rules: session.rules, end: session.end ?? 'partial', bestStreak: session.bestStreak } } : {}), preview: session.preview });
       p.results = p.results.slice(-100);
     });
   }

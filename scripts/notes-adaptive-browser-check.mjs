@@ -138,7 +138,11 @@ async function expansion(page) {
   assert.equal(await page.locator('.answer-added').getAttribute('data-letter'),'B');
   const after=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
   // The announcement may move the answer block vertically, but every target keeps its relative geometry.
-  assert.deepEqual(after.map(n=>({x:n.x,y:n.y-after[0].y})),before.map(n=>({x:n.x,y:n.y-before[0].y})));
+  assert.equal(after.length,before.length);
+  after.forEach((n,i)=> {
+    assert.ok(Math.abs(n.x-before[i].x)<0.01,'Answer target keeps its horizontal position');
+    assert.ok(Math.abs((n.y-after[0].y)-(before[i].y-before[0].y))<0.01,'Answer target keeps its relative row position');
+  });
   await button(page,'Finish').click(); await button(page,'Edit setup').click();await setToggle(page,'meet-notes',true);
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();
   const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B');

@@ -28,7 +28,7 @@ export class ShuffledBag {
   }
 }
 export interface PromptToken { readonly session: number; readonly prompt: number }
-export interface Observation { readonly pitch: WrittenPitch; readonly answer: AnswerSpelling; readonly correct: boolean; readonly responseMs: number; readonly activity: 'practice'; readonly preset: string }
+export interface Observation { readonly pitch: WrittenPitch; readonly answer: AnswerSpelling; readonly correct: boolean; readonly responseMs: number; readonly activity: 'practice' | 'challenge'; readonly preset: string }
 let nextSession = 0;
 export type ContinueAfter = 'instant' | 'delay' | 'click' | 'correct';
 export class Practice {
@@ -37,6 +37,7 @@ export class Practice {
   readonly selfPaced: boolean;
   readonly continueAfter: ContinueAfter;
   readonly adaptive: boolean;
+  readonly activity: 'practice' | 'challenge';
   preview: { shown: boolean; skipped: boolean; completed: boolean } = { shown: false, skipped: false, completed: false };
   learning: AdaptiveState;
   announcement = '';
@@ -68,8 +69,8 @@ export class Practice {
   bestStreak = 0;
   interrupted = false;
   private endTime: number | undefined;
-  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random, options: { continueAfter?: ContinueAfter; adaptive?: boolean; notes?: NoteHistory; learning?: Learning } = {}) {
-    this.adaptive = options.adaptive ?? false; this.random = random; this.learning = initialAdaptive(options.notes,options.learning);
+  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random, options: { activity?: 'practice' | 'challenge'; continueAfter?: ContinueAfter; adaptive?: boolean; notes?: NoteHistory; learning?: Learning } = {}) {
+    this.activity = options.activity ?? 'practice'; this.adaptive = options.adaptive ?? false; this.random = random; this.learning = initialAdaptive(options.notes,options.learning);
     this.continueAfter = options.continueAfter ?? (selfPaced ? 'click' : 'delay');
     this.preset = preset; this.selfPaced = this.continueAfter === 'click'; this.clock = clock; this.origin = clock();
     this.bag = new ShuffledBag(preset.pool, random); this.pitch = this.nextPitch();
@@ -86,7 +87,7 @@ export class Practice {
     const now = this.activeMs;
     const correct = sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: 'practice', preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
     if (this.adaptive) {
       const previousPool = this.activePreset.pool;
       const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;

@@ -10,7 +10,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 ## Project documents
 
-- [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 2 Practice preview with full presets and optional local progress ([validation](docs/validation/tunotes-stage2.md)).
+- [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 4 Practice and solo Challenge preview with full presets, adaptation and optional local progress ([validation](docs/validation/tunotes-stage4.md)).
 
 - [Hosting setup](docs/hosting.md): Cloudflare Pages, tuno.cc, automatic production deployments, and the feature-branch/PR workflow.
 - [Release validation](docs/release-validation.md): candidate thresholds, automated results, and remaining device checks.
@@ -51,8 +51,8 @@ npm run verify
 `npm run build` clears `dist/` once and builds both apps from per-app descriptors:
 
 - `dist/hosted/`: serve this directory over HTTPS for deployment; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
-- `dist/hosted/notes/`: tuNotes Practice preview with its own manifest, worker, cache, and versioned download; tUno navigation does not link to this preview.
-- `dist/portable/tunotes.html`: independent tuNotes Practice app, including shared Uno artwork, fonts, and license notices.
+- `dist/hosted/notes/`: tuNotes Practice and Challenge preview with its own manifest, worker, cache, and versioned download; tUno navigation does not link to this preview.
+- `dist/portable/tunotes.html`: independent tuNotes Practice and Challenge app, including shared Uno artwork, fonts, and license notices.
 - `dist/portable/tuno.html`: open this single file directly in a browser, including offline. It contains the same JavaScript and CSS as the hosted build.
 
 The header **Install** button explains offline use and offers **Download offline HTML**, plus **Install tUno** when the browser offers installation. Footer dialogs contain About, a tribute to Uno, Support with a Ko-fi link, and Privacy information. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
