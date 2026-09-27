@@ -15,7 +15,7 @@ const results=[],errors=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true}).first();
 const readData=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')));
 async function previewLabels(page) {
-  const previous=button(page,'Previous note'),next=button(page,'Next note');
+  const previous=button(page,'Previous'),next=button(page,'Next');
   while(await previous.isVisible() && await previous.isEnabled()) await previous.click();
   const labels=[];
   do {
@@ -40,20 +40,26 @@ async function run(page,url,mode) {
   await page.locator('#adaptive').check(); await page.locator('#self-paced').check();
   await button(page,'Start Practice').click();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
-  assert.equal(await button(page,'Start').isDisabled(),true);
+  assert.equal(await button(page,'Start Practice').isDisabled(),true);
+  assert.equal(await button(page,'Skip').isVisible(),true);
+  assert.equal(await button(page,'Replay').isVisible(),false);
   assert.equal(await page.locator('.preview-staff .notehead').count(),1);
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
   const frames=await page.locator('.preview-toy').evaluate(n=>n.getAnimations()[0].effect.getKeyframes().map(f=>f.transform));
   assert.match(frames[0],/^translate\([0-9]/); assert.match(frames[2],/^translate\(-/);
   assert.match(frames[4],/^translate\(0/); assert.match(frames.at(-1),/^translate\([0-9]/);
-  await page.clock.runFor(475);
+  assert.match(frames[3],/-105px/);
+  await page.clock.runFor(750);
   assert.equal(await page.locator('.preview-note.revealed').count(),1);
-  assert.equal(await page.locator('.preview-note-label').textContent(),'E4');
-  await page.clock.runFor(950);
-  assert.equal(await page.locator('.preview-note-label').textContent(),'F4');
-  await page.keyboard.press('a'); await page.clock.runFor(11000);
+  assert.equal(await page.locator('.preview-note-label').textContent(),'E');
+  assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 9');
+  await page.clock.runFor(1500);
+  assert.equal(await page.locator('.preview-note-label').textContent(),'F');
+  await page.keyboard.press('a'); await page.clock.runFor(15000);
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'uno-wag');
-  assert.equal(await button(page,'Start').isEnabled(),true);
+  assert.equal(await button(page,'Start Practice').isEnabled(),true);
+  assert.equal(await button(page,'Skip').isVisible(),false);
+  assert.equal(await button(page,'Replay').isVisible(),true);
   assert.equal(await page.locator('.note-preview .uno').getAttribute('data-pose'),'happy');
   assert.equal((await previewLabels(page)).length,9);
   assert.equal(await page.locator('.preview-staff').count(),1);
@@ -64,6 +70,8 @@ async function run(page,url,mode) {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     const staff=await page.locator('.preview-staff').boundingBox(), dog=await page.locator('.note-preview .uno').boundingBox(), head=await page.locator('.preview-staff .notehead').boundingBox();
     assert.ok(dog.x >= staff.x+staff.width); assert.ok(Math.abs(head.x+head.width/2-staff.x-staff.width/2)<1);
+    const previous=await button(page,'Previous').boundingBox(), next=await button(page,'Next').boundingBox();
+    assert.equal(previous.y,next.y);
     await page.screenshot({path:`dist/validation/notes-adaptive-${name}-${mode}-${width}.png`,fullPage:true});
   }
   await page.evaluate(()=>{document.documentElement.style.zoom='2';});
@@ -71,7 +79,8 @@ async function run(page,url,mode) {
   await page.evaluate(()=>{document.documentElement.style.zoom='';});
   await button(page,'Replay').click();
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
-  await page.clock.runFor(1900);
+  await page.clock.runFor(3000);
+  assert.equal(await button(page,'Skip').isVisible(),true);
   await button(page,'Skip').click();
   await page.clock.runFor(100);
   await page.keyboard.press('a');
@@ -86,10 +95,11 @@ async function run(page,url,mode) {
   await choosePreset(page,'trombone-two-octaves'); await page.locator('#meet-notes').check();
   await button(page,'Start Practice').click();
   const labels=await previewLabels(page); assert.equal(labels.length,15);
-  assert.equal(labels[0],'E♭2'); assert.equal(labels.at(-1),'E♭4');
-  assert.match(await page.locator('.preview-note-status').textContent(),/Note 1 of 15/);
+  assert.equal(labels[0],'E♭'); assert.equal(labels.at(-1),'E♭');
+  assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 15');
+  assert.equal(await page.locator('.preview-navigation').evaluate(n=>n.parentElement.className),'preview-staff-viewport');
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
-  await button(page,'Replay').click();await button(page,'Start').click();
+  await button(page,'Replay').click();await button(page,'Start Practice').click();
   assert.equal(await page.locator('.practice-stage .staff').count(),1);
   assert.equal(await page.locator('.preview-note').count(),0);
   await page.keyboard.down('ArrowDown');await page.keyboard.press('b');await page.keyboard.up('ArrowDown');await button(page,'Finish').click();
@@ -130,8 +140,8 @@ async function expansion(page) {
   assert.deepEqual(after.map(n=>({x:n.x,y:n.y-after[0].y})),before.map(n=>({x:n.x,y:n.y-before[0].y})));
   await button(page,'Finish').click(); await button(page,'Edit setup').click();await page.locator('#meet-notes').check();
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();
-  const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B3');
-  await button(page,'Skip').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await page.locator('#adaptive').uncheck();await button(page,'Start Practice').click();
+  const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B');
+  await button(page,'Start Practice').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await page.locator('#adaptive').uncheck();await button(page,'Start Practice').click();
   assert.equal((await previewLabels(page)).length,5);
   results.push('Seeded mastered profile: 20-answer gate at arbitrarily slow recorded latencies, lower expansion announcement, in-place B activation, restored preview growth and adaptive-off original pool passed');
 }

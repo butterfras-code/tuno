@@ -53,12 +53,13 @@ export function renderPreviewStaff(pitch: WrittenPitch, clef: Clef, key: KeySign
   const width = 460+Math.abs(key.fifths)*38;
   const y = staffGeometry(pitch,clef).noteY;
   const top = Math.min(0,y-60), bottom = Math.max(200,y+55);
-  svg.setAttribute('viewBox',`0 ${top} ${width} ${bottom-top+35}`);
+  svg.setAttribute('viewBox',`0 ${top} ${width} ${bottom-top+55}`);
   svg.querySelectorAll(':scope > line:not(.ledger)').forEach(line=>line.setAttribute('x2',String(width-24)));
-  const note = svgNode('g',{class:'preview-note','data-label':`${spelling(pitch)}${pitch.octave}`});
+  const note = svgNode('g',{class:'preview-note','data-label':spelling(pitch)});
   svg.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(n=>note.append(n));
   const label = svgNode('text',{x:width/2,y:bottom+12,'text-anchor':'middle',class:'preview-note-label'});
-  label.textContent = `${spelling(pitch)}${pitch.octave}`;
-  note.append(label); svg.append(note);
+  label.textContent = spelling(pitch);
+  const progress = svgNode('text',{x:width/2,y:bottom+34,'text-anchor':'middle',class:'preview-note-status'});
+  note.append(label,progress); svg.append(note);
   return svg;
 }
