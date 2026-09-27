@@ -14,6 +14,20 @@ const host=await hostBuild(), temporary=await mkdtemp(join(tmpdir(),'tunotes pha
 const results=[],errors=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true}).first();
 const readData=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')));
+async function previewLabels(page) {
+  const previous=button(page,'Previous notes'),next=button(page,'Next notes');
+  while(await previous.isVisible() && await previous.isEnabled()) await previous.click();
+  const labels=[];
+  do {
+    assert.equal(await page.locator('.preview-staff').count(),1);
+    assert.equal(await page.locator('figure.preview-note').count(),0);
+    labels.push(...await page.locator('.preview-note-label').allTextContents());
+    if(!await next.isVisible() || !await next.isEnabled()) break;
+    await next.click();
+  } while(true);
+  while(await previous.isVisible() && await previous.isEnabled()) await previous.click();
+  return labels;
+}
 async function run(page,url,mode) {
   page.setDefaultTimeout(10000);
   page.on('pageerror',e=>errors.push(e.message)); await page.goto(url);
@@ -29,7 +43,8 @@ async function run(page,url,mode) {
   await page.keyboard.press('a'); await page.clock.runFor(11000);
   assert.equal(await button(page,'Start').isEnabled(),true);
   assert.equal(await page.locator('.note-preview .uno').getAttribute('data-pose'),'happy');
-  assert.equal(await page.locator('.preview-note.revealed').count(),9);
+  assert.equal((await previewLabels(page)).length,9);
+  assert.equal(await page.locator('.preview-staff').count(),1);
   assert.equal(await page.locator('#practice-counts').isVisible(),false);
   let data=await readData(page);assert.deepEqual(data.profiles[0].contexts,[]);assert.deepEqual(data.profiles[0].results,[]);
   for(const width of [360,768,1280]) {
@@ -54,10 +69,9 @@ async function run(page,url,mode) {
   await page.emulateMedia({reducedMotion:'reduce'});
   await choosePreset(page,'trombone-two-octaves'); await page.locator('#meet-notes').check();
   await button(page,'Start Practice').click();
-  assert.equal(await page.locator('.preview-note').count(),15);
-  assert.match((await page.locator('.preview-note figcaption').allTextContents())[0],/^E♭2/);
-  assert.match((await page.locator('.preview-note figcaption').allTextContents()).at(-1),/^E♭4/);
-  assert.equal(await page.locator('.preview-group').count(),4);
+  const labels=await previewLabels(page); assert.equal(labels.length,15);
+  assert.equal(labels[0],'E♭2'); assert.equal(labels.at(-1),'E♭4');
+  assert.match(await page.locator('.preview-group-status').textContent(),/Group 1 of 4/);
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
   await button(page,'Replay').click();await button(page,'Start').click();
   assert.equal(await page.locator('.practice-stage .staff').count(),1);
@@ -100,9 +114,9 @@ async function expansion(page) {
   assert.deepEqual(after.map(n=>({x:n.x,y:n.y-after[0].y})),before.map(n=>({x:n.x,y:n.y-before[0].y})));
   await button(page,'Finish').click(); await button(page,'Edit setup').click();await page.locator('#meet-notes').check();
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();
-  assert.equal(await page.locator('.preview-note').count(),6);assert.match((await page.locator('.preview-note figcaption').allTextContents())[0],/^B3/);
+  const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B3');
   await button(page,'Skip').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await page.locator('#adaptive').uncheck();await button(page,'Start Practice').click();
-  assert.equal(await page.locator('.preview-note').count(),5);
+  assert.equal((await previewLabels(page)).length,5);
   results.push('Seeded mastered profile: 20-answer gate at arbitrarily slow recorded latencies, lower expansion announcement, in-place B activation, restored preview growth and adaptive-off original pool passed');
 }
 try {

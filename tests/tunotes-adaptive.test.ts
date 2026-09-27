@@ -4,7 +4,7 @@ import { ALGORITHM_VERSION, activePool, expansionPlan, initialAdaptive, learn, m
 import { beginnerPreview, previewGroups } from '../src/apps/tunotes/engine/preview.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import type { Observation } from '../src/apps/tunotes/engine/practice.ts';
-import { defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
+import { clefForPitch, defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
 import { chromatic, parsePitch, pitchLabel, staffPosition } from '../src/apps/tunotes/domain/notation.ts';
 import { NotesStore, parseBackup } from '../src/apps/tunotes/persistence/store.ts';
 const observation = (pitch = defaultPreset.pool[0]!, correct = true, responseMs = 1): Observation => ({ pitch, answer: correct ? pitch : {letter: pitch.letter === 'C' ? 'D' : 'C', accidental: 0}, correct, responseMs, activity: 'practice', preset: defaultPreset.id });
@@ -109,6 +109,7 @@ test('profile weights, adaptive toggles, benchmarks, expanded contexts and previ
 test('preview pools sort explicit spellings, group large pools and include restored growth; recommendations are observational', () => {
   const mixed=normalizePreset({...defaultPreset,id:'mixed',range:['C4','C6'],editorVersion:2,availableClefs:['treble','bass'],endpointClefs:['bass','treble'],modifiers:['natural','sharp','flat']});
   const groups=previewGroups(mixed);assert.ok(groups.every(g=>g.length<=4));
+  assert.ok(groups.every(g=>g.every(p=>clefForPitch(mixed,p)===clefForPitch(mixed,g[0]!))));
   const pitches=groups.flat();assert.equal(pitches.length,mixed.pool.length);assert.deepEqual(pitches.map(chromatic),pitches.map(chromatic).sort((a,b)=>a-b));
   assert.ok(pitches.some(p=>pitchLabel(p)==='D♭4'));assert.ok(pitches.some(p=>pitchLabel(p)==='C♯4'));
   assert.ok(beginnerPreview(defaultPreset));assert.ok(!beginnerPreview(mixed));

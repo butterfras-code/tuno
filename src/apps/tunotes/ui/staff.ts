@@ -44,3 +44,28 @@ function accidentalGlyph(value: number, x: number, y: number, kind: string) {
   const paths = value === 1 ? 'M -4 -17 V 18 M 4 -20 V 15 M -9 -5 L 9 -10 M -9 6 L 9 1' : value === -1 ? 'M -5 -22 V 12 C 15 3 9 -11 -5 -2' : 'M -5 -19 V 9 L 5 5 V -9 L -5 -5 M 5 5 V 19';
   return svgNode('path', { class: kind, d: paths, transform: `translate(${x} ${y})`, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.5 });
 }
+
+/** A single shared staff for an instructional phrase; reuse the exercise engraving. */
+export function renderPreviewStaff(pitches: readonly WrittenPitch[], clef: Clef, key: KeySignature) {
+  const svg = renderStaff(pitches[0]!,clef,key);
+  svg.classList.replace('staff','preview-staff');
+  svg.setAttribute('aria-label',`${clef} clef, ${spelling(key.tonic)} major, note introduction`);
+  svg.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(n => n.remove());
+  const offset = Math.abs(key.fifths)*19;
+  const width = Math.max(580,220+offset+pitches.length*90);
+  const ys = pitches.map(p => staffGeometry(p,clef).noteY);
+  const top = Math.min(0,...ys.map(y=>y-60)), bottom = Math.max(200,...ys.map(y=>y+55));
+  svg.setAttribute('viewBox',`0 ${top} ${width} ${bottom-top+35}`);
+  svg.querySelectorAll(':scope > line').forEach(line=>line.setAttribute('x2',String(width-24)));
+  pitches.forEach((pitch,index)=>{
+    const x = 200+offset+index*90;
+    const note = svgNode('g',{class:'preview-note','data-label':`${spelling(pitch)}${pitch.octave}`});
+    const engraving = renderStaff(pitch,clef,key);
+    const translated = svgNode('g',{transform:`translate(${x-230-offset} 0)`});
+    engraving.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(n=>translated.append(n));
+    const label = svgNode('text',{x,y:bottom+12,'text-anchor':'middle',class:'preview-note-label'});
+    label.textContent = `${spelling(pitch)}${pitch.octave}`;
+    note.append(translated,label); svg.append(note);
+  });
+  return svg;
+}
