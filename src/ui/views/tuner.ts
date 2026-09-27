@@ -1,4 +1,3 @@
-import { onUnmount } from '../../shared/ui/unmount.ts';
 import type { AudioController } from '../../audio/controller.ts';
 import { animatedUno } from '../uno.ts';
 import { createTunerFeedback } from '../../practice/feedback.ts';
@@ -98,11 +97,10 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     if (!document.hidden && live) frame = requestAnimationFrame(animate);
   }
   const wake = () => { if (!frame && !document.hidden) frame = requestAnimationFrame(animate); };
-  const visibilityChanged = () => {
+  document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(frame); frame = 0; animation.reset(); }
     else wake();
-  };
-  document.addEventListener('visibilitychange', visibilityChanged);
+  });
   body.append(readout, lane, friend);
   node.append(body);
 
@@ -126,7 +124,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   explorer.append(el('p', 'small muted', 'Manual input only. This does not use your microphone.'), form, summary);
   node.append(explorer);
 
-  const unsubscribe = store.subscribe((state) => {
+  store.subscribe((state) => {
     node.hidden = state.focus !== 'tuner';
     const text = pitchText(state);
     const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
@@ -162,10 +160,6 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     // Missing evidence clears immediately, without waiting for the next paint.
     if (!pitchReading(state)) marker.hidden = true;
     wake();
-  });
-  onUnmount(node, () => {
-    unsubscribe(); cancelAnimationFrame(frame); dog.dispose();
-    document.removeEventListener('visibilitychange', visibilityChanged);
   });
   return node;
 }

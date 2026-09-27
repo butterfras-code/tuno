@@ -1,25 +1,24 @@
-import { tuno, type AppIdentity } from './identity.ts';
-import { button, el, row } from '../shared/ui/components.ts';
+import { button, el, row } from '../ui/components.ts';
 
 type InstallPrompt = Event & {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-export function createReleaseControls(app: AppIdentity = tuno) {
+export function createReleaseControls() {
   const node = el('section', 'release-controls');
-  node.setAttribute('aria-label', `Keep ${app.name}`);
-  const version = document.querySelector<HTMLMetaElement>(`meta[name="${app.id}-version"]`)?.content;
-  const release = document.querySelector<HTMLMetaElement>(`meta[name="${app.id}-release"]`)?.content;
-  const label = el('p', 'small muted', `${app.name} ${release ?? 'development'} · Build ${version ?? 'unknown'}`);
-  const downloadPath = document.querySelector<HTMLMetaElement>(`meta[name="${app.id}-download"]`)?.content;
+  node.setAttribute('aria-label', 'Keep tUno');
+  const version = document.querySelector<HTMLMetaElement>('meta[name="tuno-version"]')?.content;
+  const release = document.querySelector<HTMLMetaElement>('meta[name="tuno-release"]')?.content;
+  const label = el('p', 'small muted', `tUno ${release ?? 'development'} · Build ${version ?? 'unknown'}`);
+  const downloadPath = document.querySelector<HTMLMetaElement>('meta[name="tuno-download"]')?.content;
   if (location.protocol === 'file:' || !downloadPath) {
     node.append(label);
     return node;
   }
   const download = el('a', 'control', 'Download offline HTML');
   download.href = downloadPath;
-  download.download = `${app.id}-${version}.html`;
+  download.download = `tuno-${version}.html`;
   const result = el('p', 'small');
   result.setAttribute('role', 'status');
   let downloading = false;
@@ -52,7 +51,7 @@ export function createReleaseControls(app: AppIdentity = tuno) {
     })();
   });
   let prompt: InstallPrompt | undefined;
-  const install = button(`Install ${app.name}`, () => {
+  const install = button('Install tUno', () => {
     const request = prompt;
     if (!request) return;
     prompt = undefined;
@@ -74,7 +73,7 @@ export function createReleaseControls(app: AppIdentity = tuno) {
   window.addEventListener('appinstalled', () => {
     prompt = undefined;
     install.hidden = true;
-    result.textContent = `${app.name} installed.`;
+    result.textContent = 'tUno installed.';
   });
   node.append(row(download, install), result, label);
   return node;

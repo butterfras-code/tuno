@@ -1,7 +1,6 @@
 /** Presentation timing, deliberately independent of pitch detection and display smoothing. */
 export type FeedbackEvidence = { note: number; cents: number } | null;
-import type { UnoPose } from '../shared/ui/uno-pose.ts';
-export type { UnoPose } from '../shared/ui/uno-pose.ts';
+export type UnoPose = 'sleep' | 'rest' | 'wag' | 'beg' | 'catch' | 'happy';
 export function createTunerFeedback() {
   let previous: number | null = null;
   let zone = false;

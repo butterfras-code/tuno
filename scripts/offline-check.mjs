@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
 
 const root = new URL('../dist/hosted/', import.meta.url);
@@ -12,11 +10,7 @@ const version = /name="tuno-version" content="([^"]+)"/.exec(html)[1];
 let revision = version;
 let failCss = false;
 let online = true;
-const resources = new Map(await Promise.all((await readdir(root, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(async (entry) => {
-  const filename = join(entry.parentPath, entry.name);
-  const name = relative(fileURLToPath(root), filename).split(sep).join('/');
-  return [name, await readFile(filename)];
-})));
+const resources = new Map(await Promise.all((await readdir(root)).map(async (name) => [name, await readFile(new URL(name, root))])));
 const server = createServer((request, response) => {
   if (!online) { response.destroy(); return; }
   // Cloudflare Pages canonicalizes index.html before the worker caches it.

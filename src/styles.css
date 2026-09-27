@@ -1,6 +1,12 @@
 @import './tokens.css';
-@import './shared/ui/fonts.css';
-@import './shared/ui/uno.css';
+@font-face {
+  font-family: 'Nunito'; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url('./assets/fonts/nunito.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Nunito Sans'; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url('./assets/fonts/nunito-sans.ttf') format('truetype');
+}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--color-canvas); color: var(--color-ink); font: 16px/1.4 var(--font-body); }
@@ -51,7 +57,7 @@ img { display: block; max-width: 100%; }
 .lane-center::after { content: ''; position: absolute; top: 50%; left: -12px; right: -12px; border-top: 1px solid var(--color-teal); }
 .pitch-marker { position: absolute; left: 23px; width: 114px; height: 30px; transform: translateY(-50%); transition: top 140ms ease-out; }
 .tuner-friend { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-
+.uno { width: 300px; height: 300px; object-fit: contain; flex-shrink: 0; }
 .friend-caption { font: 700 17px/1.3 var(--font-heading); text-align: center; }
 .tuner-body--no-friend { grid-template-columns: minmax(0, 1fr) 160px; max-width: 650px; margin: auto; }
 .sample-panel { border-top: 1px solid var(--color-line); padding-top: var(--space-3); margin-top: var(--space-3); }
@@ -257,6 +263,30 @@ img { display: block; max-width: 100%; }
 }
 
 /* Layered original Figma artwork: body, head and tail move independently. */
+.uno-animated { position: relative; display: inline-block; }
+.uno-animated > svg, .uno-rest { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.uno-animated > svg { overflow: visible; }
+.uno-sit, .uno-rest, .uno-paws, .uno-beg-paws { transition: opacity 300ms ease-in-out; }
+.uno-rest, .uno-beg-paws { opacity: 0; }
+.uno-animated[data-pose='rest'] .uno-sit { opacity: 0; }
+.uno-animated[data-pose='rest'] .uno-rest { opacity: 1; }
+.uno-animated[data-pose='beg'] .uno-paws { opacity: 0; }
+.uno-animated[data-pose='beg'] .uno-beg-paws { opacity: 1; }
+.uno-head { transform-origin: 148.125px 154.6875px; transition: transform 220ms ease-out; }
+.uno-head-front, .uno-head-left { transition: opacity 180ms ease-in-out; }
+.uno-head-left { opacity: 0; }
+.uno-looking .uno-head-front { opacity: 0; }
+.uno-looking .uno-head-left { opacity: 1; }
+.uno-looking .uno-head { transition-duration: 0ms; }
+.uno-tail-side { transform-origin: 150px 150px; }
+.uno-tail { transform-origin: 185.625px 246.464px; transition: transform 200ms ease-out; }
+.uno-playing .uno-tail { transition: none; }
+.uno-animated[data-pose='wag'] .uno-tail,
+.uno-animated[data-pose='beg'] .uno-tail,
+.uno-animated[data-pose='happy'] .uno-tail { animation: uno-wag 350ms ease-in-out infinite alternate; }
+@keyframes uno-wag { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+.uno-reward { position: absolute; width: 30%; height: auto; left: 35%; top: 45%; opacity: 0; pointer-events: none; transition: opacity 300ms ease-in-out; }
+.uno-animated[data-pose='catch'] .uno-reward { opacity: 1; transition: none; }
 .pet-tempo { display: inline-flex; padding: 0; border: 0; border-radius: 24px; background: transparent; color: inherit; }
 .pet-head, .pet-body { position: absolute; padding: 0; border: 0; border-radius: 24px; background: transparent; appearance: none; -webkit-tap-highlight-color: transparent; touch-action: none; cursor: pointer; }
 .pet-head { left: 15%; top: 0; width: 75%; height: 48%; }
@@ -268,7 +298,10 @@ img { display: block; max-width: 100%; }
 .hold-progress::-webkit-progress-bar { background: var(--color-tint); }
 .hold-progress::-webkit-progress-value { background: var(--color-accent); border-radius: 4px; }
 .hold-progress::-moz-progress-bar { background: var(--color-accent); border-radius: 4px; }
-
+@media (prefers-reduced-motion: reduce) {
+  .uno-animated *, .uno-rest { animation: none !important; transition: none !important; }
+  .uno-tail-side, .uno-tail, .uno-head { transform: none !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   .pet-tempo[data-beat='left'] { box-shadow: inset 4px 0 var(--color-teal); }
   .pet-tempo[data-beat='right'] { box-shadow: inset -4px 0 var(--color-teal); }
@@ -656,3 +689,11 @@ img { display: block; max-width: 100%; }
 }
 
 /* Rest remains awake while listening; microphone-off has its own night scene. */
+.uno-animated[data-pose='sleep'] .uno-sit { opacity: 0; }
+.uno-animated[data-pose='sleep'] .uno-rest { opacity: 1; }
+.uno-window-night, .uno-sleep-eye { display: none; }
+.uno-animated[data-pose='sleep'] .uno-window-sky { fill: #45445f; }
+.uno-animated[data-pose='sleep'] .uno-window-hills { fill: #66677a; }
+.uno-animated[data-pose='sleep'] .uno-window-night,
+.uno-animated[data-pose='sleep'] .uno-sleep-eye { display: inline; }
+.uno-animated[data-pose='sleep'] .uno-rest-eye { display: none; }

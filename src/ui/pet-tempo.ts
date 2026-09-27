@@ -1,4 +1,3 @@
-import { onUnmount } from '../shared/ui/unmount.ts';
 import { TAIL_RAISED_ANGLE, type AudioController } from '../audio/controller.ts';
 import type { PracticeStore } from '../practice/state.ts';
 import { button, el } from './components.ts';
@@ -66,21 +65,15 @@ export function petTempo(store: PracticeStore, audio: AudioController) {
   body.addEventListener('lostpointercapture', () => { if (contact) cancel(); });
   body.addEventListener('keydown', event => { if (event.key === 'Escape') cancel(); });
   window.addEventListener('blur', cancel);
-  const visibilityChanged = () => { if (document.hidden) cancel(); };
-  document.addEventListener('visibilitychange', visibilityChanged);
-  const unsubscribe = store.subscribe(state => { if (state.focus !== 'metronome' || !state.showUno) cancel(); });
-  const untap = audio.onTap(() => { if (!looking && store.get().showUno && store.get().focus === 'metronome') dog.nod(); });
-  const unpulse = audio.onPulseFrame((angle, playing, index, accent) => {
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
+  store.subscribe(state => { if (state.focus !== 'metronome' || !state.showUno) cancel(); });
+  audio.onTap(() => { if (!looking && store.get().showUno && store.get().focus === 'metronome') dog.nod(); });
+  audio.onPulseFrame((angle, playing, index, accent) => {
     dog.accent(accent);
     const mirrored = sideToSide && index !== null && index % 2 === 0;
     dog.tail(sideToSide && playing ? TAIL_RAISED_ANGLE : angle, playing, mirrored);
     const side = index === null ? '' : index % 2 === 0 ? 'left' : 'right';
     if (node.dataset.beat !== side) node.dataset.beat = side;
-  });
-  onUnmount(node, () => {
-    cancel(); unsubscribe(); untap(); unpulse(); dog.dispose();
-    window.removeEventListener('blur', cancel);
-    document.removeEventListener('visibilitychange', visibilityChanged);
   });
   return {
     node,
