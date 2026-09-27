@@ -4,19 +4,14 @@ import { createServer as httpsServer } from 'node:https';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 export const contentType = (name) => name.endsWith('.js') ? 'text/javascript'
   : name.endsWith('.css') ? 'text/css' : name.endsWith('.png') ? 'image/png'
   : name.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
 export async function hostBuild({ tls = false } = {}) {
   const root = new URL('../dist/hosted/', import.meta.url);
-  const files = new Map(await Promise.all((await readdir(root, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(async (entry) => {
-    const filename = join(entry.parentPath, entry.name);
-    const name = relative(fileURLToPath(root), filename).split(sep).join('/');
-    return [name, await readFile(filename)];
-  })));
+  const files = new Map(await Promise.all((await readdir(root)).map(async (name) => [name, await readFile(new URL(name, root))])));
   let certDirectory;
   let certificate;
   if (tls) {
@@ -28,7 +23,7 @@ export async function hostBuild({ tls = false } = {}) {
   const handler = (request, response) => {
     if (!available) { response.destroy(); return; }
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    const name = pathname.endsWith('/') ? pathname.slice('/practice/'.length) + 'index.html' : pathname.slice('/practice/'.length);
+    const name = pathname === '/practice/' ? 'index.html' : pathname.slice('/practice/'.length);
     if (!pathname.startsWith('/practice/') || !files.has(name)) { response.writeHead(404).end(); return; }
     response.writeHead(200, { 'Content-Type': contentType(name), 'Cache-Control': 'no-cache' });
     response.end(files.get(name));
