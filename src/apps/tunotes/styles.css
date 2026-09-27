@@ -131,9 +131,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .preview-staff-viewport { min-width: 0; width: 100%; overflow: hidden; background: var(--color-surface); border-radius: var(--radius-card); }
 .preview-staff-stage { position: relative; width: 100%; }
 .preview-staff { display: block; width: 100%; height: clamp(220px, 30vw, 360px); }
-.preview-note-label { visibility: hidden; fill: currentColor; font: 22px var(--font-body); font-weight: 700; }
-.preview-note.revealed .preview-note-label { visibility: visible; }
-.preview-note-status { align-self: center; }
+.preview-note-label { visibility: hidden; fill: currentColor; font: 30px var(--font-body); font-weight: 700; }
+.preview-note-status { visibility: hidden; fill: currentColor; font: 20px var(--font-body); }
+.preview-note.revealed .preview-note-label, .preview-note.revealed .preview-note-status { visibility: visible; }
+.preview-navigation { justify-content: space-between; padding: 0 12px 12px; }
+.note-preview > [role='status'] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .preview-toy { position: absolute; left: 62%; top: 52%; width: 22px; height: 50px; pointer-events: none; }
 .preview-toy[hidden] { display: none; }
 .toy-ball { position: absolute; inset: 0 0 auto; height: 22px; border-radius: 50%; background: #e19b37; border: 2px solid #704b24; z-index: 1; }
