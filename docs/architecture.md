@@ -50,3 +50,13 @@ Validation results and remaining device limitations belong in the prototype plan
 Hosted builds include a relative-scope web manifest, 192/512px PNG app icons derived from approved Uno artwork, and a versioned download identical to the independent portable artifact. These files join the integrity-checked offline cache. Portable HTML includes no hosted manifest/download links and never registers a worker. Both HTML formats display shared release/build identifiers; `dist/release.json` ties the artifact checksums to source revision and working-tree status.
 
 Native install UI is exposed only after a browser install event; menu guidance remains available elsewhere. All audio pauses on page hiding and requires explicit restart. See release validation for automated results and hardware gaps, and release instructions for the atomic-deployment handoff.
+
+## tuNotes shared foundation (Stage 0)
+
+The same build pipeline now packages tUno at `dist/hosted/` and tuNotes at `dist/hosted/notes/`, plus independent `tuno.html` and `tunotes.html` portable files. App descriptors select entry/template, identity, hosted directory and excluded child paths. Build output is cleared once. `dev` retains tUno behavior; `dev:notes` serves the preview shell at `/notes/` with offline preparation disabled.
+
+Shared Uno renderer/pose types, Uno styles, embedded fonts, generic DOM helpers, and unmount cleanup live in `src/shared/ui/`. Assets and tokens are reused in place. The compatibility export at `src/ui/uno.ts` preserves existing imports. Tuner feedback and audio/state policy remain tUno-specific; tuNotes imports none of them. Uno disposal removes its media-query listener and cancels animations; removal also stops tuner feedback frames and pet tempo subscriptions/listeners.
+
+Both manifests use relative identities resolving to distinct app roots, including under nested prefixes. Cache names include app ID, scope URL, and content build. Only a worker’s own obsolete caches are deleted. The root worker explicitly excludes `notes/` and only serves its enumerated files; missing resources receive no HTML fallback. Readiness verifies worker URL, app ID and build, so a root-controlled first visit cannot claim tuNotes is ready. Integrity precaching and deferred update activation apply independently to both apps.
+
+The release manifest retains legacy tUno fields and adds an `apps` map with separate checksums/build IDs and common release/source metadata. Each portable bundle includes shared source independently and needs no sibling file. tuNotes currently has no gameplay or persistence, and is absent from tUno navigation. This is a local technical preview, not publication or classroom acceptance.

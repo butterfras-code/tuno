@@ -1,6 +1,6 @@
-/* Generated version and scope keep independent tUno installations isolated. */
+/* Generated version and scope keep independent app installations isolated. */
 const VERSION = '__BUILD_VERSION__';
-const PREFIX = `tuno:${self.registration.scope}:`;
+const PREFIX = `__APP_ID__:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const INTEGRITY = __RESOURCE_INTEGRITY__;
 const requestFor = (url) => new Request(url, { cache: 'reload', integrity: INTEGRITY[new URL(url).pathname.split('/').pop()] });
@@ -30,6 +30,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const scope = new URL(self.registration.scope);
   if (url.origin !== scope.origin) return;
+  if (__EXCLUDED_PATHS__.some(path => url.pathname.startsWith(scope.pathname + path))) return;
   const key = url.pathname === scope.pathname || url.pathname === scope.pathname + 'index.html'
     ? RESOURCES[0] : url.origin + url.pathname;
   if (!RESOURCES.includes(key)) return;
@@ -61,9 +62,9 @@ self.addEventListener('message', (event) => {
         try { await cache.addAll(missing.map(requestFor)); } catch { /* Offline or different deployment: keep readiness false. */ }
         entries = await Promise.all(RESOURCES.map((url) => cache.match(url)));
       }
-      event.ports[0].postMessage({ ready: entries.every(Boolean), version: VERSION });
+      event.ports[0].postMessage({ ready: entries.every(Boolean), version: VERSION, appId: '__APP_ID__' });
     } catch {
-      event.ports[0].postMessage({ ready: false, version: VERSION });
+      event.ports[0].postMessage({ ready: false, version: VERSION, appId: '__APP_ID__' });
     }
   })());
 });
