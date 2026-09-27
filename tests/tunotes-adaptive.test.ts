@@ -129,6 +129,6 @@ test('the final focus/review prompt still blocks expansion until the block ends'
 test('schema 2 results migrate with unknown preview exposure and no inferred learning', () => {
   const store=new NotesStore();
   const old={...store.data,schemaVersion:2};
-  const migrated=parseBackup(JSON.stringify(old));assert.equal(migrated.schemaVersion,3);assert.deepEqual(migrated.profiles,[]);assert.equal(old.schemaVersion,2);
+  const migrated=parseBackup(JSON.stringify(old));assert.equal(migrated.schemaVersion,4);assert.deepEqual(migrated.profiles,[]);assert.equal(old.schemaVersion,2);
   assert.match(recommendation(100,10,{}, {C4:20,D4:10,E4:30}),/E4 and C4/);
 });

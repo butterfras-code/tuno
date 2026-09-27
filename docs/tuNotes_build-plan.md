@@ -1,6 +1,6 @@
 # tuNotes staged build plan
 
-Status: Stages 0–3 implemented as a local Practice preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 3 is implemented in the working tree; Stages 4–8 remain unimplemented.
+Status: Stages 0–4 implemented as a local Practice and solo Challenge preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 4 adds solo Challenge through the existing mode selector; Stages 5–8 remain unimplemented.
 
 Use the existing repository and short-lived feature branches/worktrees. Each stage should be reviewable in a PR, with shared-code refactors separated from behavior changes where practical. Merge/push to `main` publishes automatically and requires publication authorization. An integration branch may collect preview stages when main must not expose unfinished navigation. Do not create a permanent second development trunk.
 
@@ -92,6 +92,8 @@ The optional preview is implemented with one centered note at a time on a full-s
 3. Render ranked/unranked results with prescribed encouraging text, no hidden bonuses.
 
 Exit evidence: fake-clock tests cover exact deadline, last-moment target completion, feedback past deadline, no attempts, pause, hidden tab, restart and stale events. Formula fixtures: 24 correct/30 attempts yields 19.2 adjusted points; 25/25 yields 25; zero attempts yields zero points and no rank. Target 10/12 qualifies at 80%; 10/13 does not. A timed partial run never ranks. Browser tests verify displayed countdown and score against domain state.
+
+Stage 4 implementation: the existing Challenge segment opens the shared preset/adaptation setup with validated Timed or Target rules. Explicit Ready begins a three-second count-in; Challenge always uses fixed 250/800 ms feedback. Monotonic timing rejects answers at or after the deadline, clamps delayed completion to the allowance, and completes Target on its final accepted correct answer. Pauses (including visibility loss and Options navigation) preserve remaining time but invalidate ranking; changing activity ends the previous round. Results show the local player, counts, accuracy, best streak, rule summary, exact score/time and qualification. Schema 4 separates Practice/Challenge learning and retains bounded Challenge rule/outcome records, including zero-attempt rounds. Reward benchmarks also match Challenge rules. Intro remains a Practice option. See [Phase 4 validation](validation/tunotes-stage4.md).
 
 ## Stage 5 — 1–8 players, pairs and heats
 

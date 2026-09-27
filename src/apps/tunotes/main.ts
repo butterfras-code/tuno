@@ -15,17 +15,19 @@ export function mountNotes(root: HTMLElement) {
   const brand = el('div','brand'); brand.append(el('h1', 'wordmark', 'tuNotes'), el('p', 'tagline', 'Read music with a friend.'));
   header.append(brand);
   const practice = practiceView();
+  const practicePanel = el('section'); practicePanel.append(practice.node);
   const challenge = el('section','notes-challenge'); challenge.hidden = true;
-  challenge.append(el('h2','','Challenge'),el('p','muted','Coming soon.'));
   const navigation = el('nav','focus-navigation'); navigation.setAttribute('aria-label','tuNotes modes');
-  const views = [practice.node,challenge,practice.options];
+  const views = [practicePanel,challenge,practice.options];
   const links = ['Practice','Challenge','Options'].map((label,index) => {
     const control = el('button','control',label); control.type = 'button';
     views[index]!.id = `notes-${label.toLowerCase()}`;
     control.setAttribute('aria-controls',views[index]!.id); control.setAttribute('aria-pressed',String(index === 0));
     control.addEventListener('click',() => {
       if (control.getAttribute('aria-pressed') === 'true') return;
-      if (!practice.node.hidden) practice.leave();
+      practice.leave();
+      if (index < 2) { practice.setActivity(index === 1 ? 'challenge' : 'practice'); views[index]!.append(practice.node); }
+      practice.node.hidden = index === 2;
       views.forEach((view,i) => { view.hidden = i !== index; links[i]!.setAttribute('aria-pressed',String(i === index)); });
     });
     navigation.append(control); return control;

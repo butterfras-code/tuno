@@ -109,8 +109,8 @@ export const instrumentRangePresets = instruments.flatMap(i => {
 });
 export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets, ...instrumentRangePresets]);
 export const defaultPreset = presets[2]!;
-export function fingerprint(p: Preset, adaptive = false) {
-  const parts: unknown[] = [p.id, p.version, p.clef, keyName(p.key), p.accidentals, p.pool.map(pitchLabel), 'practice', adaptive, 'letters'];
+export function fingerprint(p: Preset, adaptive = false, activity: 'practice' | 'challenge' = 'practice') {
+  const parts: unknown[] = [p.id, p.version, p.clef, keyName(p.key), p.accidentals, p.pool.map(pitchLabel), activity, adaptive, 'letters'];
   if (p.editorVersion === 2) parts.push({ version: 2, clefs: clefs.filter(c => p.availableClefs!.includes(c)), modifiers: ['key','flat','natural','sharp'].filter(m => p.modifiers!.includes(m as Modifier)) });
   return JSON.stringify(parts);
 }

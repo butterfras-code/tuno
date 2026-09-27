@@ -24,7 +24,7 @@ try {
   assert.equal(await page.getByRole('button',{name:'Click/Tap',exact:true}).getAttribute('aria-pressed'),'true');
   await notesMode(page,'Practice');
   await setToggle(page,'adaptive',false); await setToggle(page,'meet-notes',false);
-  await notesMode(page,'Challenge'); assert.equal(await page.getByText('Coming soon.',{exact:true}).isVisible(),true);
+  await notesMode(page,'Challenge'); assert.equal(await page.getByRole('button',{name:'Start Challenge',exact:true}).isVisible(),true);
   await setPacing(page,'Instant'); await page.reload(); await notesMode(page,'Options');
   assert.equal(await page.getByRole('button',{name:'Instant',exact:true}).getAttribute('aria-pressed'),'true');
   await openData(page); await page.getByLabel('Profile name',{exact:true}).fill('UI reader'); await page.getByRole('button',{name:'Create profile',exact:true}).click();
