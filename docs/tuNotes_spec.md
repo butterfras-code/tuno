@@ -133,6 +133,16 @@ Precompute the ordered expansion candidates from each preset's filters/bounds. E
 
 After 20+ attempts, recommend a broader preset when accuracy ≥90%; suggest revisiting the two most-missed notes when accuracy <70%. Otherwise offer neutral encouragement. Recommendations never modify adaptive-off play. These thresholds are hypotheses to tune after classroom observation, with deterministic tests protecting whichever constants are adopted.
 
+### Phase 3 addition: optional “Meet your notes” preview (2026-09-27)
+
+Before a round, optionally introduce the notes to be practiced on a staff, low to high, with explicit written names including accidentals. This is a Phase 3 planning addition, not implemented Stage 2 behavior. Offer it independently of adaptation; default it on for beginner/Starter presets with a remembered toggle. The exact beginner preset classification and animation pacing are implementation defaults to review with a teacher.
+
+Use the active starting pool, including any restored adaptive expansion, rather than the full possible expansion envelope. Reveal each name as a ball with streamers, inspired by Uno's favorite Kong Wubba toy, bounces to its note. Uno waits at the end and catches the toy after the last note. Keep revealed notes/names visible for review; divide large pools into readable groups rather than crowding the staff. Preserve written spelling and clef context, with octave clarification where needed. Reuse existing notation and Uno animation infrastructure.
+
+Provide Start and Replay after the introduction and an always-available Skip. Do not automatically begin a round when the animation finishes. Reduced motion uses a static labeled display; the preview must work silently. Barking and spoken note names are optional future enhancements, not Phase 3 requirements. A short introduction of newly added adaptive notes may reuse this presentation without restarting the full preview.
+
+Keep preview time and interactions outside answer counts, accuracy, response-time measurement, mastery observations, reward progress, and future Challenge deadlines. Record whether the preview was shown, skipped, or completed with the session result so interpretation can distinguish practice after a reminder; older results have unknown preview status. Preview use does not change the adaptive mastery rules. Follow the existing memory-only Guest and opt-in profile persistence rules. Showing note names here is intentional instruction; the no-answer-leak rule still applies to subsequent unanswered exercise prompts.
+
 ## 6. Challenge rules
 
 All configuration dimensions use one engine: Timed/Target × competitive/co-op × turns/pairs/relay, plus optional teams. Presets and adaptive toggles are always individual. One correct note has the same value across presets; display that this is differentiated practice, not a standardized ranking.

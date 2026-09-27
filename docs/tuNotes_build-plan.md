@@ -75,8 +75,11 @@ Stage 3 integration: animate newly enabled spelling targets in place when the ac
 1. Implement bounded per-note observations, weighting, focus blocks, review slots, confusion contrasts, and finite expansion plans as pure functions.
 2. Add per-player toggle and independent context fingerprints, expansion announcements and post-session recommendations.
 3. Record algorithm version and keep latency observational; no speed gate.
+4. Phase 3 addition (2026-09-27): implement the optional “Meet your notes” pre-round preview described in spec section 5. Show the active starting pool low to high with written names, a bouncing ball with streamers, and Uno's final catch. Default on for beginner/Starter presets with a remembered toggle; support readable groups, Start/Replay/Skip, silent operation and a static reduced-motion presentation. Reuse notation/Uno infrastructure and keep the preview independent of the adaptive toggle. Record preview exposure in session results without adding learning observations or measured play time. Challenge integration remains Stage 4.
 
 Exit evidence: deterministic traces demonstrate stable learning, repeated errors, recovery, upper/lower growth, one-note sets and reaching bounds. Adaptive-off never changes the configured pool. Custom cannot expand outside its limits. Review slots cannot be starved by confusion pairs. Two local profiles cannot change one another's weights or benchmarks. Tests prove every current pitch meets the mastery gate before expansion. A small classroom trial can tune constants without redesigning the engine.
+
+Preview exit evidence: correct starting pools, low-to-high order and accidental labels, including altered tonics and restored adaptive pools; usable grouping for large/mixed-clef pools; Skip/Replay/Start and reduced motion work without stale animation callbacks starting play or accepting answers. Preview actions do not affect measured latency, counts, mastery or rewards. Older saved results remain readable, Guest stays memory-only, and the remembered preference follows existing persistence rules. Teacher review covers legibility, pacing and beginner defaults.
 
 ## Stage 4 — solo Challenge and exact scoring
 
