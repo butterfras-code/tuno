@@ -1,0 +1,215 @@
+i want to make some more music class focused additions to tuno. I want to start with a note reading practice, I currently use the ones on musictheory.net and they're great, but i want simpler configuration presets, an adaptive mode, and a local multiplayer mode where two users can compete on adjacent sections of the screen. to keep with the theme of the current project (at tuno.cc) I was thinking of calling tuNotes and we could use progesively longer streaks to trigger the dog treat toast etc. Help me flesh this out into more of an idea.
+
+I like follow up questions, don't dump a whole plan at me at once, wait until I ask for the whole plan.
+Yeah — tuNotes fits really well, and I think the strongest version is less “music theory worksheet inside tUno” and more a tiny arcade game for note fluency.
+
+The core loop could be very simple: a note appears, the student identifies it, Uno reacts, and the game quietly adjusts around them. That keeps it feeling like the rest of tUno instead of becoming a settings-heavy theory app. The dog-treat idea is especially good because streaks can become part of the character language: small streak = tail wag, longer streak = happy animation, bigger milestone = treat toss/toast, maybe a truly long streak triggers a rare “catch” animation.
+
+I’d separate the experience into three broad ways to play, without exposing a million configuration knobs:
+
+Practice — choose a sensible preset such as “Beginner Treble,” “Clarinet Range,” “Low Brass,” “Bass Clef Basics,” etc.
+Adaptive — starts from a preset, then notices which notes are slow or frequently missed and feeds those back in more often.
+Versus — two students share one screen, probably mirrored or side-by-side, each with their own note stream and score/streak.
+For the presets, I’d avoid making students configure staff range, clef, accidentals, ledger lines, answer method, etc. individually unless they open an advanced setup. A band teacher should be able to say “Open tuNotes → Beginning Band → Treble Set 2” and everyone is playing in seconds.
+
+One interesting decision will shape almost everything else:
+
+How do you want students to answer the note?
+
+I can see three good options:
+
+Letter buttons — fastest and easiest on Chromebooks/tablets.
+On-screen instrument fingering/keyboard — much more instrument-specific and potentially very cool.
+Play the note into the mic — integrates beautifully with tUno, but becomes partly an instrument-performance exercise rather than pure reading.
+My instinct is that tuNotes should start with letter-name input as the default, with playing into the mic eventually becoming a separate “play what you see” mode.
+
+What are you picturing for the first version?
+
+I like all of that, for presets they should be available in all modes in adaptive it's the starting point expanding or narrowing as needed. There can be clef based (lines, spaces, both, +1 ledger line (above or below), +2 (sim), or +2 and +4 above only and below only (for tubas and flute etc). Instrument based ones that start with a subset of that instruments range and expand, and a custom mode that is range, lines/spaces, accidental options, not too dense.
+Student responses: letters then mic (with shared components from tUno)
+That sharpens it a lot. I think the preset system should be the common foundation, not something tied to one mode.
+
+So mentally I’d structure it like this:
+
+Preset = what notes are initially in play.
+Then the mode decides what happens from there.
+
+Practice: stays inside the preset unless the student changes it.
+Adaptive: uses that preset as the starting curriculum, then narrows toward weak notes or expands outward when fluency is strong.
+Versus: both players use the same preset so the match is fair, with adaptive probably off during the actual round.
+Your clef presets also make sense as a progression rather than a random collection. I’d probably think in terms of “reading envelopes”:
+
+Core → ledger expansion → extreme range
+
+For example:
+
+Lines
+Spaces
+Lines + spaces
++1 ledger above
++1 ledger below
++1 both
++2 above
++2 below
++2 both
++4 above
++4 below
+And the instrument presets could sit on top of the same underlying machinery. A flute preset might begin around a very comfortable middle-register subset and then grow upward; tuba does the equivalent downward. That means you don’t need two totally different configuration systems internally.
+
+For Custom, I agree with keeping it deliberately restrained. Something like:
+
+Clef
+Lowest / highest written note
+Lines / spaces / both
+Accidentals: none / sharps / flats / both
+Ledger notes allowed: yes/no or max count
+That’s probably enough. I would resist adding things like “include only C, D, F#, A♭” unless we discover a real classroom need later.
+
+And Letters → Mic feels like the right input progression. If we reuse tUno’s pitch detection, “mic mode” becomes really elegant: student sees the note, plays it, and tuNotes can score both correct pitch and maybe eventually response time without reinventing the audio stack.
+
+The next thing I’d pin down is the adaptive behavior, because that’s where this can become genuinely better than a normal note-reading drill.
+
+When a student struggles with, say, B, D, and F, do you imagine adaptive mode mostly:
+
+increasing those notes’ frequency while keeping the same range,
+temporarily shrinking the set down around them,
+or doing something more teacher-like, such as “you’re confusing D and F, so let’s deliberately alternate them for a bit”?
+I lean toward that third idea, but it changes how sophisticated the adaptive engine needs to be.
+
+Call Versus Challenge mode, there can be single player too with a timer etc, that's useful. Then there can be an add player button, we could even support more than two in heats, timed doesn't have to be head to head, or even single player turns, max 8 players, support name entry and a scoreboard at the end
+Yes — Challenge is much better than Versus. It broadens the concept from “two-player race” into a reusable classroom game mode.
+
+I’d think of Challenge as a shell around the same note-reading engine, with different round formats inside it.
+
+A few formats seem especially natural:
+
+Solo Sprint — one player, fixed time, score as many as possible.
+Solo Accuracy — fixed number of notes, fastest clean run wins.
+Head-to-Head — two players simultaneously on adjacent panels.
+Heat — 3–8 players, either simultaneous if the screen allows it or in smaller grouped rounds.
+Turn-Based — players take individual timed turns on the same device.
+Relay-ish classroom mode — each player completes a short burst, then passes to the next person.
+For names, I’d definitely support quick entry before the round. Nothing account-based, just local session names. Then the end state becomes part of the fun: scoreboard, accuracy, best streak, average response time, maybe a tiny Uno celebration for the winner without making the lower scorers feel punished.
+
+And I like that Challenge doesn’t have to imply head-to-head play. A teacher could put one Chromebook at a station and have eight students cycle through it, then get a clean leaderboard at the end.
+
+One design constraint I’d set early: max 8 players in the session, but don’t force all 8 onto the screen at once. On most school devices, 2 simultaneous players is probably ideal, maybe 4 on a large display. Beyond that, heats/turns will be much more readable.
+
+I also think each Challenge setup should inherit the same preset model we already discussed, so the setup could feel like:
+
+Preset → Challenge format → Time/notes → Players
+
+rather than becoming a second giant configuration system.
+
+The next thing I’m curious about is scoring. For a timed challenge, do you want it to feel mostly like “number correct wins”, or should streaks and speed create bonus points too? My instinct is number-correct should stay dominant, with streaks as a smaller bonus, so a kid doesn’t win by button-mashing quickly.
+
+what if you chose players, then score by: Notes or Notes x Accuracy for time limited modes? that would cover several of the scenarios you described
+head to head and 2 player heats, and pass-n-play (turn-based) and relay are just configurations of all the game modes really
+So it's down to time limited (scored as selected),  correct answer limited (maybe with an accuracy threshold to prevent spamming, scored on time to complete with some sort of timeout)
+
+otherwise I agree with the basic architecture
+Yeah, that simplifies Challenge a lot.
+
+I’d collapse it to two actual game types, and treat everything else as player/layout configuration:
+
+Timed — play for X seconds. Scoring can be either Correct Notes or Correct Notes × Accuracy.
+Target — reach X correct answers. Winner is lowest completion time, with an accuracy floor so button-spamming doesn’t work.
+Then head-to-head, heats, pass-and-play, and relay are not separate modes at all. They’re just different ways of scheduling the selected players through one of those two game types. That’s cleaner for both the UI and the code.
+
+For the timed scoring, I like Notes × Accuracy because it naturally punishes guessing without needing a pile of penalties. If someone gets 30 correct at 80%, they score 24; 25 correct at 100% scores 25. Easy to explain to kids, too.
+
+For Target mode, I’d probably avoid a harsh “you failed because accuracy dipped below 85%” rule. Better might be: require something like 80% accuracy to post an official time. If they finish under that, they get a result such as “Finished — accuracy too low to rank,” and can retry. That keeps the anti-spam safeguard without making the game suddenly stop mid-round.
+
+The relay variant gets interesting because the team could share one cumulative target or cumulative timed score, while individual stats still exist underneath.
+
+One question I’d nail down next: Are players always competing individually, or do you want Challenge to support teams too? Relay almost naturally points toward Team A / Team B, and that could be very useful in class.
+
+The accuracy failure should be encouraging, something like "Improve your accuracy to make finals"
+Yes Relay should support teams for sure, the others could have competitive or co-op modes, where you try to see the combined score from all the player or something - kinda like how many can we all get right with X time each, or how long does it take for us all to get 10 notes right
+In multiplayer modes, preset is configurable per player for differentiation or multi-instrument classes
+Yes — that makes the multiplayer model much more interesting, and much more classroom-useful.
+
+I’d treat competition vs cooperation as another independent setting rather than another game type. So Challenge is really becoming a few composable choices:
+
+Players → scoring goal → social mode → play order/layout
+
+The two scoring goals stay:
+
+Timed: everyone gets X seconds.
+Target: everyone needs X correct notes.
+Then you can apply those to:
+
+Competitive
+
+Highest timed score wins.
+Fastest qualifying Target time wins.
+Teams can compete in relay/heats.
+Co-op
+
+“How many notes can we get together?”
+“How quickly can everyone get 10 correct?”
+“Can the class reach 200 correct notes with 90% accuracy?”
+Relay can simply become the team building one shared score instead of racing another team.
+That last one feels especially good for class use because you can create a goal where weaker readers still contribute without needing to beat stronger players.
+
+And per-player presets is a big deal. I would absolutely build that into the model from the start rather than bolt it on later.
+
+For example:
+
+Mia — Flute: Upper Treble 1
+Carlos — Trombone: Bass Clef Core
+Jayden — Clarinet: Beginner Range
+Ava — Horn: Treble + Ledger Below
+
+All four can participate in the same Challenge while seeing material appropriate to them. That gives you differentiation without publicly labeling somebody as being on an “easier” level.
+
+It also means the scoreboard shouldn't emphasize raw difficulty unless you deliberately want that later. A correct note should generally just be one correct note regardless of preset. The objective is fluency at your material, not proving that one clef is worth more than another.
+
+And I really like:
+
+Improve your accuracy to make finals
+
+That's exactly the tone. The student did complete the challenge; they just didn't qualify for the ranking. You could make that whole state positive:
+
+18 notes — 72% accuracy
+Nice run! Improve your accuracy to make finals.
+
+Maybe Uno is still happy/wagging, rather than giving them a failure animation.
+
+One question I think matters now: what does “adaptive” mean in multiplayer?
+
+My instinct is that each player should have their own adaptive state, even during the same Challenge. So if the flute player keeps missing high A/B while the tuba player struggles with low ledger notes, tuNotes independently adjusts each stream. But for competitive Challenge that potentially means the difficulty changes during a match.
+
+Would you want adaptive Challenge to adjust live like that, or should Challenge freeze each player's adaptive level at the start of the round so the competition is more consistent?
+
+think adaptive can be a toggle there too, there is use in both, perhaps if a kid scores really well or adaptive bumped them up we could deliver that feedback "Wow - You could try a harder level next time" or similar
+Yes — I think adaptive should just be an independent toggle wherever it makes sense.
+
+That gives you a nice distinction:
+
+Adaptive off: “Play exactly this preset.”
+Adaptive on: “Start here, then respond to how I’m doing.”
+And I like separating in-round adaptation from post-round recommendation. Even with adaptive turned off, tuNotes can still observe performance and give useful feedback afterward without changing the exercise underneath the student.
+
+So you could get messages like:
+
+“Wow — you’re ready for a harder level next time!”
+“You’ve got these notes! Want to add the next ledger line?”
+“Great accuracy. Try adding accidentals next time.”
+“F and A gave you some trouble. Another round could help lock them in.”
+“91% accuracy — improve your accuracy to make finals!”
+That last category feels important: recommendation, not judgment. Uno should always feel like he's coaching you, not grading you.
+
+It also gives adaptive mode a satisfying visible moment when it does expand. Rather than silently adding a harder note, maybe the first time it happens:
+
+Level up! 🦴
+Uno added high C.
+
+Then play continues. It makes the algorithm legible to a kid rather than mysterious.
+
+I think we've got the overall game structure pretty solid now. The area I'd explore next is actually the adaptive algorithm itself, because I don't think it needs machine-learning complexity to feel remarkably smart.
+
+For example, I could imagine every note having an internal little fluency score based on accuracy + response time + recency, and the engine chooses what comes next based on that. That would let it distinguish “Justin knows G but takes four seconds” from “Justin instantly knows G” even though both answers are correct.
+
+Do you want speed to be part of what tuNotes considers mastery, or should adaptive progression primarily care about getting the note correct?
+

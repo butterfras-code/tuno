@@ -19,7 +19,7 @@ try {
   run('extended synthetic pitch benchmark', process.execPath, ['scripts/pitch-benchmark.ts', '--check']);
   run('release integrity', process.execPath, ['scripts/release-check.mjs']);
   for (const browser of ['chromium', 'firefox']) {
-    for (const check of ['browser-check', 'layout-browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'audio-render-check', 'performance-check', 'release-browser-check']) {
+    for (const check of ['browser-check', 'layout-browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'audio-render-check', 'performance-check', 'release-browser-check', 'dual-app-browser-check', 'notes-browser-check']) {
       run(`${browser}: ${check}`, process.execPath, [`scripts/${check}.mjs`], { ...process.env, TUNO_BROWSER: browser });
     }
   }
