@@ -1,3 +1,5 @@
+import { ALGORITHM_VERSION, activePool, initialAdaptive, learn, observe, selectAdaptive } from './adaptive.ts';
+import type { Learning, NoteHistory, AdaptiveState } from './adaptive.ts';
 import { pitchLabel, sameAnswer } from '../domain/notation.ts';
 import type { AnswerSpelling, WrittenPitch } from '../domain/notation.ts';
 import type { Preset } from '../domain/presets.ts';
@@ -32,6 +34,18 @@ export class Practice {
   readonly session = ++nextSession;
   readonly preset: Preset;
   readonly selfPaced: boolean;
+  readonly adaptive: boolean;
+  preview: { shown: boolean; skipped: boolean; completed: boolean } = { shown: false, skipped: false, completed: false };
+  learning: AdaptiveState;
+  announcement = '';
+  readonly misses: Record<string,number> = {};
+  private readonly random: () => number;
+  get activePreset(): Preset { return this.adaptive ? { ...this.preset, pool: activePool(this.preset,this.savedLearning) } : this.preset; }
+  get savedLearning(): Learning { return { algorithmVersion: ALGORITHM_VERSION, expansionCount: this.learning.expansionCount }; }
+  private nextPitch() {
+    if (!this.adaptive) return this.bag.next();
+    const next = selectAdaptive(this.learning,this.activePreset.pool,this.random); this.learning = next.state; return next.pitch;
+  }
   private readonly clock: () => number;
   private readonly bag: ShuffledBag;
   private origin: number;
@@ -52,9 +66,10 @@ export class Practice {
   bestStreak = 0;
   interrupted = false;
   private endTime: number | undefined;
-  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random) {
+  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random, options: { adaptive?: boolean; notes?: NoteHistory; learning?: Learning } = {}) {
+    this.adaptive = options.adaptive ?? false; this.random = random; this.learning = initialAdaptive(options.notes,options.learning);
     this.preset = preset; this.selfPaced = selfPaced; this.clock = clock; this.origin = clock();
-    this.bag = new ShuffledBag(preset.pool, random); this.pitch = this.bag.next();
+    this.bag = new ShuffledBag(preset.pool, random); this.pitch = this.nextPitch();
   }
   get token(): PromptToken { return { session: this.session, prompt: this.prompt }; }
   get observations(): readonly Observation[] { return this.records; }
@@ -67,7 +82,12 @@ export class Practice {
     if (this.state !== 'running' || !this.matches(token)) return false;
     const now = this.activeMs;
     const correct = sameAnswer(this.pitch, answer);
+    if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
     this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: 'practice', preset: this.preset.id }));
+    if (this.adaptive) {
+      const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;
+      if (next.added.length) this.announcement = `Uno added ${next.added.map(pitchLabel).join(', ')}. Your reading range grew!`;
+    } else this.learning = { ...this.learning, notes: observe(this.learning.notes,this.records.at(-1)!) };
     this.submissions++; this.responseTotalMs += now - this.promptStart;
     if (correct && this.submissions <= 20) this.first20Correct++;
     if (this.records.length > 100) this.records.shift();
@@ -77,7 +97,7 @@ export class Practice {
   }
   advance(token: PromptToken, explicit = false) {
     if (this.state !== 'feedback' || !this.matches(token) || (this.selfPaced ? !explicit : this.activeMs < this.feedbackEnd)) return false;
-    this.pitch = this.bag.next(); this.prompt++; this.promptStart = this.activeMs; this.state = 'running'; return true;
+    this.pitch = this.nextPitch(); this.prompt++; this.promptStart = this.activeMs; this.state = 'running'; return true;
   }
   pause() {
     if (this.state !== 'running' && this.state !== 'feedback') return;

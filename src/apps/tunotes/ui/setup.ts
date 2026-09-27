@@ -75,7 +75,7 @@ export function presetSetup(store: NotesStore) {
     }); return true; } catch (error) { summary.textContent = (error as Error).message; return false; }
   } };
 }
-export function localData(store: NotesStore, reload: () => void) {
+export function localData(store: NotesStore, reload: () => void, playerChanged: () => void = () => {}) {
   const node = el('details','local-data'); node.append(el('summary','','Local profiles and backups'));
   node.append(el('p','','Progress is saved on this device. Clearing browser or site data may erase it. Export a backup if you want to keep it.'),el('p','muted','Guest is memory-only. Moving or renaming the downloaded HTML or changing browsers may change storage access. The HTML file does not contain your progress.'));
   const remember = el('input'); remember.type = 'checkbox'; remember.id = 'remember-progress';
@@ -90,7 +90,7 @@ export function localData(store: NotesStore, reload: () => void) {
     store.data.profiles.forEach((p,index) => { const o = el('option','',`${p.name} · ${index+1}`); o.value = p.id; profiles.input.append(o); });
     profiles.input.value = store.data.configuration.profileId ?? ''; profiles.input.disabled = !remember.checked;
     const p = store.profile(); history.textContent = p ? `${p.results.length} recent sessions · ${p.results.reduce((sum,r) => sum+r.correct,0)} correct notes in retained history. Last session: ${p.results.at(-1)?.correct ?? 0} correct / ${p.results.at(-1)?.attempts ?? 0} attempts.` : 'Guest: progress stays in this session only.';
-    status.textContent = store.message;
+    status.textContent = store.message; playerChanged();
   };
   remember.addEventListener('change',() => { store.update(data => { data.configuration.remember = remember.checked; }); refresh(); });
   profiles.input.addEventListener('change',() => { store.update(data => { data.configuration.profileId = profiles.input.value || null; }); refresh(); });

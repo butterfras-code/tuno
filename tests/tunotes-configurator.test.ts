@@ -33,7 +33,7 @@ test('mixed clefs use readable assignment, apply staff content in that clef and 
 });
 test('version 1 backup migration and version 2 graphical settings/history round trip',() => {
   const legacy = {...emptySnapshot(),schemaVersion:1,customPresets:[{id:'old',name:'Old',clef:'bass',range:['C2','C4'],content:'lines',key:keySignature('C'),accidentals:'key-only',ledgerBelow:0,ledgerAbove:1}]};
-  const migrated = validateSnapshot(legacy); assert.equal(migrated.schemaVersion,2); assert.equal(migrated.customPresets[0]!.ledgerBelow,0);
+  const migrated = validateSnapshot(legacy); assert.equal(migrated.schemaVersion,3); assert.equal(migrated.customPresets[0]!.ledgerBelow,0);
   const store = new NotesStore();
   store.update(d => { d.customPresets.push(base); d.profiles.push({id:'player',name:'Player',results:[],contexts:[]}); d.configuration = {...d.configuration,profileId:'player',remember:true,presetId:base.id}; });
   const p = normalizePreset(base); const session = new Practice(p,true);

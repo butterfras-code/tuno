@@ -126,3 +126,23 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .segments[aria-label='Modifiers'] .key-modifier { flex-basis: 100%; border-bottom: 1px solid var(--color-line); }
   .endpoint-staff { height: 135px; }
 }
+
+.preview-gallery { max-height: 55vh; overflow-y: auto; overflow-x: hidden; }
+.preview-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; padding: .6rem; }
+.preview-note { position: relative; margin: 0; padding: .5rem; text-align: center; border: 1px solid var(--color-border, #9ba5a5); border-radius: .6rem; }
+.preview-staff { display: block; width: 100%; height: 150px; }
+.preview-note figcaption { visibility: hidden; font-weight: 700; }
+.preview-note.revealed figcaption { visibility: visible; }
+.preview-toy { position: absolute; left: 62%; top: 52%; width: 22px; height: 50px; pointer-events: none; }
+.preview-toy[hidden] { display: none; }
+.toy-ball { position: absolute; inset: 0 0 auto; height: 22px; border-radius: 50%; background: #e19b37; border: 2px solid #704b24; z-index: 1; }
+.toy-streamer { position: absolute; top: 16px; left: 5px; width: 5px; height: 32px; border-radius: 4px; background: #168879; transform-origin: top; transform: rotate(20deg); }
+.toy-streamer.two { left: 10px; transform: rotate(-12deg); background: #c46650; }
+.toy-streamer.three { left: 16px; transform: rotate(-30deg); background: #d7aa41; }
+.note-preview > .uno { position: relative; width: 150px; height: 150px; margin: auto; }
+@media (prefers-reduced-motion: reduce) { .preview-toy { display: none; } }
+.practice-view.previewing { grid-template-columns: minmax(0, 1fr); }
+#expansion-announcement { min-height: 3em; color: var(--color-teal); }
+@media (max-width: 600px) { .preview-group { grid-template-columns: minmax(0, 1fr); } }
+/* The introduction catches its own toy, not the practice reward bone. */
+.note-preview .uno-reward { display: none; }

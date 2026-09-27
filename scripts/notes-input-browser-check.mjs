@@ -16,7 +16,7 @@ try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(host.url + 'notes/');
   await choosePreset(page,'flute-starter');
-  await page.locator('#self-paced').check(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await page.locator('#self-paced').check(); await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answer').count(), 18);
   assert.equal(await page.locator('#answer-accidental').count(), 0);
   assert.equal(await button(page, 'B', -1).evaluate(b => b.classList.contains('answer-default')), true);
@@ -78,7 +78,7 @@ try {
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
   await page.locator('.local-data summary').click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];
   let n=0;
   const next = () => page.getByRole('button',{name:'Continue',exact:true}).first().click();
@@ -117,6 +117,9 @@ try {
   assert.equal(await fixture.locator('.answer-added').count(),1);
   await fixture.evaluate(()=>{window.control.letter('B',0);window.control.letter('B',1);});
   assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:-1},{letter:'B',accidental:0}]);
+  await fixture.evaluate(()=>{window.setPool('key-only','C',['C4','B4']); document.querySelectorAll('.answer-added').forEach(b=>b.classList.remove('answer-added')); window.setPool('key-only','C',['C3','B5']);});
+  assert.equal(await fixture.locator('.answer-added').count(),0); // New octaves do not reactivate existing spellings.
+  await fixture.evaluate(()=>{window.setPool('key-only','F',['B4','B4']);window.setPool('both');});
   await fixture.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await fixture.locator('.answer-added').first().evaluate(b=>getComputedStyle(b).animationName),'none');
   await fixture.evaluate(()=>{window.control.update({id:'x',name:'x',key:{tonic:{letter:'F',accidental:0},fifths:-1,mode:'major'},pool:[{letter:'B',accidental:-1,octave:4}]},{session:2,prompt:1},false);window.setPool('key-only','F',['B4','B5']);});
@@ -125,12 +128,12 @@ try {
   results.push('Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation');
   if(name==='chromium') {
     const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}}); const touch=await context.newPage(); touch.on('pageerror',e=>errors.push(e.message));
-    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await touch.locator('#self-paced').check(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await touch.locator('#self-paced').check(); await touch.locator('#meet-notes').uncheck(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     await button(touch,'B',-1).tap(); await count(touch,1);
     await touch.getByRole('button',{name:'Continue',exact:true}).first().tap();
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
     await touch.getByRole('button',{name:'Finish',exact:true}).first().tap(); await touch.getByRole('button',{name:'Home',exact:true}).first().tap();
-    await touch.locator('#self-paced').uncheck(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.locator('#self-paced').uncheck(); await touch.locator('#meet-notes').uncheck(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     from=await center(button(touch,'B')); to=await center(button(touch,'B',-1));
     const cdp=await context.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x,y:from.y}]});
@@ -146,7 +149,7 @@ try {
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});
     await preview.goto(host.url+'notes/'); await choosePreset(preview,preset);
-    await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
+    await preview.locator('#meet-notes').uncheck(); await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
     const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();

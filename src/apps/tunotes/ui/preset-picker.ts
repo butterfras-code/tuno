@@ -1,3 +1,4 @@
+import { pitchLabel } from '../domain/notation.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { clefs, instruments, presets } from '../domain/presets.ts';
 import type { PresetSource } from '../domain/presets.ts';
@@ -39,7 +40,7 @@ export function presetPicker(customs: () => readonly PresetSource[], select: (id
       for (const p of presets.filter(p => category === 'clef' ? !p.instrument && p.clef === item : p.instrument === item)) {
         const choice = control(p.name.split(' — ')[1] ?? p.name,() => choose(p.id));
         choice.dataset.presetId = p.id;
-        choice.append(el('small','muted',`${p.range[0]} – ${p.range[1]}`)); choices.append(choice);
+        choice.append(el('small','muted',`${pitchLabel(p.pool[0]!)} – ${pitchLabel(p.pool.at(-1)!)}`)); choices.append(choice);
       }
     }
     if (dialog.open) { position(); heading.focus(); }

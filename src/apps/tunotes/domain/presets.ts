@@ -88,24 +88,29 @@ const ledgerPresets = clefs.flatMap(clef => ([1,2,4] as const).flatMap(count => 
   clef, range: [pitchLabel(pitchAt(side === 'above' ? 0 : -count * 2, clef)), pitchLabel(pitchAt(side === 'below' ? 8 : 8 + count * 2, clef))], content: 'lines-and-spaces',
 }))));
 export const instruments = [
-  { id: 'flute', name: 'Flute', clef: 'treble', range: ['F4','C5'], expansion: ['C4','C7'], transpose: 0, key: 'F' },
-  { id: 'oboe', name: 'Oboe', clef: 'treble', range: ['F4','C5'], expansion: ['F4','C5'], transpose: 0, key: 'F' },
-  { id: 'bassoon', name: 'Bassoon', clef: 'bass', range: ['F2','C3'], expansion: ['F2','C3'], transpose: 0, key: 'F' },
-  { id: 'keyboards', name: 'Keyboards', clef: 'treble', range: ['C4','G4'], expansion: ['C4','G4'], transpose: 0, key: 'C' },
-  { id: 'clarinet-bb', name: 'B♭ Clarinet', clef: 'treble', range: ['C4','G4'], expansion: ['C4','C6'], transpose: 2, key: 'C' },
-  { id: 'alto-sax', name: 'Alto saxophone', clef: 'treble', range: ['G4','D5'], expansion: ['D4','F6'], transpose: 9, key: 'G' },
-  { id: 'trumpet-bb', name: 'B♭ Trumpet', clef: 'treble', range: ['C4','G4'], expansion: ['F3','C6'], transpose: 2, key: 'C' },
-  { id: 'horn-f', name: 'F Horn', clef: 'treble', range: ['C4','G4'], expansion: ['F3','C6'], transpose: 7, key: 'C' },
-  { id: 'trombone', name: 'Trombone', clef: 'bass', range: ['B2','F3'], expansion: ['E2','B3'], transpose: 0, key: 'Bb' },
-  { id: 'euphonium', name: 'Euphonium (bass clef)', clef: 'bass', range: ['B2','F3'], expansion: ['E2','B3'], transpose: 0, key: 'Bb' },
-  { id: 'tuba', name: 'Tuba (bass clef)', clef: 'bass', range: ['B1','F2'], expansion: ['E1','B2'], transpose: 0, key: 'Bb' },
+  { id: 'flute', name: 'Flute', clef: 'treble', range: ['F4','C5'], expansion: ['B3','B5'], transpose: 0, key: 'F' },
+  { id: 'oboe', name: 'Oboe', clef: 'treble', range: ['F4','C5'], expansion: ['B3','B5'], transpose: 0, key: 'F' },
+  { id: 'bassoon', name: 'Bassoon', clef: 'bass', range: ['F2','C3'], expansion: ['B1','B3'], transpose: 0, key: 'F' },
+  { id: 'keyboards', name: 'Keyboards', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 0, key: 'C' },
+  { id: 'clarinet-bb', name: 'B♭ Clarinet', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 2, key: 'C' },
+  { id: 'alto-sax', name: 'Alto saxophone', clef: 'treble', range: ['G4','D5'], expansion: ['C4','C6'], transpose: 9, key: 'G' },
+  { id: 'trumpet-bb', name: 'B♭ Trumpet', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 2, key: 'C' },
+  { id: 'horn-f', name: 'F Horn', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 7, key: 'C' },
+  { id: 'trombone', name: 'Trombone', clef: 'bass', range: ['B2','F3'], expansion: ['E2','E4'], transpose: 0, key: 'Bb' },
+  { id: 'euphonium', name: 'Euphonium (bass clef)', clef: 'bass', range: ['B2','F3'], expansion: ['E2','E4'], transpose: 0, key: 'Bb' },
+  { id: 'tuba', name: 'Tuba (bass clef)', clef: 'bass', range: ['B1','F2'], expansion: ['E1','E3'], transpose: 0, key: 'Bb' },
 ] as const;
 export const writtenToConcert = (pitch: WrittenPitch, concertToWritten: number) => chromatic(pitch) - concertToWritten;
 export const instrumentPresets = instruments.map(i => normalizePreset({ id: `${i.id}-starter`, name: `${i.name} — Starter`, clef: i.clef, range: i.range, expansion: i.expansion, instrument: i.id, key: keySignature(i.key), content: 'lines-and-spaces' }));
-export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets]);
+export const instrumentRangePresets = instruments.flatMap(i => {
+  const start = parsePitch(i.range[0]);
+  const octave = pitchLabel({ ...start, octave: start.octave+1 });
+  return ([['one-octave','1 octave',[i.range[0],octave]],['one-and-half-octaves','1.5 octaves',[i.expansion[0],octave]],['two-octaves','2 octaves',i.expansion]] as const).map(([id,label,range]) => normalizePreset({ id: `${i.id}-${id}`, name: `${i.name} — ${label}`, clef: i.clef, range, expansion: i.expansion, instrument: i.id, key: keySignature(i.key), content: 'lines-and-spaces' }));
+});
+export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets, ...instrumentRangePresets]);
 export const defaultPreset = presets[2]!;
-export function fingerprint(p: Preset) {
-  const parts: unknown[] = [p.id, p.version, p.clef, keyName(p.key), p.accidentals, p.pool.map(pitchLabel), 'practice', false, 'letters'];
+export function fingerprint(p: Preset, adaptive = false) {
+  const parts: unknown[] = [p.id, p.version, p.clef, keyName(p.key), p.accidentals, p.pool.map(pitchLabel), 'practice', adaptive, 'letters'];
   if (p.editorVersion === 2) parts.push({ version: 2, clefs: clefs.filter(c => p.availableClefs!.includes(c)), modifiers: ['key','flat','natural','sharp'].filter(m => p.modifiers!.includes(m as Modifier)) });
   return JSON.stringify(parts);
 }

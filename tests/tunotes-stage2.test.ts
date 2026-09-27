@@ -29,7 +29,7 @@ test('every key has the expected signature and explicitly spelled single acciden
   assert.equal(parsePitch('B#3').octave,3);
 });
 test('catalog pools exactly follow specified staff and ledger envelopes', () => {
-  assert.equal(presets.length,55);
+  assert.equal(presets.length,88);
   for (const p of presets) {
     const start = staffPosition(parsePitch(p.range[0]),p.clef), end = staffPosition(parsePitch(p.range[1]),p.clef);
     const positions = Array.from({length:end-start+1},(_,i) => start+i).filter(n => p.content === 'lines-and-spaces' || Math.abs(n%2) === (p.content === 'lines' ? 0 : 1));

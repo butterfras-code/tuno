@@ -52,7 +52,7 @@ async function loop(page, mode) {
   assert.equal(await page.locator('#preset').getAttribute('value'), 'treble-lines-and-spaces');
   assert.equal(await page.locator('#preset').getAttribute('aria-haspopup'), 'dialog');
   await page.locator('#self-paced').check();
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answers .answer-natural').allTextContents().then(a => a.join('')), 'CDEFGABC');
   assert.equal(await page.locator('h2:focus').count(), 1);
   const seen = new Set([await page.locator('.staff').getAttribute('aria-label')]);
@@ -101,7 +101,7 @@ async function loop(page, mode) {
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await choosePreset(page,'bass-spaces'); await page.locator('#self-paced').uncheck();
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const bass = await expected(page); await page.keyboard.press(bass.toLowerCase()); await running(page);
   const bad = (await expected(page)) === 'A' ? 'C' : 'A'; await page.keyboard.press(bad.toLowerCase());
   assert.match(await page.locator('#feedback').textContent(), /That note is/);
@@ -127,7 +127,7 @@ async function loop(page, mode) {
   assert.equal(await page.locator('#self-paced:focus').count(), 1);
   assert.notEqual(await page.locator('#self-paced').evaluate(node => getComputedStyle(node).outlineStyle), 'none');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   for (let i = 0; i < 10; i++) { await page.keyboard.press((await expected(page)).toLowerCase()); await running(page); }
   await page.waitForFunction(() => document.querySelector('.uno').dataset.pose === 'happy');
   assert.equal(await page.locator('.uno').evaluate(node => node.getAnimations({ subtree: true }).filter(a => a.playState === 'running').length), 0);
@@ -173,7 +173,7 @@ try {
   if (name === 'chromium') {
     const touch = await browser.newContext({ offline: true, hasTouch: true, viewport: { width: 390, height: 844 } });
     const p = await touch.newPage(); await p.goto(pathToFileURL(file).href);
-    await p.getByRole('button', { name: 'Start Practice', exact: true }).first().tap();
+    await p.locator('#meet-notes').uncheck(); await p.getByRole('button', { name: 'Start Practice', exact: true }).first().tap();
     await p.getByRole('button', { name: await expected(p), exact: true }).first().tap(); await count(p, 1);
     await p.getByRole('button', { name: 'Finish', exact: true }).first().tap(); assert.match(await p.locator('#result-summary').textContent(), /1 correct \/ 1 attempts/);
     await touch.close(); results.push('Emulated touch Start → answer → Finish passed');
