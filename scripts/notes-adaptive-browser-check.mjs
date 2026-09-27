@@ -15,11 +15,12 @@ const results=[],errors=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true}).first();
 const readData=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')));
 async function previewLabels(page) {
-  const previous=button(page,'Previous notes'),next=button(page,'Next notes');
+  const previous=button(page,'Previous note'),next=button(page,'Next note');
   while(await previous.isVisible() && await previous.isEnabled()) await previous.click();
   const labels=[];
   do {
     assert.equal(await page.locator('.preview-staff').count(),1);
+    assert.equal(await page.locator('.preview-staff .notehead').count(),1);
     assert.equal(await page.locator('figure.preview-note').count(),0);
     labels.push(...await page.locator('.preview-note-label').allTextContents());
     if(!await next.isVisible() || !await next.isEnabled()) break;
@@ -40,7 +41,18 @@ async function run(page,url,mode) {
   await button(page,'Start Practice').click();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
   assert.equal(await button(page,'Start').isDisabled(),true);
+  assert.equal(await page.locator('.preview-staff .notehead').count(),1);
+  assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
+  const frames=await page.locator('.preview-toy').evaluate(n=>n.getAnimations()[0].effect.getKeyframes().map(f=>f.transform));
+  assert.match(frames[0],/^translate\([0-9]/); assert.match(frames[2],/^translate\(-/);
+  assert.match(frames[4],/^translate\(0/); assert.match(frames.at(-1),/^translate\([0-9]/);
+  await page.clock.runFor(475);
+  assert.equal(await page.locator('.preview-note.revealed').count(),1);
+  assert.equal(await page.locator('.preview-note-label').textContent(),'E4');
+  await page.clock.runFor(950);
+  assert.equal(await page.locator('.preview-note-label').textContent(),'F4');
   await page.keyboard.press('a'); await page.clock.runFor(11000);
+  assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'uno-wag');
   assert.equal(await button(page,'Start').isEnabled(),true);
   assert.equal(await page.locator('.note-preview .uno').getAttribute('data-pose'),'happy');
   assert.equal((await previewLabels(page)).length,9);
@@ -50,12 +62,16 @@ async function run(page,url,mode) {
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:900});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    const staff=await page.locator('.preview-staff').boundingBox(), dog=await page.locator('.note-preview .uno').boundingBox(), head=await page.locator('.preview-staff .notehead').boundingBox();
+    assert.ok(dog.x >= staff.x+staff.width); assert.ok(Math.abs(head.x+head.width/2-staff.x-staff.width/2)<1);
     await page.screenshot({path:`dist/validation/notes-adaptive-${name}-${mode}-${width}.png`,fullPage:true});
   }
   await page.evaluate(()=>{document.documentElement.style.zoom='2';});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.evaluate(()=>{document.documentElement.style.zoom='';});
-  await button(page,'Replay').click(); await page.clock.runFor(1900);
+  await button(page,'Replay').click();
+  assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
+  await page.clock.runFor(1900);
   await button(page,'Skip').click();
   await page.clock.runFor(100);
   await page.keyboard.press('a');
@@ -71,7 +87,7 @@ async function run(page,url,mode) {
   await button(page,'Start Practice').click();
   const labels=await previewLabels(page); assert.equal(labels.length,15);
   assert.equal(labels[0],'E♭2'); assert.equal(labels.at(-1),'E♭4');
-  assert.match(await page.locator('.preview-group-status').textContent(),/Group 1 of 4/);
+  assert.match(await page.locator('.preview-note-status').textContent(),/Note 1 of 15/);
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
   await button(page,'Replay').click();await button(page,'Start').click();
   assert.equal(await page.locator('.practice-stage .staff').count(),1);
@@ -88,7 +104,7 @@ async function run(page,url,mode) {
   await page.locator('.local-data summary').click(); page.once('dialog',dialog=>dialog.accept());
   await button(page,'Delete all tuNotes data').click();
   assert.equal(await page.locator('#adaptive').isChecked(),false);assert.equal(await page.locator('#meet-notes').isChecked(),true);
-  results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, altered labels/grouping, profile preferences and Guest memory passed`);
+  results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, one centered note, right-side Uno, edge wrap, tail waiting until catch, altered labels/review, profile preferences and Guest memory passed`);
 }
 async function expansion(page) {
   page.setDefaultTimeout(10000);

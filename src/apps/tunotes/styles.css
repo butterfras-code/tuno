@@ -127,19 +127,21 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .endpoint-staff { height: 135px; }
 }
 
-.preview-staff-viewport { width: 100%; overflow-x: auto; background: var(--color-surface); border-radius: var(--radius-card); }
-.preview-staff-stage { position: relative; min-width: 580px; }
-.preview-staff { display: block; width: 100%; min-height: 270px; max-height: 380px; }
+.preview-scene { display: grid; grid-template-columns: minmax(0, 1fr) clamp(80px, 18vw, 180px); gap: 12px; align-items: center; }
+.preview-staff-viewport { min-width: 0; width: 100%; overflow: hidden; background: var(--color-surface); border-radius: var(--radius-card); }
+.preview-staff-stage { position: relative; width: 100%; }
+.preview-staff { display: block; width: 100%; height: clamp(220px, 30vw, 360px); }
 .preview-note-label { visibility: hidden; fill: currentColor; font: 22px var(--font-body); font-weight: 700; }
 .preview-note.revealed .preview-note-label { visibility: visible; }
-.preview-group-status { align-self: center; }
+.preview-note-status { align-self: center; }
 .preview-toy { position: absolute; left: 62%; top: 52%; width: 22px; height: 50px; pointer-events: none; }
 .preview-toy[hidden] { display: none; }
 .toy-ball { position: absolute; inset: 0 0 auto; height: 22px; border-radius: 50%; background: #e19b37; border: 2px solid #704b24; z-index: 1; }
 .toy-streamer { position: absolute; top: 16px; left: 5px; width: 5px; height: 32px; border-radius: 4px; background: #168879; transform-origin: top; transform: rotate(20deg); }
 .toy-streamer.two { left: 10px; transform: rotate(-12deg); background: #c46650; }
 .toy-streamer.three { left: 16px; transform: rotate(-30deg); background: #d7aa41; }
-.note-preview > .uno { position: relative; width: 150px; height: 150px; margin: auto; }
+.note-preview .preview-scene > .uno { position: relative; width: 100%; height: auto; aspect-ratio: 1; margin: 0; }
+.note-preview.preview-introducing .uno-tail { animation: none !important; transform: rotate(0deg) !important; }
 @media (prefers-reduced-motion: reduce) { .preview-toy { display: none; } }
 .practice-view.previewing { grid-template-columns: minmax(0, 1fr); }
 #expansion-announcement { min-height: 3em; color: var(--color-teal); }

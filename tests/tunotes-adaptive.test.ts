@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ALGORITHM_VERSION, activePool, expansionPlan, initialAdaptive, learn, mastered, observe, recommendation, selectAdaptive, weight } from '../src/apps/tunotes/engine/adaptive.ts';
-import { beginnerPreview, previewGroups } from '../src/apps/tunotes/engine/preview.ts';
+import { beginnerPreview, previewPitches } from '../src/apps/tunotes/engine/preview.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import type { Observation } from '../src/apps/tunotes/engine/practice.ts';
-import { clefForPitch, defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
+import { defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
 import { chromatic, parsePitch, pitchLabel, staffPosition } from '../src/apps/tunotes/domain/notation.ts';
 import { NotesStore, parseBackup } from '../src/apps/tunotes/persistence/store.ts';
 const observation = (pitch = defaultPreset.pool[0]!, correct = true, responseMs = 1): Observation => ({ pitch, answer: correct ? pitch : {letter: pitch.letter === 'C' ? 'D' : 'C', accidental: 0}, correct, responseMs, activity: 'practice', preset: defaultPreset.id });
@@ -106,15 +106,13 @@ test('profile weights, adaptive toggles, benchmarks, expanded contexts and previ
   const legacy=structuredClone(snapshot);delete legacy.profiles[0]!.results[0]!.preview;assert.equal(parseBackup(JSON.stringify(legacy)).profiles[0]!.results[0]!.preview,undefined);
   assert.notEqual(fingerprint(defaultPreset),fingerprint(defaultPreset,true));
 });
-test('preview pools sort explicit spellings, group large pools and include restored growth; recommendations are observational', () => {
+test('preview pools sort explicit spellings, retain large pools and include restored growth; recommendations are observational', () => {
   const mixed=normalizePreset({...defaultPreset,id:'mixed',range:['C4','C6'],editorVersion:2,availableClefs:['treble','bass'],endpointClefs:['bass','treble'],modifiers:['natural','sharp','flat']});
-  const groups=previewGroups(mixed);assert.ok(groups.every(g=>g.length<=4));
-  assert.ok(groups.every(g=>g.every(p=>clefForPitch(mixed,p)===clefForPitch(mixed,g[0]!))));
-  const pitches=groups.flat();assert.equal(pitches.length,mixed.pool.length);assert.deepEqual(pitches.map(chromatic),pitches.map(chromatic).sort((a,b)=>a-b));
+  const pitches=previewPitches(mixed);assert.equal(pitches.length,mixed.pool.length);assert.deepEqual(pitches.map(chromatic),pitches.map(chromatic).sort((a,b)=>a-b));
   assert.ok(pitches.some(p=>pitchLabel(p)==='D♭4'));assert.ok(pitches.some(p=>pitchLabel(p)==='C♯4'));
   assert.ok(beginnerPreview(defaultPreset));assert.ok(!beginnerPreview(mixed));
   const grown={...defaultPreset,pool:activePool(defaultPreset,{algorithmVersion:ALGORITHM_VERSION,expansionCount:2})};
-  assert.equal(previewGroups(grown).flat().length,11);
+  assert.equal(previewPitches(grown).length,11);
   assert.match(recommendation(20,18,{}),/broader/);assert.match(recommendation(20,13,{C4:[observation(parsePitch('C4'),false)]}),/C4/);assert.match(recommendation(19,19,{}),/own pace/);
 });
 test('the final focus/review prompt still blocks expansion until the block ends', () => {
