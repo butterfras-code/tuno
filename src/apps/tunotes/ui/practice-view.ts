@@ -3,6 +3,7 @@ import { animatedUno } from '../../../shared/ui/uno.ts';
 import { onUnmount } from '../../../shared/ui/unmount.ts';
 import { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
+import { clefForPitch } from '../domain/presets.ts';
 import { spelling } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
@@ -83,7 +84,7 @@ export function practiceView() {
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak}`;
     const identity = `${session.session}:${session.prompt}`;
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, session.preset.clef, session.preset.key));
+      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key));
     }
     staff.hidden = paused;
     const locked = session.state !== 'running';
@@ -112,7 +113,7 @@ export function practiceView() {
     heading.textContent = session.preset.name; encouragement.textContent = ''; dog.pose('rest'); dog.look(false); dog.tail(0, false);
     setup.hidden = true; result.hidden = true; play.hidden = false; render(); heading.focus();
   };
-  const startButton = button('Start Practice', start);
+  const startButton = button('Start Practice', start); startButton.disabled = !selected();
   presetsUI.onChange(() => { startButton.disabled = !selected(); });
   setup.append(startButton, dataUI.node);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));

@@ -1,3 +1,4 @@
+import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -14,7 +15,7 @@ try {
   await mkdir('dist/validation', { recursive: true });
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(host.url + 'notes/');
-  await page.locator('#preset').selectOption('flute-starter');
+  await choosePreset(page,'flute-starter');
   await page.locator('#self-paced').check(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answer').count(), 18);
   assert.equal(await page.locator('#answer-accidental').count(), 0);
@@ -74,8 +75,8 @@ try {
   await starts.first().click(); await count(page,4);
   results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; unavailable natural rejects input; positions stable across prompts; mouse slide from inactive natural to flat; outside release and pause cancel');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
-  await page.locator('#preset').selectOption('custom');
-  for (const [label,value] of [['Lowest written position','D4'],['Highest written position','G4'],['Major key','C'],['Accidentals','both']]) await page.getByLabel(label,{exact:true}).selectOption(value);
+  await choosePreset(page,'custom');
+  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
   await page.locator('.local-data summary').click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
   await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];
@@ -124,7 +125,7 @@ try {
   results.push('Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation');
   if(name==='chromium') {
     const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}}); const touch=await context.newPage(); touch.on('pageerror',e=>errors.push(e.message));
-    await touch.goto(host.url+'notes/'); await touch.locator('#preset').selectOption('flute-starter'); await touch.locator('#self-paced').check(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await touch.locator('#self-paced').check(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     await button(touch,'B',-1).tap(); await count(touch,1);
     await touch.getByRole('button',{name:'Continue',exact:true}).first().tap();
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
@@ -144,7 +145,7 @@ try {
   }
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});
-    await preview.goto(host.url+'notes/'); await preview.locator('#preset').selectOption(preset);
+    await preview.goto(host.url+'notes/'); await choosePreset(preview,preset);
     await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);

@@ -1,3 +1,4 @@
+import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -10,9 +11,11 @@ const browser = await ({chromium,firefox})[name].launch(); const host = await ho
 const results = []; const errors = [];
 const upload = (page,data) => page.locator('#import-backup').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(typeof data === 'string' ? data : JSON.stringify(data))});
 const expandData = async page => { if (!await page.locator('.local-data').evaluate(n => n.open)) await page.locator('.local-data summary').click(); };
-async function custom(page, {clef='treble',low='F4',high='F4',key='G',policy='key-only'} = {}) {
-  await page.locator('#preset').selectOption('custom');
-  for (const [label,value] of [['Clef',clef],['Lowest written position',low],['Highest written position',high],['Major key',key],['Accidentals',policy]]) await page.getByLabel(label,{exact:true}).selectOption(value);
+async function custom(page, {clef='treble',low='F4',high='F#4',key='G',policy='key-only'} = {}) {
+  await choosePreset(page,'custom');
+  await setEndpoint(page,'Lowest note',low); await setEndpoint(page,'Highest note',high);
+  await page.getByLabel('Major key',{exact:true}).selectOption(key);
+  await setModifiers(page,['key']);
 }
 try {
   await mkdir('dist/validation',{recursive:true});
@@ -31,9 +34,11 @@ try {
   assert.equal(await page.getByRole('button',{name:'F♭',exact:true}).count(),0); assert.match(await page.locator('#practice-counts').textContent(),/2 attempts/);
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
   await page.getByLabel('Major key',{exact:true}).selectOption('F'); assert.match(await page.locator('#preset-summary').textContent(),/1 notes · F4/);
-  await page.getByLabel('Lowest written position',{exact:true}).selectOption('C4'); await page.getByLabel('Highest written position',{exact:true}).selectOption('C4');
+  await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
+  assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isEnabled(),true);
+  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/empty pool/);
-  await page.getByLabel('Maximum ledger lines below').selectOption('4'); assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isEnabled(),true);
+  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
   await page.getByLabel('Custom preset name').fill('Middle C'); await page.getByRole('button',{name:'Save Custom preset',exact:true}).first().click();
   results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, disabled out-of-pool answers, explicit sharp keyboard answer and focused Enter submission');
   await expandData(page); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
@@ -60,7 +65,7 @@ try {
   await file.goto(pathToFileURL(resolve('dist/portable/tunotes.html')).href); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); assert.match(await file.locator('#profile-history').textContent(),/20 correct/); assert.deepEqual(requests,[]);
   const portableDownload = file.waitForEvent('download'); await file.getByRole('button',{name:'Export backup',exact:true}).first().click(); const portableBackup = await readFile(await (await portableDownload).path(),'utf8'); await upload(page,portableBackup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete selected profile',exact:true}).first().click(); assert.equal(await page.locator('#profile option').count(),1);
-  page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.locator('#preset').inputValue(),'treble-lines-and-spaces'); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
+  page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.locator('#preset').getAttribute('value'),'treble-lines-and-spaces'); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
   results.push('Hosted ↔ cold-offline portable JSON backup round trip, confirmed profile/all-data deletion and 360/768/1280 setup layouts');
   for (const mode of ['denied','corrupt','quota']) {
     const ctx = await browser.newContext(); await ctx.addInitScript(mode => {

@@ -7,8 +7,8 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]> }
 export interface Profile { id: string; name: string; results: Result[]; contexts: Context[] }
-export interface Snapshot { appId: 'tunotes'; schemaVersion: 1; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean } }
-export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 1, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
+export interface Snapshot { appId: 'tunotes'; schemaVersion: 2; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean } }
+export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 2, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
 function object(v: unknown, keys: string[]): Record<string, unknown> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail('Expected an object.');
@@ -24,12 +24,16 @@ function array(v: unknown, max: number): unknown[] { if (!Array.isArray(v) || v.
 function id(v: unknown) { const s = string(v,80); if (!/^[a-zA-Z0-9_-]+$/.test(s)) fail('Invalid ID.'); return s; }
 function unique(values: string[]) { if (new Set(values).size !== values.length) fail('Duplicate IDs or contexts.'); }
 function source(v: unknown): PresetSource {
-  const o = object(v,['id','name','clef','range','content','key','accidentals','ledgerBelow','ledgerAbove']);
+  const o = object(v,['id','name','clef','range','content','key','accidentals','ledgerBelow','ledgerAbove','editorVersion','modifiers','availableClefs','endpointClefs']);
   const range = array(o.range,2); if (range.length !== 2) fail('A range needs two boundaries.');
   const key = object(o.key,['tonic','fifths','mode']); const tonic = object(key.tonic,['letter','accidental','octave']);
   const canonical = keySignature(keyName({ fifths: integer(key.fifths,-7,7), tonic: { letter: 'C', accidental: 0 }, mode: 'major' }));
   if (key.mode !== 'major' || tonic.letter !== canonical.tonic.letter || tonic.accidental !== canonical.tonic.accidental || tonic.octave !== undefined && tonic.octave !== 4) fail('Invalid key signature.');
-  const result: PresetSource = { id: id(o.id), name: string(o.name,80), clef: string(o.clef) as PresetSource['clef'], range: [string(range[0],3),string(range[1],3)], content: string(o.content) as PresetSource['content'], key: canonical, accidentals: string(o.accidentals) as PresetSource['accidentals'], ledgerBelow: integer(o.ledgerBelow,0,4), ledgerAbove: integer(o.ledgerAbove,0,4) };
+  const result: PresetSource = { id: id(o.id), name: string(o.name,80), clef: string(o.clef) as PresetSource['clef'], range: [string(range[0],3),string(range[1],3)], content: string(o.content) as PresetSource['content'], key: canonical, accidentals: string(o.accidentals) as PresetSource['accidentals'], ledgerBelow: o.ledgerBelow === undefined ? undefined : integer(o.ledgerBelow,0,4), ledgerAbove: o.ledgerAbove === undefined ? undefined : integer(o.ledgerAbove,0,4) };
+  if (o.editorVersion !== undefined) {
+    if (o.editorVersion !== 2) fail('Unsupported custom editor version.');
+    Object.assign(result, { editorVersion: 2, modifiers: array(o.modifiers,4).map(v => string(v)), availableClefs: array(o.availableClefs,4).map(v => string(v)), endpointClefs: array(o.endpointClefs,2).map(v => string(v)) });
+  } else if (o.modifiers !== undefined || o.availableClefs !== undefined || o.endpointClefs !== undefined) fail('Missing custom editor version.');
   // Keep earlier saved configurations/history importable even if their spelling pool is no longer playable.
   normalizePreset(result, { legacySpellings: true }); return result;
 }
@@ -48,10 +52,10 @@ export function validateSnapshot(input: unknown): Snapshot {
   const o = object(input,['appId','schemaVersion','profiles','customPresets','configuration']);
   if (o.appId !== 'tunotes') fail('This is not a tuNotes backup.');
   const version = integer(o.schemaVersion);
-  if (version > 1) fail('This backup needs a newer version of tuNotes.');
+  if (version > 2) fail('This backup needs a newer version of tuNotes.');
   if (version === 0) {
     if (o.configuration !== undefined) fail('Version 0 backups cannot contain configuration.');
-    return validateSnapshot({ ...o, schemaVersion: 1, configuration: emptySnapshot().configuration });
+    return validateSnapshot({ ...o, schemaVersion: 2, configuration: emptySnapshot().configuration });
   }
   const customPresets = array(o.customPresets,100).map(source);
   unique([...presets.map(p => p.id), ...customPresets.map(p => p.id)]);
@@ -88,14 +92,21 @@ export function validateSnapshot(input: unknown): Snapshot {
   const profileId = c.profileId === null ? null : id(c.profileId);
   if (profileId !== null && !profiles.some(p => p.id === profileId)) fail('Selected profile does not exist.');
   const presetId = id(c.presetId); if (!validPresets.has(presetId)) fail('Selected preset does not exist.');
-  return { appId: 'tunotes', schemaVersion: 1, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced) } };
+  return { appId: 'tunotes', schemaVersion: 2, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced) } };
 }
 function validateContext(value: string, validPresets: Set<string>) {
   const parts: unknown = JSON.parse(value);
-  if (!Array.isArray(parts) || parts.length !== 9) fail('Invalid practice context.');
+  if (!Array.isArray(parts) || ![9,10].includes(parts.length)) fail('Invalid practice context.');
   const [preset,version,clef,key,policy,pool,activity,adaptive,input] = parts;
   if (!validPresets.has(id(preset))) fail('History refers to a missing preset.');
   if (version !== 1 || !['treble','bass','alto','tenor'].includes(String(clef)) || !['key-only','sharps','flats','both'].includes(String(policy)) || activity !== 'practice' || adaptive !== false || input !== 'letters') fail('Unsupported practice context.');
+  if (parts.length === 10) {
+    const extra = object(parts[9],['version','clefs','modifiers']);
+    const clefs = array(extra.clefs,4).map(v => string(v));
+    const modifiers = array(extra.modifiers,4).map(v => string(v));
+    if (extra.version !== 2 || !clefs.length || clefs.some(c => !['treble','bass','alto','tenor'].includes(c)) || !modifiers.length || modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) fail('Invalid graphical practice context.');
+    unique(clefs); unique(modifiers);
+  }
   keySignature(string(key));
   const pitches = array(pool,189).map(v => string(v,5));
   if (!pitches.length) fail('Empty context pool.'); unique(pitches);

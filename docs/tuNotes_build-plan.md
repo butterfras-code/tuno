@@ -158,3 +158,7 @@ Do not let pending classroom validation block independent technical stages, and 
 - Derive ledger descriptions from ranges; remove hidden ledger clipping from new configurations.
 - Extend normalization, exercise rendering, context identity and validated persistence for accidental boundaries, independent modifiers and multiple clefs; retain older configurations.
 - Validate domain semantics, persistence round trips, picker navigation, graphical input and responsive browser layouts, then run npm run check.
+
+Implemented locally: the picker wizard and graphical configurator now drive actual normalized note pools and mixed-clef practice. New Custom definitions use versioned modifiers/clefs and accidental endpoints; backup schema 2 migrates earlier settings/history. Automated evidence includes 63 unit tests, hosted/portable Chromium and Firefox configurator checks, existing practice/input/backup regressions, and emulated touch dragging. See [configurator validation](validation/tunotes-configurator.md) for archived evidence and remaining physical/teacher acceptance. No new instrument ranges or adaptive levels were introduced.
+
+Configurator follow-up: rename the fieldset to “tuNotes Your Way!”, cycle clefs directly from their symbols with one shared help line, clamp edits before the endpoints can cross (including accidentals), and prefill deterministic range/content/key/modifier names with an editable override. Cover pointer/keyboard/accidental limits, four-clef cycling, generated-name updates and override persistence in browser checks.

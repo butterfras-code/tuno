@@ -1,3 +1,4 @@
+import { choosePreset } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -48,8 +49,8 @@ async function lostKeyup(page) {
 async function loop(page, mode) {
   page.setDefaultTimeout(10000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  assert.equal(await page.locator('#preset').inputValue(), 'treble-lines-and-spaces');
-  assert.equal(await page.locator('#preset option').count(), 56);
+  assert.equal(await page.locator('#preset').getAttribute('value'), 'treble-lines-and-spaces');
+  assert.equal(await page.locator('#preset').getAttribute('aria-haspopup'), 'dialog');
   await page.locator('#self-paced').check();
   await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answers .answer-natural').allTextContents().then(a => a.join('')), 'CDEFGABC');
@@ -99,7 +100,7 @@ async function loop(page, mode) {
   await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await count(page, 0);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
-  await page.locator('#preset').selectOption('bass-spaces'); await page.locator('#self-paced').uncheck();
+  await choosePreset(page,'bass-spaces'); await page.locator('#self-paced').uncheck();
   await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const bass = await expected(page); await page.keyboard.press(bass.toLowerCase()); await running(page);
   const bad = (await expected(page)) === 'A' ? 'C' : 'A'; await page.keyboard.press(bad.toLowerCase());

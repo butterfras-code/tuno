@@ -1,0 +1,9 @@
+{
+  "build": "3c998e5ac638ede6",
+  "browser": "153.0.8010.12",
+  "results": [
+    "hosted: wizard/back/Escape/focus, ordered keys, keyboard/tap/drag range, clamped keyboard/pointer/accidental bounds, generated/overridden names, empty settings, additive modifiers, linked and mixed clefs with Cancel/OK, explicit clefs, ledger description, save/reload, mixed-clef practice, 360/768/1280 layouts and zoom",
+    "portable: wizard/back/Escape/focus, ordered keys, keyboard/tap/drag range, clamped keyboard/pointer/accidental bounds, generated/overridden names, empty settings, additive modifiers, linked and mixed clefs with Cancel/OK, explicit clefs, ledger description, save/reload, mixed-clef practice, 360/768/1280 layouts and zoom",
+    "Chromium touch emulation: graphical note drag and endpoint accidental tap"
+  ]
+}

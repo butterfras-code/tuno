@@ -1,0 +1,18 @@
+{
+  "apps": {
+    "tunotes": {
+      "version": "0.1.0",
+      "build": "f7c2ec15badd134c",
+      "revision": "24ff7dbd79060a889565afd39c1a9bf8af4ce2f2",
+      "dirty": true,
+      "checksums": {
+        "index.html": "34750e9f165a1f70ab5ffa13630df721fee126200bb2c9ef75d01f3cf3054190",
+        "app.js": "6b6e21c8543b71f566f4e459c07135bf39c79049f33b4ae04a55de8774410f0d",
+        "app.css": "0e1de9a87988963f99f097b88ebc09841d29d86b9576133d378819c4d06a3ae9"
+      },
+      "portableSha256": "3eca94bebc79fa31cb4e4cb224b69ec9032a87cfe0b53ea200e19e205c691049",
+      "hostedDirectory": "notes",
+      "portableFile": "tunotes.html"
+    }
+  }
+}

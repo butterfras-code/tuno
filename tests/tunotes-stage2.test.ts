@@ -85,7 +85,7 @@ test('backup round trip, version migration and strict rejection leave data uncha
   const backup = store.export(); const destination = new NotesStore(memory()); destination.replace(parseBackup(backup)); assert.deepEqual(destination.data,store.data);
   const old = { ...emptySnapshot(),schemaVersion:0 } as Record<string,unknown>; delete old.configuration;
   assert.deepEqual(validateSnapshot(old),emptySnapshot()); assert.equal(old.schemaVersion,0);
-  const bad = [ {...store.data,schemaVersion:2}, {...store.data,appId:'tuno'}, {...store.data,extra:'ignored'}, {...store.data,profiles:[{...store.data.profiles[0],name:'x'.repeat(41)}]}, {...store.data,configuration:{...store.data.configuration,profileId:'missing'}}, {...store.data,profiles:[{...store.data.profiles[0],results:[{...store.data.profiles[0]!.results[0],correct:999}]}]} ];
+  const bad = [ {...store.data,schemaVersion:99}, {...store.data,appId:'tuno'}, {...store.data,extra:'ignored'}, {...store.data,profiles:[{...store.data.profiles[0],name:'x'.repeat(41)}]}, {...store.data,configuration:{...store.data.configuration,profileId:'missing'}}, {...store.data,profiles:[{...store.data.profiles[0],results:[{...store.data.profiles[0]!.results[0],correct:999}]}]} ];
   for(const candidate of bad) assert.throws(() => store.replace(candidate as never));
   assert.throws(() => parseBackup(' '.repeat(MAX_BYTES+1)),/5 MiB/);
   assert.throws(() => parseBackup('{'));

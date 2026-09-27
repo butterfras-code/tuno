@@ -1,8 +1,9 @@
 import { el } from '../../../shared/ui/components.ts';
-import { clefs, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
-import type { Preset, PresetSource, Content, Policy } from '../domain/presets.ts';
-import { keyNames, keySignature, pitchLabel, spelling, keyName } from '../domain/notation.ts';
-import type { Clef } from '../domain/notation.ts';
+import { clefForPitch, generatedPresetName, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
+import type { Preset } from '../domain/presets.ts';
+import { pitchLabel, spelling } from '../domain/notation.ts';
+import { presetPicker } from './preset-picker.ts';
+import { customConfigurator } from './custom-configurator.ts';
 import { renderStaff } from './staff.ts';
 import { MAX_BYTES, NotesStore, parseBackup } from '../persistence/store.ts';
 import type { Snapshot } from '../persistence/store.ts';
@@ -13,49 +14,48 @@ function select(label: string, values: readonly (string | readonly [string,strin
   input.value = initial; node.append(input); return { node,input };
 }
 export function presetSetup(store: NotesStore) {
-  const node = el('div'); const pickerLabel = el('label','','Preset '); const picker = el('select','control'); picker.id = 'preset'; pickerLabel.append(picker);
-  const custom = el('fieldset'); custom.hidden = true; custom.append(el('legend','','Custom note pool'));
-  const clef = select('Clef',clefs,'treble'); const low = select('Lowest written position',Array.from({length:63},(_,i) => `${'CDEFGAB'[i%7]}${Math.floor(i/7)}`),'E4');
-  const high = select('Highest written position',Array.from({length:63},(_,i) => `${'CDEFGAB'[i%7]}${Math.floor(i/7)}`),'F5');
-  const content = select('Content',[['lines','Lines'],['spaces','Spaces'],['lines-and-spaces','Lines + Spaces']],'lines-and-spaces');
-  const key = select('Major key',keyNames.map(k => [k,spelling(keySignature(k).tonic)] as const),'C');
-  key.input.querySelector<HTMLOptionElement>('option[value="Cb"]')!.disabled = true;
-  const policy = select('Accidentals',[['key-only','Key notes only'],['sharps','Key notes + extra sharps'],['flats','Key notes + extra flats'],['both','Key notes + sharps and flats']],'key-only');
-  const below = select('Maximum ledger lines below',['0','1','2','3','4'],'0'); const above = select('Maximum ledger lines above',['0','1','2','3','4'],'0');
-  custom.append(clef.node,low.node,high.node,content.node,key.node,policy.node,below.node,above.node,el('p','muted','Zero ledger lines permits the spaces immediately outside the staff. Select staff boundaries for staff-only practice. B♯, C♭, E♯ and F♭ are excluded from the note pool.'));
+  const node = el('div');
+  let current: Preset | undefined; let changed = () => {}; let selectedId = store.data.configuration.presetId;
+  const pickerUI = presetPicker(() => store.data.customPresets,id => { selectedId = id; loadCustom(); });
+  const picker = pickerUI.picker;
+  const editor = customConfigurator(() => summarize()); const custom = editor.node;
   const summary = el('p'); summary.id = 'preset-summary'; summary.setAttribute('role','status');
   const preview = el('div','preset-preview');
-  let current: Preset | undefined; let changed = () => {};
-  const customSource = (): PresetSource => ({ id: picker.value === 'custom' ? 'custom-current' : picker.value, name: store.data.customPresets.find(p => p.id === picker.value)?.name ?? 'Custom', clef: clef.input.value as Clef, range: [low.input.value,high.input.value], content: content.input.value as Content, key: keySignature(key.input.value), accidentals: policy.input.value as Policy, ledgerBelow: Number(below.input.value), ledgerAbove: Number(above.input.value) });
+  const saveName = el('input','control'); saveName.maxLength = 80; saveName.setAttribute('aria-label','Custom preset name');
+  let nameOverride = false;
+  const customSource = () => {
+    const source = editor.source(selectedId === 'custom' ? 'custom-current' : selectedId,'Custom');
+    const generated = generatedPresetName(source);
+    if (!nameOverride) saveName.value = generated;
+    return {...source,name:saveName.value.trim() || generated};
+  };
+  saveName.addEventListener('input',() => { nameOverride = !!saveName.value.trim(); summarize(); });
   const summarize = () => {
-    custom.hidden = picker.value !== 'custom' && !store.data.customPresets.some(p => p.id === picker.value);
+    custom.hidden = selectedId !== 'custom' && !store.data.customPresets.some(p => p.id === selectedId);
     try {
-      current = custom.hidden ? presets.find(p => p.id === picker.value)! : normalizePreset(customSource());
+      current = custom.hidden ? presets.find(p => p.id === selectedId)! : normalizePreset(customSource());
       if (!current) throw new Error('Choose a preset.');
-      summary.textContent = `${spelling(current.key.tonic)} major · ${current.pool.length} notes · ${current.pool.map(pitchLabel).join(', ')} · Adaptive off${current.pool.length === 1 ? ' · This one-note pool repeats the same note.' : ''}${current.instrument ? ' · Teacher-reviewed starting range.' : ''}`;
-      const staff = renderStaff(current.pool[0]!,current.clef,current.key); staff.classList.replace('staff','setup-staff'); preview.replaceChildren(staff);
-    } catch (error) { current = undefined; summary.textContent = (error as Error).message; preview.replaceChildren(); }
+      summary.textContent = `${current.editorVersion === 2 && !current.modifiers!.includes('key') ? 'No key signature' : `${spelling(current.key.tonic)} major`} · ${current.pool.length} notes · ${current.pool.map(pitchLabel).join(', ')}${current.pool.length === 1 ? ' · This one-note pool repeats the same note.' : ''}${current.instrument ? ' · Teacher-reviewed starting range.' : ''}`;
+      if (!custom.hidden) editor.describe(current);
+      const staff = renderStaff(current.pool[0]!,clefForPitch(current,current.pool[0]!),current.key); staff.classList.replace('staff','setup-staff'); preview.replaceChildren(staff); preview.hidden = !custom.hidden;
+    } catch (error) { current = undefined; editor.clearDescription(); summary.textContent = (error as Error).message; preview.replaceChildren(); }
     changed();
   };
   const loadCustom = () => {
-    const p = store.data.customPresets.find(p => p.id === picker.value);
-    if (p) { clef.input.value = p.clef; low.input.value = p.range[0]; high.input.value = p.range[1]; content.input.value = p.content; key.input.value = keyName(p.key!); policy.input.value = p.accidentals!; below.input.value = String(p.ledgerBelow); above.input.value = String(p.ledgerAbove); }
+    const p = store.data.customPresets.find(p => p.id === selectedId);
+    if (p) { nameOverride = p.name !== generatedPresetName(p); saveName.value = p.name; editor.load(p); }
+    else if (selectedId === 'custom') nameOverride = false;
+    pickerUI.set(selectedId,p?.name ?? presets.find(p => p.id === selectedId)?.name ?? 'Custom');
     summarize();
   };
   const refresh = () => {
-    const selected = store.data.configuration.presetId; picker.replaceChildren();
-    for (const [name,items] of [['Clef',presets.filter(p => !p.instrument)],['Instrument',presets.filter(p => p.instrument)],['Custom',store.data.customPresets]] as const) {
-      const group = el('optgroup'); group.label = name;
-      for (const p of items) { const o = el('option','',p.name); o.value = p.id; group.append(o); }
-      if (name === 'Custom') { const o = el('option','','New Custom…'); o.value = 'custom'; group.append(o); }
-      picker.append(group);
-    }
-    picker.value = selected; if (!picker.value) picker.value = defaultPreset.id; loadCustom();
+    selectedId = store.data.configuration.presetId;
+    if (!presets.some(p => p.id === selectedId) && !store.data.customPresets.some(p => p.id === selectedId)) selectedId = defaultPreset.id;
+    loadCustom();
   };
-  picker.addEventListener('change',loadCustom); custom.addEventListener('change',summarize);
-  const saveName = el('input','control'); saveName.maxLength = 80; saveName.placeholder = 'Custom preset name'; saveName.setAttribute('aria-label','Custom preset name');
   const saveMessage = el('p'); saveMessage.setAttribute('role','status');
-  custom.append(saveName,button('Save Custom preset',() => {
+  const nameLabel = el('label','setting','Preset name'); nameLabel.append(saveName);
+  custom.append(nameLabel,el('p','muted','Generated from your settings. Edit to rename; clear to use the generated name.'),button('Save Custom preset',() => {
     if (!current) return;
     if (!saveName.value.trim()) { saveMessage.textContent = 'Enter a name for this preset.'; return; }
     try {
@@ -63,7 +63,7 @@ export function presetSetup(store: NotesStore) {
       store.update(data => { data.customPresets.push(p); data.configuration.presetId = p.id; }); refresh(); saveMessage.textContent = 'Custom preset saved.';
     } catch (error) { saveMessage.textContent = (error as Error).message; }
   }),saveMessage);
-  node.append(pickerLabel,custom,summary,preview); refresh();
+  node.append(pickerUI.node,custom,summary,preview); refresh();
   return { node,picker,refresh, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveConfiguration: (selfPaced: boolean) => {
     if (!current) return false;
     try { store.update(data => {
