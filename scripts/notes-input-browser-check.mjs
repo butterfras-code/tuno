@@ -1,3 +1,4 @@
+import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -16,12 +17,12 @@ try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(host.url + 'notes/');
   await choosePreset(page,'flute-starter');
-  await page.locator('#self-paced').check(); await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answer').count(), 18);
   assert.equal(await page.locator('#answer-accidental').count(), 0);
   assert.equal(await button(page, 'B', -1).evaluate(b => b.classList.contains('answer-default')), true);
-  assert.equal(await button(page, 'B').getAttribute('aria-disabled'), 'true');
-  assert.equal(await page.locator('.answer[aria-disabled="false"]').count(), 6);
+  assert.equal(await button(page, 'B').getAttribute('aria-disabled'), 'false');
+  assert.equal(await page.locator('.answer[aria-disabled="false"]').count(), 18);
   // Held modifiers illuminate their whole row, including muted unavailable targets.
   for (const [arrow, accidental] of [['ArrowDown', -1], ['ArrowUp', 1], ['ArrowRight', 0]]) {
     await page.keyboard.down(arrow);
@@ -50,35 +51,39 @@ try {
   assert.equal(await page.locator('.answer-modifier').count(), 0);
   await page.keyboard.up('ArrowDown'); await page.getByRole('button', {name:'Resume', exact:true}).click();
   results.push('Held arrow highlights the matching row; unavailable keys have muted glow; release, conflicting arrows, blur and pause clear the highlight');
-  await button(page, 'B').click({ force: true }); await count(page, 0);
-  await page.keyboard.press('b'); await count(page, 0);
-  await page.keyboard.down('ArrowDown'); await page.keyboard.press('b'); await page.keyboard.up('ArrowDown'); await count(page, 1);
+  await button(page, 'B').click(); await count(page,1);
+  assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.keyboard.press('b'); await count(page,2);
+  assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.keyboard.down('ArrowDown'); await page.keyboard.press('b'); await page.keyboard.up('ArrowDown'); await count(page,3);
   const positions = await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   assert.deepEqual(await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
-  // Mouse can start at inactive natural B and slide to the visible flat B.
+  // Mouse can start at out-of-pool natural B and slide to the visible flat B.
   let from = await center(button(page, 'B')), to = await center(button(page, 'B', -1));
   await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(to.x,to.y,{steps:4});
   assert.match(await page.locator('.answer-preview').textContent(), /Release to answer B♭/);
-  await page.mouse.up(); await count(page,2);
+  await page.mouse.up(); await count(page,4);
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   from = await center(button(page,'B',-1));
-  await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(1,1); await page.mouse.up(); await count(page,2);
+  await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(1,1); await page.mouse.up(); await count(page,4);
   await page.mouse.move(from.x,from.y); await page.mouse.down();
   await page.getByRole('button', { name: 'Pause', exact: true }).first().dispatchEvent('click');
   await page.getByRole('button', { name: 'Resume', exact: true }).first().dispatchEvent('click');
-  await page.mouse.up(); await count(page,2);
+  await page.mouse.up(); await count(page,4);
   const starts=page.locator('.answer[data-letter="F"][data-accidental="0"]');
   assert.equal(await starts.count(),2);
-  await starts.last().click(); await count(page,3);
+  await starts.last().click(); await count(page,5);
   await page.getByRole('button',{name:'Continue',exact:true}).click();
-  await starts.first().click(); await count(page,4);
-  results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; unavailable natural rejects input; positions stable across prompts; mouse slide from inactive natural to flat; outside release and pause cancel');
+  await starts.first().click(); await count(page,6);
+  results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse slide from out-of-pool natural to flat; outside release and pause cancel');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
-  await page.locator('.local-data summary').click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
-  await page.locator('#meet-notes').uncheck(); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await openData(page); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
+  await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];
   let n=0;
   const next = () => page.getByRole('button',{name:'Continue',exact:true}).first().click();
@@ -112,11 +117,11 @@ try {
   await fixture.goto(host.url+'notes/'); await fixture.evaluate(() => { document.body.replaceChildren(); });
   await fixture.addScriptTag({content:compiled.outputFiles[0].text});
   await fixture.evaluate(() => { window.control.letter('B'); window.control.letter('B',-1); });
-  assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:-1}]);
+  assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:0},{letter:'B',accidental:-1}]);
   await fixture.evaluate(()=>window.setPool('both'));
   assert.equal(await fixture.locator('.answer-added').count(),1);
   await fixture.evaluate(()=>{window.control.letter('B',0);window.control.letter('B',1);});
-  assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:-1},{letter:'B',accidental:0}]);
+  assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:0},{letter:'B',accidental:-1},{letter:'B',accidental:0}]);
   await fixture.evaluate(()=>{window.setPool('key-only','C',['C4','B4']); document.querySelectorAll('.answer-added').forEach(b=>b.classList.remove('answer-added')); window.setPool('key-only','C',['C3','B5']);});
   assert.equal(await fixture.locator('.answer-added').count(),0); // New octaves do not reactivate existing spellings.
   await fixture.evaluate(()=>{window.setPool('key-only','F',['B4','B4']);window.setPool('both');});
@@ -128,12 +133,12 @@ try {
   results.push('Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation');
   if(name==='chromium') {
     const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}}); const touch=await context.newPage(); touch.on('pageerror',e=>errors.push(e.message));
-    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await touch.locator('#self-paced').check(); await touch.locator('#meet-notes').uncheck(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await setPacing(touch,'Click/Tap'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     await button(touch,'B',-1).tap(); await count(touch,1);
     await touch.getByRole('button',{name:'Continue',exact:true}).first().tap();
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
     await touch.getByRole('button',{name:'Finish',exact:true}).first().tap(); await touch.getByRole('button',{name:'Home',exact:true}).first().tap();
-    await touch.locator('#self-paced').uncheck(); await touch.locator('#meet-notes').uncheck(); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await setPacing(touch,'Delay'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     from=await center(button(touch,'B')); to=await center(button(touch,'B',-1));
     const cdp=await context.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x,y:from.y}]});
@@ -149,7 +154,7 @@ try {
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});
     await preview.goto(host.url+'notes/'); await choosePreset(preview,preset);
-    await preview.locator('#meet-notes').uncheck(); await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
+    await setToggle(preview,'meet-notes',false); await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
     const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();

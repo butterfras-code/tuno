@@ -1,5 +1,6 @@
 import { presets } from '../src/apps/tunotes/domain/presets.ts';
 export async function choosePreset(page,id) {
+  await notesMode(page,'Practice');
   await page.locator('#preset').click();
   const dialog = page.getByRole('dialog');
   if (id === 'custom') { await dialog.getByRole('button',{name:'＋ Create custom',exact:true}).click(); return; }
@@ -28,4 +29,21 @@ export async function setModifiers(page,values) {
     const button = page.getByRole('group',{name:'Modifiers',exact:true}).getByRole('button',{name:label,exact:true});
     if ((await button.getAttribute('aria-pressed') === 'true') !== values.includes(id)) await button.click();
   }
+}
+export async function notesMode(page, name) {
+  await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name,exact:true}).click();
+}
+export async function openData(page) {
+  await notesMode(page,'Options');
+  if (!await page.locator('.local-data').evaluate(n => n.open)) await page.locator('.local-data summary').click();
+}
+export async function setToggle(page, id, selected) {
+  if (id === 'remember-progress') await openData(page); else await notesMode(page,'Practice');
+  const control = page.locator(`#${id}`);
+  if ((await control.getAttribute('aria-pressed') === 'true') !== selected) await control.click();
+}
+export async function setPacing(page, label) {
+  await notesMode(page,'Options');
+  await page.getByRole('group',{name:'Continue After',exact:true}).getByRole('button',{name:label,exact:true}).click();
+  await notesMode(page,'Practice');
 }

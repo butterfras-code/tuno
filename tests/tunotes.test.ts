@@ -117,3 +117,36 @@ test('Uno milestones are positive, monotonic, once-only and independent of strea
   assert.equal(p.update(8,3).pose, 'beg'); assert.equal(p.update(10,5).treat, true);
   assert.equal(p.update(10,0).pose, 'happy'); assert.equal(p.update(11,1).treat, false);
 });
+
+test('Instant advances correct answers immediately but reveals mistakes; Delay and Click/Tap retain their pacing', () => {
+  for (const mode of ['instant','delay','click'] as const) {
+    let now = 0;
+    const practice = new Practice(defaultPreset,false,() => now,() => 0,{continueAfter:mode});
+    const token = practice.token;
+    practice.answer(token,practice.pitch);
+    assert.equal(practice.advance(token),mode === 'instant');
+    if (mode === 'delay') { now = 249; assert.equal(practice.advance(token),false); now = 250; assert.equal(practice.advance(token),true); }
+    if (mode === 'click') { now = 5000; assert.equal(practice.advance(token),false); assert.equal(practice.advance(token,true),true); }
+    assert.equal(practice.answer(token,practice.pitch),false);
+    const next = practice.token;
+    practice.answer(next,{letter:practice.pitch.letter === 'C' ? 'D' : 'C',accidental:0});
+    assert.equal(practice.advance(next),false);
+    now += 799; assert.equal(practice.advance(next),false);
+    now++; assert.equal(practice.advance(next),mode !== 'click');
+  }
+});
+
+test('Correct pacing counts misses, resets streak, and retries the same pitch with a fresh token', () => {
+  let now = 0;
+  const practice = new Practice(defaultPreset,false,() => now,() => 0,{continueAfter:'correct'});
+  practice.answer(practice.token,practice.pitch); now += 250; practice.advance(practice.token);
+  const pitch = practice.pitch, missedToken = practice.token;
+  practice.answer(missedToken,{letter:pitch.letter === 'C' ? 'D' : 'C',accidental:0});
+  assert.equal(practice.attempts,2); assert.equal(practice.correct,1);
+  assert.equal(practice.streak,0); assert.equal(practice.bestStreak,1);
+  now += 800; assert.equal(practice.advance(missedToken),true);
+  assert.deepEqual(practice.pitch,pitch); assert.equal(practice.answer(missedToken,pitch),false);
+  practice.answer(practice.token,pitch); now += 250; practice.advance(practice.token);
+  assert.equal(practice.attempts,3); assert.equal(practice.correct,2); assert.equal(practice.streak,1);
+  assert.notDeepEqual(practice.pitch,pitch);
+});

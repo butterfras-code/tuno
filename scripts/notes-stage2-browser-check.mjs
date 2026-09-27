@@ -1,3 +1,4 @@
+import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -9,8 +10,8 @@ import { hostBuild } from './test-host.mjs';
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch(); const host = await hostBuild();
 const results = []; const errors = [];
-const upload = (page,data) => page.locator('#import-backup').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(typeof data === 'string' ? data : JSON.stringify(data))});
-const expandData = async page => { if (!await page.locator('.local-data').evaluate(n => n.open)) await page.locator('.local-data summary').click(); };
+const upload = async (page,data) => { await openData(page); return page.locator('#import-backup').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(typeof data === 'string' ? data : JSON.stringify(data))}); };
+const expandData = openData;
 async function custom(page, {clef='treble',low='F4',high='F#4',key='G',policy='key-only'} = {}) {
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note',low); await setEndpoint(page,'Highest note',high);
@@ -22,32 +23,32 @@ try {
   const context = await browser.newContext(); const page = await context.newPage(); page.on('pageerror',e => errors.push(e.message));
   await page.goto(host.url+'notes/'); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
   await custom(page); assert.match(await page.locator('#preset-summary').textContent(),/F♯4/);
-  await page.locator('#self-paced').check(); await page.locator('#meet-notes').uncheck(); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
+  await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
   assert.equal(await page.locator('.key-accidental:visible').count(),1); assert.equal(await page.locator('.note-accidental:visible').count(),0);
   assert.ok(!(await page.locator('.staff').getAttribute('aria-label')).includes('F♯'));
   assert.equal(await page.locator('.answer').count(),18);
-  assert.equal(await page.getByRole('button',{name:'F',exact:true}).first().getAttribute('aria-disabled'),'true');
+  assert.equal(await page.getByRole('button',{name:'F',exact:true}).first().getAttribute('aria-disabled'),'false');
   await page.keyboard.down('ArrowUp'); await page.keyboard.press('f'); await page.keyboard.up('ArrowUp'); assert.match(await page.locator('#practice-counts').textContent(),/1 correct \/ 1 attempts/);
   await page.getByRole('button',{name:'Continue',exact:true}).first().click();
   await page.getByRole('button',{name:'F♯',exact:true}).first().focus(); await page.keyboard.press('Enter'); assert.match(await page.locator('#practice-counts').textContent(),/2 correct \/ 2 attempts/);
   await page.getByRole('button',{name:'Continue',exact:true}).first().click();
   assert.equal(await page.getByRole('button',{name:'F♭',exact:true}).count(),0); assert.match(await page.locator('#practice-counts').textContent(),/2 attempts/);
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
-  await page.getByLabel('Major key',{exact:true}).selectOption('F'); assert.match(await page.locator('#preset-summary').textContent(),/1 notes · F4/);
+  await page.getByLabel('Major key',{exact:true}).selectOption('F'); assert.match(await page.locator('#preset-summary').textContent(),/F4–F4/);
   await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
   assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isEnabled(),true);
   await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/empty pool/);
   await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
   await page.getByLabel('Custom preset name').fill('Middle C'); await page.getByRole('button',{name:'Save Custom preset',exact:true}).first().click();
-  results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, disabled out-of-pool answers, explicit sharp keyboard answer and focused Enter submission');
+  results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, answerable out-of-pool spellings, explicit sharp keyboard answer and focused Enter submission');
   await expandData(page); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
-  await page.locator('#meet-notes').uncheck(); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
+  await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
   for(let i=0;i<20;i++) { await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<19) await page.getByRole('button',{name:'Continue',exact:true}).first().click(); }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   await page.reload(); await expandData(page); assert.match(await page.locator('#profile option:checked').textContent(),/<Student>/); assert.match(await page.locator('#profile-history').textContent(),/20 correct/);
-  assert.equal(await page.locator('student').count(),0); assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isVisible(),true);
+  assert.equal(await page.locator('student').count(),0); assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isVisible(),false);
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button',{name:'Export backup',exact:true}).first().click(); const download = await downloadPromise; const backup = await readFile(await download.path(),'utf8');
   await upload(page,'{'); assert.equal(await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().isVisible(),false);
   const future = {...JSON.parse(backup),schemaVersion:99}; await upload(page,future); await page.waitForFunction(() => document.querySelector('#import-preview').textContent.includes('newer'));
@@ -55,7 +56,7 @@ try {
   await upload(page,backup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor();
   assert.match(await page.locator('#import-preview').textContent(),/1 profiles, 2 custom presets, 1 results/);
   await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
-  await page.locator('#remember-progress').uncheck(); await page.locator('#meet-notes').uncheck(); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click(); await page.locator('#remember-progress').check();
+  await setToggle(page,'remember-progress',false); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click(); await setToggle(page,'remember-progress',true);
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
   results.push('Profile names render as text; progress/configuration survive reload into setup; export, previewed replacement, malformed/future-schema rejection, Guest isolation and tUno preferences preserved');
@@ -75,7 +76,7 @@ try {
     },mode);
     const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(host.url+'notes/'); await expandData(p);
     await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByRole('button',{name:'Create profile',exact:true}).first().click(); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
-    await p.locator('#meet-notes').uncheck(); await p.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
+    await setToggle(p,'meet-notes',false); await p.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();
   }
   results.push('Denied/corrupt/quota storage allows play and explicit memory-only import');

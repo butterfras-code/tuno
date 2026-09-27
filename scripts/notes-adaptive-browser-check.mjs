@@ -1,3 +1,4 @@
+import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, readFile, writeFile, mkdtemp, copyFile, rm } from 'node:fs/promises';
@@ -33,11 +34,11 @@ async function run(page,url,mode) {
   page.setDefaultTimeout(10000);
   page.on('pageerror',e=>errors.push(e.message)); await page.goto(url);
   await page.clock.install();
-  assert.equal(await page.locator('#adaptive').isChecked(),false);
-  assert.equal(await page.locator('#meet-notes').isChecked(),true);
-  await page.locator('.local-data summary').click();
+  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);
+  assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),true);
+  await openData(page);
   await page.getByLabel('Profile name',{exact:true}).fill('Reader'); await button(page,'Create profile').click();
-  await page.locator('#adaptive').check(); await page.locator('#self-paced').check();
+  await setToggle(page,'adaptive',true); await setPacing(page,'Click/Tap');
   await button(page,'Start Practice').click();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
   assert.equal(await button(page,'Start Practice').isDisabled(),true);
@@ -92,7 +93,7 @@ async function run(page,url,mode) {
   assert.match(await page.locator('#result-summary').textContent(),/1 attempts/);
   await button(page,'Edit setup').click();
   await page.emulateMedia({reducedMotion:'reduce'});
-  await choosePreset(page,'trombone-two-octaves'); await page.locator('#meet-notes').check();
+  await choosePreset(page,'trombone-two-octaves'); await setToggle(page,'meet-notes',true);
   await button(page,'Start Practice').click();
   const labels=await previewLabels(page); assert.equal(labels.length,15);
   assert.equal(labels[0],'E♭'); assert.equal(labels.at(-1),'E♭');
@@ -104,16 +105,16 @@ async function run(page,url,mode) {
   assert.equal(await page.locator('.preview-note').count(),0);
   await page.keyboard.down('ArrowDown');await page.keyboard.press('b');await page.keyboard.up('ArrowDown');await button(page,'Finish').click();
   data=await readData(page);assert.deepEqual(data.profiles[0].results.at(-1).preview,{shown:true,skipped:false,completed:true});
-  await button(page,'Edit setup').click();await page.locator('#meet-notes').uncheck();
-  await page.reload();assert.equal(await page.locator('#meet-notes').isChecked(),false);assert.equal(await page.locator('#adaptive').isChecked(),true);
-  await page.locator('.local-data summary').click();await page.getByLabel('Profile name',{exact:true}).fill('Second');await button(page,'Create profile').click();
-  assert.equal(await page.locator('#adaptive').isChecked(),false);assert.equal(await page.locator('#meet-notes').isChecked(),false);
-  await page.locator('#remember-progress').uncheck();await page.locator('#meet-notes').check();await page.reload();
-  assert.equal(await page.locator('#meet-notes').isChecked(),false); // Guest choice was memory-only.
-  await page.locator('#adaptive').check(); await page.locator('#meet-notes').uncheck();
-  await page.locator('.local-data summary').click(); page.once('dialog',dialog=>dialog.accept());
+  await button(page,'Edit setup').click();await setToggle(page,'meet-notes',false);
+  await page.reload();assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),true);
+  await openData(page);await page.getByLabel('Profile name',{exact:true}).fill('Second');await button(page,'Create profile').click();
+  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);
+  await setToggle(page,'remember-progress',false);await setToggle(page,'meet-notes',true);await page.reload();
+  assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false); // Guest choice was memory-only.
+  await setToggle(page,'adaptive',true); await setToggle(page,'meet-notes',false);
+  await openData(page); page.once('dialog',dialog=>dialog.accept());
   await button(page,'Delete all tuNotes data').click();
-  assert.equal(await page.locator('#adaptive').isChecked(),false);assert.equal(await page.locator('#meet-notes').isChecked(),true);
+  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),true);
   results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, one centered note, right-side Uno, edge wrap, tail waiting until catch, altered labels/review, profile preferences and Guest memory passed`);
 }
 async function expansion(page) {
@@ -132,16 +133,16 @@ async function expansion(page) {
     return 'efgabcdef'[positions.findIndex(v=>label.includes(v))];
   };
   for(let i=0;i<20;i++) {await page.keyboard.press(await expected());if(i<19)await button(page,'Continue').click();}
-  assert.match(await page.locator('#expansion-announcement').textContent(),/B3/);
+  assert.equal(await page.locator('#expansion-announcement').textContent(),'New Note! Uno added a lower B!');
   assert.equal(await page.locator('.answer-added').count(),1);
   assert.equal(await page.locator('.answer-added').getAttribute('data-letter'),'B');
   const after=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
   // The announcement may move the answer block vertically, but every target keeps its relative geometry.
   assert.deepEqual(after.map(n=>({x:n.x,y:n.y-after[0].y})),before.map(n=>({x:n.x,y:n.y-before[0].y})));
-  await button(page,'Finish').click(); await button(page,'Edit setup').click();await page.locator('#meet-notes').check();
+  await button(page,'Finish').click(); await button(page,'Edit setup').click();await setToggle(page,'meet-notes',true);
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();
   const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B');
-  await button(page,'Start Practice').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await page.locator('#adaptive').uncheck();await button(page,'Start Practice').click();
+  await button(page,'Start Practice').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await setToggle(page,'adaptive',false);await button(page,'Start Practice').click();
   assert.equal((await previewLabels(page)).length,5);
   results.push('Seeded mastered profile: 20-answer gate at arbitrarily slow recorded latencies, lower expansion announcement, in-place B activation, restored preview growth and adaptive-off original pool passed');
 }

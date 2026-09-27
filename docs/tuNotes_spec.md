@@ -289,3 +289,9 @@ Graphical endpoints are inclusive chromatic bounds within the selected written p
 Implementation and browser evidence: [preset/configurator validation](validation/tunotes-configurator.md). Phase 3 adds the three approved instrument levels; see [Phase 3 validation](validation/tunotes-stage3.md).
 
 Custom preset names default to a deterministic `<low>–<high> <Line|Space|Both> [in <key> major] [+ ♭ ♮ ♯]` label. Include the key only when Key is enabled, and only the explicitly enabled accidental modifiers in flat/natural/sharp order. For example: `D♭4–F♯5 Line in B♭ major + ♭ ♮ ♯`. The actual input value follows configuration changes until the user overrides it. Clearing the input restores automatic naming. Saved overrides are restored; saved names matching their generated definition resume automatic naming. Practice and saved presets both use the resolved name.
+
+### Practice feedback correction (2026-09-27)
+
+All displayed supported answer spellings accept guesses, even outside the active exercise pool. Such guesses are scored normally rather than ignored; the pool controls which notes are asked, not which wrong answers can be submitted. This supersedes the Stage 2 requirement to disable out-of-pool spelling targets. Excluded B♯/C♭/E♯/F♭ remain absent.
+
+Continue After: Instant, Delay (default), Click/Tap, or Correct. Instant advances correct responses immediately and reveals misses briefly. Delay advances after feedback. Click/Tap waits for Continue. Correct counts every submitted guess and resets streak on a miss, but retries the same note until answered correctly. Feedback still gates duplicate input; each retry gets a fresh prompt token. Live statistics show correct/attempts, accuracy, and current/best streak. Encouragement is transient (2.2 seconds), clears on a miss, and does not occupy persistent layout space.

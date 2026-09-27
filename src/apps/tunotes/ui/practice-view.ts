@@ -13,7 +13,8 @@ import { clefForPitch } from '../domain/presets.ts';
 import { spelling } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
-import type { PromptToken } from '../engine/practice.ts';
+import { segments } from './range-editor.ts';
+import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import { answerControls } from './answers.ts';
 import { renderStaff } from './staff.ts';
@@ -27,31 +28,77 @@ export function practiceView() {
   const stage = el('div', 'practice-stage');
   const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
   const setup = el('section');
-  setup.append(el('h2', '', 'Practice'), el('p', '', 'Read one note at a time. Choose its letter with the buttons or A–G keys.'));
+  setup.className = 'practice-setup';
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
   const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.picker;
   const selected = presetsUI.selected;
-  const paceLabel = el('label', 'pace-option');
-  const pace = el('input'); pace.type = 'checkbox'; pace.id = 'self-paced';
-  paceLabel.append(pace, document.createTextNode(' Continue after feedback (self-paced)'));
-  pace.checked = store.data.configuration.selfPaced;
+  const options = el('section', 'notes-options'); options.hidden = true;
+  options.append(el('h2', '', 'Options'));
+  let pace: ContinueAfter = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay');
+  const pacingControls: ReturnType<typeof segments<ContinueAfter>>[] = [];
+  const refreshPacing = () => pacingControls.forEach(control => control.update([pace]));
+  const pacingSetting = () => {
+    const pacing = segments<ContinueAfter>('Continue After', [['instant','Instant'],['delay','Delay'],['click','Click/Tap'],['correct','Correct']], value => {
+      pace = value; refreshPacing();
+      store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = pace === 'click'; });
+    });
+    pacingControls.push(pacing); pacing.update([pace]);
+    const field = el('div','setting pacing-setting'); field.append(el('span','setting-label','Continue After:'),pacing.node);
+    return field;
+  };
+  options.append(pacingSetting());
   let guestAdaptive = false, guestPreview: boolean | undefined;
   const guestContexts = new Map<string, Context>();
-  const adaptiveLabel = el('label','pace-option'), previewLabel = el('label','pace-option');
-  const adaptive = el('input'); adaptive.type = 'checkbox'; adaptive.id = 'adaptive';
-  const previewToggle = el('input'); previewToggle.type = 'checkbox'; previewToggle.id = 'meet-notes';
-  adaptiveLabel.append(adaptive,document.createTextNode(' Adapt to this player’s learning'));
-  previewLabel.append(previewToggle,document.createTextNode(' Meet your notes before practice'));
-  const refreshPreferences = () => {
-    const p = store.profile(); adaptive.checked = p ? p.adaptive ?? false : guestAdaptive;
-    previewToggle.checked = (p ? p.preview : guestPreview) ?? (selected() ? beginnerPreview(selected()!) : false);
+  let useAdaptation = false, showIntro = false;
+  const adaptiveHelp = el('p','muted adaptive-help', 'We’ll practice notes you miss and add new ones when you’re ready.');
+  adaptiveHelp.id = 'adaptive-help'; adaptiveHelp.popover = 'auto'; adaptiveHelp.setAttribute('role','tooltip');
+  const adaptiveGroup = el('div','adaptive-control');
+  let helpPinned = false;
+  const hideHelp = () => { helpPinned = false; adaptiveHelp.hidePopover(); };
+  const showHelp = () => {
+    const rect = help.getBoundingClientRect();
+    adaptiveHelp.style.left = `${Math.max(8,Math.min(rect.left,innerWidth - 308))}px`;
+    adaptiveHelp.style.top = `${Math.max(8,Math.min(rect.bottom + 8,innerHeight - 120))}px`;
+    adaptiveHelp.showPopover();
   };
-  adaptive.addEventListener('change',() => { const p = store.profile(); if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = adaptive.checked; }); else guestAdaptive = adaptive.checked; });
-  previewToggle.addEventListener('change',() => { const p = store.profile(); if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.preview = previewToggle.checked; }); else guestPreview = previewToggle.checked; });
+  const help = button('?', () => { if (helpPinned) hideHelp(); else { showHelp(); helpPinned = true; } });
+  help.classList.add('adaptive-help-trigger'); help.setAttribute('aria-label','About Adapt Range');
+  help.setAttribute('aria-controls','adaptive-help'); help.setAttribute('aria-expanded','false'); help.setAttribute('aria-describedby','adaptive-help');
+  help.addEventListener('pointerenter',event => { if (event.pointerType === 'mouse') showHelp(); });
+  help.addEventListener('focus',showHelp);
+  adaptiveGroup.addEventListener('pointerleave',() => { if (!helpPinned && document.activeElement !== help) hideHelp(); });
+  adaptiveGroup.addEventListener('focusout',() => { queueMicrotask(() => { if (!adaptiveGroup.contains(document.activeElement)) hideHelp(); }); });
+  adaptiveHelp.addEventListener('toggle',() => {
+    const open = adaptiveHelp.matches(':popover-open'); help.setAttribute('aria-expanded',String(open)); if (!open) helpPinned = false;
+  });
+  const adaptive = button('Adapt Range', () => {
+    useAdaptation = !useAdaptation;
+    const p = store.profile();
+    if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
+    refreshPreferences();
+  }); adaptive.id = 'adaptive';
+  const previewToggle = button('Show Intro', () => {
+    showIntro = !showIntro;
+    const p = store.profile();
+    if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.preview = showIntro; }); else guestPreview = showIntro;
+    refreshPreferences();
+  }); previewToggle.id = 'meet-notes';
+  const refreshPreferences = () => {
+    const p = store.profile(); useAdaptation = p ? p.adaptive ?? false : guestAdaptive;
+    showIntro = (p ? p.preview : guestPreview) ?? (selected() ? beginnerPreview(selected()!) : false);
+    adaptive.setAttribute('aria-pressed',String(useAdaptation)); previewToggle.setAttribute('aria-pressed',String(showIntro));
+    adaptiveGroup.classList.toggle('selected',useAdaptation);
+  };
   refreshPreferences();
-  const dataUI = localData(store, () => { guestContexts.clear(); guestAdaptive = false; guestPreview = undefined; presetsUI.refresh(); pace.checked = store.data.configuration.selfPaced; refreshPreferences(); },refreshPreferences);
-  setup.append(presetsUI.node, paceLabel, adaptiveLabel, el('p','muted','Adaptation revisits missed notes and grows the range only after consistent correct answers on every active note. Speed never unlocks notes. Custom stays within your limits.'), previewLabel, el('p', 'muted', 'Untimed practice. Uno’s treat benchmark starts at 10 correct notes and follows your recent comparable sessions.'));
+  const dataUI = localData(store, () => {
+    showSetup(); guestContexts.clear(); guestAdaptive = false; guestPreview = undefined; presetsUI.refresh();
+    pace = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay'); refreshPacing(); refreshPreferences();
+  },refreshPreferences);
+  options.append(dataUI.node);
+  adaptiveGroup.append(adaptive,help,adaptiveHelp);
+  const toggles = el('div','control-row practice-toggles'); toggles.append(adaptiveGroup,previewToggle);
+  setup.append(presetsUI.node, toggles, pacingSetting());
   const play = el('section'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
@@ -69,6 +116,7 @@ export function practiceView() {
   let renderedPrompt = '';
   let inputSince = 0;
   let treatUntil = 0;
+  let encouragementUntil = 0;
   let disposed = false;
   const showModifier = () => answers.modifier(session && !play.hidden && session.state !== 'paused' && session.state !== 'finished' && arrows.size === 1
     ? arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0 : undefined);
@@ -81,7 +129,7 @@ export function practiceView() {
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     closePreview(); session?.finish(); session = undefined; resetInput();
-    setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); picker.focus();
+    setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
   };
   const finish = () => {
     if (!session) return;
@@ -106,7 +154,7 @@ export function practiceView() {
     if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
     const paused = session.state === 'paused';
     pause.textContent = paused ? 'Resume' : 'Pause';
-    counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak}`;
+    counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = `${session.session}:${session.prompt}`;
     if (renderedPrompt !== identity) {
       inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key));
@@ -117,7 +165,7 @@ export function practiceView() {
     answers.update(session.activePreset, session.token, locked);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
-    feedback.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : 'Choose a spelling. A–G keys answer natural notes.';
+    feedback.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : session.continueAfter === 'correct' ? 'Not quite. Try again.' : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : '';
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
@@ -134,26 +182,29 @@ export function practiceView() {
     dog.tail(0, reward.pose === 'wag');
     if (reward.nod) dog.nod();
     if (reward.treat) { dog.catch(counts); treatUntil = performance.now() + 450; }
-    if (reward.text) encouragement.textContent = reward.text;
+    if (!session.last!.correct) { encouragement.textContent = ''; encouragementUntil = 0; }
+    else if (reward.text) { encouragement.textContent = reward.text; encouragementUntil = performance.now() + 2200; }
+    if (session.continueAfter === 'instant') session.advance(session.token);
     render();
   };
   const start = () => {
+    hideHelp();
     const preset = selected(); if (!preset) return;
-    if (!presetsUI.saveConfiguration(pace.checked)) return;
+    if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
     closePreview(); session?.finish(); session = undefined;
-    const useAdaptive = adaptive.checked;
+    const useAdaptive = useAdaptation;
     const context = store.profile()?.contexts.find(c => c.fingerprint === fingerprint(preset,useAdaptive)) ?? (!profileId ? guestContexts.get(fingerprint(preset,useAdaptive)) : undefined);
     const begin = (exposure: PreviewExposure) => {
       if (disposed) return;
       closePreview();
-      session = new Practice(preset, pace.checked, () => performance.now(), Math.random, { adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
+      session = new Practice(preset, pace === 'click', () => performance.now(), Math.random, { continueAfter: pace, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
       session.preview = exposure;
       progress = new NotesProgress(store.benchmark(preset,useAdaptive)); resetInput(); treatUntil = 0;
       heading.textContent = session.preset.name; encouragement.textContent = ''; dog.pose('rest'); dog.look(false); dog.tail(0, false);
       setup.hidden = true; result.hidden = true; play.hidden = false; render(); heading.focus();
     };
-    if (previewToggle.checked) {
+    if (showIntro) {
       setup.hidden = true; result.hidden = true; play.hidden = true; dog.node.hidden = true; node.classList.add('previewing'); resetInput();
       introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin);
       stage.append(introduction.node); introduction.start();
@@ -161,7 +212,7 @@ export function practiceView() {
   };
   const startButton = button('Start Practice', start); startButton.disabled = !selected();
   presetsUI.onChange(() => { startButton.disabled = !selected(); refreshPreferences(); });
-  setup.append(startButton, dataUI.node);
+  startButton.classList.add('control--primary'); setup.append(startButton);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));
   const keyboardHelp = el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.');
   play.append(heading, counts, staff, feedback, expansion, answers.node, keyboardHelp, encouragement, controls);
@@ -170,7 +221,7 @@ export function practiceView() {
   stage.append(setup, play, result, storageNotice); node.append(stage, dog.node);
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
-    if (!session || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
+    if (node.hidden || !session || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); if (fresh) arrows.add(event.key); showModifier(); return; }
     const letter = event.key.toUpperCase();
     if (/^[A-G]$/.test(letter)) { event.preventDefault(); if (fresh && arrows.size < 2) answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0); }
@@ -187,6 +238,7 @@ export function practiceView() {
   const timer = setInterval(() => {
     const storageMessage = store.durable ? '' : store.message;
     if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
+    if (encouragementUntil && performance.now() >= encouragementUntil) { encouragement.textContent = ''; encouragementUntil = 0; }
     if (!session || session.state === 'finished' || session.state === 'paused') return;
     if (treatUntil && performance.now() >= treatUntil) { dog.pose('happy'); treatUntil = 0; }
     if (session.advance(session.token)) render();
@@ -197,5 +249,9 @@ export function practiceView() {
     window.removeEventListener('blur', resetInput);
   };
   const stopWatching = onUnmount(node, dispose);
-  return { node, dispose };
+  return { node, options, dispose, leave: () => {
+    hideHelp(); resetInput(); store.flush();
+    if (introduction) showSetup();
+    session?.pause(); render();
+  } };
 }

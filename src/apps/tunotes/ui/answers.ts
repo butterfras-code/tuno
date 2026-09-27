@@ -1,4 +1,4 @@
-import { answerLayout } from '../domain/answer-layout.ts';
+import { answerLayout, supportedAnswer } from '../domain/answer-layout.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { keyAccidental, spelling } from '../domain/notation.ts';
 import type { Accidental, AnswerSpelling, Letter } from '../domain/notation.ts';
@@ -28,7 +28,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
   let since = 0;
   let gesture: { id: number; origin: HTMLButtonElement; token: PromptToken } | undefined;
   let pending: HTMLButtonElement | undefined;
-  const enabled = (b: HTMLButtonElement) => !locked && available.has(spelling(values.get(b)!));
+  const enabled = (b: HTMLButtonElement) => !locked && values.has(b);
   const highlight = (b?: HTMLButtonElement) => {
     pending?.classList.remove('answer-pending'); pending = b;
     pending?.classList.add('answer-pending');
@@ -43,7 +43,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
     return target instanceof HTMLButtonElement && values.has(target) && enabled(target) ? target : undefined;
   };
   const submit = (answer: AnswerSpelling, captured = token) => {
-    if (!locked && captured && available.has(spelling(answer))) accept(answer, captured);
+    if (!locked && captured && supportedAnswer(answer)) accept(answer, captured);
   };
   const build = (next: Preset) => {
     reset(); grid.replaceChildren(); buttons.length = 0; values.clear();
@@ -55,7 +55,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       b.dataset.repeat = String(target.repeat);
       b.type = 'button'; b.dataset.letter = letter; b.dataset.accidental = String(accidental);
       values.set(b, value); buttons.push(b); grid.append(b);
-      // A disabled spelling can be a starting point for a slide to an enabled target.
+      // All displayed spellings accept guesses, including notes outside the exercise pool.
       b.addEventListener('pointerdown', event => {
         if (gesture || event.button !== 0 || !event.isPrimary || locked || !token || event.timeStamp < since) return;
         event.preventDefault();
@@ -97,8 +97,8 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
         } else if (!sameSession) b.classList.remove('answer-added');
         b.classList.toggle('answer-unavailable', !active);
         b.classList.toggle('answer-default', value.accidental === keyAccidental(value.letter, next.key));
-        b.setAttribute('aria-disabled', String(locked || !active));
-        b.tabIndex = active ? 0 : -1;
+        b.setAttribute('aria-disabled', String(locked));
+        b.tabIndex = locked ? -1 : 0;
         if (value.accidental === 0) b.setAttribute('aria-keyshortcuts', value.letter);
         else b.removeAttribute('aria-keyshortcuts');
       }

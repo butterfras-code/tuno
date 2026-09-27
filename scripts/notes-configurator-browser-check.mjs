@@ -1,3 +1,4 @@
+import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -54,7 +55,7 @@ async function run(page,mode) {
   await page.mouse.click(crossing.x,crossing.y); assert.match(await high.getAttribute('aria-valuetext'),/^G4,/);
 
   await setEndpoint(page,'Lowest note','F4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('G');
-  await setModifiers(page,['key','natural']); assert.match(await page.locator('#preset-summary').textContent(),/F♯4, F4, G4/);
+  await setModifiers(page,['key','natural']); assert.match(await page.locator('#preset-summary').textContent(),/F♯4–G4.*naturals/);
   assert.equal(await presetName.inputValue(),'F4–G4 Both in G major + ♮');
   await presetName.fill('My reading warmup');
   await setModifiers(page,['flat','natural','sharp']); assert.equal(await presetName.inputValue(),'My reading warmup');
@@ -85,7 +86,7 @@ async function run(page,mode) {
   await page.reload();
   if (mode === 'hosted') assert.match(await page.locator('#preset').textContent(),/Two clefs/);
   assert.equal(await presetName.inputValue(),'Two clefs');
-  await page.locator('#self-paced').check(); await start(page).click();
+  await setPacing(page,'Click/Tap'); await start(page).click();
   const seen = new Set();
   for(let i=0;i<29;i++) { seen.add((await page.locator('.staff').getAttribute('aria-label')).split(' ')[0]); await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<28) await page.getByRole('button',{name:'Continue',exact:true}).click(); }
   assert.deepEqual([...seen].sort(),['bass','treble']);

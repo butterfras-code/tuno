@@ -129,3 +129,13 @@ test('explicit deletion clears corrupt storage while preserving tUno', () => {
   assert.equal(storage.values.has(STORAGE_KEY),false); assert.equal(storage.values.get('tuno-preferences'),'untouched'); assert.equal(store.durable,true);
   storage.fail=true; store.clear(); assert.match(store.message,/could not be deleted/);
 });
+
+test('feedback pacing round-trips and old self-paced settings remain readable', () => {
+  for (const continueAfter of ['instant','delay','click','correct'] as const) {
+    const data = emptySnapshot(); data.configuration.continueAfter = continueAfter; data.configuration.selfPaced = continueAfter === 'click';
+    assert.equal(parseBackup(JSON.stringify(data)).configuration.continueAfter,continueAfter);
+  }
+  const old = emptySnapshot(); old.configuration.selfPaced = true;
+  assert.equal(parseBackup(JSON.stringify(old)).configuration.selfPaced,true);
+  assert.throws(() => validateSnapshot({...old,configuration:{...old.configuration,continueAfter:'sometimes'}}),/pacing/);
+});

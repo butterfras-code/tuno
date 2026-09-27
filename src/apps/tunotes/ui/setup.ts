@@ -1,8 +1,8 @@
 import { el } from '../../../shared/ui/components.ts';
-import { clefForPitch, generatedPresetName, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
+import { clefForPitch, modifiersFor, generatedPresetName, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
 import type { Preset } from '../domain/presets.ts';
 import { pitchLabel, spelling } from '../domain/notation.ts';
-import { presetPicker } from './preset-picker.ts';
+import { titleCase, presetPicker } from './preset-picker.ts';
 import { customConfigurator } from './custom-configurator.ts';
 import { renderStaff } from './staff.ts';
 import { MAX_BYTES, NotesStore, parseBackup } from '../persistence/store.ts';
@@ -20,7 +20,7 @@ export function presetSetup(store: NotesStore) {
   const picker = pickerUI.picker;
   const editor = customConfigurator(() => summarize()); const custom = editor.node;
   const summary = el('p'); summary.id = 'preset-summary'; summary.setAttribute('role','status');
-  const preview = el('div','preset-preview');
+  const preview = el('div','preset-preview range-grid');
   const saveName = el('input','control'); saveName.maxLength = 80; saveName.setAttribute('aria-label','Custom preset name');
   let nameOverride = false;
   const customSource = () => {
@@ -35,9 +35,20 @@ export function presetSetup(store: NotesStore) {
     try {
       current = custom.hidden ? presets.find(p => p.id === selectedId)! : normalizePreset(customSource());
       if (!current) throw new Error('Choose a preset.');
-      summary.textContent = `${current.editorVersion === 2 && !current.modifiers!.includes('key') ? 'No key signature' : `${spelling(current.key.tonic)} major`} · ${current.pool.length} notes · ${current.pool.map(pitchLabel).join(', ')}${current.pool.length === 1 ? ' · This one-note pool repeats the same note.' : ''}${current.instrument ? ' · Teacher-reviewed starting range.' : ''}`;
+      const low = current.pool[0]!, high = current.pool.at(-1)!;
+      const modifiers = modifiersFor(current);
+      const additions = modifiers.filter(m => m !== 'key').map(m => ({flat:'flats',natural:'naturals',sharp:'sharps'}[m])).join(', ');
+      const clefs = (current.availableClefs ?? [current.clef]).map(titleCase).join(' / ');
+      summary.textContent = `${modifiers.includes('key') ? `${spelling(current.key.tonic)} Major` : 'No key signature'} · ${pitchLabel(low)}–${pitchLabel(high)} · ${current.content === 'lines-and-spaces' ? 'Lines and Spaces' : titleCase(current.content)}${additions ? ` (${additions})` : ''} · ${clefs} ${current.availableClefs && current.availableClefs.length > 1 ? 'clefs' : 'clef'}`;
       if (!custom.hidden) editor.describe(current);
-      const staff = renderStaff(current.pool[0]!,clefForPitch(current,current.pool[0]!),current.key); staff.classList.replace('staff','setup-staff'); preview.replaceChildren(staff); preview.hidden = !custom.hidden;
+      preview.replaceChildren();
+      for (const [label,pitch] of [['Low note',low],['High note',high]] as const) {
+        const endpoint = el('div','range-endpoint');
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key);
+        staff.classList.replace('staff','endpoint-staff');
+        endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
+      }
+      preview.hidden = !custom.hidden;
     } catch (error) { current = undefined; editor.clearDescription(); summary.textContent = (error as Error).message; preview.replaceChildren(); }
     changed();
   };
@@ -55,7 +66,7 @@ export function presetSetup(store: NotesStore) {
   };
   const saveMessage = el('p'); saveMessage.setAttribute('role','status');
   const nameLabel = el('label','setting','Preset name'); nameLabel.append(saveName);
-  custom.append(nameLabel,el('p','muted','Generated from your settings. Edit to rename; clear to use the generated name.'),button('Save Custom preset',() => {
+  custom.append(nameLabel,button('Save Custom preset',() => {
     if (!current) return;
     if (!saveName.value.trim()) { saveMessage.textContent = 'Enter a name for this preset.'; return; }
     try {
@@ -63,7 +74,7 @@ export function presetSetup(store: NotesStore) {
       store.update(data => { data.customPresets.push(p); data.configuration.presetId = p.id; }); refresh(); saveMessage.textContent = 'Custom preset saved.';
     } catch (error) { saveMessage.textContent = (error as Error).message; }
   }),saveMessage);
-  node.append(pickerUI.node,custom,summary,preview); refresh();
+  node.append(pickerUI.node,custom,preview,summary); refresh();
   return { node,picker,refresh, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveConfiguration: (selfPaced: boolean) => {
     if (!current) return false;
     try { store.update(data => {
@@ -76,23 +87,23 @@ export function presetSetup(store: NotesStore) {
   } };
 }
 export function localData(store: NotesStore, reload: () => void, playerChanged: () => void = () => {}) {
-  const node = el('details','local-data'); node.append(el('summary','','Local profiles and backups'));
-  node.append(el('p','','Progress is saved on this device. Clearing browser or site data may erase it. Export a backup if you want to keep it.'),el('p','muted','Guest is memory-only. Moving or renaming the downloaded HTML or changing browsers may change storage access. The HTML file does not contain your progress.'));
-  const remember = el('input'); remember.type = 'checkbox'; remember.id = 'remember-progress';
-  const rememberLabel = el('label','pace-option'); rememberLabel.append(remember,document.createTextNode(' Remember progress'));
+  const node = el('details','local-data'); node.append(el('summary','','Profiles and backups'));
+  node.append(el('p','muted','Profiles save progress on this device. Export a backup to keep a copy. Guest progress lasts until you close the app.'));
+  let remembering = false;
+  const remember = button('Remember progress', () => { store.update(data => { data.configuration.remember = !remembering; }); refresh(); }); remember.id = 'remember-progress';
+  const rememberLabel = el('label','pace-option'); rememberLabel.append(remember);
   const profiles = select('Local player',[['','Guest']], ''); profiles.input.id = 'profile';
   const name = el('input','control'); name.maxLength = 40; name.setAttribute('aria-label','Profile name'); name.placeholder = 'Profile name';
   const status = el('p'); status.setAttribute('role','status'); status.id = 'storage-status';
   const history = el('p'); history.id = 'profile-history';
   const refresh = () => {
-    remember.checked = store.data.configuration.remember; profiles.input.replaceChildren();
+    remembering = store.data.configuration.remember; remember.setAttribute('aria-pressed',String(remembering)); profiles.input.replaceChildren();
     const guest = el('option','','Guest'); guest.value = ''; profiles.input.append(guest);
     store.data.profiles.forEach((p,index) => { const o = el('option','',`${p.name} · ${index+1}`); o.value = p.id; profiles.input.append(o); });
-    profiles.input.value = store.data.configuration.profileId ?? ''; profiles.input.disabled = !remember.checked;
+    profiles.input.value = store.data.configuration.profileId ?? ''; profiles.input.disabled = !remembering;
     const p = store.profile(); history.textContent = p ? `${p.results.length} recent sessions · ${p.results.reduce((sum,r) => sum+r.correct,0)} correct notes in retained history. Last session: ${p.results.at(-1)?.correct ?? 0} correct / ${p.results.at(-1)?.attempts ?? 0} attempts.` : 'Guest: progress stays in this session only.';
     status.textContent = store.message; playerChanged();
   };
-  remember.addEventListener('change',() => { store.update(data => { data.configuration.remember = remember.checked; }); refresh(); });
   profiles.input.addEventListener('change',() => { store.update(data => { data.configuration.profileId = profiles.input.value || null; }); refresh(); });
   const create = button('Create profile',() => {
     try { store.update(data => { const p = { id: crypto.randomUUID(), name: name.value.trim(), results: [], contexts: [] }; data.profiles.push(p); data.configuration.profileId = p.id; data.configuration.remember = true; }); name.value = ''; refresh(); }
