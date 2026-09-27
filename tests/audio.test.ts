@@ -88,6 +88,14 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     ac!.state = 'suspended'; ac!.onstatechange?.();
     assert.equal(store.get().metronomePlaying, false);
     assert.equal(store.get().currentBeat, null);
+    // Interrupting while permission is pending must cancel the eventual stream.
+    deny = false;
+    const interruptedStart = audio.startMic(); await Promise.resolve();
+    ac!.state = 'suspended'; ac!.onstatechange?.();
+    track.stopped = false;
+    resolve(stream); await interruptedStart;
+    assert.equal(track.stopped, true, 'late permission must release capture after interruption');
+    assert.equal(store.get().micStatus, 'interrupted');
     const pendingBeat = audio.startMetronome();
     audio.stopAll();
     await pendingBeat;

@@ -1,0 +1,1335 @@
+{
+  "cpu": "Intel(R) Core(TM) i7-14700K",
+  "node": "v24.21.0",
+  "route": "Deterministic synthetic frames, no physical input",
+  "groups": {
+    "pure": {
+      "frames": 602,
+      "detected": 602,
+      "within5": 602,
+      "octaveErrors": 0,
+      "maxCents": 1.381367152116925,
+      "p95Cents": 0.6824400180921196
+    },
+    "rich": {
+      "frames": 602,
+      "detected": 602,
+      "within5": 602,
+      "octaveErrors": 0,
+      "maxCents": 1.4222297257089125,
+      "p95Cents": 0.6378339301894123
+    },
+    "weak": {
+      "frames": 602,
+      "detected": 602,
+      "within5": 599,
+      "octaveErrors": 3,
+      "maxCents": 1199.7422068297928,
+      "p95Cents": 0.6275005650593645
+    },
+    "missing": {
+      "frames": 602,
+      "detected": 602,
+      "within5": 599,
+      "octaveErrors": 3,
+      "maxCents": 1199.7419264667458,
+      "p95Cents": 0.6245815234122457
+    },
+    "noisy": {
+      "frames": 602,
+      "detected": 601,
+      "within5": 601,
+      "octaveErrors": 0,
+      "maxCents": 2.800788062345342,
+      "p95Cents": 1.8377636630620071
+    }
+  },
+  "failures": [
+    {
+      "group": "weak",
+      "sampleRate": 44100,
+      "frequency": 1547.2883666416267,
+      "measured": 773.7593930675905
+    },
+    {
+      "group": "missing",
+      "sampleRate": 44100,
+      "frequency": 1547.2883666416267,
+      "measured": 773.7595183733276
+    },
+    {
+      "group": "weak",
+      "sampleRate": 44100,
+      "frequency": 1661.2187903197805,
+      "measured": 830.7761655229059
+    },
+    {
+      "group": "missing",
+      "sampleRate": 44100,
+      "frequency": 1661.2187903197805,
+      "measured": 830.7761866546352
+    },
+    {
+      "group": "noisy",
+      "sampleRate": 48000,
+      "frequency": 55,
+      "measured": null
+    },
+    {
+      "group": "weak",
+      "sampleRate": 48000,
+      "frequency": 1683.435868870075,
+      "measured": 841.8473185812145
+    },
+    {
+      "group": "missing",
+      "sampleRate": 48000,
+      "frequency": 1683.435868870075,
+      "measured": 841.8467202393546
+    }
+  ],
+  "noiseFrames": 600,
+  "rejectionGroups": {
+    "silence": {
+      "frames": 100,
+      "falsePositives": 0
+    },
+    "below-gate": {
+      "frames": 100,
+      "falsePositives": 0
+    },
+    "white": {
+      "frames": 100,
+      "falsePositives": 0
+    },
+    "colored": {
+      "frames": 100,
+      "falsePositives": 0
+    },
+    "DC": {
+      "frames": 100,
+      "falsePositives": 0
+    },
+    "impulse": {
+      "frames": 100,
+      "falsePositives": 0
+    }
+  },
+  "falsePositives": 0,
+  "transition": [
+    null,
+    null,
+    440,
+    440,
+    660,
+    660,
+    null
+  ],
+  "sequences": [
+    {
+      "kind": "attack",
+      "sampleRate": 44100,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 0.003058900319948099,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.036039490188,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.0222110416466,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.0222110416466
+        },
+        {
+          "time": 420,
+          "rawHz": 440.01945090604084,
+          "displayHz": 440.0201197309723
+        },
+        {
+          "time": 490,
+          "rawHz": 440.0184959925673,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 560,
+          "rawHz": 440.0193422644612,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 630,
+          "rawHz": 440.01987291080957,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 700,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 770,
+          "rawHz": 440.01945090604084,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 840,
+          "rawHz": 440.0184959925673,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 910,
+          "rawHz": 440.0193422644612,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 980,
+          "rawHz": 440.01987291080957,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 1050,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 1120,
+          "rawHz": 440.01945090604084,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 1190,
+          "rawHz": 440.0184959925673,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 1260,
+          "rawHz": 440.0193422644612,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 1330,
+          "rawHz": 440.01987298799236,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 1400,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.01987298799236
+        },
+        {
+          "time": 1470,
+          "rawHz": 440.01945090604084,
+          "displayHz": 440.01987298799236
+        },
+        {
+          "time": 1540,
+          "rawHz": 440.0184959925673,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 1610,
+          "rawHz": 440.2100053393476,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "step",
+      "sampleRate": 44100,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": 210,
+      "sustainedPeakToPeakCents": 0.0020878002035824295,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.0879142090695,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.01987291080957,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.0201197309723
+        },
+        {
+          "time": 420,
+          "rawHz": 440.01945090604084,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 490,
+          "rawHz": 440.0184959925673,
+          "displayHz": 440.01945090604084
+        },
+        {
+          "time": 560,
+          "rawHz": 440.0193422644612,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 630,
+          "rawHz": 440.01987291080957,
+          "displayHz": 440.0193422644612
+        },
+        {
+          "time": 700,
+          "rawHz": 440.0201197309723,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 770,
+          "rawHz": 219.79718983259679,
+          "displayHz": 440.01987291080957
+        },
+        {
+          "time": 840,
+          "rawHz": 659.3202983200845,
+          "displayHz": 440.0201197309723
+        },
+        {
+          "time": 910,
+          "rawHz": 659.3217161431168,
+          "displayHz": 659.3202983200845
+        },
+        {
+          "time": 980,
+          "rawHz": 659.3207691228616,
+          "displayHz": 659.3207691228616
+        },
+        {
+          "time": 1050,
+          "rawHz": 659.3216459569724,
+          "displayHz": 659.3216459569724
+        },
+        {
+          "time": 1120,
+          "rawHz": 659.3230628593077,
+          "displayHz": 659.3216459569724
+        },
+        {
+          "time": 1190,
+          "rawHz": 659.3224220612972,
+          "displayHz": 659.3224220612972
+        },
+        {
+          "time": 1260,
+          "rawHz": 659.322260736544,
+          "displayHz": 659.3224220612972
+        },
+        {
+          "time": 1330,
+          "rawHz": 659.3197240465682,
+          "displayHz": 659.322260736544
+        },
+        {
+          "time": 1400,
+          "rawHz": 659.3213725281264,
+          "displayHz": 659.3213725281264
+        },
+        {
+          "time": 1470,
+          "rawHz": 659.3213962904889,
+          "displayHz": 659.3213725281264
+        },
+        {
+          "time": 1540,
+          "rawHz": 659.3216499936921,
+          "displayHz": 659.3213962904889
+        },
+        {
+          "time": 1610,
+          "rawHz": 659.4977833421681,
+          "displayHz": 659.3216499936921
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "vibrato",
+      "sampleRate": 44100,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 5.145487860031658,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 436.28987731892283,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 443.0806809057423,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.4446009643663,
+          "displayHz": 440.4446009643663
+        },
+        {
+          "time": 420,
+          "rawHz": 436.51056012886795,
+          "displayHz": 440.4446009643663
+        },
+        {
+          "time": 490,
+          "rawHz": 443.7735026301105,
+          "displayHz": 440.4446009643663
+        },
+        {
+          "time": 560,
+          "rawHz": 439.13747684269697,
+          "displayHz": 439.13747684269697
+        },
+        {
+          "time": 630,
+          "rawHz": 437.35405332166846,
+          "displayHz": 439.13747684269697
+        },
+        {
+          "time": 700,
+          "rawHz": 444.09509985718887,
+          "displayHz": 439.13747684269697
+        },
+        {
+          "time": 770,
+          "rawHz": 437.9902818194884,
+          "displayHz": 437.9902818194884
+        },
+        {
+          "time": 840,
+          "rawHz": 438.4175080165937,
+          "displayHz": 438.4175080165937
+        },
+        {
+          "time": 910,
+          "rawHz": 444.0275179792686,
+          "displayHz": 438.4175080165937
+        },
+        {
+          "time": 980,
+          "rawHz": 437.00858159131053,
+          "displayHz": 438.4175080165937
+        },
+        {
+          "time": 1050,
+          "rawHz": 439.6666786522881,
+          "displayHz": 439.6666786522881
+        },
+        {
+          "time": 1120,
+          "rawHz": 443.52592797764436,
+          "displayHz": 439.6666786522881
+        },
+        {
+          "time": 1190,
+          "rawHz": 436.2904436446206,
+          "displayHz": 439.6666786522881
+        },
+        {
+          "time": 1260,
+          "rawHz": 440.9178913236822,
+          "displayHz": 440.9178913236822
+        },
+        {
+          "time": 1330,
+          "rawHz": 442.74786278996464,
+          "displayHz": 440.9178913236822
+        },
+        {
+          "time": 1400,
+          "rawHz": 435.9963510994388,
+          "displayHz": 440.9178913236822
+        },
+        {
+          "time": 1470,
+          "rawHz": 442.1274674934435,
+          "displayHz": 442.1274674934435
+        },
+        {
+          "time": 1540,
+          "rawHz": 441.68467995727883,
+          "displayHz": 441.68467995727883
+        },
+        {
+          "time": 1610,
+          "rawHz": 436.6187038540956,
+          "displayHz": 441.68467995727883
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "decay",
+      "sampleRate": 44100,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 0.0023277728541497844,
+      "silenceClearMs": 0,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.0988318119542,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.01903440301083,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.01943426148733,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 420,
+          "rawHz": 440.01969548262315,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 490,
+          "rawHz": 440.0182391350482,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 560,
+          "rawHz": 440.01962603799814,
+          "displayHz": 440.01962603799814
+        },
+        {
+          "time": 630,
+          "rawHz": 440.0190343993039,
+          "displayHz": 440.0190343993039
+        },
+        {
+          "time": 700,
+          "rawHz": 440.01943426148733,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 770,
+          "rawHz": 440.01969548262315,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 840,
+          "rawHz": 440.0182391350482,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 910,
+          "rawHz": 440.01962603799814,
+          "displayHz": 440.01962603799814
+        },
+        {
+          "time": 980,
+          "rawHz": 440.01903440301083,
+          "displayHz": 440.01903440301083
+        },
+        {
+          "time": 1050,
+          "rawHz": 440.01943426148733,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 1120,
+          "rawHz": 440.01969548262315,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 1190,
+          "rawHz": 440.0182391350482,
+          "displayHz": 440.01943426148733
+        },
+        {
+          "time": 1260,
+          "rawHz": 440.01962604170365,
+          "displayHz": 440.01962604170365
+        },
+        {
+          "time": 1330,
+          "rawHz": 440.01903440301083,
+          "displayHz": 440.01903440301083
+        },
+        {
+          "time": 1400,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1470,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1540,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1610,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "attack",
+      "sampleRate": 48000,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 0.00030094173263406354,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.03459100037725,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.01822026424793,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.0185885886833,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 420,
+          "rawHz": 440.018714951153,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 490,
+          "rawHz": 440.01852219475546,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 560,
+          "rawHz": 440.0185120999238,
+          "displayHz": 440.01852219475546
+        },
+        {
+          "time": 630,
+          "rawHz": 440.0181599230895,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 700,
+          "rawHz": 440.0185885886833,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 770,
+          "rawHz": 440.018714951153,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 840,
+          "rawHz": 440.01852219475546,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 910,
+          "rawHz": 440.018512100118,
+          "displayHz": 440.01852219475546
+        },
+        {
+          "time": 980,
+          "rawHz": 440.0181599230895,
+          "displayHz": 440.018512100118
+        },
+        {
+          "time": 1050,
+          "rawHz": 440.0185885888781,
+          "displayHz": 440.018512100118
+        },
+        {
+          "time": 1120,
+          "rawHz": 440.018714951153,
+          "displayHz": 440.0185885888781
+        },
+        {
+          "time": 1190,
+          "rawHz": 440.01852219475546,
+          "displayHz": 440.0185885888781
+        },
+        {
+          "time": 1260,
+          "rawHz": 440.0185120999238,
+          "displayHz": 440.01852219475546
+        },
+        {
+          "time": 1330,
+          "rawHz": 440.0181599230895,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 1400,
+          "rawHz": 440.0185885888781,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 1470,
+          "rawHz": 440.018714951153,
+          "displayHz": 440.0185885888781
+        },
+        {
+          "time": 1540,
+          "rawHz": 440.01852219475546,
+          "displayHz": 440.0185885888781
+        },
+        {
+          "time": 1610,
+          "rawHz": 440.36005326523934,
+          "displayHz": 440.018714951153
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "step",
+      "sampleRate": 48000,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": 210,
+      "sustainedPeakToPeakCents": 0.00030094173263406354,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.0861611617628,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.0181599230895,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.0185885886833,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 420,
+          "rawHz": 440.018714951153,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 490,
+          "rawHz": 440.01852219475546,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 560,
+          "rawHz": 440.0185120999238,
+          "displayHz": 440.01852219475546
+        },
+        {
+          "time": 630,
+          "rawHz": 440.0181599230895,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 700,
+          "rawHz": 440.0185885886833,
+          "displayHz": 440.0185120999238
+        },
+        {
+          "time": 770,
+          "rawHz": 219.7839097041133,
+          "displayHz": 440.0181599230895
+        },
+        {
+          "time": 840,
+          "rawHz": 659.3048195811941,
+          "displayHz": 440.0185885886833
+        },
+        {
+          "time": 910,
+          "rawHz": 659.3049029897583,
+          "displayHz": 659.3048195811941
+        },
+        {
+          "time": 980,
+          "rawHz": 659.304099663817,
+          "displayHz": 659.3048195811941
+        },
+        {
+          "time": 1050,
+          "rawHz": 659.3051798706618,
+          "displayHz": 659.3049029897583
+        },
+        {
+          "time": 1120,
+          "rawHz": 659.3063933587844,
+          "displayHz": 659.3051798706618
+        },
+        {
+          "time": 1190,
+          "rawHz": 659.3061094889894,
+          "displayHz": 659.3061094889894
+        },
+        {
+          "time": 1260,
+          "rawHz": 659.3051950365248,
+          "displayHz": 659.3061094889894
+        },
+        {
+          "time": 1330,
+          "rawHz": 659.3037380745717,
+          "displayHz": 659.3051950365248
+        },
+        {
+          "time": 1400,
+          "rawHz": 659.3051977694792,
+          "displayHz": 659.3051950365248
+        },
+        {
+          "time": 1470,
+          "rawHz": 659.3046301283443,
+          "displayHz": 659.3046301283443
+        },
+        {
+          "time": 1540,
+          "rawHz": 659.305170596691,
+          "displayHz": 659.305170596691
+        },
+        {
+          "time": 1610,
+          "rawHz": 659.5963268521991,
+          "displayHz": 659.305170596691
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "vibrato",
+      "sampleRate": 48000,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 5.22383720771205,
+      "silenceClearMs": 140,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 436.28564321957504,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 443.53003727459,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 439.94181549739443,
+          "displayHz": 439.94181549739443
+        },
+        {
+          "time": 420,
+          "rawHz": 436.61192437861735,
+          "displayHz": 439.94181549739443
+        },
+        {
+          "time": 490,
+          "rawHz": 444.145785131405,
+          "displayHz": 439.94181549739443
+        },
+        {
+          "time": 560,
+          "rawHz": 438.61633288428703,
+          "displayHz": 438.61633288428703
+        },
+        {
+          "time": 630,
+          "rawHz": 437.64313746702004,
+          "displayHz": 438.61633288428703
+        },
+        {
+          "time": 700,
+          "rawHz": 444.28739909199226,
+          "displayHz": 438.61633288428703
+        },
+        {
+          "time": 770,
+          "rawHz": 437.4867197777915,
+          "displayHz": 437.64313746702004
+        },
+        {
+          "time": 840,
+          "rawHz": 438.80690415501556,
+          "displayHz": 438.80690415501556
+        },
+        {
+          "time": 910,
+          "rawHz": 444.0835063497727,
+          "displayHz": 438.80690415501556
+        },
+        {
+          "time": 980,
+          "rawHz": 436.4996708662312,
+          "displayHz": 438.80690415501556
+        },
+        {
+          "time": 1050,
+          "rawHz": 440.1305979961786,
+          "displayHz": 440.1305979961786
+        },
+        {
+          "time": 1120,
+          "rawHz": 443.4227363345553,
+          "displayHz": 440.1305979961786
+        },
+        {
+          "time": 1190,
+          "rawHz": 435.96764195121597,
+          "displayHz": 440.1305979961786
+        },
+        {
+          "time": 1260,
+          "rawHz": 441.47435686074704,
+          "displayHz": 441.47435686074704
+        },
+        {
+          "time": 1330,
+          "rawHz": 442.43943381776813,
+          "displayHz": 441.47435686074704
+        },
+        {
+          "time": 1400,
+          "rawHz": 435.7624278794311,
+          "displayHz": 441.47435686074704
+        },
+        {
+          "time": 1470,
+          "rawHz": 442.5961993789999,
+          "displayHz": 442.43943381776813
+        },
+        {
+          "time": 1540,
+          "rawHz": 441.29797896955915,
+          "displayHz": 441.29797896955915
+        },
+        {
+          "time": 1610,
+          "rawHz": 436.7431810531245,
+          "displayHz": 441.29797896955915
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    },
+    {
+      "kind": "decay",
+      "sampleRate": 48000,
+      "firstDisplayMs": 210,
+      "stepSettlingMs": null,
+      "sustainedPeakToPeakCents": 0.002047549242837843,
+      "silenceClearMs": 0,
+      "readings": [
+        {
+          "time": 70,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 140,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 210,
+          "rawHz": 440.09702091617214,
+          "displayHz": null
+        },
+        {
+          "time": 280,
+          "rawHz": 440.01821061237143,
+          "displayHz": null
+        },
+        {
+          "time": 350,
+          "rawHz": 440.0177425239261,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 420,
+          "rawHz": 440.0187310269781,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 490,
+          "rawHz": 440.01869239040485,
+          "displayHz": 440.01869239040485
+        },
+        {
+          "time": 560,
+          "rawHz": 440.0200715738648,
+          "displayHz": 440.0187310269781
+        },
+        {
+          "time": 630,
+          "rawHz": 440.01821061237143,
+          "displayHz": 440.01869239040485
+        },
+        {
+          "time": 700,
+          "rawHz": 440.0177425239261,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 770,
+          "rawHz": 440.0187310273689,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 840,
+          "rawHz": 440.0186923299516,
+          "displayHz": 440.0186923299516
+        },
+        {
+          "time": 910,
+          "rawHz": 440.02007163337476,
+          "displayHz": 440.0187310273689
+        },
+        {
+          "time": 980,
+          "rawHz": 440.01821061237143,
+          "displayHz": 440.0186923299516
+        },
+        {
+          "time": 1050,
+          "rawHz": 440.01774252353476,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 1120,
+          "rawHz": 440.0187310273689,
+          "displayHz": 440.01821061237143
+        },
+        {
+          "time": 1190,
+          "rawHz": 440.0186923299516,
+          "displayHz": 440.0186923299516
+        },
+        {
+          "time": 1260,
+          "rawHz": 440.02007157347634,
+          "displayHz": 440.0187310273689
+        },
+        {
+          "time": 1330,
+          "rawHz": 440.018210612758,
+          "displayHz": 440.0186923299516
+        },
+        {
+          "time": 1400,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1470,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1540,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1610,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1680,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1750,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1820,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1890,
+          "rawHz": null,
+          "displayHz": null
+        },
+        {
+          "time": 1960,
+          "rawHz": null,
+          "displayHz": null
+        }
+      ]
+    }
+  ],
+  "times": {
+    "medianMs": 1.9031379999996716,
+    "p95Ms": 1.93782900000042,
+    "maxMs": 3.8161619999999985
+  }
+}

@@ -32,16 +32,20 @@ export function detectPitch(
   // A loud overtone can already satisfy the absolute YIN threshold. Compare
   // all period candidates before choosing the shortest comparably good one;
   // the true fundamental explains the weaker harmonics as well.
+  // Compare interpolated valley depths, not just integer-lag samples. At
+  // short periods a fractional fundamental can otherwise lose to its octave.
+  const depth = (t: number) => {
+    const left = diff[t - 1]!, mid = diff[t]!, right = diff[t + 1]!;
+    const den = left - 2 * mid + right;
+    return den > 0 ? mid - (left - right) ** 2 / (8 * den) : mid;
+  };
+  const valley = (t: number) => diff[t]! < diff[t - 1]! && diff[t]! <= diff[t + 1]!;
   let best = 1;
-  for (let t = min + 1; t < max; t++) best = Math.min(best, diff[t]!);
+  for (let t = min + 1; t < max; t++) if (valley(t)) best = Math.min(best, depth(t));
   const threshold = Math.min(0.18, best + 0.02);
   let tau = -1;
   for (let t = min + 1; t < max; t++) {
-    if (
-      diff[t]! < threshold &&
-      diff[t]! < diff[t - 1]! &&
-      diff[t]! <= diff[t + 1]!
-    ) {
+    if (valley(t) && depth(t) < threshold) {
       tau = t;
       break;
     }

@@ -26,6 +26,13 @@ try {
     const requests = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => requests.push(request.url()));
+    await context.addInitScript(() => {
+      const NativeAudioContext = window.AudioContext;
+      window.audioContexts = [];
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(...args) { super(...args); window.audioContexts.push(this); }
+      };
+    });
     await page.goto(url);
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
@@ -33,7 +40,7 @@ try {
     assert.equal(await page.locator('.pitch-marker').evaluate((marker) => getComputedStyle(marker).transitionDuration), '0.14s');
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
     const accuracyTrigger = page.getByRole('button', { name: 'Tuner accuracy', exact: true });
-    assert.match(await accuracyTrigger.textContent(), /ADV/);
+    assert.match(await accuracyTrigger.textContent(), /BEG/);
     for (const label of ['INT', 'BEG', 'ADV']) {
       await accuracyTrigger.click();
       await page.getByRole('menuitemradio', { name: label, exact: true }).click();
@@ -98,6 +105,26 @@ try {
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
 
     await stopAllAudio();
+    // Inject a browser permission rejection, then recover through the same UI.
+    await page.evaluate(() => Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+      configurable: true, writable: true, value: async () => { throw new DOMException('Denied', 'NotAllowedError'); },
+    }));
+    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.getByText('Microphone permission denied. Allow access in your browser and try again.', { exact: true }).waitFor();
+    // Permission remains pending while the shared context is interrupted.
+    await page.evaluate(() => {
+      navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { window.resolvePermission = resolve; });
+    });
+    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.waitForFunction(() => !!window.resolvePermission);
+    await page.evaluate(() => window.audioContexts[0].suspend());
+    await page.getByText('Audio interrupted. Start listening, play a tone, or start the metronome to resume.', { exact: true }).waitFor();
+    await page.evaluate(() => {
+      const destination = window.audioContexts[0].createMediaStreamDestination();
+      window.lateStream = destination.stream;
+      window.resolvePermission(destination.stream);
+    });
+    await page.waitForFunction(() => window.lateStream.getTracks().every(track => track.readyState === 'ended'));
     // Real Web Audio graph with synthetic input; this does not test permission or hardware.
     await page.evaluate(() => {
       window.scheduledClicks = [];
@@ -115,14 +142,24 @@ try {
       osc.connect(gain).connect(destination);
       osc.start();
       window.testInput = { ac, gain, destination };
-      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, writable: true, value: async constraints => {
+        window.inputConstraints = constraints;
         await ac.resume(); window.inputStarted = performance.now(); return destination.stream;
       } });
     });
     await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
     await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
     const settlingMs = await page.evaluate(() => performance.now() - window.inputStarted);
+    assert.deepEqual(await page.evaluate(() => window.inputConstraints), { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
     assert.ok(settlingMs <= 500, `${mode}: settling ${settlingMs} ms`);
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await settings.getByLabel('A4 reference (Hz)', { exact: true }).fill('442');
+    await settings.getByRole('button', { name: 'Save settings' }).click();
+    await page.waitForFunction(() => Math.abs(parseFloat(document.querySelector('.pitch-marker').style.top) - (50 - 1200 * Math.log2(440 / 442))) < 0.5);
+    assert.equal(await page.locator('.pitch-note').innerText(), 'B4', 'Calibration and written transposition apply to live input in both formats');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await settings.getByLabel('A4 reference (Hz)', { exact: true }).fill('440');
+    await settings.getByRole('button', { name: 'Save settings' }).click();
     await selectTool('Reference tone');
     if (await page.getByRole('button', { name: 'Sustain off', exact: true }).isVisible()) await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
     await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
@@ -144,7 +181,7 @@ try {
     const clicks = await page.evaluate(() => window.scheduledClicks);
     for (let i = 1; i < clicks.length; i++) assert.ok(Math.abs(clicks[i].time - clicks[i - 1].time - 1 / 6) < 0.00001);
     assert.ok(clicks.every((click) => click.time >= click.now), 'Clicks must be scheduled ahead of playback');
-    assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 750, 750, 1000, 750, 750, 1500]);
+    assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 2000, 2000, 1000, 2000, 2000, 1500]);
     await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     // Change focus and settings while input analysis and clicks continue.
     await selectTool('Tuner');
@@ -155,6 +192,19 @@ try {
     assert.ok(silenceClearMs <= 500);
     await stopAllAudio();
     assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
+    await page.evaluate(() => {
+      const input = window.testInput;
+      input.destination = input.ac.createMediaStreamDestination();
+      input.gain.connect(input.destination);
+      input.gain.gain.value = 0.2;
+      navigator.mediaDevices.getUserMedia = async () => input.destination.stream;
+    });
+    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    await page.evaluate(() => window.testInput.destination.stream.getAudioTracks()[0].dispatchEvent(new Event('ended')));
+    await page.getByText('Microphone disconnected. Reconnect it and start listening again.', { exact: true }).waitFor();
+    assert.equal(await page.locator('.pitch-marker').isVisible(), false);
+    await stopAllAudio();
     await page.evaluate(() => window.testInput.ac.close());
     const stoppedClicks = await page.evaluate(() => window.scheduledClicks.length);
     await page.waitForTimeout(200);

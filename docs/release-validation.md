@@ -2,6 +2,8 @@
 
 Status: implementation complete for the integrated release candidate; physical acceptance pending. This is a local prototype, not a published release or a claim of supported school hardware.
 
+A later [tuner investigation](validation/tuner-investigation/README.md) records expanded synthetic coverage, octave-selection and pending-capture interruption fixes, and their before/after evidence. The historical candidate results below remain unchanged; neither investigation establishes physical acceptance.
+
 ## Candidate and evidence
 
 The build writes shared release/build versions into both HTML formats, exposes them in the footer, and records source revision, working-tree status, and SHA-256 checksums in `dist/release.json`. The hosted download is byte-identical to `dist/portable/tuno.html`. The content-derived build identifier covers app source output, HTML template, service worker, manifest, package version, and app icons.
