@@ -1,10 +1,10 @@
 # tuNotes product and implementation specification
 
-Status: Stages 0–2 implemented as a local Practice preview, 2026-09-27. Independent hosted/portable builds include full clef/key/accidental presets, teacher-reviewed instrument Starters, Custom pools, optional profiles and local backup. The in-phase Stage 2 answer-entry revision below replaces the accidental dropdown with fixed spelling targets and explicit keyboard alterations. Adaptation, Challenge and Flow remain planned. See [Stage 1 validation](validation/tunotes-practice.md) for automated evidence and remaining human acceptance.
+Status: Stages 0–2 implemented as a local Practice preview, 2026-09-27. Independent hosted/portable builds include full clef/key/accidental presets, teacher-reviewed instrument Starters, Custom pools, optional profiles and local backup. The in-phase Stage 2 answer-entry revision below replaces the accidental dropdown with fixed spelling targets and explicit keyboard alterations. Adaptation, Challenge and Flow remain planned. The Stage 2 implementation, including the answer-entry follow-ups, is recorded in local commit `73eba41`; this does not imply publication. See [Stage 2 validation](validation/tunotes-stage2.md) and [answer-entry validation](validation/tunotes-input.md) for automated evidence and remaining human acceptance.
 
 This is the implementation reference derived from the [initial specification](tuNotes_initial-spec.md) and [design conversation](tuNotes_chat.txt), reviewed against repository revision `c3759c8f08ce400c67443d1673f4175e2d088a31`. Preserve those inputs as design history. The [staged build plan](tuNotes_build-plan.md) defines delivery order and acceptance gates.
 
-Requirements inherited from the source documents are commitments. Exact defaults, algorithms, ranges, paths, and interaction rules supplied here are **proposed implementation decisions**, not previously approved classroom findings. Implement these defaults unless changed during review; record changes here before dependent work. Instrument ranges and notation require the teacher review identified in the build plan.
+Requirements inherited from the source documents are commitments. Exact defaults, algorithms, ranges, paths, and interaction rules supplied here are **proposed implementation decisions**, not previously approved classroom findings. Implement these defaults unless changed during review; record changes here before dependent work. The Starter keys/ranges below have teacher approval; expansion bounds and engraving/device acceptance still require the review identified in the build plan.
 
 ## 1. Product and release boundary
 
@@ -58,19 +58,19 @@ Source definitions remain teacher-readable. Normalize once to a finite, nonempty
   id: 'clarinet-bb-starter', version: 1,
   name: 'B♭ Clarinet — Starter', clef: 'treble',
   instrument: 'clarinet-bb',
-  range: ['G4', 'D5'], content: 'lines-and-spaces',
+  range: ['C4', 'G4'], content: 'lines-and-spaces',
   accidentals: 'key-only', key: 'C',
-  expansion: { range: ['E4', 'C6'], direction: 'both' }
+  expansion: { range: ['C4', 'C6'], direction: 'both' }
 }
 ```
 
-Supported content: lines, spaces, lines-and-spaces. Accidentals: `key-only` (natural notes when key=C), `sharps`, `flats`, `both`. For each eligible letter/octave position, include its key-implied spelling; other modes additionally allow natural plus the requested alteration(s), deduplicated. Thus sharps in B♭ still contains the key's B♭; explain the UI as “Key notes + extra sharps.” The advanced preview lists the resulting spellings. Permit E♯/B♯/C♭/F♭, including in matching signatures; never silently respell them.
+Supported content: lines, spaces, lines-and-spaces. Original Stage 2 accidental policies (the configurator refinement below adds independent modifiers): `key-only` (natural notes when key=C), `sharps`, `flats`, `both`. For each eligible letter/octave position, include its key-implied spelling; other modes additionally allow natural plus the requested alteration(s), deduplicated. Thus sharps in B♭ still contains the key's B♭; explain the UI as “Key notes + extra sharps.” The advanced preview lists the resulting spellings. The written-pitch model, notation renderer and legacy-data validation retain E♯/B♯/C♭/F♭ support, but current exercise pools and answer targets exclude all four, including in matching signatures. Never silently respell them. C♭ major is unavailable for new exercises; renderer support for all 15 major signatures does not imply all are playable.
 
-Custom controls: clef, low/high written position, lines/spaces/both, key, accidental policy, maximum ledger lines above/below (0–4). Low/high controls use natural letter/octave positions; accidentals come from policy. Intersect all filters, show pool size and a notation preview, and reject empty ranges. A ledger limit of zero permits adjacent exterior spaces (-1 and 9); “Staff only” is an explicit 0…8 range. Custom adaptation changes weights/narrows within this pool and never expands beyond its configured bounds.
+Original Stage 2 Custom controls (superseded by [Preset picker and graphical configuration](#preset-picker-and-graphical-configuration-september-2026) as that refinement is implemented): clef, low/high written position, lines/spaces/both, key, accidental policy, maximum ledger lines above/below (0–4). Low/high controls use natural letter/octave positions; accidentals come from policy. Intersect all filters, show pool size and a notation preview, and reject empty ranges. A ledger limit of zero permits adjacent exterior spaces (-1 and 9); “Staff only” is an explicit 0…8 range. Custom adaptation changes weights/narrows within this pool and never expands beyond its configured bounds.
 
 Clef catalog, for each clef: staff Lines (0,2,4,6,8), staff Spaces (1,3,5,7), staff Both (0…8); plus 1 or 2 ledger lines above/below/both and 4 above-only/below-only. Expansion envelopes include all positions from the staff through the last named ledger line, inclusively: +1 above ends at 10, +2 below starts at -4, +4 above ends at 16. Default key C and key-only. Clef adaptation may expand one eligible position at a time within -8…16; Lines/Spaces filters continue to apply. No implicit accidentals or key changes through adaptation.
 
-Proposed instrument catalog follows. These are limited reading exercises, **not certified beginner curricula or full playable ranges**. Use “Starter” labels until teacher review. All use key-only, both lines and spaces; expansions keep the starting key. Teacher-reviewed written keys (2026-09-27) are F for flute, oboe and bassoon; G for alto saxophone; C for clarinet, trumpet, horn and keyboards; and B♭ for bass-clef brass. Bounds constrain adaptive growth.
+The teacher-approved Starter catalog follows; expansion bounds remain proposed. These are limited reading exercises, **not certified beginner curricula or full playable ranges**. Retain “Starter” labels. All use key-only, both lines and spaces; expansions keep the starting key. Teacher-reviewed written keys (2026-09-27) are F for flute, oboe and bassoon; G for alto saxophone; C for clarinet, trumpet, horn and keyboards; and B♭ for bass-clef brass. Bounds constrain adaptive growth.
 
 | Instrument/preset | Clef | Starting written range | Expansion bounds | Concert → written semitones |
 | --- | --- | --- | --- | --- |
