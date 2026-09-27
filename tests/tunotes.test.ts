@@ -99,6 +99,16 @@ test('self-paced mode waits for Continue and held keys require release', () => {
   assert.equal(gate.down('KeyA', true), false); assert.equal(gate.down('KeyA'), false);
   gate.up('KeyA'); assert.equal(gate.down('KeyA'), true);
 });
+test('lost keyup reset accepts fresh presses while still rejecting auto-repeat', () => {
+  const gate = new PressGate();
+  for (const code of ['KeyA', 'Enter', 'Space']) assert.equal(gate.down(code), true);
+  gate.reset();
+  for (const code of ['KeyA', 'Enter', 'Space']) {
+    assert.equal(gate.down(code, true), false);
+    assert.equal(gate.down(code), true);
+    assert.equal(gate.down(code), false);
+  }
+});
 test('Uno milestones are positive, monotonic, once-only and independent of streak errors', () => {
   const p = new NotesProgress(); assert.equal(p.update(0,0).pose, 'rest');
   assert.equal(p.update(2,2).look, true); assert.equal(p.update(2,0).look, false);

@@ -18,6 +18,33 @@ const expected = page => page.locator('.staff').getAttribute('aria-label').then(
 });
 const count = async (page, attempts) => assert.match(await page.locator('#practice-counts').textContent(), new RegExp(`/ ${attempts} attempts`));
 const running = page => page.waitForFunction(() => document.querySelector('.answer').getAttribute('aria-disabled') === 'false');
+async function lostKeyup(page) {
+  let attempts = 0;
+  for (const loss of ['blur', 'visibility']) for (const [key, code] of [['a', 'KeyA'], ['Enter', 'Enter'], [' ', 'Space']]) {
+    const answer = page.getByRole('button', { name: 'A', exact: true });
+    await answer.focus();
+    const press = repeat => answer.dispatchEvent('keydown', { key, code, repeat, bubbles: true });
+    await press(false); await count(page, ++attempts);
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    // Model a release outside the page: deliberately omit document keyup.
+    await page.evaluate(loss => {
+      if (loss === 'blur') window.dispatchEvent(new Event('blur'));
+      else {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+        delete document.hidden;
+        document.dispatchEvent(new Event('visibilitychange'));
+      }
+    }, loss);
+    if (loss === 'visibility') await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await answer.focus();
+    await press(true); await count(page, attempts); // still-held auto-repeat remains rejected
+    await press(false); await count(page, ++attempts); // first fresh press must work
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await press(true); await count(page, attempts);
+    await answer.dispatchEvent('keyup', { key, code, bubbles: true });
+  }
+}
 async function loop(page, mode) {
   page.setDefaultTimeout(10000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -67,6 +94,9 @@ async function loop(page, mode) {
   assert.match(await page.locator('#result-summary').textContent(), /11 correct \/ 12 attempts · Accuracy 92% · Best streak 10/);
   assert.equal(await page.locator('h2:focus').textContent(), 'Practice results');
   await page.getByRole('button', { name: 'Retry', exact: true }).click(); await count(page, 0);
+  await lostKeyup(page);
+  await page.getByRole('button', { name: 'Finish', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click(); await count(page, 0);
   await page.getByRole('button', { name: 'Finish', exact: true }).click();
   await page.getByRole('button', { name: 'Edit setup', exact: true }).click();
   await page.locator('#preset').selectOption('bass-spaces'); await page.locator('#self-paced').uncheck();
@@ -104,15 +134,19 @@ async function loop(page, mode) {
   await page.waitForFunction(() => window.practiceListeners.keydown === 0 && window.practiceTimers.size === 0);
   const afterCleanup = await page.evaluate(() => ({ ...window.practiceListeners, timers: window.practiceTimers.size }));
   assert.equal(beforeCleanup.keydown, 1); assert.equal(beforeCleanup.keyup, 1); assert.equal(beforeCleanup.timers, 1);
+  assert.equal(beforeCleanup.blur, 1); assert.equal(afterCleanup.blur, 0);
   assert.equal(afterCleanup.keyup, 0); assert.equal(afterCleanup.visibilitychange, beforeCleanup.visibilitychange - 1);
   assert.deepEqual(errors, []);
-  results.push(`${mode}: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed`);
+  results.push(`${mode}: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, lost-keyup recovery and repeat rejection for letters/Enter/Space on blur/visibility loss, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed`);
 }
 const instrument = () => {
-  window.practiceListeners = { keydown: 0, keyup: 0, visibilitychange: 0 };
+  window.practiceListeners = { keydown: 0, keyup: 0, visibilitychange: 0, blur: 0 };
   const add = document.addEventListener.bind(document), remove = document.removeEventListener.bind(document);
   document.addEventListener = (type, ...args) => { if (type in window.practiceListeners) window.practiceListeners[type]++; return add(type, ...args); };
   document.removeEventListener = (type, ...args) => { if (type in window.practiceListeners) window.practiceListeners[type]--; return remove(type, ...args); };
+  const addWindow = window.addEventListener.bind(window), removeWindow = window.removeEventListener.bind(window);
+  window.addEventListener = (type, ...args) => { if (type === 'blur') window.practiceListeners.blur++; return addWindow(type, ...args); };
+  window.removeEventListener = (type, ...args) => { if (type === 'blur') window.practiceListeners.blur--; return removeWindow(type, ...args); };
   window.practiceTimers = new Set(); const set = window.setInterval.bind(window), clear = window.clearInterval.bind(window);
   window.setInterval = (...args) => { const id = set(...args); window.practiceTimers.add(id); return id; };
   window.clearInterval = id => { window.practiceTimers.delete(id); clear(id); };

@@ -37,3 +37,11 @@ Visual review: [four-clef middle-C fixtures](tunotes-practice/notes-chromium-cle
 Physical Chromebook/laptop keyboards, iPad/tablet multitouch, iPhone/Android file-opening workflows, Safari/WebKit, actual screen readers, classroom projection and teacher/student notation review remain unverified. Browser emulation does not establish those results. The accessible staff description gives clef/key/position without the answer spelling; the positional alternative is not equivalent to visual staff reading. Synthetic visibility loss does not replace device background/resume acceptance.
 
 Full key signatures/accidentals, ledger/instrument/custom presets, selectable alto/tenor, profiles, persistence and contextual benchmarks belong to Stage 2; adaptation, Challenge and Flow remain in their planned stages. No speed-based mastery or microphone input is implemented. A future publication candidate still needs the release procedure and physical acceptance. No claim of complete first-release or classroom readiness is made.
+
+## Stage 1 review follow-up — lost key releases
+
+Reviewed `23e128164bc1ae716a3fdb54d11102699df7f1b5` against the Stage 1 plan and the preceding design thread. The held-key gate could retain a key when its release happened outside the page, discarding the first fresh answer after returning. The added browser regression failed on the original build in both Chromium and Firefox.
+
+The follow-up clears keyboard and pointer state on window blur and document hiding, preserves repeat rejection and explicit Resume after visibility loss, and removes the blur listener on disposal. Regression fixtures exercise letter, Enter and Space input with omitted keyup, repeated events and a fresh press after each type of interruption. These are synthetic event fixtures, not physical tab-switch acceptance.
+
+Validation on Node 24.21.0 with `npm ci`: `npm run check` passes all 45 unit tests and both builds; Practice and dual-app browser checks pass in Chromium and Firefox, including hosted offline and relocated portable operation; release integrity and `git diff --check` pass. Reports are generated in `dist/validation/`. Full `npm run verify` and physical-device acceptance were not performed for this follow-up; the gaps above remain.

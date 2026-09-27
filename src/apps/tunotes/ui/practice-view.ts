@@ -132,7 +132,10 @@ export function practiceView() {
     }
   };
   const keyup = (event: KeyboardEvent) => gate.up(event.code || event.key);
-  const visibility = () => { if (document.hidden) { pointers.clear(); session?.pause(); render(); } };
+  // Key releases outside the page may never reach document; repeats remain gated.
+  const resetInput = () => { gate.reset(); pointers.clear(); };
+  const visibility = () => { if (document.hidden) { resetInput(); session?.pause(); render(); } };
+  window.addEventListener('blur', resetInput);
   document.addEventListener('keydown', keydown); document.addEventListener('keyup', keyup); document.addEventListener('visibilitychange', visibility);
   const timer = setInterval(() => {
     if (!session || session.state === 'finished' || session.state === 'paused') return;
@@ -142,6 +145,7 @@ export function practiceView() {
   const dispose = () => {
     if (disposed) return; disposed = true; clearInterval(timer); stopWatching(); dog.dispose();
     document.removeEventListener('keydown', keydown); document.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
+    window.removeEventListener('blur', resetInput);
   };
   const stopWatching = onUnmount(node, dispose);
   return { node, dispose };

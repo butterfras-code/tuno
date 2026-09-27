@@ -88,4 +88,5 @@ export class PressGate {
   private held = new Set<string>();
   down(code: string, repeat = false) { if (repeat || this.held.has(code)) return false; this.held.add(code); return true; }
   up(code: string) { this.held.delete(code); }
+  reset() { this.held.clear(); }
 }
