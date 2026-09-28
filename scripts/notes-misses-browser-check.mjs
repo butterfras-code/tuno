@@ -25,7 +25,7 @@ try {
   const before = await pitch();
   await page.locator('.answer[data-letter="C"][data-accidental="1"]').first().click();
   assert.match(await stats(),/5 correct \/ 6 attempts.*Streak 0 \(best 5\)/);
-  assert.match(await page.locator('.feedback').textContent(),/That note is/);
+  assert.match(await page.locator('#feedback').textContent(),/That note is/);
   await page.waitForTimeout(850); assert.notEqual(await pitch(),before);
   // Keyboard and assistive clicks must count out-of-pool guesses too.
   await page.keyboard.down('ArrowDown'); await page.keyboard.press('d'); await page.keyboard.up('ArrowDown');

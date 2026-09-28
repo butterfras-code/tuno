@@ -195,8 +195,11 @@ export class NotesStore {
   profile() { return this.data.configuration.remember ? this.data.profiles.find(p => p.id === this.data.configuration.profileId) : undefined; }
   benchmark(preset: Preset, adaptive = false) { return Math.max(10,...(this.profile()?.results.filter(r => r.context === fingerprint(preset,adaptive) && r.attempts >= 20 && !r.interrupted).slice(-5).map(r => r.first20) ?? [])); }
   challengeBenchmark(preset: Preset, adaptive: boolean, rules: ChallengeRules) {
+    return this.challengeBenchmarkFor(this.profile()?.id,preset,adaptive,rules);
+  }
+  challengeBenchmarkFor(profileId: string | undefined, preset: Preset, adaptive: boolean, rules: ChallengeRules) {
     if (rules.goal === 'target') return rules.target;
-    return Math.max(10,...(this.profile()?.results.filter(r => r.context === fingerprint(preset,adaptive,'challenge') && r.challenge?.end === 'completed' && !r.interrupted && r.attempts > 0 && JSON.stringify(r.challenge.rules) === JSON.stringify(rules)).slice(-5).map(r => r.correct) ?? []));
+    return Math.max(10,...(this.data.profiles.find(p => p.id === profileId)?.results.filter(r => r.context === fingerprint(preset,adaptive,'challenge') && r.challenge?.end === 'completed' && !r.interrupted && r.attempts > 0 && JSON.stringify(r.challenge.rules) === JSON.stringify(rules)).slice(-5).map(r => r.correct) ?? []));
   }
   observe(profileId: string | undefined, preset: Preset, observation: Observation, adaptive = false, learning?: Learning) {
     if (!profileId) return;

@@ -7,14 +7,14 @@ export const titleCase = (text: string) => text[0]!.toUpperCase() + text.slice(1
 export function control(text: string, action: () => void) {
   const node = el('button','control',text); node.type = 'button'; node.addEventListener('click',action); return node;
 }
-export function presetPicker(customs: () => readonly PresetSource[], select: (id: string) => void) {
+export function presetPicker(customs: () => readonly PresetSource[], select: (id: string) => void, idPrefix = '') {
   const node = el('div','preset-picker');
-  const label = el('span','setting-label','Preset'); label.id = 'preset-label';
+  const label = el('span','setting-label','Preset'); label.id = `${idPrefix}preset-label`;
   const picker = control('',() => { step = 0; render(); dialog.showModal(); position(); });
-  picker.id = 'preset'; picker.setAttribute('aria-haspopup','dialog'); picker.setAttribute('aria-labelledby','preset-label preset');
-  const dialog = el('dialog','preset-dialog'); dialog.setAttribute('aria-labelledby','preset-step-title');
+  picker.id = `${idPrefix}preset`; picker.setAttribute('aria-haspopup','dialog'); picker.setAttribute('aria-labelledby',`${idPrefix}preset-label ${idPrefix}preset`);
+  const dialog = el('dialog','preset-dialog'); dialog.setAttribute('aria-labelledby',`${idPrefix}preset-step-title`);
   const header = el('div','picker-header');
-  const heading = el('h3'); heading.id = 'preset-step-title'; heading.tabIndex = -1;
+  const heading = el('h3'); heading.id = `${idPrefix}preset-step-title`; heading.tabIndex = -1;
   const close = control('Close',() => dialog.close());
   const trail = el('p','muted picker-trail');
   const choices = el('div','picker-choices');

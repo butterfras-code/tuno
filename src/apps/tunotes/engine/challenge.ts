@@ -45,9 +45,9 @@ export class Challenge extends Practice {
   get countdown() { return Math.max(1, Math.ceil((this.state === 'paused' ? this.countInRemaining : this.countInEnd - this.now()) / 1000)); }
   get qualified() { return qualifies(this.rules, this.end ?? 'partial', this.correct, this.attempts, this.interrupted); }
   get score() { return this.rules.goal === 'timed' && this.rules.scoring === 'correct' ? this.correct : challengeScore(this.correct, this.attempts); }
-  ready() {
+  ready(startAt = this.now()) {
     if (this.phase !== 'ready' || this.state !== 'running') return;
-    this.phase = 'countdown'; this.countInEnd = this.now() + 3000;
+    this.phase = 'countdown'; this.countInEnd = startAt + 3000;
   }
   tick() {
     if (this.state === 'finished' || this.state === 'paused') return;

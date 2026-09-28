@@ -299,7 +299,7 @@ export function practiceView() {
     window.removeEventListener('blur', resetInput);
   };
   const stopWatching = onUnmount(node, dispose);
-  return { node, options, dispose, setActivity: (next: 'practice' | 'challenge') => {
+  return { node, options, store, dispose, enter: () => { dataUI.refresh(); refreshPreferences(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; showSetup();

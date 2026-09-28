@@ -6,7 +6,7 @@ import type { Preset } from '../domain/presets.ts';
 import type { PromptToken } from '../engine/practice.ts';
 
 /** One spelling model for direct targets, pointer slides and keyboard answers. */
-export function answerControls(accept: (answer: AnswerSpelling, token: PromptToken) => void) {
+export function answerControls(accept: (answer: AnswerSpelling, token: PromptToken) => void, allowConcurrentPointers = false) {
   const node = el('div', 'answer-input');
   const rows = el('div', 'answer-rows');
   const hints = el('div', 'answer-key-hints');
@@ -57,7 +57,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       values.set(b, value); buttons.push(b); grid.append(b);
       // All displayed spellings accept guesses, including notes outside the exercise pool.
       b.addEventListener('pointerdown', event => {
-        if (gesture || event.button !== 0 || !event.isPrimary || locked || !token || event.timeStamp < since) return;
+        if (gesture || event.button !== 0 || !allowConcurrentPointers && !event.isPrimary || locked || !token || event.timeStamp < since) return;
         event.preventDefault();
         gesture = { id: event.pointerId, origin: b, token };
         b.setPointerCapture(event.pointerId); highlight(enabled(b) ? b : undefined);

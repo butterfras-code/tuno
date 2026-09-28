@@ -13,13 +13,13 @@ function select(label: string, values: readonly (string | readonly [string,strin
   for (const value of values) { const [id,name] = typeof value === 'string' ? [value,value] : value; const option = el('option','',name); option.value = id; input.append(option); }
   input.value = initial; node.append(input); return { node,input };
 }
-export function presetSetup(store: NotesStore) {
+export function presetSetup(store: NotesStore, idPrefix = '') {
   const node = el('div');
   let current: Preset | undefined; let changed = () => {}; let selectedId = store.data.configuration.presetId;
-  const pickerUI = presetPicker(() => store.data.customPresets,id => { selectedId = id; loadCustom(); });
+  const pickerUI = presetPicker(() => store.data.customPresets,id => { selectedId = id; loadCustom(); },idPrefix);
   const picker = pickerUI.picker;
   const editor = customConfigurator(() => summarize()); const custom = editor.node;
-  const summary = el('p'); summary.id = 'preset-summary'; summary.setAttribute('role','status');
+  const summary = el('p'); summary.id = `${idPrefix}preset-summary`; summary.setAttribute('role','status');
   const preview = el('div','preset-preview range-grid');
   const saveName = el('input','control'); saveName.maxLength = 80; saveName.setAttribute('aria-label','Custom preset name');
   let nameOverride = false;
@@ -75,7 +75,19 @@ export function presetSetup(store: NotesStore) {
     } catch (error) { saveMessage.textContent = (error as Error).message; }
   }),saveMessage);
   node.append(pickerUI.node,custom,preview,summary); refresh();
-  return { node,picker,refresh, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveConfiguration: (selfPaced: boolean) => {
+  return { node,picker,refresh, selectPreset: (id: string) => { selectedId = id; loadCustom(); }, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveForRoster: () => {
+    if (!current) return undefined;
+    if (custom.hidden) return current;
+    try {
+      const source = customSource();
+      if (selectedId === 'custom') source.id = `custom-${crypto.randomUUID()}`;
+      store.update(data => {
+        const index = data.customPresets.findIndex(p => p.id === source.id);
+        if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source;
+      });
+      selectedId = source.id; loadCustom(); return current;
+    } catch (error) { summary.textContent = (error as Error).message; return undefined; }
+  }, saveConfiguration: (selfPaced: boolean) => {
     if (!current) return false;
     try { store.update(data => {
       if (!custom.hidden) {

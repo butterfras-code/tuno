@@ -1,9 +1,9 @@
 import { el } from '../../../shared/ui/components.ts';
 import { segments } from './range-editor.ts';
 import { validateRules } from '../engine/challenge.ts';
-export function challengeSetup() {
+export function challengeSetup(title = 'Solo Challenge') {
   const node = el('fieldset','challenge-settings'); node.hidden = true;
-  node.append(el('legend','','Solo Challenge'));
+  node.append(el('legend','',title));
   let goal: 'timed' | 'target' = 'timed';
   const timed = el('div','control-row'), target = el('div','control-row'); target.hidden = true;
   const mode = segments<'timed' | 'target'>('Challenge goal',[['timed','Timed'],['target','Target']], value => {

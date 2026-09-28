@@ -1,6 +1,6 @@
 # tuNotes staged build plan
 
-Status: Stages 0–4 implemented as a local Practice and solo Challenge preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 4 adds solo Challenge through the existing mode selector; Stages 5–8 remain unimplemented.
+Status: Stages 0–5 implemented as a local Practice, solo Challenge and Multi Player preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 5 adds turns and pairs through a separate Multi Player entry; Stages 6–8 remain unimplemented.
 
 Use the existing repository and short-lived feature branches/worktrees. Each stage should be reviewable in a PR, with shared-code refactors separated from behavior changes where practical. Merge/push to `main` publishes automatically and requires publication authorization. An integration branch may collect preview stages when main must not expose unfinished navigation. Do not create a permanent second development trunk.
 
@@ -105,6 +105,8 @@ Phase 4 presentation/reward follow-up: keep one note-area panel through Ready/co
 4. Enforce usable viewport checks and small-screen turn fallback before start.
 
 Exit evidence: each of 1–8 players appears exactly once per round; odd rosters receive one final solo turn; no answer or timer affects the other panel; completing one player does not end the other. Concurrent pointer inputs, separate keyboard mappings, held keys and focused text entry behave correctly. Resize/visibility interruption preserves state and invalidates ranking consistently. Retrying resets session state while retaining intended profile learning.
+
+Stage 5 implementation: Multi Player owns a local 1–8 roster, individual preset/adaptive/profile choices, Timed/Target rules, turns and two-player heats. Ready starts a shared three-second count-in for each heat; each lane has its own Challenge, answer controls, timer, feedback and Uno progress. Finished lanes wait while their partner continues. Pauses apply to all active lanes; undersized pair layouts pause with restore-or-restart-as-turns recovery. The final scoreboard ranks only qualified results, shares exact ties, and shows unranked participation in roster order. Retry starts fresh engines and rewards while retaining saved or in-memory learning. See [Phase 5 validation](validation/tunotes-stage5.md) for automated evidence and remaining device/classroom gaps. Teams, co-op, relay and Flow remain Stage 6/7 work.
 
 ## Stage 6 — classroom teams, co-op and relay
 

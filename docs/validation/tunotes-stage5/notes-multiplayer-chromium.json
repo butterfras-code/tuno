@@ -1,0 +1,15 @@
+{
+  "browser": "chromium",
+  "evidence": [
+    "hosted: all 1–8 turn rosters completed once in order",
+    "hosted: all 1–8 paired rosters completed once, including odd final solo heats",
+    "hosted: pairs, odd heat, lane-isolated keyboard/finish, held keys, focused text, ties, duplicate names, retry, concurrent touch pointers",
+    "hosted: shared visibility pause, resize recovery, explicit turns restart and phone/tablet layout",
+    "hosted: separate preset/adaptive choices and small-screen pair start guard",
+    "portable-offline: all 1–8 turn rosters completed once in order",
+    "portable-offline: all 1–8 paired rosters completed once, including odd final solo heats",
+    "portable-offline: pairs, odd heat, lane-isolated keyboard/finish, held keys, focused text, ties, duplicate names, retry, concurrent touch pointers",
+    "portable-offline: shared visibility pause, resize recovery, explicit turns restart and phone/tablet layout",
+    "portable-offline: separate preset/adaptive choices and small-screen pair start guard"
+  ]
+}
