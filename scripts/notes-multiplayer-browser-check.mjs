@@ -79,11 +79,46 @@ async function run(page,url,label) {
     await target.click();
     assert.match(await headPanels.nth(i).locator('.muted').first().textContent(),/1 attempts/);
   }
+  if(await button(page,'Enter fullscreen').isVisible()) {
+    await button(page,'Enter fullscreen').click();
+    await button(page,'Exit fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement===document.documentElement),true);
+    await button(page,'Exit fullscreen').click();
+    await button(page,'Enter fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
+    await button(page,'Resume').waitFor({state:'visible'});
+    await button(page,'Resume').click();
+  }
+  await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
+  await head.locator('.multiplayer-recovery').waitFor({state:'visible'});
+  assert.match(await head.locator('.multiplayer-recovery').innerText(),/Screen orientation changed/);
+  await button(head.locator('.multiplayer-recovery'),'Resume Head to Head').click();
+  await page.setViewportSize({width:600,height:960});
+  await head.locator('.multiplayer-recovery').waitFor({state:'visible'});
+  assert.match(await head.locator('.multiplayer-recovery').innerText(),/Turn the device to landscape/);
+  await page.setViewportSize({width:1280,height:800});
+  await button(head.locator('.multiplayer-recovery'),'Resume Head to Head').click();
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head.png`});
   await button(page,'End round').click();
-  await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:600});await start(page,'head-to-head');
+  await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
+  await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Head to Head'}).click();
+  assert.equal(await button(page,'Start round').isDisabled(),true);
+  if(await button(page,'Enter fullscreen').isVisible()) {
+    await button(page,'Enter fullscreen').click();
+    await button(page,'Exit fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement===document.documentElement),true);
+    await button(page,'Exit fullscreen').click();
+    await button(page,'Enter fullscreen').waitFor({state:'visible'});
+  }
+  await page.setViewportSize({width:960,height:600});await start(page,'head-to-head');
   assert.equal(await page.locator('.multiplayer-panel').count(),2);
-  await readyAndExpire(page);
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    assert.equal(await panel.evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await page.clock.fastForward(15050);
   assert.equal(await page.locator('.multiplayer-panel').count(),1);
   await readyAndExpire(page);
   assert.equal(await page.locator('.multiplayer-result-row').count(),3);

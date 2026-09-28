@@ -58,8 +58,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
+  const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
-  setup.append(modeGroup,playersHeading,roster,editor,formatGroup,pairAdvice,rules.node,setupError,start);
+  setup.append(modeGroup,playersHeading,roster,editor,formatGroup,pairAdvice,rules.node,setupError,setupFullscreen,start);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
   const roundHeader = el('div','multiplayer-round-header');
@@ -69,20 +70,22 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const ready = button('Ready',() => { const startAt = performance.now(); active.forEach(l => l.session.ready(startAt)); ready.hidden = true; resetInput(); renderRound(); }); ready.classList.add('control--primary');
   const pause = button('Pause',() => {
     if (active.some(l => l.session.state === 'paused')) {
-      if (resizeRecovery || selectedFormat !== 'turns' && !pairFits()) return;
+      if (resizeRecovery || orientationRecovery || selectedFormat !== 'turns' && !pairFits()) return;
       active.forEach(l => l.session.resume());
     } else active.forEach(l => l.session.pause());
     resetInput(); renderRound();
   });
   const end = button('End round',() => { finishRound(); });
-  roundActions.append(ready,pause,end);
+  const fullscreen = button('Enter fullscreen',toggleFullscreen);
+  const fullscreenHelp = el('p','muted multiplayer-fullscreen-help'); fullscreenHelp.setAttribute('role','status');
+  roundActions.append(ready,pause,fullscreen,end);
   const recovery = el('div','multiplayer-recovery'); recovery.hidden = true;
   const recoveryText = el('p','feedback');
-  const restore = button('Resume Split Screen',() => { if (!pairFits()) return; resizeRecovery = false; active.forEach(l => l.session.resume()); resetInput(); renderRound(); });
-  const restart = button('Restart as turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); resizeRecovery = false; startRound(); });
+  const restore = button('Resume Split Screen',() => { if (!pairFits()) return; resizeRecovery = false; orientationRecovery = false; active.forEach(l => l.session.resume()); resetInput(); renderRound(); });
+  const restart = button('Restart as turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); resizeRecovery = false; orientationRecovery = false; startRound(); });
   recovery.append(recoveryText,restore,restart);
   const panels = el('div','multiplayer-panels');
-  roundHeader.append(roundTitle,roundSummary,roundActions,recovery);
+  roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp,recovery);
   round.append(roundHeader,panels);
 
   const result = el('section','multiplayer-result'); result.hidden = true;
@@ -105,7 +108,39 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const gate = new PressGate();
   const held = [new Set<string>(),new Set<string>()];
   let resizeRecovery = false;
+  let orientationRecovery = false;
+  let requestedFullscreen = false;
   let disposed = false;
+
+  function fullscreenSupported() { return document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === 'function'; }
+  function updateFullscreen() {
+    fullscreen.hidden = selectedFormat !== 'head-to-head' || !fullscreenSupported();
+    setupFullscreen.hidden = fullscreen.hidden;
+    fullscreen.textContent = document.fullscreenElement === document.documentElement ? 'Exit fullscreen' : 'Enter fullscreen';
+    setupFullscreen.textContent = fullscreen.textContent;
+    fullscreenHelp.textContent = selectedFormat === 'head-to-head' && !fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches ? 'For a view without browser bars, open tuNotes from your Home Screen.' : '';
+  }
+  async function toggleFullscreen() {
+    if (document.fullscreenElement === document.documentElement) { await document.exitFullscreen(); return; }
+    try {
+      await document.documentElement.requestFullscreen();
+      requestedFullscreen = true;
+      try { await screen.orientation.lock(screen.orientation.type.startsWith('landscape') ? screen.orientation.type : 'landscape'); } catch { /* The layout still works when orientation lock is unavailable. */ }
+    } catch { fullscreenHelp.textContent = 'Fullscreen is unavailable in this browser. You can open tuNotes from your Home Screen.'; }
+  }
+  function leaveFullscreen() {
+    if (document.fullscreenElement === document.documentElement) void document.exitFullscreen();
+  }
+  function fullscreenChanged() {
+    updateFullscreen();
+    if (requestedFullscreen && document.fullscreenElement !== document.documentElement) {
+      requestedFullscreen = false;
+      if (!round.hidden && active.some(l => l.session.state !== 'finished')) {
+        active.forEach(l => l.session.pause()); resetInput(); renderRound();
+      }
+    }
+    resize();
+  }
 
   function newPlayer(number: number): Player {
     const profile = number === 1 ? store.profile() : undefined;
@@ -113,12 +148,16 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function profilePreset(id: string): Preset { return presets.find(p => p.id === id) ?? normalizePreset(store.data.customPresets.find(p => p.id === id)!); }
   function pairFits() {
-    const width = selectedFormat === 'head-to-head' ? window.innerWidth : Math.min(window.innerWidth,node.getBoundingClientRect().width || window.innerWidth);
-    return canPair(width,window.innerHeight);
+    const visibleWidth = Math.min(window.innerWidth,window.visualViewport?.width ?? window.innerWidth);
+    const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight);
+    const width = selectedFormat === 'head-to-head' ? visibleWidth : Math.min(visibleWidth,node.getBoundingClientRect().width || visibleWidth);
+    return canPair(width,visibleHeight);
   }
   function showPairAdvice() {
     pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : pairFits() ? selectedFormat === 'pairs' ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'Lay the screen flat. Players face opposite short edges. Larger groups play in heats; an odd player takes a solo turn.' : `${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'} needs a larger screen (at least 960 × 600). Choose Turns here.`;
+    if (selectedFormat === 'head-to-head' && !fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
     start.disabled = selectedFormat !== 'turns' && !pairFits();
+    updateFullscreen();
   }
   function focusSelectedPlayer() { roster.querySelector<HTMLElement>('.multiplayer-player-tab[aria-pressed="true"]')?.focus(); }
   function focusPlayerName() { const name = playerFields.querySelector<HTMLInputElement>('input'); name?.focus(); name?.select(); }
@@ -202,6 +241,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
     round.classList.toggle('multiplayer-round--head-to-head',selectedFormat === 'head-to-head');
     restore.textContent = `Resume ${selectedFormat === 'head-to-head' ? 'Head to Head' : 'Split Screen'}`;
+    updateFullscreen();
     setup.hidden = true; result.hidden = true; round.hidden = false;
     prepareHeat();
   }
@@ -233,7 +273,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     active.forEach(l => l.dog.dispose());
     active = heats[heatIndex]!.map(makeLane);
     panels.replaceChildren(...active.map(l => { const seat = el('div','multiplayer-seat'); seat.append(l.node); return seat; }));
-    resizeRecovery = false; resetInput();
+    resizeRecovery = false; orientationRecovery = false; resetInput();
     roundTitle.textContent = selectedFormat !== 'turns' ? `Heat ${heatIndex+1} of ${heats.length}` : `Turn ${heatIndex+1} of ${heats.length}`;
     roundSummary.textContent = describeRules(rulesValue!);
     ready.hidden = false; pause.hidden = true; recovery.hidden = true;
@@ -252,6 +292,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function finishRound() {
     finishActive(true); resetInput();
+    leaveFullscreen();
     round.hidden = true; setup.hidden = true; result.hidden = false;
     renderResults(); resultTitle.focus({preventScroll:true});
   }
@@ -276,6 +317,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
   }
   function showSetup() {
+    leaveFullscreen();
     finishActive(true); resetInput(); active.forEach(l => l.dog.dispose()); active = []; panels.replaceChildren();
     setup.hidden = false; round.hidden = true; result.hidden = true; renderSetup();
   }
@@ -284,8 +326,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const paused = active.some(l => l.session.state === 'paused');
     pause.hidden = active.every(l => l.session.phase === 'ready' || l.session.state === 'finished');
     pause.textContent = paused ? 'Resume' : 'Pause';
-    recovery.hidden = !resizeRecovery; restore.disabled = !pairFits();
-    recoveryText.textContent = `This screen is too small for ${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'}. Restore the larger view to resume, or restart as turns.`;
+    recovery.hidden = !resizeRecovery && !orientationRecovery; restore.disabled = !pairFits();
+    recoveryText.textContent = selectedFormat === 'head-to-head' && window.innerWidth < window.innerHeight ? 'Turn the device to landscape to resume, or restart as turns.' : orientationRecovery && pairFits() ? 'Screen orientation changed. Reposition the device and players, then resume.' : `This screen is too small for ${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'}. Restore the larger view to resume, or restart as turns.`;
     ready.hidden = !active.every(l => l.session.phase === 'ready' && l.session.state === 'running');
     for (const lane of active) {
       const s = lane.session;
@@ -362,6 +404,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       active.forEach(l => l.session.pause()); resizeRecovery = true; resetInput(); renderRound();
     } else if (resizeRecovery) renderRound();
   };
+  const orientationChanged = () => {
+    if (!round.hidden && selectedFormat === 'head-to-head' && active.some(l => l.session.state !== 'finished')) {
+      active.forEach(l => l.session.pause()); orientationRecovery = true; resetInput(); renderRound();
+    }
+    resize();
+  };
   const timer = setInterval(() => {
     if (round.hidden || disposed) return;
     let changed = false;
@@ -375,13 +423,19 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (changed) renderRound();
   },25);
   document.addEventListener('keydown',keydown); document.addEventListener('keyup',keyup);
-  document.addEventListener('visibilitychange',visibility); window.addEventListener('blur',resetInput); window.addEventListener('resize',resize);
+  document.addEventListener('visibilitychange',visibility); document.addEventListener('fullscreenchange',fullscreenChanged);
+  window.addEventListener('blur',resetInput); window.addEventListener('resize',resize);
+  window.visualViewport?.addEventListener('resize',resize); screen.orientation?.addEventListener('change',orientationChanged);
+  window.addEventListener('orientationchange',orientationChanged);
   renderSetup();
   return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
-    resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
+    leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
-    if (disposed) return; disposed = true; clearInterval(timer); active.forEach(l => l.dog.dispose());
+    if (disposed) return; disposed = true; leaveFullscreen(); clearInterval(timer); active.forEach(l => l.dog.dispose());
     document.removeEventListener('keydown',keydown); document.removeEventListener('keyup',keyup);
-    document.removeEventListener('visibilitychange',visibility); window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);
+    document.removeEventListener('visibilitychange',visibility); document.removeEventListener('fullscreenchange',fullscreenChanged);
+    window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);
+    window.visualViewport?.removeEventListener('resize',resize); screen.orientation?.removeEventListener('change',orientationChanged);
+    window.removeEventListener('orientationchange',orientationChanged);
   } };
 }
