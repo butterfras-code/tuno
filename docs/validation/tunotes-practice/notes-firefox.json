@@ -1,0 +1,8 @@
+{
+  "build": "ad25f42b25599545",
+  "browser": "155.0",
+  "results": [
+    "portable: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed",
+    "hosted-offline: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed"
+  ]
+}

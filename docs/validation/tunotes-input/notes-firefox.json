@@ -1,0 +1,8 @@
+{
+  "build": "7bb676f904fff2ea",
+  "browser": "155.0",
+  "results": [
+    "portable: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, lost-keyup recovery and repeat rejection for letters/Enter/Space on blur/visibility loss, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed",
+    "hosted-offline: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, lost-keyup recovery and repeat rejection for letters/Enter/Space on blur/visibility loss, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed"
+  ]
+}

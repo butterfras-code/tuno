@@ -6,6 +6,7 @@ import { hostBuild } from './test-host.mjs';
 
 const host = await hostBuild();
 const origin = new URL(host.url).origin;
+const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
 const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
 try {
   const redirect = await fetch(origin, { redirect: 'manual' });
@@ -29,11 +30,11 @@ try {
   assert.equal(manifest.scope, '/tune/');
   assert.equal(await page.evaluate(async () => !!await navigator.serviceWorker.getRegistration('/')), false);
   await page.goto(origin + '/notes/');
-  await page.getByRole('heading', { name: 'Coming Soon' }).waitFor();
+  assert.equal(await page.locator('h1').textContent(), 'tuNotes');
+  await page.getByText('Offline ready', { exact: true }).waitFor();
   await page.reload();
-  assert.equal(await page.locator('link[rel="manifest"]').count(), 0);
-  assert.equal(await page.evaluate(() => navigator.serviceWorker.controller), null);
-  await page.getByRole('link', { name: 'Practice with tUno' }).click();
+  assert.equal(await page.evaluate(() => navigator.serviceWorker.controller.scriptURL), origin + '/notes/sw.js');
+  await page.goto(host.url);
   await page.getByText('Offline ready', { exact: true }).waitFor();
   host.setAvailable(false);
   await context.setOffline(true);
@@ -54,11 +55,12 @@ try {
   const template = await readFile(new URL('../src/distribution/service-worker.js', import.meta.url), 'utf8');
   host.files.set('_redirects', Buffer.from(''));
   for (const [name, data] of Object.entries(legacy)) host.files.set(name, data);
-  host.files.set('sw.js', Buffer.from(template.replace('__BUILD_VERSION__', 'legacy').replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity))));
+  host.files.set('sw.js', Buffer.from(template.replaceAll('__APP_ID__', 'tuno').replace('__EXCLUDED_PATHS__', '[]').replace('__BUILD_VERSION__', release.apps.tuno.build).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity))));
   const old = await browser.newContext();
   const first = await old.newPage();
   await first.goto(origin);
   await first.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await first.getByText('Offline ready', { exact: true }).waitFor();
   await first.getByRole('button', { name: 'Play tone', exact: true }).waitFor();
   const second = await old.newPage();
   await second.goto(origin);
@@ -101,7 +103,8 @@ try {
   assert.equal(probe.url(), host.url);
   await probe.goto(origin + '/notes/');
   await probe.reload();
-  assert.equal(await probe.evaluate(() => navigator.serviceWorker.controller), null);
+  await probe.getByText('Offline ready', { exact: true }).waitFor();
+  assert.equal(await probe.evaluate(() => navigator.serviceWorker.controller.scriptURL), origin + '/notes/sw.js');
   await probe.goto(host.url);
   await probe.getByText('Offline ready', { exact: true }).waitFor();
   host.setAvailable(false);

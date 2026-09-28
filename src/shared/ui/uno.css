@@ -1,0 +1,37 @@
+.uno { width: 300px; height: 300px; object-fit: contain; flex-shrink: 0; }
+.uno-animated { position: relative; display: inline-block; }
+.uno-animated > svg, .uno-rest { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.uno-animated > svg { overflow: visible; }
+.uno-sit, .uno-rest, .uno-paws, .uno-beg-paws { transition: opacity 300ms ease-in-out; }
+.uno-rest, .uno-beg-paws { opacity: 0; }
+.uno-animated[data-pose='rest'] .uno-sit { opacity: 0; }
+.uno-animated[data-pose='rest'] .uno-rest { opacity: 1; }
+.uno-animated[data-pose='beg'] .uno-paws { opacity: 0; }
+.uno-animated[data-pose='beg'] .uno-beg-paws { opacity: 1; }
+.uno-head { transform-origin: 148.125px 154.6875px; transition: transform 220ms ease-out; }
+.uno-head-front, .uno-head-left { transition: opacity 180ms ease-in-out; }
+.uno-head-left { opacity: 0; }
+.uno-looking .uno-head-front { opacity: 0; }
+.uno-looking .uno-head-left { opacity: 1; }
+.uno-looking .uno-head { transition-duration: 0ms; }
+.uno-tail-side { transform-origin: 150px 150px; }
+.uno-tail { transform-origin: 185.625px 246.464px; transition: transform 200ms ease-out; }
+.uno-playing .uno-tail { transition: none; }
+.uno-animated[data-pose='wag'] .uno-tail,
+.uno-animated[data-pose='beg'] .uno-tail,
+.uno-animated[data-pose='happy'] .uno-tail { animation: uno-wag 350ms ease-in-out infinite alternate; }
+@keyframes uno-wag { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+.uno-reward { position: absolute; width: 30%; height: auto; left: 35%; top: 45%; opacity: 0; pointer-events: none; transition: opacity 300ms ease-in-out; }
+.uno-animated[data-pose='catch'] .uno-reward { opacity: 1; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .uno-animated *, .uno-rest { animation: none !important; transition: none !important; }
+  .uno-tail-side, .uno-tail, .uno-head { transform: none !important; }
+}
+.uno-animated[data-pose='sleep'] .uno-sit { opacity: 0; }
+.uno-animated[data-pose='sleep'] .uno-rest { opacity: 1; }
+.uno-window-night, .uno-sleep-eye { display: none; }
+.uno-animated[data-pose='sleep'] .uno-window-sky { fill: #45445f; }
+.uno-animated[data-pose='sleep'] .uno-window-hills { fill: #66677a; }
+.uno-animated[data-pose='sleep'] .uno-window-night,
+.uno-animated[data-pose='sleep'] .uno-sleep-eye { display: inline; }
+.uno-animated[data-pose='sleep'] .uno-rest-eye { display: none; }

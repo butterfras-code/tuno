@@ -58,3 +58,7 @@ Additional SVG exports from the same user-owned Figma file:
 | `src/assets/uno-head-left.svg` | Left-facing head `32:478` |
 
 `src/ui/uno.ts` assembles the existing happy-sit paths into independent body, head and tail groups, uses the exported beg paws and left head, and reuses the existing bone for the reward. The current Figma tail is coordinate-scaled into the retained 300px happy-sit canvas; the beg and left-head exports remain unchanged. Issue #15 refines the rest window and adds a closed eye plus moon/stars for the microphone-off scene. The volume slider bone (`src/assets/volume-bone.svg`) has also been redrawn for a cleaner small-size silhouette. All artwork is embedded in both builds, with no runtime Figma requests or added packages. Rights/provenance are unchanged from the bundled visual assets above.
+
+## tuNotes notation — 2026-09-26
+
+`src/apps/tunotes/ui/staff.ts` contains original project-owned SVG paths for treble, bass and C clefs, a hollow whole-note head, staff and ledger lines. These were drawn for this repository and use the project’s GPL-3.0-only license. There is no music-font, notation-library or external glyph dependency. Alto/tenor position fixtures are included for later stages; only treble/bass presets are exposed in Stage 1. Teacher review of notation legibility remains pending. Stage 2 adds original vector sharp, flat and natural paths, explicit clef-specific signature positions, and exposes all four clefs. No notation dependencies were added.

@@ -1,0 +1,14 @@
+{
+  "builds": {
+    "tuno": "93e7abf5e0405284",
+    "tunotes": "6bf0a5c4674b6772"
+  },
+  "results": [
+    "Immediate and ancestor unmount dispose once; connected moves and cancelled observers do not dispose",
+    "Repeated Uno mount/dispose cancels active animations and is idempotent",
+    "tuno: moved standalone file cold-opens offline without network requests",
+    "tunotes: moved standalone file cold-opens offline without network requests",
+    "/: root-worker first visit, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed",
+    "/nested/classroom/: root-worker first visit, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed"
+  ]
+}

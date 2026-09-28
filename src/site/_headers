@@ -4,3 +4,5 @@
   Cache-Control: no-cache
 /tune/*
   Cache-Control: no-cache
+/notes/*
+  Cache-Control: no-cache

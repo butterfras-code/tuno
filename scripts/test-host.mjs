@@ -1,17 +1,22 @@
 import { createHash, X509Certificate } from 'node:crypto';
 import { createServer as httpServer } from 'node:http';
 import { createServer as httpsServer } from 'node:https';
-import { readFile, readdir, stat, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const contentType = (name) => name.endsWith('.js') ? 'text/javascript'
   : name.endsWith('.css') ? 'text/css' : name.endsWith('.png') ? 'image/png'
   : name.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
 export async function hostBuild({ tls = false } = {}) {
   const root = new URL('../dist/hosted/', import.meta.url);
-  const files = new Map(await Promise.all((await readdir(root, { recursive: true })).map(async (name) => [name, (await stat(new URL(name, root))).isFile() ? await readFile(new URL(name, root)) : null])));
+  const files = new Map(await Promise.all((await readdir(root, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(async (entry) => {
+    const filename = join(entry.parentPath, entry.name);
+    const name = relative(fileURLToPath(root), filename).split(sep).join('/');
+    return [name, await readFile(filename)];
+  })));
   let certDirectory;
   let certificate;
   if (tls) {
@@ -27,7 +32,7 @@ export async function hostBuild({ tls = false } = {}) {
     if (redirect) { response.writeHead(Number(redirect[2]), { Location: redirect[1] }).end(); return; }
     if (pathname.endsWith('/index.html')) { response.writeHead(308, { Location: pathname.slice(0, -10) }).end(); return; }
     const name = pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
-    if (!files.get(name) || name.startsWith('_')) { response.writeHead(404).end(); return; }
+    if (!files.has(name) || name.startsWith('_')) { response.writeHead(404).end(); return; }
     response.writeHead(200, { 'Content-Type': contentType(name), 'Cache-Control': 'no-cache' });
     response.end(files.get(name));
   };

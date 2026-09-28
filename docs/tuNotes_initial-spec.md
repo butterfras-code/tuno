@@ -1,6 +1,8 @@
 # tuNotes  
 ## Note-Reading Practice for tUno
 
+**Implementation follow-up:** See the [full specification](tuNotes_spec.md) and [staged build plan](tuNotes_build-plan.md). This document is retained as the original design input.
+
 **Status:** Initial product specification  
 **Parent project:** tUno — Practice with a Friend  
 **Core platform constraint:** Offline-first, single-file HTML application with no required server, account, network connection, CDN, or external dependency.

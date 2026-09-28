@@ -1,0 +1,13 @@
+{
+  "builds": {
+    "tuno": "095b396fd1b73141",
+    "tunotes": "84f3bed9d487446b"
+  },
+  "results": [
+    "Repeated Uno mount/dispose cancels active animations and is idempotent",
+    "tuno: moved standalone file cold-opens offline without network requests",
+    "tunotes: moved standalone file cold-opens offline without network requests",
+    "/: root-worker first visit, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed",
+    "/nested/classroom/: root-worker first visit, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed"
+  ]
+}
