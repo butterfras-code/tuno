@@ -9,21 +9,23 @@ for (const [name, expected] of Object.entries(release.checksums)) {
 }
 const portable = await readFile(new URL('portable/tuno.html', dist));
 assert.equal(digest(portable), release.portableSha256);
-assert.deepEqual(portable, await readFile(new URL(`hosted/tuno-${release.build}.html`, dist)));
-for (const format of ['hosted/index.html', 'portable/tuno.html']) {
+assert.deepEqual(portable, await readFile(new URL(`hosted/tune/tuno-${release.build}.html`, dist)));
+for (const format of ['hosted/tune/index.html', 'portable/tuno.html']) {
   const html = await readFile(new URL(format, dist), 'utf8');
   assert.ok(html.includes(`name="tuno-version" content="${release.build}"`));
   assert.ok(html.includes(`name="tuno-release" content="${release.version}"`));
   assert.ok(html.includes(`name="tuno-source" content="https://github.com/butterfras-code/tuno/tree/${release.revision}"`));
 }
-const manifest = JSON.parse(await readFile(new URL('hosted/manifest.webmanifest', dist), 'utf8'));
-assert.equal(manifest.start_url, './');
-assert.equal(manifest.scope, './');
+const manifest = JSON.parse(await readFile(new URL('hosted/tune/manifest.webmanifest', dist), 'utf8'));
+assert.equal(manifest.start_url, '/tune/');
+assert.equal(manifest.scope, '/tune/');
+assert.equal(manifest.id, '/');
+assert.deepEqual(manifest, JSON.parse(await readFile(new URL('hosted/manifest.webmanifest', dist), 'utf8')));
 assert.equal(manifest.display, 'standalone');
 for (const size of [192, 512]) {
   const icon = manifest.icons.find((icon) => icon.sizes === `${size}x${size}`);
   assert.ok(icon);
-  const png = await readFile(new URL(`hosted/${icon.src}`, dist));
+  const png = await readFile(new URL(`hosted${icon.src}`, dist));
   assert.equal(png.readUInt32BE(16), size);
   assert.equal(png.readUInt32BE(20), size);
 }

@@ -7,7 +7,8 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dev = process.argv.includes('--dev');
-const hosted = path.join(root, 'dist/hosted');
+const site = path.join(root, 'dist/hosted');
+const hosted = path.join(site, 'tune');
 const portable = path.join(root, 'dist/portable');
 await rm(path.join(root, 'dist'), { recursive: true, force: true });
 await mkdir(hosted, { recursive: true });
@@ -15,11 +16,12 @@ await mkdir(portable, { recursive: true });
 
 const packageInfo = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const manifest = JSON.stringify({
-  id: './', name: 'tUno — Practice with a friend', short_name: 'tUno',
-  start_url: './', scope: './', display: 'standalone',
+  // Preserve the installed app identity even though its launch path changes.
+  id: '/', name: 'tUno — Practice with a friend', short_name: 'tUno',
+  start_url: '/tune/', scope: '/tune/', display: 'standalone',
   background_color: '#f4efe7', theme_color: '#f4efe7',
   description: 'Local-first tuner, reference tones, and metronome.',
-  icons: [192, 512].map((size) => ({ src: `./icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
+  icons: [192, 512].map((size) => ({ src: `/tune/icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
 }, null, 2);
 const icons = Object.fromEntries(await Promise.all([192, 512].map(async (size) => [
   `icon-${size}.png`, await readFile(path.join(root, `src/assets/icons/icon-${size}.png`)),
@@ -94,10 +96,18 @@ const options = {
           throw new Error('Portable HTML contains an unsupported resource reference.');
         }
         const workerSource = worker.replace('__BUILD_VERSION__', version).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));
-        const allHosted = { ...resources, ...(!dev ? { 'sw.js': workerSource } : {}) };
+        const appFiles = { ...resources, ...(!dev ? { 'sw.js': workerSource } : {}) };
+        const siteFiles = Object.fromEntries(await Promise.all([
+          '_redirects', '_headers', '404.html', 'notes/index.html',
+          ...(!dev ? ['sw.js'] : []),
+        ].map(async (name) => [name, await readFile(path.join(root, 'src/site', name))])));
+        // Keep the original manifest endpoint available for installed app updates.
+        const allHosted = { ...siteFiles, ...(!dev ? { 'manifest.webmanifest': manifest } : {}),
+          ...Object.fromEntries(Object.entries(appFiles).map(([name, contents]) => [`tune/${name}`, contents])),
+        };
         const checksums = Object.fromEntries(Object.entries(allHosted).map(([name, contents]) => [name, createHash('sha256').update(contents).digest('hex')]));
         await Promise.all([
-          ...Object.entries(allHosted).map(([name, contents]) => writeFile(path.join(hosted, name), contents)),
+          ...Object.entries(allHosted).map(([name, contents]) => mkdir(path.dirname(path.join(site, name)), { recursive: true }).then(() => writeFile(path.join(site, name), contents))),
           writeFile(path.join(portable, 'tuno.html'), html),
           writeFile(path.join(root, 'dist/release.json'), JSON.stringify({ version: packageInfo.version, build: version, revision, dirty, checksums, portableSha256: createHash('sha256').update(html).digest('hex') }, null, 2)),
           writeFile(path.join(root, 'dist/build-meta.json'), JSON.stringify(result.metafile, null, 2)),
@@ -110,8 +120,8 @@ const options = {
 if (dev) {
   const context = await esbuild.context(options);
   await context.watch();
-  const { port } = await context.serve({ servedir: hosted, host: '127.0.0.1', port: 5173 });
-  console.log(`tUno: http://127.0.0.1:${port} — refresh after editing.`);
+  const { port } = await context.serve({ servedir: site, host: '127.0.0.1', port: 5173 });
+  console.log(`tUno: http://127.0.0.1:${port}/tune/ — refresh after editing.`);
   const shutdown = async () => { await context.dispose(); process.exit(0); };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

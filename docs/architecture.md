@@ -47,6 +47,8 @@ Validation results and remaining device limitations belong in the prototype plan
 
 ## Release candidate packaging
 
-Hosted builds include a relative-scope web manifest, 192/512px PNG app icons derived from approved Uno artwork, and a versioned download identical to the independent portable artifact. These files join the integrity-checked offline cache. Portable HTML includes no hosted manifest/download links and never registers a worker. Both HTML formats display shared release/build identifiers; `dist/release.json` ties the artifact checksums to source revision and working-tree status.
+Hosted builds include a `/tune/`-scoped web manifest, 192/512px PNG app icons derived from approved Uno artwork, and a versioned download identical to the independent portable artifact. These files join the integrity-checked offline cache. Portable HTML includes no hosted manifest/download links and never registers a worker. Both HTML formats display shared release/build identifiers; `dist/release.json` ties the artifact checksums to source revision and working-tree status.
 
 Native install UI is exposed only after a browser install event; menu guidance remains available elsewhere. All audio pauses on page hiding and requires explicit restart. See release validation for automated results and hardware gaps, and release instructions for the atomic-deployment handoff.
+
+The hosted site reserves `/` for a future family launcher (currently a Pages 302 redirect to `/tune/`). `/notes/` is a static Coming Soon page with no PWA. The legacy `/sw.js` retires the former root registration after its clients close; `/manifest.webmanifest` preserves installed-app metadata updates. See [hosting](hosting.md#pwa-migration-and-isolation) for identity preservation, migration limitations, and staging checks.

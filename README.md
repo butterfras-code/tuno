@@ -32,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. On mobile, the top navigation switches the main view, while independent Tune/Tone/Tempo tabs switch the shared quick-access card below it. Preferences are saved in browser storage when available; clearing site data removes them. Reloading never starts the microphone or audio. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
+Open <http://127.0.0.1:5173/tune/>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. On mobile, the top navigation switches the main view, while independent Tune/Tone/Tempo tabs switch the shared quick-access card below it. Preferences are saved in browser storage when available; clearing site data removes them. Reloading never starts the microphone or audio. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
 
 ```sh
 npm run check
@@ -71,6 +71,10 @@ Browser checks cover state persistence, settings Save/Cancel, invalid input, key
 
 ## Offline behavior and timing
 
-Both artifacts carry the same content-derived version in HTML metadata. Production builds emit `sw.js` with versioned, scope-specific caches and integrity checks for HTML, JavaScript, and CSS. All fonts/artwork are already embedded. Readiness requires the controlling worker to confirm every essential file for the current version; missing files are repaired online only if their integrity matches. A failed install discards its cache. Browser storage eviction or policy can remove offline resources later. Development builds disable worker registration to avoid caching edits.
+Both artifacts carry the same content-derived version in HTML metadata. Production builds emit `/tune/sw.js` with versioned, scope-specific caches and integrity checks for HTML, JavaScript, and CSS. All fonts/artwork are already embedded. Readiness requires the controlling worker to confirm every essential file for the current version; missing files are repaired online only if their integrity matches. A failed install discards its cache. Browser storage eviction or policy can remove offline resources later. Development builds disable worker registration to avoid caching edits.
 
 The metronome schedules 150 ms ahead on a 25 ms timer. Visual beat identity follows the audio output timeline. Long foreground stalls stop metronome playback with explicit restart. Hiding the page pauses capture and all output; start a tool explicitly after returning. Background continuity is not supported. Uno currently uses static directional beat cues, with numbered/current-beat text available; tail animation remains a visual follow-up. Microphone input can hear reference tones and clicks through speakers.
+
+## tUno family URLs
+
+`tuno.cc/` currently redirects to `/tune/`, the existing tUno application and offline PWA. `/notes/` is a lightweight **tuNotes — Coming Soon** page. The root may later become a family launcher/home page. Each future app will have its own manifest, worker scope, and offline cache. See [hosting and migration](docs/hosting.md) for existing installed-app migration and `dev` staging checks before promotion to `main`.
