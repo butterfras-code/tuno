@@ -103,9 +103,9 @@ The implementation-time review supersedes the proposed expansion bounds in the h
 | Trombone, euphonium | B♭2–B♭3 | E♭2–B♭3 | E♭2–E♭4 |
 | Tuba | B♭1–B♭2 | E♭1–B♭2 | E♭1–E♭3 |
 
-Range authorization does not constitute engraving or physical-device acceptance. Source boundaries remain natural staff positions with accidentals derived from the preserved key.
+Range authorization does not constitute engraving or physical-device acceptance. The original catalog used natural staff-position boundaries with accidentals derived from the key; the current catalog spells altered endpoints explicitly (for example, `Bb2` and `Eb2`).
 
-The catalog now records each instrument's Starter and named levels explicitly in `src/apps/tunotes/domain/presets.ts`. Each selectable level has its own written range and key; `full` is the shared adaptive limit and is not a separate picker choice. The current `two-octaves` level has the same bounds as `full`. Level IDs are unique within an instrument and retain their existing generated preset IDs so saved selections remain compatible. The table above records the initial values, rather than a formula for generating future levels.
+The catalog now records each instrument's Starter and named levels explicitly in `src/apps/tunotes/domain/presets.ts`. Each selectable level has its own exact written range, key (`null` means no key signature), and optional accidental policy (`both` enables chromatic spellings). `full` is the shared adaptive limit and is not a separate picker choice. The current `two-octaves` level has the same bounds as `full`. Level IDs are unique within an instrument and retain their existing generated preset IDs so saved selections remain compatible. The table above records the initial values, rather than a formula for generating future levels.
 
 ## 4. Answer entry and exercise engine
 

@@ -32,7 +32,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   function showNote(index: number, labeled = false) {
     noteIndex = Math.max(0,Math.min(total-1,index));
     const pitch = pitches[noteIndex]!;
-    const svg = renderPreviewStaff(pitch,clefForPitch(preset,pitch),preset.key);
+    const svg = renderPreviewStaff(pitch,clefForPitch(preset,pitch),preset.key,preset.keyless);
     svg.querySelector('.preview-note')!.classList.toggle('revealed',labeled);
     svg.querySelector('.preview-note-status')!.textContent = `${noteIndex+1} of ${total}`;
     stage.replaceChildren(svg);

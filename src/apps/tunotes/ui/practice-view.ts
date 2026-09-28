@@ -198,7 +198,7 @@ export function practiceView() {
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = `${session.session}:${session.prompt}`;
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key));
+      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless));
     }
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;

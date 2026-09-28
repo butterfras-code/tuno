@@ -44,7 +44,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
       preview.replaceChildren();
       for (const [label,pitch] of [['Low note',low],['High note',high]] as const) {
         const endpoint = el('div','range-endpoint');
-        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key);
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless);
         staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
       }

@@ -49,7 +49,7 @@ export function challengeScene(actions: { ready: () => void; resume: () => void;
       const state = phase(s);
       if (round !== s.session) {
         round = s.session; lastPhase = ''; details.open = false;
-        const background = renderStaff(s.pitch,clefForPitch(s.preset,s.pitch),s.preset.key);
+        const background = renderStaff(s.pitch,clefForPitch(s.preset,s.pitch),s.preset.key,s.preset.keyless);
         background.querySelectorAll('.notehead,.note-accidental,.ledger').forEach(n=>n.remove());
         background.removeAttribute('aria-label'); backdrop.replaceChildren(background);
       }

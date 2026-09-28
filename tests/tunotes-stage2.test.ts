@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { keySignature, keyNames, keyAccidental, keyPositions, parsePitch, pitchLabel, chromatic, staffPosition } from '../src/apps/tunotes/domain/notation.ts';
-import { presets, clefs, normalizePreset, defaultPreset, instruments, instrumentPresets, writtenToConcert, fingerprint } from '../src/apps/tunotes/domain/presets.ts';
+import { presets, clefs, normalizePreset, defaultPreset, instruments, instrumentPresets, writtenToConcert, fingerprint, modifiersFor } from '../src/apps/tunotes/domain/presets.ts';
 import { NotesStore, STORAGE_KEY, emptySnapshot, parseBackup, validateSnapshot, MAX_BYTES } from '../src/apps/tunotes/persistence/store.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import { NotesProgress } from '../src/apps/tunotes/engine/progress.ts';
@@ -44,6 +44,22 @@ test('catalog pools exactly follow specified staff and ledger envelopes', () => 
   const zero = normalizePreset({...defaultPreset,range:['C0','B8'],ledgerBelow:0,ledgerAbove:0});
   assert.deepEqual(zero.pool.map(p => staffPosition(p,'treble')),[-1,0,1,2,3,4,5,6,7,8,9]);
   assert.throws(() => normalizePreset({...defaultPreset,range:['C4','C4'],ledgerBelow:0}),/empty/);
+});
+test('exact endpoints are independent of the key and keyless chromatic ranges are bounded', () => {
+  const source = { ...defaultPreset, id: 'exact-range', clef: 'bass' as const, range: ['Bb2','F#3'] as const, exactRange: true, key: keySignature('G') };
+  const keyed = normalizePreset(source);
+  assert.equal(pitchLabel(keyed.pool[0]!), 'B♭2');
+  assert.equal(pitchLabel(keyed.pool.at(-1)!), 'F♯3');
+  assert.ok(keyed.pool.some(p => pitchLabel(p) === 'B2'));
+  const chromatic = normalizePreset({ ...source, key: keySignature('C'), keyless: true, range: ['Bb2','F3'], accidentals: 'both' });
+  assert.equal(pitchLabel(chromatic.pool[0]!), 'B♭2');
+  assert.equal(pitchLabel(chromatic.pool.at(-1)!), 'F3');
+  assert.ok(chromatic.pool.some(p => pitchLabel(p) === 'C♯3'));
+  assert.ok(chromatic.pool.some(p => pitchLabel(p) === 'D♭3'));
+  assert.ok(!chromatic.pool.some(p => pitchLabel(p) === 'F♯3'));
+  assert.ok(!modifiersFor(chromatic).includes('key'));
+  assert.equal(JSON.parse(fingerprint(chromatic))[3], 'none');
+  assert.notEqual(fingerprint(chromatic), fingerprint(normalizePreset({ ...chromatic, keyless: false })));
 });
 test('signature placement fixtures follow the actual letter order in every clef', () => {
   const expected = {

@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { hostBuild } from './test-host.mjs';
 import { choosePreset } from './notes-setup-helpers.mjs';
 import { presets, fingerprint } from '../src/apps/tunotes/domain/presets.ts';
-import { pitchLabel } from '../src/apps/tunotes/domain/notation.ts';
+import { keySignature, pitchLabel } from '../src/apps/tunotes/domain/notation.ts';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 const name=process.env.TUNO_BROWSER||'chromium', browser=await ({chromium,firefox})[name].launch();
 const host=await hostBuild(), temporary=await mkdtemp(join(tmpdir(),'tunotes phase3 '));
@@ -150,12 +150,25 @@ async function expansion(page) {
   assert.equal((await previewLabels(page)).length,5);
   results.push('Seeded mastered profile: 20-answer gate at arbitrarily slow recorded latencies, lower expansion announcement, in-place B activation, restored preview growth and adaptive-off original pool passed');
 }
+async function keylessRange(page) {
+  const data=emptySnapshot();
+  data.customPresets=[{id:'chromatic',name:'Chromatic brass',clef:'bass',range:['Bb2','F3'],content:'lines-and-spaces',key:keySignature('C'),keyless:true,exactRange:true,accidentals:'both'}];
+  data.configuration={...data.configuration,remember:true,presetId:'chromatic'};
+  await page.addInitScript(snapshot=>localStorage.setItem('tunotes:data:v1',JSON.stringify(snapshot)),data);
+  await page.goto(new URL('/notes/',host.url).href);
+  assert.match(await page.locator('#preset-summary').textContent(),/No key signature/);
+  await button(page,'Start Practice').click();
+  assert.match(await page.locator('.staff').getAttribute('aria-label'),/no key signature/);
+  assert.equal(await page.locator('.staff .key-accidental').count(),0);
+  results.push('Keyless chromatic preset with a B♭ lower endpoint loads and renders without a key signature');
+}
 try {
   await mkdir('dist/validation',{recursive:true});
   const hosted=await browser.newPage();await run(hosted,new URL('/notes/', host.url).href,'hosted');await hosted.close();
   const file=join(temporary,'moved notes.html');await copyFile('dist/portable/tunotes.html',file);
   const offline=await browser.newContext({offline:true});const portable=await offline.newPage();await run(portable,pathToFileURL(file).href,'portable-offline');await offline.close();
   const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await expansion(page);await page.close();
+  const keyless=await browser.newPage();keyless.on('pageerror',e=>errors.push(e.message));await keylessRange(keyless);await keyless.close();
   assert.deepEqual(errors,[]);
   const release=JSON.parse(await readFile('dist/release.json','utf8'));
   await writeFile(`dist/validation/notes-adaptive-${name}.json`,JSON.stringify({build:release.apps.tunotes.build,browser:browser.version(),results},null,2));console.log(results.join('\n'));
