@@ -51,7 +51,7 @@ test('stale prompt/session input and repeated finish cannot change results', () 
   f.round.finish();const time=f.round.activeMs;f.add(100000);f.round.finish();assert.equal(f.round.end,'partial');assert.equal(f.round.activeMs,time);assert.equal(f.round.answer(f.round.token,f.round.pitch),false);
 });
 test('Challenge backups retain zero-attempt results, isolate learning and benchmarks, and validate outcomes', () => {
-  const store=new NotesStore();store.update(d=>{d.profiles.push({id:'p',name:'Player',results:[],contexts:[]});d.configuration.remember=true;d.configuration.profileId='p';});
+  const store=new NotesStore();store.update(d=>{d.profiles.push({id:'p',name:'Player',results:[],contexts:[],defaultPresetId:d.configuration.presetId});d.configuration.remember=true;d.configuration.profileId='p';});
   const f=fixture();f.begin();for(let i=0;i<24;i++){respond(f);store.observe('p',defaultPreset,f.round.last!);}
   f.add(60000);f.round.tick();store.record('p',f.round);
   assert.equal(store.challengeBenchmark(defaultPreset,false,defaultTimed),24);assert.equal(store.benchmark(defaultPreset),10);assert.equal(store.challengeBenchmark(defaultPreset,false,{...defaultTimed,seconds:30}),10);

@@ -96,10 +96,11 @@ export function practiceView() {
     adaptiveGroup.classList.toggle('selected',useAdaptation);
   };
   refreshPreferences();
+  let shownPresetId = store.data.configuration.presetId;
   const dataUI = localData(store, () => {
     showSetup(); guestContexts.clear(); guestAdaptive = false; guestPreview = undefined; presetsUI.refresh();
     pace = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay'); refreshPacing(); refreshPreferences();
-  },refreshPreferences);
+  },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
   options.append(dataUI.node);
   adaptiveGroup.append(adaptive,help,adaptiveHelp);
   const toggles = el('div','control-row practice-toggles'); toggles.append(adaptiveGroup,previewToggle);

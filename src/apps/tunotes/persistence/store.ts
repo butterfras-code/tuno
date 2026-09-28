@@ -10,7 +10,7 @@ export const STORAGE_KEY = 'tunotes:data:v1';
 export const MAX_BYTES = 5 * 1024 * 1024;
 export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; challenge?: { rules: ChallengeRules; end: ChallengeEnd; bestStreak: number }; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]>; learning?: Learning }
-export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean }
+export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean; defaultPresetId: string }
 export interface Snapshot { appId: 'tunotes'; schemaVersion: 4; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter } }
 export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 4, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
@@ -71,7 +71,7 @@ export function validateSnapshot(input: unknown): Snapshot {
   unique([...presets.map(p => p.id), ...customPresets.map(p => p.id)]);
   const validPresets = new Set([...presets.map(p => p.id), ...customPresets.map(p => p.id)]);
   const profiles = array(o.profiles,32).map(value => {
-    const p = object(value,['id','name','results','contexts','adaptive','preview']);
+    const p = object(value,['id','name','results','contexts','adaptive','preview','defaultPresetId']);
     const results = array(p.results,100).map(value => {
       const r = object(value,['version','context','attempts','correct','first20','interrupted','at','activeMs','preview','challenge']);
       if (r.version !== 1) fail('Unsupported result version.');
@@ -116,7 +116,9 @@ export function validateSnapshot(input: unknown): Snapshot {
     });
     unique(contexts.map(c => c.fingerprint));
     const name = string(p.name,40); if (name !== name.trim()) fail('Names must be trimmed.');
-    return { id: id(p.id), name, results, contexts, ...(p.adaptive === undefined ? {} : { adaptive: boolean(p.adaptive) }), ...(p.preview === undefined ? {} : { preview: boolean(p.preview) }) };
+    const defaultPresetId = id(p.defaultPresetId);
+    if (!validPresets.has(defaultPresetId)) fail('Profile default preset does not exist.');
+    return { id: id(p.id), name, results, contexts, defaultPresetId, ...(p.adaptive === undefined ? {} : { adaptive: boolean(p.adaptive) }), ...(p.preview === undefined ? {} : { preview: boolean(p.preview) }) };
   });
   unique(profiles.map(p => p.id));
   const c = object(o.configuration,['remember','profileId','presetId','selfPaced','continueAfter']);

@@ -246,17 +246,31 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .multiplayer-view { margin-top: 24px; }
 .multiplayer-setup { max-width: 900px; }
-.multiplayer-roster { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 12px; margin: 16px 0; }
-.multiplayer-player { position: relative; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
-.multiplayer-player.selected { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
-.multiplayer-player .player-index { position: absolute; right: 16px; top: 12px; color: var(--color-muted); }
-.multiplayer-player input, .multiplayer-player select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font: inherit; }
-.multiplayer-player input { padding-right: 36px; }
-.multiplayer-player p { margin: 0; font-size: 14px; }
-.multiplayer-player .control-row { gap: 6px; }
-.multiplayer-player .control-row .control { padding: 8px 10px; }
-.multiplayer-editor { margin: 24px 0; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); }
-.multiplayer-editor h3 { margin: 0 0 12px; }
+.multiplayer-players-heading { margin: 24px 0 8px; }
+.multiplayer-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.multiplayer-slot { display: inline-flex; min-width: 0; }
+.multiplayer-slot.selected { border-radius: var(--radius-control); background: var(--color-accent); }
+.multiplayer-roster .control { min-height: 44px; padding: 8px 14px; }
+.multiplayer-player-tab { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multiplayer-roster .multiplayer-slot.selected .control { border: 0; border-radius: 0; background: transparent; color: var(--color-surface); }
+.multiplayer-roster .multiplayer-slot.selected .control:first-child { border-radius: var(--radius-control) 0 0 var(--radius-control); }
+.multiplayer-roster .multiplayer-slot.selected .control:last-child { border-radius: 0 var(--radius-control) var(--radius-control) 0; }
+.multiplayer-roster .multiplayer-move { width: 44px; padding: 0; justify-content: center; font-size: 22px; }
+.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab { padding-inline: 4px; }
+.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab:first-child { padding-left: 14px; }
+.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab:last-child { padding-right: 14px; }
+.multiplayer-roster .multiplayer-add { border: 1px dashed var(--color-accent); background: transparent; }
+.multiplayer-editor { margin: 0 0 24px; padding: 16px; border: 1px solid var(--color-line); border-radius: 0 var(--radius-card) var(--radius-card) var(--radius-card); background: var(--color-surface); }
+.multiplayer-editor h4 { margin: 0 0 12px; }
+.multiplayer-player-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 8px 16px; }
+.multiplayer-player-fields .setting { flex: 1 1 220px; }
+.multiplayer-player-fields input, .multiplayer-player-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font: inherit; }
+.multiplayer-player-fields > .control { min-height: 44px; margin-bottom: 12px; }
+.multiplayer-player-controls { justify-content: space-between; align-items: center; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-line); }
+.multiplayer-player-navigation { display: flex; gap: 6px; }
+.multiplayer-player-navigation .control { padding: 8px 12px; }
+.multiplayer-player-controls .multiplayer-remove { background: #8f3f48; border-color: #8f3f48; color: var(--color-surface); }
+.multiplayer-player-controls .multiplayer-remove:hover:not(:disabled) { background: #783039; border-color: #783039; }
 .multiplayer-setup > .control--primary { margin-top: 16px; }
 .multiplayer-setup > .feedback:empty { display: none; }
 .multiplayer-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-top: 16px; }

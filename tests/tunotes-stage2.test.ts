@@ -61,7 +61,7 @@ function memory() {
   const values = new Map<string,string>([['tuno-preferences','untouched']]); let fail = false;
   return { values, set fail(value: boolean) { fail = value; }, getItem: (k: string) => values.get(k) ?? null, setItem: (k: string,v: string) => { if(fail) throw new Error('quota'); values.set(k,v); }, removeItem: (k: string) => { if(fail) throw new Error('denied'); values.delete(k); } };
 }
-function profile(store: NotesStore) { store.update(d => { d.profiles.push({id:'student',name:'Student',results:[],contexts:[]}); d.configuration.remember = true; d.configuration.profileId = 'student'; }); }
+function profile(store: NotesStore) { store.update(d => { d.profiles.push({id:'student',name:'Student',results:[],contexts:[],defaultPresetId:d.configuration.presetId}); d.configuration.remember = true; d.configuration.profileId = 'student'; }); }
 function play(store: NotesStore, count: number, correct = count, pause = false) {
   let now = 0; const s = new Practice(defaultPreset,true,() => now);
   for(let i=0;i<count;i++) { now+=100; s.answer(s.token,i < correct ? s.pitch : {letter:s.pitch.letter === 'A' ? 'B':'A',accidental:0}); store.observe('student',defaultPreset,s.last!); s.advance(s.token,true); }
@@ -93,6 +93,16 @@ test('backup round trip, version migration and strict rejection leave data uncha
   const prior = storage.values.get(STORAGE_KEY); storage.fail=true;
   assert.throws(() => store.replace(emptySnapshot()),/not committed/); assert.equal(store.export(),backup); assert.equal(storage.values.get(STORAGE_KEY),prior);
 });
+test('profiles require a valid default preset and retain it in backups', () => {
+  const store = new NotesStore(memory()); profile(store);
+  const choice = presets.find(p => p.id === 'bass-lines-and-spaces')!;
+  store.update(d => { d.profiles[0]!.defaultPresetId = choice.id; });
+  assert.equal(parseBackup(store.export()).profiles[0]!.defaultPresetId,choice.id);
+  const missing = structuredClone(store.data); delete (missing.profiles[0] as Partial<typeof missing.profiles[0]>)!.defaultPresetId;
+  assert.throws(() => validateSnapshot(missing));
+  const invalid = structuredClone(store.data); invalid.profiles[0]!.defaultPresetId = 'unknown';
+  assert.throws(() => validateSnapshot(invalid),/default preset/);
+});
 test('storage denial, corrupt saved content and quota retain usable memory and export', () => {
   const denied = new NotesStore(); profile(denied); assert.equal(denied.durable,false); assert.equal(parseBackup(denied.export()).profiles.length,1);
   denied.replace(emptySnapshot()); assert.equal(denied.data.profiles.length,0);
@@ -100,7 +110,7 @@ test('storage denial, corrupt saved content and quota retain usable memory and e
   const full = memory(); const store = new NotesStore(full); profile(store); const before = full.values.get(STORAGE_KEY); full.fail=true; play(store,1); assert.equal(store.durable,false); assert.equal(full.values.get(STORAGE_KEY),before); assert.equal(parseBackup(store.export()).profiles[0]!.results.length,1);
 });
 test('profile, history and context bounds reject excessive imports', () => {
-  const d = emptySnapshot(); d.profiles = Array.from({length:33},(_,i) => ({id:`p${i}`,name:'P',results:[],contexts:[]})); assert.throws(() => validateSnapshot(d));
+  const d = emptySnapshot(); d.profiles = Array.from({length:33},(_,i) => ({id:`p${i}`,name:'P',results:[],contexts:[],defaultPresetId:d.configuration.presetId})); assert.throws(() => validateSnapshot(d));
   const store = new NotesStore(memory()); profile(store); for(let i=0;i<103;i++) play(store,1); assert.equal(store.profile()!.results.length,100);
   assert.equal(store.profile()!.results[0]!.context,fingerprint(defaultPreset));
 });
@@ -116,7 +126,7 @@ test('profile, history and context bounds reject excessive imports', () => {
  });
 test('context LRU stays bounded and profiles never share learning', () => {
   const store = new NotesStore(memory()); profile(store);
-  store.update(d => d.profiles.push({id:'second',name:'Student',results:[],contexts:[]}));
+  store.update(d => d.profiles.push({id:'second',name:'Student',results:[],contexts:[],defaultPresetId:d.configuration.presetId}));
   for(const clef of clefs) for(const key of keyNames.filter(k=>k!=='Cb')) for(const content of ['lines','spaces','lines-and-spaces'] as const) {
     const p = normalizePreset({...defaultPreset,clef,key:keySignature(key),content}); const s = new Practice(p); s.answer(s.token,s.pitch); store.observe('student',p,s.last!);
   }

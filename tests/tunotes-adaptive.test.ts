@@ -91,7 +91,7 @@ test('approved instrument levels are exact perfect intervals and replace old bou
 });
 test('profile weights, adaptive toggles, benchmarks, expanded contexts and preview metadata survive backup independently', () => {
   const data=new Map<string,string>(); const store=new NotesStore({getItem:k=>data.get(k)??null,setItem:(k,v)=>{data.set(k,v);},removeItem:k=>{data.delete(k);}});
-  store.update(d=>{d.profiles=[{id:'a',name:'A',results:[],contexts:[],adaptive:true,preview:false},{id:'b',name:'B',results:[],contexts:[]}];d.configuration.remember=true;d.configuration.profileId='a';});
+  store.update(d=>{d.profiles=[{id:'a',name:'A',results:[],contexts:[],adaptive:true,preview:false,defaultPresetId:d.configuration.presetId},{id:'b',name:'B',results:[],contexts:[],defaultPresetId:d.configuration.presetId}];d.configuration.remember=true;d.configuration.profileId='a';});
   const game=new Practice(defaultPreset,true,()=>0,rng(),{adaptive:true});
   game.preview={shown:true,skipped:false,completed:true};
   for(let i=0;i<300;i++) {game.answer(game.token,game.pitch);store.observe('a',game.preset,game.last!,true,game.savedLearning);game.advance(game.token,true);}

@@ -54,7 +54,7 @@ test('independent profile observations persist across a fresh retry without carr
   const memory=new Map<string,string>();
   const storage={getItem:(key:string)=>memory.get(key)??null,setItem:(key:string,value:string)=>{memory.set(key,value);},removeItem:(key:string)=>{memory.delete(key);}};
   const store=new NotesStore(storage);
-  store.update(data=>{data.profiles.push({id:'one',name:'One',results:[],contexts:[]},{id:'two',name:'Two',results:[],contexts:[]});data.configuration.remember=true;});
+  store.update(data=>{data.profiles.push({id:'one',name:'One',results:[],contexts:[],defaultPresetId:defaultPreset.id},{id:'two',name:'Two',results:[],contexts:[],defaultPresetId:defaultPreset.id});data.configuration.remember=true;});
   let now=0; const rules={goal:'target',target:1,timeout:15,accuracyFloor:80} as const;
   const first=new Challenge(defaultPreset,rules,()=>now,()=>0,{adaptive:true});
   const second=new Challenge(defaultPreset,rules,()=>now,()=>0,{adaptive:false});

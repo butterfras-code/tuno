@@ -105,6 +105,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
   const remember = button('Remember progress', () => { store.update(data => { data.configuration.remember = !remembering; }); refresh(); }); remember.id = 'remember-progress';
   const rememberLabel = el('label','pace-option'); rememberLabel.append(remember);
   const profiles = select('Local player',[['','Guest']], ''); profiles.input.id = 'profile';
+  const profilePreset = select('Default preset',[], '');
   const name = el('input','control'); name.maxLength = 40; name.setAttribute('aria-label','Profile name'); name.placeholder = 'Profile name';
   const status = el('p'); status.setAttribute('role','status'); status.id = 'storage-status';
   const history = el('p'); history.id = 'profile-history';
@@ -113,12 +114,17 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     const guest = el('option','','Guest'); guest.value = ''; profiles.input.append(guest);
     store.data.profiles.forEach((p,index) => { const o = el('option','',`${p.name} · ${index+1}`); o.value = p.id; profiles.input.append(o); });
     profiles.input.value = store.data.configuration.profileId ?? ''; profiles.input.disabled = !remembering;
-    const p = store.profile(); history.textContent = p ? `${p.results.length} recent sessions · ${p.results.reduce((sum,r) => sum+r.correct,0)} correct notes in retained history. Last session: ${p.results.at(-1)?.correct ?? 0} correct / ${p.results.at(-1)?.attempts ?? 0} attempts.` : 'Guest: progress stays in this session only.';
+    const p = store.profile();
+    profilePreset.node.hidden = !p; profilePreset.input.replaceChildren();
+    for (const preset of [...presets,...store.data.customPresets]) { const option = el('option','',preset.name); option.value = preset.id; profilePreset.input.append(option); }
+    profilePreset.input.value = p?.defaultPresetId ?? store.data.configuration.presetId;
+    history.textContent = p ? `${p.results.length} recent sessions · ${p.results.reduce((sum,r) => sum+r.correct,0)} correct notes in retained history. Last session: ${p.results.at(-1)?.correct ?? 0} correct / ${p.results.at(-1)?.attempts ?? 0} attempts.` : 'Guest: progress stays in this session only.';
     status.textContent = store.message; playerChanged();
   };
-  profiles.input.addEventListener('change',() => { store.update(data => { data.configuration.profileId = profiles.input.value || null; }); refresh(); });
+  profiles.input.addEventListener('change',() => { store.update(data => { data.configuration.profileId = profiles.input.value || null; const p = data.profiles.find(p => p.id === data.configuration.profileId); if (p) data.configuration.presetId = p.defaultPresetId; }); refresh(); });
+  profilePreset.input.addEventListener('change',() => { store.update(data => { const p = data.profiles.find(p => p.id === data.configuration.profileId); if (!p) return; p.defaultPresetId = profilePreset.input.value; data.configuration.presetId = p.defaultPresetId; }); refresh(); });
   const create = button('Create profile',() => {
-    try { store.update(data => { const p = { id: crypto.randomUUID(), name: name.value.trim(), results: [], contexts: [] }; data.profiles.push(p); data.configuration.profileId = p.id; data.configuration.remember = true; }); name.value = ''; refresh(); }
+    try { store.update(data => { const p = { id: crypto.randomUUID(), name: name.value.trim(), results: [], contexts: [], defaultPresetId: data.configuration.presetId }; data.profiles.push(p); data.configuration.profileId = p.id; data.configuration.remember = true; }); name.value = ''; refresh(); }
     catch (error) { status.textContent = (error as Error).message; }
   });
   const rename = button('Rename profile',() => { try { store.update(data => { const p = data.profiles.find(p => p.id === data.configuration.profileId); if (!p) throw new Error('Select a profile first.'); p.name = name.value.trim(); }); refresh(); } catch (error) { status.textContent = (error as Error).message; } });
@@ -153,6 +159,6 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
       candidate = parsed; preview.textContent = `${parsed.profiles.length} profiles, ${parsed.customPresets.length} custom presets, ${parsed.profiles.reduce((sum,p) => sum+p.results.length,0)} results. Replace all current tuNotes data? ${store.durable ? 'This replaces saved data on this device.' : 'Storage unavailable: replacement will be memory-only.'}`; replace.hidden = false;
     } catch (error) { if (own === generation) preview.textContent = (error as Error).message; }
   });
-  node.append(rememberLabel,profiles.node,name,create,rename,history,remove,erase,exportButton,backupLink,fileLabel,preview,replace,status); refresh();
+  node.append(rememberLabel,profiles.node,profilePreset.node,name,create,rename,history,remove,erase,exportButton,backupLink,fileLabel,preview,replace,status); refresh();
   return { node,refresh,dispose: () => { generation++; if (url) URL.revokeObjectURL(url); } };
 }

@@ -122,7 +122,7 @@ async function expansion(page) {
   const p=presets.find(p=>p.id==='keyboards-starter');
   const data=emptySnapshot();data.configuration={remember:true,profileId:'learner',presetId:p.id,selfPaced:true};
   const notes=Object.fromEntries(p.pool.map(pitch=>[pitchLabel(pitch),Array.from({length:5},()=>({pitch,answer:{letter:pitch.letter,accidental:pitch.accidental},correct:true,responseMs:500000,activity:'practice',preset:p.id}))]));
-  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,results:[],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
+  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
   await page.addInitScript(data=>localStorage.setItem('tunotes:data:v1',JSON.stringify(data)),data);await page.goto(host.url+'notes/');
   await page.clock.install(); await button(page,'Start Practice').click();
   const before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
