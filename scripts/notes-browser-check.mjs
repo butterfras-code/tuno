@@ -166,7 +166,7 @@ try {
   const portable = await browser.newContext({ offline: true }); await portable.addInitScript(instrument); const portablePage = await portable.newPage();
   const requests = []; portablePage.on('request', r => { if (/^https?:/.test(r.url())) requests.push(r.url()); });
   await portablePage.goto(pathToFileURL(file).href); await loop(portablePage, 'portable'); assert.deepEqual(requests, []); await portable.close();
-  const hosted = await browser.newContext(); await hosted.addInitScript(instrument); const page = await hosted.newPage(); await page.goto(host.url + 'notes/');
+  const hosted = await browser.newContext(); await hosted.addInitScript(instrument); const page = await hosted.newPage(); await page.goto(new URL('/notes/', host.url).href);
   await page.waitForFunction(() => document.querySelector('#offline-status')?.textContent === 'Offline ready');
   await page.evaluate(() => localStorage.setItem('tuno-test-sentinel', 'preserve'));
   host.setAvailable(false); await hosted.setOffline(true); await page.reload(); await loop(page, 'hosted-offline');

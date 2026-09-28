@@ -21,7 +21,7 @@ async function custom(page, {clef='treble',low='F4',high='F#4',key='G',policy='k
 try {
   await mkdir('dist/validation',{recursive:true});
   const context = await browser.newContext(); const page = await context.newPage(); page.on('pageerror',e => errors.push(e.message));
-  await page.goto(host.url+'notes/'); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
+  await page.goto(new URL('/notes/', host.url).href); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
   await custom(page); assert.match(await page.locator('#preset-summary').textContent(),/F♯4/);
   await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
   assert.equal(await page.locator('.key-accidental:visible').count(),1); assert.equal(await page.locator('.note-accidental:visible').count(),0);
@@ -74,7 +74,7 @@ try {
       if(mode==='corrupt') localStorage.setItem('tunotes:data:v1','corrupt');
       if(mode==='quota') Storage.prototype.setItem=function(){throw new Error('quota');};
     },mode);
-    const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(host.url+'notes/'); await expandData(p);
+    const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(new URL('/notes/', host.url).href); await expandData(p);
     await p.getByRole('button',{name:'Add profile',exact:true}).first().click(); await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByLabel('Profile name',{exact:true}).press('Enter'); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
     await setToggle(p,'meet-notes',false); await p.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();

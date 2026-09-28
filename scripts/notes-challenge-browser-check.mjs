@@ -96,7 +96,7 @@ async function run(page,url,label) {
 }
 try {
   await mkdir('dist/validation',{recursive:true});
-  const page=await browser.newPage();await run(page,host.url+'notes/','hosted');await page.close();
+  const page=await browser.newPage();await run(page,new URL('/notes/', host.url).href,'hosted');await page.close();
   const file=join(temporary,'moved notes.html');await copyFile('dist/portable/tunotes.html',file);
   const offline=await browser.newContext({offline:true});await run(await offline.newPage(),pathToFileURL(file).href,'portable-offline');await offline.close();
   await writeFile(`dist/validation/notes-challenge-${name}.json`,JSON.stringify({browser:name,evidence},null,2));console.log(evidence.join('\n'));

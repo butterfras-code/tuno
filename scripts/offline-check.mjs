@@ -6,7 +6,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
 
-const root = new URL('../dist/hosted/', import.meta.url);
+const root = new URL('../dist/hosted/tune/', import.meta.url);
 const html = await readFile(new URL('index.html', root), 'utf8');
 const version = /name="tuno-version" content="([^"]+)"/.exec(html)[1];
 let revision = version;
@@ -20,11 +20,11 @@ const resources = new Map(await Promise.all((await readdir(root, { recursive: tr
 const server = createServer((request, response) => {
   if (!online) { response.destroy(); return; }
   // Cloudflare Pages canonicalizes index.html before the worker caches it.
-  if (request.url === '/practice/index.html') {
-    response.writeHead(308, { Location: '/practice/' }).end();
+  if (request.url === '/tune/index.html') {
+    response.writeHead(308, { Location: '/tune/' }).end();
     return;
   }
-  const name = request.url === '/practice/' ? 'index.html' : request.url.replace('/practice/', '').replace(revision, version);
+  const name = request.url === '/tune/' ? 'index.html' : request.url.replace('/tune/', '').replace(revision, version);
   if (!resources.has(name)) { response.writeHead(404).end(); return; }
   if (failCss && name === 'app.css') { response.writeHead(503).end(); return; }
   response.writeHead(200, { 'Content-Type': name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.png') ? 'image/png' : name.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html', 'Cache-Control': 'no-cache' });
@@ -42,7 +42,7 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
   browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
-  const url = `http://127.0.0.1:${server.address().port}/practice/`;
+  const url = `http://127.0.0.1:${server.address().port}/tune/`;
   const context = await browser.newContext();
   let page = await context.newPage();
   await page.goto(url);

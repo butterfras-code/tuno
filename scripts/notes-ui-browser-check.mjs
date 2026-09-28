@@ -7,7 +7,7 @@ const browser = await ({chromium,firefox})[process.env.TUNO_BROWSER || 'chromium
 const host = await hostBuild();
 try {
   const page = await browser.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(host.url+'notes/');
+  await page.goto(new URL('/notes/', host.url).href);
   assert.equal(await page.locator('input[type=checkbox]').count(),0);
   assert.equal(await page.locator('.preset-preview .notehead').count(),2);
   assert.match(await page.locator('#preset-summary').textContent(),/C Major · E4–F5 · Lines and Spaces · Treble clef/);
@@ -69,7 +69,7 @@ try {
     }
   }
   const touch = await browser.newContext({hasTouch:true,viewport:{width:360,height:800}});
-  const touchPage = await touch.newPage(); await touchPage.goto(host.url+'notes/');
+  const touchPage = await touch.newPage(); await touchPage.goto(new URL('/notes/', host.url).href);
   const touchHelp = touchPage.getByRole('button',{name:'About Adapt Range',exact:true});
   await touchHelp.tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),true);
   assert.equal(await touchPage.locator('#adaptive').getAttribute('aria-pressed'),'false');

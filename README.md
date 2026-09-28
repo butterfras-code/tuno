@@ -34,9 +34,9 @@ npm ci
 npm run dev
 ```
 
-Use `npm run dev:notes` and open <http://127.0.0.1:5173/notes/> for tuNotes; run one development server at a time. The existing `npm run dev` serves tUno.
+Use `npm run dev:notes` and open <http://127.0.0.1:5173/notes/> for tuNotes; run one development server at a time. `npm run dev` serves tUno at `/tune/`.
 
-Open <http://127.0.0.1:5173>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. On mobile, the top navigation switches the main view, while independent Tune/Tone/Tempo tabs switch the shared quick-access card below it. Preferences are saved in browser storage when available; clearing site data removes them. Reloading never starts the microphone or audio. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
+Open <http://127.0.0.1:5173/tune/>. Source changes rebuild automatically; refresh the page to see them. Open **Explore a sample pitch** in the tuner to enter a frequency. **Settings** adjusts A4 calibration, written pitch, and Uno visibility. Focus buttons switch views without clearing selections. On mobile, the top navigation switches the main view, while independent Tune/Tone/Tempo tabs switch the shared quick-access card below it. Preferences are saved in browser storage when available; clearing site data removes them. Reloading never starts the microphone or audio. Use **Start listening** for microphone input, hold a piano key to play it when sustain is off, and use **Stop all audio** to release capture and stop output. Start the metronome from any view; in 6/8, BPM counts dotted quarters and **3 per beat** adds eighth-note pulses. Tempo, meter, and subdivision changes take effect at the next unscheduled beat.
 
 ```sh
 npm run check
@@ -50,7 +50,7 @@ npm run verify
 
 `npm run build` clears `dist/` once and builds both apps from per-app descriptors:
 
-- `dist/hosted/`: serve this directory over HTTPS for deployment; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
+- `dist/hosted/`: serve this directory at the origin root over HTTPS; `/` redirects to `/tune/`; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
 - `dist/hosted/notes/`: tuNotes Practice and Challenge preview with its own manifest, worker, cache, and versioned download; tUno navigation does not link to this preview.
 - `dist/portable/tunotes.html`: independent tuNotes Practice and Challenge app, including shared Uno artwork, fonts, and license notices.
 - `dist/portable/tuno.html`: open this single file directly in a browser, including offline. It contains the same JavaScript and CSS as the hosted build.
@@ -82,3 +82,7 @@ Both artifacts carry the same content-derived version in HTML metadata. Producti
 The metronome schedules 150 ms ahead on a 25 ms timer. Visual beat identity follows the audio output timeline. Long foreground stalls stop metronome playback with explicit restart. Hiding the page pauses capture and all output; start a tool explicitly after returning. Background continuity is not supported. Uno currently uses static directional beat cues, with numbered/current-beat text available; tail animation remains a visual follow-up. Microphone input can hear reference tones and clicks through speakers.
 
 The shared presentation boundary is `src/shared/ui/`: Uno renderer/poses, fonts, Uno styles, generic DOM controls, and unmount cleanup. Assets and `src/tokens.css` remain shared in place. Tuner feedback, pitch display, stores, and audio controller stay tUno-specific. `verify` includes cross-app cold-offline, nested hosting, worker/cache isolation, download and Uno cleanup checks.
+
+## tUno family URLs
+
+`tuno.cc/` redirects to `/tune/`, the tUno application. `/notes/` serves tuNotes with its own manifest, worker, and offline cache. The root may later become a family launcher. See [hosting and migration](docs/hosting.md) for installed tUno migration and staging checks.

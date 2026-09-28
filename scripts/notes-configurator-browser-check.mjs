@@ -18,7 +18,7 @@ async function run(page,mode) {
   assert.equal(await page.getByRole('dialog').isVisible(),true);
   await page.getByRole('dialog').getByRole('button',{name:'Instrument',exact:true}).click();
   await page.getByRole('dialog').getByRole('button',{name:'B♭ Trumpet',exact:true}).click();
-  assert.match(await page.locator('.picker-trail').textContent(),/Instrument › B♭ Trumpet/);
+  assert.match(await page.getByRole('dialog').locator('.picker-trail').textContent(),/Instrument › B♭ Trumpet/);
   await page.getByRole('dialog').getByRole('button',{name:'← Back',exact:true}).click();
   assert.match(await page.locator('#preset-step-title').textContent(),/instrument/);
   await page.keyboard.press('Escape'); assert.equal(await page.locator('#preset:focus').count(),1);
@@ -107,12 +107,12 @@ async function run(page,mode) {
 }
 try {
   await mkdir('dist/validation',{recursive:true});
-  const page = await browser.newPage(); await page.goto(host.url+'notes/'); await run(page,'hosted');
+  const page = await browser.newPage(); await page.goto(new URL('/notes/', host.url).href); await run(page,'hosted');
   const context = await browser.newContext({offline:true}); const file = await context.newPage(); const requests=[]; file.on('request',r => {if(/^https?:/.test(r.url())) requests.push(r.url());});
   await file.goto(pathToFileURL(resolve('dist/portable/tunotes.html')).href); await run(file,'portable'); assert.deepEqual(requests,[]);
   if (name === 'chromium') {
     const touchContext = await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
-    const touch = await touchContext.newPage(); await touch.goto(host.url+'notes/'); await choosePreset(touch,'custom');
+    const touch = await touchContext.newPage(); await touch.goto(new URL('/notes/', host.url).href); await choosePreset(touch,'custom');
     const slider = touch.getByRole('slider',{name:'Lowest note',exact:true}); await slider.scrollIntoViewIfNeeded();
     const p = await slider.locator('svg').evaluate(svg => { const m=svg.getScreenCTM(),p=new DOMPoint(230,140).matrixTransform(m); return {x:p.x,y:p.y,delta:20*m.d}; });
     const cdp=await touchContext.newCDPSession(touch);

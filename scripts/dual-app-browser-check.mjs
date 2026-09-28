@@ -114,29 +114,26 @@ try {
       };
     });
     const tuner = await context.newPage();
-    await tuner.goto(origin + prefix);
+    await tuner.goto(origin + prefix + 'tune/');
     await ready(tuner);
     const before = await tuner.evaluate(() => caches.keys());
     assert.equal(before.length, 1);
-    assert.ok(before[0].startsWith(`tuno:${origin}${prefix}:`));
+    assert.ok(before[0].startsWith(`tuno:${origin}${prefix}tune/:`));
     await tuner.evaluate(() => localStorage.setItem('tuno-test-sentinel', 'preserve'));
     const notes = await context.newPage();
-    await notes.goto(origin + prefix);
-    await ready(notes);
     await notes.goto(origin + prefix + 'notes/?without-worker');
     await notes.waitForFunction(() => document.querySelector('#offline-status')?.textContent.includes('failed'));
     assert.equal(await notes.locator('h1').textContent(), 'tuNotes');
     const initialController = await notes.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
-    if (browserName === 'chromium') assert.equal(initialController, origin + prefix + 'sw.js');
-    else assert.ok(initialController === null || initialController === origin + prefix + 'sw.js');
+    assert.equal(initialController, null);
     const rootFetch = await tuner.evaluate(async () => {
-      const html = await (await fetch('./notes/')).text();
-      return { html, missing: (await fetch('./notes/missing.js')).status, controller: navigator.serviceWorker.controller.scriptURL };
+      const html = await (await fetch('../notes/')).text();
+      return { html, missing: (await fetch('../notes/missing.js')).status, controller: navigator.serviceWorker.controller.scriptURL };
     });
-    assert.equal(rootFetch.controller, origin + prefix + 'sw.js');
+    assert.equal(rootFetch.controller, origin + prefix + 'tune/sw.js');
     assert.ok(rootFetch.html.includes('<title>tuNotes'));
     assert.equal(rootFetch.missing, 404);
-    assert.deepEqual(await notes.evaluate(() => caches.keys()), before, 'Root worker does not cache notes or claim its readiness');
+    assert.deepEqual(await notes.evaluate(() => caches.keys()), before, 'tUno worker does not cache notes or claim its readiness');
     assert.equal(await notes.evaluate(async () => (await fetch('./missing.js')).status), 404);
     blockNotesWorker = false;
     await notes.goto(origin + prefix + 'notes/');
@@ -146,7 +143,7 @@ try {
     assert.equal(keys.length, 2);
     assert.ok(keys.includes(before[0]));
     assert.ok(keys.some(key => key.startsWith(`tunotes:${origin}${prefix}notes/:`)));
-    const manifests = await notes.evaluate(async base => Promise.all([base, base + 'notes/'].map(async base => {
+    const manifests = await notes.evaluate(async base => Promise.all([base + 'tune/', base + 'notes/'].map(async base => {
       const manifest = await (await fetch(base + 'manifest.webmanifest')).json();
       return { name: manifest.short_name, id: new URL(manifest.id, location.origin + base).href };
     })), prefix);
@@ -196,7 +193,7 @@ try {
     await tuner.waitForFunction(() => window.unoListeners === 0);
     await context.close();
     online = true;
-    results.push(`${prefix}: root-worker first visit, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed`);
+    results.push(`${prefix}: separate workers, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed`);
   }
   await mkdir('dist/validation', { recursive: true });
   await writeFile(`dist/validation/dual-app-${browserName}.json`, JSON.stringify({ builds: Object.fromEntries(Object.entries(release.apps).map(([id, app]) => [id, app.build])), results }, null, 2));

@@ -25,13 +25,17 @@ for (const [id, release] of Object.entries(manifestRelease.apps)) {
     assert.ok(html.includes(`name="${id}-source" content="https://github.com/butterfras-code/tuno/tree/${release.revision}"`));
   }
   const manifest = JSON.parse(await readFile(new URL(`${hosted}manifest.webmanifest`, dist), 'utf8'));
-  assert.equal(manifest.start_url, './');
-  assert.equal(manifest.scope, './');
+  assert.equal(manifest.start_url, id === 'tuno' ? '/tune/' : './');
+  assert.equal(manifest.scope, id === 'tuno' ? '/tune/' : './');
+  if (id === 'tuno') {
+    assert.equal(manifest.id, '/');
+    assert.deepEqual(manifest, JSON.parse(await readFile(new URL('hosted/manifest.webmanifest', dist), 'utf8')));
+  }
   assert.equal(manifest.display, 'standalone');
   for (const size of [192, 512]) {
     const icon = manifest.icons.find((icon) => icon.sizes === `${size}x${size}`);
     assert.ok(icon);
-    const png = await readFile(new URL(`${hosted}${icon.src}`, dist));
+    const png = await readFile(new URL(id === 'tuno' ? `hosted${icon.src}` : `${hosted}${icon.src}`, dist));
     assert.equal(png.readUInt32BE(16), size);
     assert.equal(png.readUInt32BE(20), size);
   }

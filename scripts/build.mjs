@@ -15,7 +15,7 @@ await mkdir(portable, { recursive: true });
 
 const packageInfo = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const apps = [
-  { id: 'tuno', name: 'tUno', title: 'tUno — Practice with a friend', description: 'Local-first tuner, reference tones, and metronome.', entry: 'src/main.ts', template: 'src/index.html', directory: '', excluded: ['notes/'] },
+  { id: 'tuno', name: 'tUno', title: 'tUno — Practice with a friend', description: 'Local-first tuner, reference tones, and metronome.', entry: 'src/main.ts', template: 'src/index.html', directory: 'tune', excluded: [] },
   { id: 'tunotes', name: 'tuNotes', title: 'tuNotes — Read music with a friend', description: 'Note-reading companion · Technical preview.', entry: 'src/apps/tunotes/main.ts', template: 'src/apps/tunotes/index.html', directory: 'notes', excluded: [] },
 ];
 let revision = 'unknown';
@@ -31,11 +31,11 @@ async function buildApp(app) {
   const hosted = path.join(hostedRoot, app.directory);
   await mkdir(hosted, { recursive: true });
   const manifest = JSON.stringify({
-    id: './', name: app.title, short_name: app.name,
-    start_url: './', scope: './', display: 'standalone',
+    id: app.id === 'tuno' ? '/' : './', name: app.title, short_name: app.name,
+    start_url: app.id === 'tuno' ? '/tune/' : './', scope: app.id === 'tuno' ? '/tune/' : './', display: 'standalone',
     background_color: '#f4efe7', theme_color: '#f4efe7',
     description: app.description,
-    icons: [192, 512].map((size) => ({ src: `./icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
+    icons: [192, 512].map((size) => ({ src: app.id === 'tuno' ? `/tune/icon-${size}.png` : `./icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
   }, null, 2);
   const icons = Object.fromEntries(await Promise.all([192, 512].map(async (size) => [
     `icon-${size}.png`, await readFile(path.join(root, `src/assets/icons/icon-${size}.png`)),
@@ -110,6 +110,13 @@ async function buildApp(app) {
             ...Object.entries(allHosted).map(([name, contents]) => writeFile(path.join(hosted, name), contents)),
             writeFile(path.join(portable, `${app.id}.html`), html),
           ]);
+          if (app.id === 'tuno') {
+            const siteFiles = Object.fromEntries(await Promise.all([
+              '_redirects', '_headers', '404.html', ...(!dev ? ['sw.js'] : []),
+            ].map(async (name) => [name, await readFile(path.join(root, 'src/site', name))])));
+            if (!dev) siteFiles['manifest.webmanifest'] = manifest;
+            await Promise.all(Object.entries(siteFiles).map(([name, contents]) => writeFile(path.join(hostedRoot, name), contents)));
+          }
           releases[app.id] = { version: packageInfo.version, build: version, revision, dirty, checksums, portableSha256: createHash('sha256').update(html).digest('hex'), hostedDirectory: app.directory, portableFile: `${app.id}.html` };
           metadata[app.id] = result.metafile;
           await writeFile(path.join(root, 'dist/release.json'), JSON.stringify({ ...releases.tuno, apps: releases }, null, 2));

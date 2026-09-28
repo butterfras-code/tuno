@@ -15,7 +15,7 @@ const count = async (page, n) => assert.match(await page.locator('#practice-coun
 try {
   await mkdir('dist/validation', { recursive: true });
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
-  await page.goto(host.url + 'notes/');
+  await page.goto(new URL('/notes/', host.url).href);
   await choosePreset(page,'flute-starter');
   await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   assert.equal(await page.locator('.answer').count(), 18);
@@ -114,7 +114,7 @@ try {
     window.received=[]; window.control=answerControls((a,t)=>window.received.push({a,t})); document.body.append(window.control.node);
     window.setPool=(policy='key-only',key='F',range=['B4','B4'])=>window.control.update(normalizePreset({id:'fixture',name:'Fixture',clef:'treble',range,content:'lines-and-spaces',accidentals:policy,key:keySignature(key)}),{session:1,prompt:1},false); window.setPool();`,resolveDir:process.cwd()},bundle:true,write:false,format:'iife'});
   const fixture=await browser.newPage(); fixture.on('pageerror',e=>errors.push(e.message));
-  await fixture.goto(host.url+'notes/'); await fixture.evaluate(() => { document.body.replaceChildren(); });
+  await fixture.goto(new URL('/notes/', host.url).href); await fixture.evaluate(() => { document.body.replaceChildren(); });
   await fixture.addScriptTag({content:compiled.outputFiles[0].text});
   await fixture.evaluate(() => { window.control.letter('B'); window.control.letter('B',-1); });
   assert.deepEqual(await fixture.evaluate(()=>window.received.map(r=>r.a)),[{letter:'B',accidental:0},{letter:'B',accidental:-1}]);
@@ -133,7 +133,7 @@ try {
   results.push('Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation');
   if(name==='chromium') {
     const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}}); const touch=await context.newPage(); touch.on('pageerror',e=>errors.push(e.message));
-    await touch.goto(host.url+'notes/'); await choosePreset(touch,'flute-starter'); await setPacing(touch,'Click/Tap'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.goto(new URL('/notes/', host.url).href); await choosePreset(touch,'flute-starter'); await setPacing(touch,'Click/Tap'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
     await button(touch,'B',-1).tap(); await count(touch,1);
     await touch.getByRole('button',{name:'Continue',exact:true}).first().tap();
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
@@ -153,7 +153,7 @@ try {
   }
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});
-    await preview.goto(host.url+'notes/'); await choosePreset(preview,preset);
+    await preview.goto(new URL('/notes/', host.url).href); await choosePreset(preview,preset);
     await setToggle(preview,'meet-notes',false); await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);

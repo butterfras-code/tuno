@@ -28,17 +28,21 @@ export async function hostBuild({ tls = false } = {}) {
   const handler = (request, response) => {
     if (!available) { response.destroy(); return; }
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    const name = pathname.endsWith('/') ? pathname.slice('/practice/'.length) + 'index.html' : pathname.slice('/practice/'.length);
-    if (!pathname.startsWith('/practice/') || !files.has(name)) { response.writeHead(404).end(); return; }
+    const redirect = files.get('_redirects').toString().split('\n').map((line) => line.trim().split(/\s+/)).find(([from]) => from === pathname);
+    if (redirect) { response.writeHead(Number(redirect[2]), { Location: redirect[1] }).end(); return; }
+    if (pathname.endsWith('/index.html')) { response.writeHead(308, { Location: pathname.slice(0, -10) }).end(); return; }
+    const name = pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
+    if (!files.has(name) || name.startsWith('_')) { response.writeHead(404).end(); return; }
     response.writeHead(200, { 'Content-Type': contentType(name), 'Cache-Control': 'no-cache' });
     response.end(files.get(name));
   };
   const server = tls ? httpsServer(certificate, handler) : httpServer(handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
+    files, // Mutable deployment fixture for upgrade tests.
     setAvailable(value) { available = value; },
     certificateSpki: tls ? createHash('sha256').update(new X509Certificate(certificate.cert).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') : undefined,
-    url: `${tls ? 'https' : 'http'}://127.0.0.1:${server.address().port}/practice/`,
+    url: `${tls ? 'https' : 'http'}://127.0.0.1:${server.address().port}/tune/`,
     async close() {
       await new Promise((resolve) => server.close(resolve));
       if (certDirectory) await rm(certDirectory, { recursive: true, force: true });

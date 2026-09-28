@@ -7,7 +7,7 @@ const host = await hostBuild();
 try {
   const page = await browser.newPage(); page.setDefaultTimeout(10000);
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(host.url+'notes/');
+  await page.goto(new URL('/notes/', host.url).href);
   await setToggle(page,'meet-notes',false);
   const action = name => page.getByRole('button',{name,exact:true});
   const stats = () => page.locator('#practice-counts').textContent();
