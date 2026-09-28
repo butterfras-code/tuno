@@ -1,0 +1,59 @@
+{
+  "version": "0.1.0",
+  "build": "93e7abf5e0405284",
+  "revision": "24ff7dbd79060a889565afd39c1a9bf8af4ce2f2",
+  "dirty": true,
+  "checksums": {
+    "index.html": "4527cd6088bb9786bfd885b46c192f764729813232563cfec263b0daabd5cf0b",
+    "app.js": "b6ebdf7a0177972ebc14415b10c033b6263b073b101b159ad7bf176e8fefa668",
+    "app.css": "41f75d2cf0d7eb76679b14b76494d6da595711e787e320b93ff0eff2fe56eb6f",
+    "manifest.webmanifest": "7052b8e7344668ebd0ad407ed638e5847a75980838671eebe246945cbe0093c4",
+    "icon-192.png": "15221c3b0362e5242eb8a2c095ca7d3d74eff4474ab9dde96b1fd9ac6ab17153",
+    "icon-512.png": "e070e2645288127d08bf474f8f86f9902e3ddc172a9af61777327ee6455069a4",
+    "tuno-93e7abf5e0405284.html": "73b55b6ff8af2dd93f687f2a74cadb5f29df71728c5eb245ea7c44dd8f06ea50",
+    "sw.js": "b6462bb2414a4cf52a43e99d7c750f50036cb558cdca6b66159075cb1baf981a"
+  },
+  "portableSha256": "73b55b6ff8af2dd93f687f2a74cadb5f29df71728c5eb245ea7c44dd8f06ea50",
+  "hostedDirectory": "",
+  "portableFile": "tuno.html",
+  "apps": {
+    "tuno": {
+      "version": "0.1.0",
+      "build": "93e7abf5e0405284",
+      "revision": "24ff7dbd79060a889565afd39c1a9bf8af4ce2f2",
+      "dirty": true,
+      "checksums": {
+        "index.html": "4527cd6088bb9786bfd885b46c192f764729813232563cfec263b0daabd5cf0b",
+        "app.js": "b6ebdf7a0177972ebc14415b10c033b6263b073b101b159ad7bf176e8fefa668",
+        "app.css": "41f75d2cf0d7eb76679b14b76494d6da595711e787e320b93ff0eff2fe56eb6f",
+        "manifest.webmanifest": "7052b8e7344668ebd0ad407ed638e5847a75980838671eebe246945cbe0093c4",
+        "icon-192.png": "15221c3b0362e5242eb8a2c095ca7d3d74eff4474ab9dde96b1fd9ac6ab17153",
+        "icon-512.png": "e070e2645288127d08bf474f8f86f9902e3ddc172a9af61777327ee6455069a4",
+        "tuno-93e7abf5e0405284.html": "73b55b6ff8af2dd93f687f2a74cadb5f29df71728c5eb245ea7c44dd8f06ea50",
+        "sw.js": "b6462bb2414a4cf52a43e99d7c750f50036cb558cdca6b66159075cb1baf981a"
+      },
+      "portableSha256": "73b55b6ff8af2dd93f687f2a74cadb5f29df71728c5eb245ea7c44dd8f06ea50",
+      "hostedDirectory": "",
+      "portableFile": "tuno.html"
+    },
+    "tunotes": {
+      "version": "0.1.0",
+      "build": "6bf0a5c4674b6772",
+      "revision": "24ff7dbd79060a889565afd39c1a9bf8af4ce2f2",
+      "dirty": true,
+      "checksums": {
+        "index.html": "416a2139a9ff95704c72f30ade129ed6c61b8a16bac6321fc7de30df72521a7a",
+        "app.js": "42b4c29d896eea00ccd5bec4db925bc42a1e8171e3b8718cbcac7f9a74d436d8",
+        "app.css": "4471cf5ec0da38f8b92a9926911d17c56d9cbbd8f99e4c8dbe0ac9e1b56cdcd6",
+        "manifest.webmanifest": "d37e75aa552439444da2054939f9daf908a42b1dbf6d22934a2db14ce99994fd",
+        "icon-192.png": "15221c3b0362e5242eb8a2c095ca7d3d74eff4474ab9dde96b1fd9ac6ab17153",
+        "icon-512.png": "e070e2645288127d08bf474f8f86f9902e3ddc172a9af61777327ee6455069a4",
+        "tunotes-6bf0a5c4674b6772.html": "2b918e09b84990f13c6cb406cec4d2697a008330cffa37004e71e2364ecf9822",
+        "sw.js": "0324cbf3efcb0b259e2b095f64b1e8e0d94b2084f92f487bc28d2ff7199985c0"
+      },
+      "portableSha256": "2b918e09b84990f13c6cb406cec4d2697a008330cffa37004e71e2364ecf9822",
+      "hostedDirectory": "notes",
+      "portableFile": "tunotes.html"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "browser": "firefox",
+  "evidence": [
+    "hosted: rules validation, Ready/countdown gating, timed score, zero attempts, Target completion/timeout, visibility pause, partial run, retry, navigation and responsive layout passed",
+    "portable-offline: rules validation, Ready/countdown gating, timed score, zero attempts, Target completion/timeout, visibility pause, partial run, retry, navigation and responsive layout passed"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "build": "6bf0a5c4674b6772",
+  "browser": "153.0.8010.12",
+  "results": [
+    "Custom live spelling/key preview, empty-pool rejection, saved Custom, accidental selector/reset, exact spelling and focused Enter submission",
+    "Profile names render as text; progress/configuration survive reload into setup; export, previewed replacement, malformed/future-schema rejection, Guest isolation and tUno preferences preserved",
+    "Hosted ↔ cold-offline portable JSON backup round trip, confirmed profile/all-data deletion and 360/768/1280 setup layouts",
+    "Denied/corrupt/quota storage allows play and explicit memory-only import",
+    "66 notation review fixtures: every clef/key, natural cancellation, explicit sharp/flat, B-sharp/C-flat octave identities and flute C7 ledger extent"
+  ]
+}

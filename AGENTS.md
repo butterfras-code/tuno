@@ -4,9 +4,9 @@
 
 Cloudflare Pages hosts tUno at https://tuno.cc. The production branch is `main`: pushes and PR merges into `main` automatically trigger a production build and deployment. Treat changes to `main` as publication, including documentation-only changes.
 
-Prefer a separate Git worktree with a short-lived feature branch for each task. A feature branch in the current checkout is fine when isolation is unnecessary and the working tree is clean. Preserve unrelated user changes. Use descriptive names such as `feature/uno-animation`, `fix/tuner-accuracy`, or `docs/hosting-workflow`.
+Use `dev` for staging before promotion to `main`. Fetch remote branches before work and ensure `dev` includes `origin/main`, merging without discarding legitimate dev-only commits when needed. Preserve unrelated user changes. Feature worktrees may start from `dev`, but completed staging work belongs on `dev`.
 
-Make and validate changes on that branch, then use a pull request into `main` for review. Prefer this worktree/feature-branch/PR flow over direct commits or pushes to `main`. Do not merge or push to `main` unless the user has authorized publishing the changes. A permanent `dev` branch is not required.
+Validate on `dev`, review its Cloudflare preview, then use a PR from `dev` into `main`. Do not merge or push to `main` unless the user has authorized publishing. Changes to `main`, including documentation-only changes, publish production.
 
 See [hosting setup](docs/hosting.md) for deployment settings and preview behavior.
 

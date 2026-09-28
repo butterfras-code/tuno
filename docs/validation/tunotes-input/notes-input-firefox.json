@@ -1,0 +1,10 @@
+{
+  "build": "7bb676f904fff2ea",
+  "browser": "155.0",
+  "results": [
+    "Tonic-to-tonic targets with half-key offsets; F-major B-flat default; unavailable natural rejects input; positions stable across prompts; mouse slide from inactive natural to flat; outside release and pause cancel",
+    "Arrow sharp/flat/natural shortcuts; held letter rejection; focused exact spelling; conflicting arrows ignored; pointer token invalidated by keyboard answer; 44px targets at 360/768/1280",
+    "Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation",
+    "C, B-flat and G tonic-to-tonic layouts; duplicate tonic accepts answers; rendered sharp/flat half-key alignment and octave width"
+  ]
+}
