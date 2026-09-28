@@ -107,80 +107,80 @@ type InstrumentDefinition = {
 // Full is the adaptive limit, not an extra picker choice. IDs are unique per instrument.
 export const instruments = [
   { id: 'flute', name: 'Flute', clef: 'treble', transpose: 0, ranges: {
-    start: { range: ['F4','C5'], key: 'F' }, full: ['Bb3','Bb5'], levels: [
+    start: { range: ['F4','C5'], key: 'F' }, full: ['B3','C7'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Bb3','F5'], key: 'F' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Bb3','Bb5'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','F5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
     ],
   } },
   { id: 'oboe', name: 'Oboe', clef: 'treble', transpose: 0, ranges: {
-    start: { range: ['F4','C5'], key: 'F' }, full: ['Bb3','Bb5'], levels: [
+    start: { range: ['F4','C5'], key: 'F' }, full: ['Bb3','A6'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Bb3','F5'], key: 'F' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Bb3','Bb5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
     ],
   } },
   { id: 'bassoon', name: 'Bassoon', clef: 'bass', transpose: 0, ranges: {
-    start: { range: ['F2','C3'], key: 'F' }, full: ['Bb1','Bb3'], levels: [
+    start: { range: ['F2','C3'], key: 'F' }, full: ['Bb1','Bb4'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['F2','F3'], key: 'F' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Bb1','F3'], key: 'F' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Bb1','Bb3'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','C4'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'F' },
     ],
   } },
   { id: 'keyboards', name: 'Keyboards', clef: 'treble', transpose: 0, ranges: {
-    start: { range: ['C4','G4'], key: 'C' }, full: ['F3','F5'], levels: [
+    start: { range: ['C4','G4'], key: 'C' }, full: ['C3','C6'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'C' },
-      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'C' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','G5'], key: 'C' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'C' },
     ],
   } },
   { id: 'clarinet-bb', name: 'B♭ Clarinet', clef: 'treble', transpose: 2, ranges: {
-    start: { range: ['C4','G4'], key: 'C' }, full: ['F3','F5'], levels: [
-      { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'C' },
-      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'C' },
+    start: { range: ['C4','G4'], key: 'C' }, full: ['E3','G6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F3','F4'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'F' },
     ],
   } },
   { id: 'alto-sax', name: 'Alto saxophone', clef: 'treble', transpose: 9, ranges: {
-    start: { range: ['G4','D5'], key: 'G' }, full: ['C4','C6'], levels: [
+    start: { range: ['G4','D5'], key: 'G' }, full: ['Bb3','F6'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['G4','G5'], key: 'G' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','G5'], key: 'G' },
-      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'G' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'C' },
     ],
   } },
   { id: 'trumpet-bb', name: 'B♭ Trumpet', clef: 'treble', transpose: 2, ranges: {
-    start: { range: ['C4','G4'], key: 'C' }, full: ['F3','F5'], levels: [
+    start: { range: ['C4','G4'], key: 'C' }, full: ['F#3','C6'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'C' },
-      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'C' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['G3','C5'], key: 'C' },
+      { id: 'two-octaves', name: '2 octaves', range: ['G3','G5'], key: 'C' },
     ],
   } },
   { id: 'horn-f', name: 'F Horn', clef: 'treble', transpose: 7, ranges: {
-    start: { range: ['C4','G4'], key: 'C' }, full: ['F3','F5'], levels: [
-      { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'C' },
-      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'C' },
+    start: { range: ['C4','G4'], key: 'C' }, full: ['C2','G5'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F3','F4'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'F' },
     ],
   } },
   { id: 'trombone', name: 'Trombone', clef: 'bass', transpose: 0, ranges: {
-    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['Eb2','Eb4'], levels: [
+    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['E2','Bb4'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['Bb2','Bb3'], key: 'Bb' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Eb2','Bb3'], key: 'Bb' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Eb2','Eb4'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','Bb3'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'Bb' },
     ],
   } },
   { id: 'euphonium', name: 'Euphonium (bass clef)', clef: 'bass', transpose: 0, ranges: {
-    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['Eb2','Eb4'], levels: [
+    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['E2','Bb4'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['Bb2','Bb3'], key: 'Bb' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Eb2','Bb3'], key: 'Bb' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Eb2','Eb4'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','Bb3'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'Bb' },
     ],
   } },
   { id: 'tuba', name: 'Tuba (bass clef)', clef: 'bass', transpose: 0, ranges: {
-    start: { range: ['Bb1','F2'], key: 'Bb' }, full: ['Eb1','Eb3'], levels: [
+    start: { range: ['Bb1','F2'], key: 'Bb' }, full: ['E1','Bb3'], levels: [
       { id: 'one-octave', name: '1 octave', range: ['Bb1','Bb2'], key: 'Bb' },
-      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Eb1','Bb2'], key: 'Bb' },
-      { id: 'two-octaves', name: '2 octaves', range: ['Eb1','Eb3'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F1','Bb2'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F1','F3'], key: 'Bb' },
     ],
   } },
 ] as const satisfies readonly InstrumentDefinition[];

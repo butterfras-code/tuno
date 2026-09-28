@@ -96,7 +96,7 @@ async function run(page,url,mode) {
   await choosePreset(page,'trombone-two-octaves'); await setToggle(page,'meet-notes',true);
   await button(page,'Start Practice').click();
   const labels=await previewLabels(page); assert.equal(labels.length,15);
-  assert.equal(labels[0],'E♭'); assert.equal(labels.at(-1),'E♭');
+  assert.equal(labels[0],'F'); assert.equal(labels.at(-1),'F');
   assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 15');
   assert.equal(await page.locator('.preview-navigation').evaluate(n=>n.parentElement.className),'preview-staff-viewport');
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
