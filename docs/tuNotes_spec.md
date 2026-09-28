@@ -105,6 +105,8 @@ The implementation-time review supersedes the proposed expansion bounds in the h
 
 Range authorization does not constitute engraving or physical-device acceptance. Source boundaries remain natural staff positions with accidentals derived from the preserved key.
 
+The catalog now records each instrument's Starter and named levels explicitly in `src/apps/tunotes/domain/presets.ts`. Each selectable level has its own written range and key; `full` is the shared adaptive limit and is not a separate picker choice. The current `two-octaves` level has the same bounds as `full`. Level IDs are unique within an instrument and retain their existing generated preset IDs so saved selections remain compatible. The table above records the initial values, rather than a formula for generating future levels.
+
 ## 4. Answer entry and exercise engine
 
 ### In-phase Stage 2 update — fixed accidental controls (2026-09-27)

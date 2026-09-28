@@ -4,7 +4,7 @@ import { ALGORITHM_VERSION, activePool, expansionPlan, initialAdaptive, learn, m
 import { beginnerPreview, previewPitches } from '../src/apps/tunotes/engine/preview.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import type { Observation } from '../src/apps/tunotes/engine/practice.ts';
-import { defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
+import { defaultPreset, fingerprint, instrumentPresets, instrumentRangePresets, instruments, normalizePreset, presets } from '../src/apps/tunotes/domain/presets.ts';
 import { chromatic, parsePitch, pitchLabel, staffPosition } from '../src/apps/tunotes/domain/notation.ts';
 import { NotesStore, parseBackup } from '../src/apps/tunotes/persistence/store.ts';
 const observation = (pitch = defaultPreset.pool[0]!, correct = true, responseMs = 1): Observation => ({ pitch, answer: correct ? pitch : {letter: pitch.letter === 'C' ? 'D' : 'C', accidental: 0}, correct, responseMs, activity: 'practice', preset: defaultPreset.id });
@@ -75,10 +75,19 @@ test('one-note Custom terminates, remains bounded, adaptive-off ignores restored
   assert.equal(initialAdaptive(game.learning.notes,{algorithmVersion:99,expansionCount:5}).expansionCount,0);
   assert.deepEqual(initialAdaptive(game.learning.notes,{algorithmVersion:99,expansionCount:5}).notes,{});
 });
-test('approved instrument levels are exact perfect intervals and replace old bounds', () => {
+test('explicit instrument levels preserve approved pools and share their full adaptive bound', () => {
   for(const starter of instrumentPresets) {
+    const instrument=instruments.find(i=>i.id===starter.instrument)!;
     const levels=instrumentRangePresets.filter(p=>p.instrument===starter.instrument);
     assert.equal(levels.length,3);
+    assert.deepEqual(starter.range,instrument.ranges.start.range);
+    assert.deepEqual(starter.expansion,instrument.ranges.full);
+    for(const [index,preset] of levels.entries()) {
+      const source=instrument.ranges.levels[index]!;
+      assert.equal(preset.id,`${instrument.id}-${source.id}`);
+      assert.deepEqual(preset.range,source.range);
+      assert.deepEqual(preset.expansion,instrument.ranges.full);
+    }
     const first=chromatic(starter.pool[0]!);
     assert.deepEqual(levels.map(p=>[chromatic(p.pool[0]!)-first,chromatic(p.pool.at(-1)!)-first]),[[0,12],[-7,12],[-7,17]]);
     for(const preset of [starter,...levels]) {
