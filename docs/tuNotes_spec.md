@@ -30,6 +30,8 @@ Deliver a standalone `tunotes.html` that works from a cold offline launch, plus 
 
 Use explicit lifecycle states: `setup → ready → countdown → running → feedback → running → finished`. Pause may interrupt countdown/running/feedback; feedback is a per-player substate in simultaneous games. Flow uses running without answer feedback. Session IDs and prompt IDs reject late input, timer callbacks, and duplicate completion events.
 
+The Challenge note area remains visible from Ready through count-in, play, pause and results. Ready/count-in show Uno centered in the wag pose over an empty staff, with a large countdown and no exercise-note reveal. During play, remaining time and correct/Target progress appear inside the note area, with Uno beside the notes. Pause retains the same panel with an explicit Resume control. Reduced motion keeps the pose static.
+
 Practice is untimed and ends on Finish. Challenge defaults to a three-second countdown; no answers count before running. Configuration freezes when the round starts. Editing requires ending/restarting the round. Finish during Challenge records an unranked partial result, never a qualifying finish. Reload returns to setup, not an active timer.
 
 Visibility loss pauses the entire session and all sound. Require explicit Resume; preserve the current prompt and its remaining time. Exclude pause/countdown/handoff time from active duration. A manually or automatically paused competitive run is marked interrupted and unranked; co-op/Practice may continue with that annotation. A responsive layout change that makes two panels unusable also pauses; let the user restore the layout or restart as turns, never silently change the competition format.
@@ -188,15 +190,27 @@ Relay Timed: each member gets T active seconds, ordered once through the roster;
 
 Competitive non-relay teams rank Target by summed member times only when every member qualifies; Timed ranks by the aggregate score and requires every allocated turn to finish uninterrupted. Group/team accuracy is pooled C/A, never the mean of percentages. Individual competitive Timed likewise requires a completed, uninterrupted allowance to rank. All zero-attempt/unfinished/interrupted results are shown but unranked. Keep matches with different rules separate; v1 has no global high-score leaderboard.
 
-Scoreboard: local name, C/A, accuracy, score or active completion time, best streak, completion/qualification status; team totals when applicable. List qualified ranks first, then participation results in roster order. Co-op leads with combined achievement and contribution, never a worst-player list. Duplicate names are permitted but receive visible session numbers; identity uses generated IDs, not names.
+Solo scoreboard: show a large score (Timed) or active time (Target), followed by correct count, accuracy and best streak, one encouraging sentence, and Play again / Change setup. Keep it inside the note area with Uno. Round details discloses the optional profile name, preset, rules/formula, attempts, active time and qualification/interruption status; omit Player 1 / Rank 1 boilerplate in solo play. Multiplayer scoreboard (planned): local name, C/A, accuracy, score or active completion time, best streak, completion/qualification status; team totals when applicable. List qualified ranks first, then participation results in roster order. Co-op leads with combined achievement and contribution, never a worst-player list. Duplicate names are permitted but receive visible session numbers; identity uses generated IDs, not names.
 
 ## 7. Uno feedback
 
 Reuse the actual existing renderer/poses (`sleep`, `rest`, `wag`, `beg`, `catch`, `happy`), not an assumed six-frame asset sequence. Add a tuNotes-specific progress policy; do not feed note answers into tuner hold-duration logic.
 
-Freeze benchmark B at session start: max(10, best correct count from last five comparable completed sessions). Comparable means same profile, activity, preset fingerprint, adaptive toggle, input method, and Challenge rule/time/target; Practice uses correct counts within the first 20 submitted prompts per session for benchmark comparison so unbounded duration does not inflate rewards; only sessions reaching 20 submissions supply a Practice benchmark. Target uses its N as B. Interrupted/partial runs do not set benchmarks. With no history B=10 (except Target N). This is a reward benchmark, not a mastery rule.
+Freeze the **first-treat** benchmark B at session start: max(10, best correct count from last five comparable completed sessions). Comparable means same profile, activity, preset fingerprint, adaptive toggle, input method, and Challenge rule/time/target; Practice uses correct counts within the first 20 submitted prompts per session for benchmark comparison so unbounded duration does not inflate rewards; only sessions reaching 20 submissions supply a Practice benchmark. Target uses its N as B. Interrupted/partial runs do not set benchmarks. With no history B=10 (except Target N). This is a reward benchmark, not a mastery rule.
 
-Use correct-count progress B: start sleep/rest; 20% interested/rest with look gesture; 40% wag; 60% wag with nod; 80% beg; 100% catch then happy. Fire each milestone once per run, including when small targets cross several thresholds at once; coalesce to the highest reaction. Wrong answers reset streak only, not accumulated progress or earned treats. Streaks 5/10/20 trigger small positive text/nod, without scoring bonuses or overlapping treat animations. Reduced motion uses static poses and text. Flow uses quiet resting Uno, no fabricated mastery or rewards for unanswered notes.
+Use correct-count progress B: start sleep/rest; 20% interested/rest with look gesture; 40% wag; 60% wag with nod; 80% beg; 100% catch then happy. Fire each initial milestone once per run, including when small targets cross several thresholds at once; coalesce to the highest reaction. Wrong answers reset streak only, not accumulated progress or earned treats. Streaks 5/10/20 trigger small positive text/nod, without scoring bonuses or overlapping treat animations. Reduced motion uses static poses and text. Flow uses quiet resting Uno, no fabricated mastery or rewards for unanswered notes.
+
+### Ongoing treats (teacher feedback, 2026-09-27)
+
+After the first treat, recalculate the next gap on every accepted answer:
+
+`gap = max(3, ceil(0.20 × max(B, recentPeakStreak)) − ceil(recentWrongs / 4))`
+
+Use the last 20 accepted answers. `recentPeakStreak` is the highest **running streak value recorded** in that window, not the longest sub-streak confined to 20 notes: a continuing 61-note streak contributes 61. `recentWrongs` counts wrong answers in that window. Both influences expire as answers leave it. This lets spacing grow during fluent play and ease during struggle; the next threshold may move in either direction. The minimum repeat gap is three correct notes. The first goal remains B, including Target goals below 10.
+
+Count correct answers since the last treat. Mistakes never reset that progress, remove treats, or award treats themselves. If a mistake lowers the gap below existing progress, wait for another correct answer before rewarding. Award at most once per accepted correct answer and reset only the since-treat count. Repeated render/input callbacks do not grant more treats. Show “N more for a treat” beside Uno (at least one until the next correct answer); preserve the full catch reaction even when another answer arrives during it. Retry starts a fresh schedule. Scores, qualification, adaptation and mastery remain independent of rewards.
+
+This deterministic, performance-responsive schedule is an approved starting point for classroom evaluation, not a claim that its particular constants have been validated educationally. See [Challenge presentation and reward validation](validation/tunotes-challenge-scene.md).
 
 ## 8. Flow timing
 

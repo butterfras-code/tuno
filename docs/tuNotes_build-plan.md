@@ -95,6 +95,8 @@ Exit evidence: fake-clock tests cover exact deadline, last-moment target complet
 
 Stage 4 implementation: the existing Challenge segment opens the shared preset/adaptation setup with validated Timed or Target rules. Explicit Ready begins a three-second count-in; Challenge always uses fixed 250/800 ms feedback. Monotonic timing rejects answers at or after the deadline, clamps delayed completion to the allowance, and completes Target on its final accepted correct answer. Pauses (including visibility loss and Options navigation) preserve remaining time but invalidate ranking; changing activity ends the previous round. Results show the local player, counts, accuracy, best streak, rule summary, exact score/time and qualification. Schema 4 separates Practice/Challenge learning and retains bounded Challenge rule/outcome records, including zero-attempt rounds. Reward benchmarks also match Challenge rules. Intro remains a Practice option. See [Phase 4 validation](validation/tunotes-stage4.md).
 
+Phase 4 presentation/reward follow-up: keep one note-area panel through Ready/countdown/play/pause/results, center wagging Uno for the count-in, and replace the inline diagnostic result text with a score-first solo scoreboard and optional Round details. Extend treats beyond the initial benchmark using the approved recent-20-answer, performance-responsive interval, including mistake relief and a three-correct minimum. See [the reward specification](tuNotes_spec.md#ongoing-treats-teacher-feedback-2026-09-27) and [follow-up validation](validation/tunotes-challenge-scene.md).
+
 ## Stage 5 — 1–8 players, pairs and heats
 
 1. Add player roster, independent presets/adaptation, turns and deterministic two-player heats.

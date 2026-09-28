@@ -1,0 +1,7 @@
+{
+  "browser": "chromium",
+  "evidence": [
+    "hosted: rules validation, Ready/countdown gating, timed score, zero attempts, Target completion/timeout, visibility pause, partial run, retry, navigation, stable note area, centered wagging count-in, compact scoreboard/details, eight treats in a 61-correct run, mistake relief, reduced motion and responsive layout passed",
+    "portable-offline: rules validation, Ready/countdown gating, timed score, zero attempts, Target completion/timeout, visibility pause, partial run, retry, navigation, stable note area, centered wagging count-in, compact scoreboard/details, eight treats in a 61-correct run, mistake relief, reduced motion and responsive layout passed"
+  ]
+}

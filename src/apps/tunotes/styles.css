@@ -186,3 +186,60 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .challenge-settings .setting { flex: 1 1 150px; }
 .challenge-settings input, .challenge-settings select { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font: inherit; }
 #challenge-status { font-variant-numeric: tabular-nums; }
+
+/* Challenge keeps the same note area from Ready through the scoreboard. */
+.practice-companion { justify-self: center; text-align: center; }
+.practice-view.challenge-active { grid-template-columns: minmax(0,1fr); }
+.challenge-active > .practice-companion { display: none; }
+.challenge-scene { --dog-size: clamp(100px,18vw,190px); position: relative; isolation: isolate; min-height: 440px; margin-bottom: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); overflow: hidden; }
+.challenge-backdrop { position: absolute; inset: 80px 12px 40px; z-index: -1; opacity: .12; pointer-events: none; }
+.challenge-backdrop .staff { width: 100%; height: 100%; max-height: none; background: transparent; }
+.challenge-hud { display: flex; justify-content: space-between; gap: 12px; padding: 16px 20px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.challenge-hud p { margin: 0; }
+#challenge-status { font-weight: 700; }
+.challenge-notation { position: absolute; left: 0; right: var(--dog-size); top: 76px; height: 270px; display: grid; align-items: center; }
+.challenge-notation .staff-panel { width: 100%; }
+.challenge-notation .staff { background: transparent; }
+.challenge-notation:focus { outline: none; }
+.challenge-dog { position: absolute; right: 12px; top: 108px; width: var(--dog-size); text-align: center; }
+.challenge-scene .uno { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.treat-progress { font-size: 14px; color: var(--color-muted); margin: 8px 0; }
+.challenge-interlude { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 18px 20px; }
+.challenge-interlude .challenge-cue { font: 700 44px/1.15 var(--font-heading); margin: 0; }
+.challenge-cue:focus, .scoreboard-title:focus { outline: none; }
+.challenge-interlude .muted { margin: 200px 0 14px; font-size: 15px; max-width: 520px; }
+.challenge-interlude .muted:empty { margin-bottom: 0; }
+.challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { top: 112px; left: 50%; right: auto; transform: translateX(-50%); width: 190px; }
+.challenge-scene[data-phase='countdown'] .challenge-cue { font-size: 64px; }
+.challenge-scene[data-phase='paused'] .uno-tail { animation-play-state: paused; }
+.challenge-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.challenge-scoreboard { padding: 24px; }
+.challenge-scoreboard .scoreboard-title { margin: 0; font-size: 22px; color: var(--color-muted); }
+.scoreboard-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin: 4px 0 12px; padding-right: var(--dog-size); }
+.scoreboard-value strong { font: 700 clamp(44px,7vw,76px)/1.2 var(--font-heading); color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.scoreboard-value span { color: var(--color-muted); }
+.scoreboard-metrics { display: flex; flex-wrap: wrap; gap: 16px 30px; margin: 12px 0 20px; padding-right: var(--dog-size); }
+.scoreboard-metrics > div { display: flex; flex-direction: column-reverse; }
+.scoreboard-metrics dt { font-size: 14px; color: var(--color-muted); }
+.scoreboard-metrics dd { font: 700 26px/1.3 var(--font-heading); margin: 0; }
+.scoreboard-message { margin: 16px 0; font-size: 16px; }
+.challenge-scene[data-phase='finished'] .challenge-dog { top: 50px; right: 20px; }
+.round-details { margin-top: 16px; font-size: 14px; color: var(--color-muted); }
+.round-details summary { width: fit-content; }
+.round-details dl { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 8px 20px; margin: 0; }
+.round-details dt { font-weight: 700; }
+.round-details dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .challenge-hud { padding: 16px 12px; font-size: 14px; }
+  .challenge-scoreboard { padding: 20px 14px; }
+  .scoreboard-metrics { gap: 12px; padding-right: 0; }
+  .scoreboard-metrics dd { font-size: 24px; }
+  .challenge-scene[data-phase='finished'] .challenge-dog { right: 8px; top: 78px; }
+  .scoreboard-value { gap: 6px; }
+  .scoreboard-value span { font-size: 16px; }
+  .challenge-notation { right: 80px; }
+  .challenge-scene[data-phase='playing'] .challenge-dog { top: 155px; right: 2px; width: 80px; }
+  .challenge-dog .treat-progress { font-size: 12px; }
+}
+
+.practice-view.previewing > .practice-companion { display: none; }
