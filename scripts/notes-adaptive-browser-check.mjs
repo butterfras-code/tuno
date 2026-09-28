@@ -37,7 +37,7 @@ async function run(page,url,mode) {
   assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);
   assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),true);
   await openData(page);
-  await page.getByLabel('Profile name',{exact:true}).fill('Reader'); await button(page,'Create profile').click();
+  await button(page,'Add profile').click(); await page.getByLabel('Profile name',{exact:true}).fill('Reader'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'adaptive',true); await setPacing(page,'Click/Tap');
   await button(page,'Start Practice').click();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
@@ -107,7 +107,7 @@ async function run(page,url,mode) {
   data=await readData(page);assert.deepEqual(data.profiles[0].results.at(-1).preview,{shown:true,skipped:false,completed:true});
   await button(page,'Edit setup').click();await setToggle(page,'meet-notes',false);
   await page.reload();assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),true);
-  await openData(page);await page.getByLabel('Profile name',{exact:true}).fill('Second');await button(page,'Create profile').click();
+  await openData(page);await button(page,'Add profile').click();await page.getByLabel('Profile name',{exact:true}).fill('Second');await page.getByLabel('Profile name',{exact:true}).press('Enter');
   assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);
   await setToggle(page,'remember-progress',false);await setToggle(page,'meet-notes',true);await page.reload();
   assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false); // Guest choice was memory-only.

@@ -82,7 +82,7 @@ try {
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
-  await openData(page); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
+  await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];
   let n=0;

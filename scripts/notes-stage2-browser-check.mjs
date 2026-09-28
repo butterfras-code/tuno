@@ -42,7 +42,7 @@ try {
   await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
   await page.getByLabel('Custom preset name').fill('Middle C'); await page.getByRole('button',{name:'Save Custom preset',exact:true}).first().click();
   results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, answerable out-of-pool spellings, explicit sharp keyboard answer and focused Enter submission');
-  await expandData(page); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByRole('button',{name:'Create profile',exact:true}).first().click();
+  await expandData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
   for(let i=0;i<20;i++) { await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<19) await page.getByRole('button',{name:'Continue',exact:true}).first().click(); }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
@@ -75,7 +75,7 @@ try {
       if(mode==='quota') Storage.prototype.setItem=function(){throw new Error('quota');};
     },mode);
     const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(host.url+'notes/'); await expandData(p);
-    await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByRole('button',{name:'Create profile',exact:true}).first().click(); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
+    await p.getByRole('button',{name:'Add profile',exact:true}).first().click(); await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByLabel('Profile name',{exact:true}).press('Enter'); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
     await setToggle(p,'meet-notes',false); await p.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();
   }

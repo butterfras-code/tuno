@@ -208,9 +208,15 @@ async function run(page,url,label) {
   await page.setViewportSize({width:1280,height:900});
   await button(page,'Options').click();
   await page.locator('.local-data > summary').click();
+  await button(page,'Add profile').click();
   await page.getByLabel('Profile name').fill('Bass Player');
-  await button(page,'Create profile').click();
-  await page.getByLabel('Default preset').selectOption('bass-lines-and-spaces');
+  await page.getByLabel('Profile name').press('Enter');
+  await page.locator('#profile-preset').click();
+  const profileDialog=page.locator('.preset-dialog:visible');
+  await button(profileDialog,'Clef').click(); await button(profileDialog,'Bass').click();
+  await profileDialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();
+  assert.equal(await page.locator('.profile-save-status').textContent(),'Changes saved.');
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).profiles.find(p=>p.name==='Bass Player').defaultPresetId),'bass-lines-and-spaces');
   await button(page,'Challenge').click();
   assert.match(await page.locator('#preset').textContent(),/Bass — Lines \+ Spaces/);
   await button(page,'Multi Player').click();

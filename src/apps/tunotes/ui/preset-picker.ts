@@ -7,9 +7,9 @@ export const titleCase = (text: string) => text[0]!.toUpperCase() + text.slice(1
 export function control(text: string, action: () => void) {
   const node = el('button','control',text); node.type = 'button'; node.addEventListener('click',action); return node;
 }
-export function presetPicker(customs: () => readonly PresetSource[], select: (id: string) => void, idPrefix = '') {
+export function presetPicker(customs: () => readonly PresetSource[], select: (id: string) => void, idPrefix = '', allowCreateCustom = true, labelText = 'Preset') {
   const node = el('div','preset-picker');
-  const label = el('span','setting-label','Preset'); label.id = `${idPrefix}preset-label`;
+  const label = el('span','setting-label',labelText); label.id = `${idPrefix}preset-label`;
   const picker = control('',() => { step = 0; render(); dialog.showModal(); position(); });
   picker.id = `${idPrefix}preset`; picker.setAttribute('aria-haspopup','dialog'); picker.setAttribute('aria-labelledby',`${idPrefix}preset-label ${idPrefix}preset`);
   const dialog = el('dialog','preset-dialog'); dialog.setAttribute('aria-labelledby',`${idPrefix}preset-step-title`);
@@ -29,7 +29,8 @@ export function presetPicker(customs: () => readonly PresetSource[], select: (id
     if (step === 0) {
       const categories = el('div','picker-categories');
       for (const value of ['clef','instrument'] as const) categories.append(control(titleCase(value),() => { category = value; step = 1; render(); }));
-      choices.append(categories,control('＋ Create custom',() => choose('custom')));
+      choices.append(categories);
+      if (allowCreateCustom) choices.append(control('＋ Create custom',() => choose('custom')));
       if (customs().length) {
         choices.append(el('h4','','Saved custom presets'));
         for (const p of customs()) choices.append(control(p.name,() => choose(p.id)));
