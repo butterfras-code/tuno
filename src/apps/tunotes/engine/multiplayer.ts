@@ -1,14 +1,14 @@
 import type { ChallengeRules } from './challenge.ts';
 import { Challenge } from './challenge.ts';
 
-export type Format = 'turns' | 'pairs';
+export type Format = 'turns' | 'pairs' | 'head-to-head';
 export interface PlayerEntry { id: string; name: string }
 export interface Standing { player: PlayerEntry; session: Challenge; rank?: number }
 
 /** Roster order is the only scheduling input. No participant is replayed in an odd heat. */
 export function schedule<T>(roster: readonly T[], format: Format): T[][] {
   if (roster.length < 1 || roster.length > 8) throw new Error('Choose 1–8 players.');
-  const width = format === 'pairs' ? 2 : 1;
+  const width = format === 'turns' ? 1 : 2;
   const heats: T[][] = [];
   for (let i = 0; i < roster.length; i += width) heats.push(roster.slice(i, i + width));
   return heats;

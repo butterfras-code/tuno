@@ -53,7 +53,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const playerControls = el('div','control-row multiplayer-player-controls');
   editor.append(editorHeading,playerFields,presetUI.node,playerControls);
   const rules = challengeSetup('Round rules'); rules.node.hidden = false;
-  const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
+  const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
   let selectedFormat: Format = 'turns'; format.update([selectedFormat]);
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
@@ -62,13 +62,14 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   setup.append(modeGroup,playersHeading,roster,editor,formatGroup,pairAdvice,rules.node,setupError,start);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
+  const roundHeader = el('div','multiplayer-round-header');
   const roundTitle = el('h2'); roundTitle.tabIndex = -1;
   const roundSummary = el('p','muted');
   const roundActions = el('div','control-row');
   const ready = button('Ready',() => { const startAt = performance.now(); active.forEach(l => l.session.ready(startAt)); ready.hidden = true; resetInput(); renderRound(); }); ready.classList.add('control--primary');
   const pause = button('Pause',() => {
     if (active.some(l => l.session.state === 'paused')) {
-      if (resizeRecovery || selectedFormat === 'pairs' && !pairFits()) return;
+      if (resizeRecovery || selectedFormat !== 'turns' && !pairFits()) return;
       active.forEach(l => l.session.resume());
     } else active.forEach(l => l.session.pause());
     resetInput(); renderRound();
@@ -76,12 +77,13 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const end = button('End round',() => { finishRound(); });
   roundActions.append(ready,pause,end);
   const recovery = el('div','multiplayer-recovery'); recovery.hidden = true;
-  const recoveryText = el('p','feedback','This screen is too small for Split Screen. Restore the larger view to resume, or restart as turns.');
+  const recoveryText = el('p','feedback');
   const restore = button('Resume Split Screen',() => { if (!pairFits()) return; resizeRecovery = false; active.forEach(l => l.session.resume()); resetInput(); renderRound(); });
   const restart = button('Restart as turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); resizeRecovery = false; startRound(); });
   recovery.append(recoveryText,restore,restart);
   const panels = el('div','multiplayer-panels');
-  round.append(roundTitle,roundSummary,roundActions,recovery,panels);
+  roundHeader.append(roundTitle,roundSummary,roundActions,recovery);
+  round.append(roundHeader,panels);
 
   const result = el('section','multiplayer-result'); result.hidden = true;
   const resultTitle = el('h2','','Round results'); resultTitle.tabIndex = -1;
@@ -111,12 +113,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function profilePreset(id: string): Preset { return presets.find(p => p.id === id) ?? normalizePreset(store.data.customPresets.find(p => p.id === id)!); }
   function pairFits() {
-    const width = Math.min(window.innerWidth,node.getBoundingClientRect().width || window.innerWidth);
+    const width = selectedFormat === 'head-to-head' ? window.innerWidth : Math.min(window.innerWidth,node.getBoundingClientRect().width || window.innerWidth);
     return canPair(width,window.innerHeight);
   }
   function showPairAdvice() {
-    pairAdvice.textContent = selectedFormat === 'pairs' ? pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'Split Screen needs a larger screen (at least 960 × 600). Choose Turns here.' : 'Players take one turn each in roster order.';
-    start.disabled = selectedFormat === 'pairs' && !pairFits();
+    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : pairFits() ? selectedFormat === 'pairs' ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'Lay the screen flat. Players face opposite short edges. Larger groups play in heats; an odd player takes a solo turn.' : `${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'} needs a larger screen (at least 960 × 600). Choose Turns here.`;
+    start.disabled = selectedFormat !== 'turns' && !pairFits();
   }
   function focusSelectedPlayer() { roster.querySelector<HTMLElement>('.multiplayer-player-tab[aria-pressed="true"]')?.focus(); }
   function focusPlayerName() { const name = playerFields.querySelector<HTMLInputElement>('input'); name?.focus(); name?.select(); }
@@ -190,7 +192,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (!commitEditor()) { setupError.textContent = 'Fix the selected preset before starting.'; return; }
     const names = players.map(p => p.name.trim());
     if (names.some(n => !n)) { setupError.textContent = 'Give each player a name.'; return; }
-    if (selectedFormat === 'pairs' && !pairFits()) { setupError.textContent = 'Choose Turns or use a larger screen for Split Screen.'; showPairAdvice(); return; }
+    if (selectedFormat !== 'turns' && !pairFits()) { setupError.textContent = `Choose Turns or use a larger screen for ${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'}.`; showPairAdvice(); return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
     const nextRules = rules.read(); if (!nextRules) return;
@@ -198,6 +200,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     rulesValue = nextRules; completed = new Map(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
+    round.classList.toggle('multiplayer-round--head-to-head',selectedFormat === 'head-to-head');
+    restore.textContent = `Resume ${selectedFormat === 'head-to-head' ? 'Head to Head' : 'Split Screen'}`;
     setup.hidden = true; result.hidden = true; round.hidden = false;
     prepareHeat();
   }
@@ -228,9 +232,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function prepareHeat() {
     active.forEach(l => l.dog.dispose());
     active = heats[heatIndex]!.map(makeLane);
-    panels.replaceChildren(...active.map(l => l.node));
+    panels.replaceChildren(...active.map(l => { const seat = el('div','multiplayer-seat'); seat.append(l.node); return seat; }));
     resizeRecovery = false; resetInput();
-    roundTitle.textContent = selectedFormat === 'pairs' ? `Heat ${heatIndex+1} of ${heats.length}` : `Turn ${heatIndex+1} of ${heats.length}`;
+    roundTitle.textContent = selectedFormat !== 'turns' ? `Heat ${heatIndex+1} of ${heats.length}` : `Turn ${heatIndex+1} of ${heats.length}`;
     roundSummary.textContent = describeRules(rulesValue!);
     ready.hidden = false; pause.hidden = true; recovery.hidden = true;
     renderRound(); roundTitle.focus({preventScroll:true});
@@ -281,6 +285,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     pause.hidden = active.every(l => l.session.phase === 'ready' || l.session.state === 'finished');
     pause.textContent = paused ? 'Resume' : 'Pause';
     recovery.hidden = !resizeRecovery; restore.disabled = !pairFits();
+    recoveryText.textContent = `This screen is too small for ${selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'}. Restore the larger view to resume, or restart as turns.`;
     ready.hidden = !active.every(l => l.session.phase === 'ready' && l.session.state === 'running');
     for (const lane of active) {
       const s = lane.session;
@@ -353,7 +358,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const visibility = () => { if (document.hidden) { active.forEach(l => l.session.pause()); resetInput(); store.flush(); renderRound(); } };
   const resize = () => {
     showPairAdvice();
-    if (!round.hidden && selectedFormat === 'pairs' && active.length === 2 && active.some(l => l.session.state !== 'finished') && !pairFits()) {
+    if (!round.hidden && selectedFormat !== 'turns' && active.some(l => l.session.state !== 'finished') && !pairFits()) {
       active.forEach(l => l.session.pause()); resizeRecovery = true; resetInput(); renderRound();
     } else if (resizeRecovery) renderRound();
   };
