@@ -89,20 +89,29 @@ async function run(page,url,label) {
     await button(page,'Resume').waitFor({state:'visible'});
     await button(page,'Resume').click();
   }
-  await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
-  await head.locator('.multiplayer-recovery').waitFor({state:'visible'});
-  assert.match(await head.locator('.multiplayer-recovery').innerText(),/Screen orientation changed/);
-  await button(head.locator('.multiplayer-recovery'),'Resume Head to Head').click();
   await page.setViewportSize({width:600,height:960});
-  await head.locator('.multiplayer-recovery').waitFor({state:'visible'});
-  assert.match(await head.locator('.multiplayer-recovery').innerText(),/Turn the device to landscape/);
+  await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
+  await page.clock.runFor(250);
+  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
+  const portraitSeats=await head.locator('.multiplayer-seat').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height};}));
+  assert.ok(Math.abs(portraitSeats[0].y+portraitSeats[0].height-portraitSeats[1].y)<3);
+  for(let i=0;i<2;i++) {
+    const panel=await headPanels.nth(i).boundingBox();
+    assert.ok(Math.abs(panel.x-portraitSeats[i].x)<3 && Math.abs(panel.y-portraitSeats[i].y)<3);
+    assert.ok(Math.abs(panel.width-portraitSeats[i].width)<3 && Math.abs(panel.height-portraitSeats[i].height)<3);
+    assert.equal(await headPanels.nth(i).evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await headPanels.nth(i).locator('.answer-natural').first().click();
+    assert.match(await headPanels.nth(i).locator('.muted').first().textContent(),/2 attempts/);
+  }
+  await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head-portrait.png`});
   await page.setViewportSize({width:1280,height:800});
-  await button(head.locator('.multiplayer-recovery'),'Resume Head to Head').click();
+  await page.clock.runFor(250);
+  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head.png`});
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Head to Head'}).click();
-  assert.equal(await button(page,'Start round').isDisabled(),true);
+  assert.equal(await button(page,'Start round').isDisabled(),false);
   if(await button(page,'Enter fullscreen').isVisible()) {
     await button(page,'Enter fullscreen').click();
     await button(page,'Exit fullscreen').waitFor({state:'visible'});
@@ -122,7 +131,23 @@ async function run(page,url,label) {
   assert.equal(await page.locator('.multiplayer-panel').count(),1);
   await readyAndExpire(page);
   assert.equal(await page.locator('.multiplayer-result-row').count(),3);
-  evidence.push(`${label}: opposite-facing head-to-head panels fill equal halves, accept independent answers, and run an odd solo heat at the minimum screen size`);
+  await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:600,height:960});await start(page,'head-to-head');
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    assert.equal(await panel.evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await button(page,'End round').click();
+  await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:390,height:844});await start(page,'head-to-head');
+  assert.equal(await page.locator('.multiplayer-panel').count(),2);
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await button(page,'End round').click();
+  evidence.push(`${label}: head-to-head panels face the short ends in either viewport orientation, fit tablet answers, remain available on small phones, and run an odd solo heat`);
   await page.setViewportSize({width:1280,height:900});
 
   await open(page,url);await addPlayers(page,3);
