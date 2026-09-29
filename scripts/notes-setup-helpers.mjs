@@ -11,7 +11,28 @@ export async function choosePreset(page,id) {
   else await dialog.getByRole('button',{name:preset.clef[0].toUpperCase()+preset.clef.slice(1),exact:true}).click();
   await dialog.locator(`[data-preset-id="${id}"]`).click();
 }
+export async function customTab(page,name) {
+  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:'Adjust range',exact:true}).click();
+  await page.getByRole('tab',{name,exact:true}).click();
+}
+export async function endpointTab(page,label) {
+  await customTab(page,'Range');
+  const selector = page.getByRole('button',{name:`Edit ${label.toLowerCase()}`,exact:true});
+  if (await selector.isVisible()) await selector.click();
+}
+export async function setKey(page,value) {
+  await customTab(page,'Notes');
+  await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'On',exact:true}).click();
+  await page.getByLabel('Major key',{exact:true}).selectOption(value);
+}
+export async function useRange(page) { await page.getByRole('button',{name:'Use range',exact:true}).click(); }
+export async function saveCustom(page,name) {
+  await page.getByRole('button',{name:'Save as preset…',exact:true}).click();
+  await page.getByLabel('Custom preset name',{exact:true}).fill(name);
+  await page.getByRole('button',{name:'Save preset',exact:true}).click();
+}
 export async function setEndpoint(page,label,pitch) {
+  await endpointTab(page,label);
   const [,letter,accidental,octave] = /^([A-G])([b#]?)([0-8])$/.exec(pitch);
   const value = Number(octave)*7+'CDEFGAB'.indexOf(letter);
   const slider = page.getByRole('slider',{name:label,exact:true});
@@ -25,8 +46,10 @@ export async function setEndpoint(page,label,pitch) {
   await page.getByRole('group',{name:`${label} accidental`,exact:true}).getByRole('button',{name:accidental === '#' ? 'Sharp' : accidental === 'b' ? 'Flat' : 'Natural',exact:true}).click();
 }
 export async function setModifiers(page,values) {
-  for (const [id,label] of [['key','Key'],['flat','♭ Flat'],['natural','♮ Natural'],['sharp','♯ Sharp']]) {
-    const button = page.getByRole('group',{name:'Modifiers',exact:true}).getByRole('button',{name:label,exact:true});
+  await customTab(page,'Notes');
+  await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:values.includes('key') ? 'On' : 'Off',exact:true}).click();
+  for (const [id,label] of [['flat','♭ Flat'],['natural','♮ Natural'],['sharp','♯ Sharp']]) {
+    const button = page.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:label,exact:true});
     if ((await button.getAttribute('aria-pressed') === 'true') !== values.includes(id)) await button.click();
   }
 }

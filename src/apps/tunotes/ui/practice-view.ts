@@ -118,9 +118,7 @@ export function practiceView() {
   const practicePacing = pacingSetting();
   settings.append(toggles, practicePacing);
   const setupHeading = el('h2','','Choose your notes');
-  const adjustRange = button('Adjust range', () => presetsUI.editCurrent());
-  adjustRange.classList.add('adjust-range');
-  setup.append(setupHeading, presetsUI.node, adjustRange, settings, rulesUI.node);
+  setup.append(setupHeading, presetsUI.node, settings, rulesUI.node);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
@@ -329,7 +327,7 @@ export function practiceView() {
     activity = next; node.dataset.activity = next; showSetup();
     setupHeading.textContent = next === 'practice' ? 'Choose your notes' : 'Set your challenge';
     if (next === 'challenge') setup.insertBefore(toggles, rulesUI.node); else settings.append(toggles, practicePacing);
-    settings.hidden = next === 'challenge'; adjustRange.hidden = next === 'challenge';
+    settings.hidden = next === 'challenge';
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practicePacing.hidden = next === 'challenge'; previewToggle.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';

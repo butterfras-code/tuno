@@ -1,5 +1,5 @@
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
-import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
+import { choosePreset, setEndpoint, setModifiers, setKey, useRange } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -81,7 +81,7 @@ try {
   results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse slide from out-of-pool natural to flat; outside release and pause cancel');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await choosePreset(page,'custom');
-  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
+  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await setKey(page,'C'); await setModifiers(page,['key','flat','natural','sharp']); await useRange(page);
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];

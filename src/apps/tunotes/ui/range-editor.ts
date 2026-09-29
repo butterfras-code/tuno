@@ -18,8 +18,9 @@ export function rangeEditor(label: string, initial: string, changed: () => void,
   const node = el('div','range-endpoint');
   const heading = el('h4','',label);
   const readout = el('output'); readout.setAttribute('aria-live','polite');
-  const clefButton = control('',() => changeClef(clefs[(clefs.indexOf(clef)+1)%clefs.length]!));
-  clefButton.classList.add('range-clef'); clefButton.setAttribute('aria-label',`${label} clef`);
+  const clefSelect = el('select','control endpoint-clef'); clefSelect.setAttribute('aria-label',`${label} clef`);
+  for (const value of clefs) { const option = el('option','',`${titleCase(value)} clef`); option.value = value; clefSelect.append(option); }
+  clefSelect.addEventListener('change',() => { changeClef(clefSelect.value as Clef); clefSelect.value = clef; });
   const stage = el('div','range-staff-stage');
   const staff = el('div','range-staff'); staff.tabIndex = 0; staff.setAttribute('role','slider'); staff.setAttribute('aria-label',label); staff.setAttribute('aria-orientation','vertical'); staff.setAttribute('aria-valuemin','0'); staff.setAttribute('aria-valuemax','62');
   const accidental = segments(`${label} accidental`,[['-1','♭'],['0','♮'],['1','♯']] as const,value => { pitch = {...pitch,accidental:Number(value) as Accidental}; update(); changed(); });
@@ -42,7 +43,7 @@ export function rangeEditor(label: string, initial: string, changed: () => void,
     const matrix = svg.getScreenCTM(); if (!matrix) return;
     const point = new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
     // Extreme ledger ranges can letterbox the glyph beyond the normal touch overlay.
-    if (point.x >= 24 && point.x <= 105) { event.preventDefault(); clefButton.click(); return; }
+    if (point.x >= 24 && point.x <= 105) { event.preventDefault(); clefSelect.focus(); return; }
     staff.focus(); event.preventDefault();
     if (!(event.target as Element).closest('.notehead')) {
       try { const note = pitchAt(Math.round((140-point.y)/10),clef); setPosition(diatonic(note)); } catch { /* outside supported octaves */ }
@@ -58,10 +59,10 @@ export function rangeEditor(label: string, initial: string, changed: () => void,
     const position = staffPosition(pitch,clef), y = 140-position*10;
     const top = Math.min(0,y-50), bottom = Math.max(200,y+50); svg.setAttribute('viewBox',`0 ${top} 360 ${bottom-top}`);
     staff.replaceChildren(svg); staff.setAttribute('aria-valuenow',String(diatonic(pitch))); staff.setAttribute('aria-valuetext',`${pitchLabel(pitch)}, ${clef} clef`);
-    readout.value = pitchLabel(pitch); clefButton.title = `${titleCase(clef)} clef. Click to change.`; clefButton.setAttribute('aria-description',`${titleCase(clef)}. Activate to cycle to ${titleCase(clefs[(clefs.indexOf(clef)+1)%clefs.length]!)}.`); accidental.update([String(pitch.accidental) as '-1'|'0'|'1']);
+    readout.value = pitchLabel(pitch); clefSelect.value = clef; accidental.update([String(pitch.accidental) as '-1'|'0'|'1']);
     accidental.buttons.forEach((b,i) => { b.disabled = !supportedAnswer({...pitch,accidental:(i-1) as Accidental}); });
   }
-  stage.append(staff,clefButton);
-  node.append(heading,readout,stage,accidental.node); update();
+  stage.append(staff);
+  node.append(heading,readout,clefSelect,stage,accidental.node); update();
   return {node,setLimits(low: number, high: number) { staff.setAttribute('aria-valuemin',String(low)); staff.setAttribute('aria-valuemax',String(high)); },get pitch() { return pitch; },get clef() { return clef; },set(value: string, nextClef: Clef) { pitch = parsePitch(value.replace('♯','#').replace('♭','b')); clef = nextClef; update(); },setClef(value: Clef) { clef = value; update(); }};
 }

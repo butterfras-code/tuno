@@ -1,5 +1,5 @@
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
-import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
+import { choosePreset, setEndpoint, setModifiers, setKey, useRange, customTab, saveCustom } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -15,7 +15,7 @@ const expandData = openData;
 async function custom(page, {clef='treble',low='F4',high='F#4',key='G',policy='key-only'} = {}) {
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note',low); await setEndpoint(page,'Highest note',high);
-  await page.getByLabel('Major key',{exact:true}).selectOption(key);
+  await setKey(page,key);
   await setModifiers(page,['key']);
 }
 try {
@@ -23,7 +23,7 @@ try {
   const context = await browser.newContext(); const page = await context.newPage(); page.on('pageerror',e => errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
   await custom(page); assert.match(await page.locator('#preset-summary').textContent(),/F♯4/);
-  await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
+  await useRange(page); await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
   assert.equal(await page.locator('.key-accidental:visible').count(),1); assert.equal(await page.locator('.note-accidental:visible').count(),0);
   assert.ok(!(await page.locator('.staff').getAttribute('aria-label')).includes('F♯'));
   assert.equal(await page.locator('.answer').count(),18);
@@ -34,13 +34,13 @@ try {
   await page.getByRole('button',{name:'Continue',exact:true}).first().click();
   assert.equal(await page.getByRole('button',{name:'F♭',exact:true}).count(),0); assert.match(await page.locator('#practice-counts').textContent(),/2 attempts/);
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
-  await page.getByLabel('Major key',{exact:true}).selectOption('F'); assert.match(await page.locator('#preset-summary').textContent(),/F4–F4/);
+  await setKey(page,'F'); assert.match(await page.locator('#preset-summary').textContent(),/F4–F4/);
   await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
-  assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isEnabled(),true);
-  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
-  assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/empty pool/);
-  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
-  await page.getByLabel('Custom preset name').fill('Middle C'); await page.getByRole('button',{name:'Save Custom preset',exact:true}).first().click();
+  assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isEnabled(),true);
+  await customTab(page,'Notes'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/No notes match/);
+  await customTab(page,'Notes'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
+  await saveCustom(page,'Middle C');
   results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, answerable out-of-pool spellings, explicit sharp keyboard answer and focused Enter submission');
   await expandData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();

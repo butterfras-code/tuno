@@ -65,6 +65,7 @@ try {
       await page.getByRole('button',{name:'Adjust range',exact:true}).click();
       assert.equal(await page.locator('#preset-summary').textContent(),rangeSummary);
       assert.equal(await page.getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);
+      await page.getByRole('button',{name:'Save as preset…',exact:true}).click();
       await page.getByLabel('Custom preset name',{exact:true}).fill('Phone range');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     }
