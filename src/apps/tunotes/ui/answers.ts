@@ -5,7 +5,7 @@ import type { Accidental, AnswerSpelling, Letter } from '../domain/notation.ts';
 import type { Preset } from '../domain/presets.ts';
 import type { PromptToken } from '../engine/practice.ts';
 
-/** One spelling model for direct targets, pointer slides and keyboard answers. */
+/** One spelling model for tap targets and keyboard answers. */
 export function answerControls(accept: (answer: AnswerSpelling, token: PromptToken) => void, allowConcurrentPointers = false) {
   const node = el('div', 'answer-input');
   const rows = el('div', 'answer-rows');
@@ -18,7 +18,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
   });
   const scroll = el('div', 'answer-scroll');
   const grid = el('div', 'answers'); grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Answer spelling');
-  const preview = el('p', 'answer-preview', 'Tap a spelling, or slide to it and release.');
+  const preview = el('p', 'answer-preview', 'Tap a note to answer.');
   const buttons: HTMLButtonElement[] = [];
   const values = new Map<HTMLButtonElement, AnswerSpelling>();
   let available = new Set<string>();
@@ -32,7 +32,6 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
   const highlight = (b?: HTMLButtonElement) => {
     pending?.classList.remove('answer-pending'); pending = b;
     pending?.classList.add('answer-pending');
-    preview.textContent = gesture ? b ? `Release to answer ${spelling(values.get(b)!)}.` : 'Release here to cancel.' : 'Tap a spelling, or slide to it and release.';
   };
   const reset = () => {
     const old = gesture; gesture = undefined; highlight();
@@ -62,11 +61,14 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
         gesture = { id: event.pointerId, origin: b, token };
         b.setPointerCapture(event.pointerId); highlight(enabled(b) ? b : undefined);
       });
-      b.addEventListener('pointermove', event => { if (gesture?.id === event.pointerId) highlight(at(event)); });
+      // Leaving the pressed target cancels the tap; dragging cannot select another note.
+      b.addEventListener('pointermove', event => {
+        if (gesture?.id === event.pointerId && at(event) !== gesture.origin) reset();
+      });
       b.addEventListener('pointerup', event => {
         if (gesture?.id !== event.pointerId) return;
-        const captured = gesture.token, target = at(event); reset();
-        if (target) submit(values.get(target)!, captured);
+        const captured = gesture.token, origin = gesture.origin, target = at(event); reset();
+        if (target === origin) submit(values.get(origin)!, captured);
       });
       b.addEventListener('pointercancel', event => { if (gesture?.id === event.pointerId) reset(); });
       b.addEventListener('lostpointercapture', event => { if (gesture?.id === event.pointerId) reset(); });
