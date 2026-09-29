@@ -15,7 +15,7 @@ Run `npm run verify` from the repository root. It type-checks, runs unit tests, 
 | `dist/release.json` | Release/build identifiers, source revision/dirty flag, and SHA-256 checksums |
 | `dist/validation/` | Machine-readable test results and measured timing/accuracy data |
 
-Each app’s hosted and portable formats show its own matching build identifier and the common repository release version in their footer. The hosted download filename includes the build identifier so users can distinguish replacement copies. Installation is offered only after the browser supplies an install prompt; other browsers receive concise menu guidance. A simulated prompt test does not establish native installation support.
+Each app’s hosted and portable formats show its own matching build identifier and the common repository release version in its installation controls (under Options in tuNotes). The hosted download filename includes the build identifier so users can distinguish replacement copies. Installation is offered only after the browser supplies an install prompt; other browsers receive concise menu guidance. A simulated prompt test does not establish native installation support.
 
 `npm run build` replaces `dist/`, including its previous validation reports. Stop the development server before a release build. Save the candidate's reports with its artifacts before building again. `npm run release:check` rechecks an existing build without replacing it. The source revision is captured at build time; use a clean committed tree for a distributable candidate, or retain the explicit dirty flag when reviewing work in progress.
 

@@ -173,6 +173,8 @@ try {
     await ready(tuner); await ready(reopened);
     assert.equal(await tuner.locator('h1').textContent(), 'tUno');
     assert.equal(await reopened.locator('h1').textContent(), 'tuNotes');
+    await reopened.getByRole('button', { name: 'Install · About', exact: true }).click();
+    assert.equal(await reopened.getByRole('heading', { name: 'Install and offline access' }).evaluate(node => node === document.activeElement), true);
     const downloadEvent = reopened.waitForEvent('download');
     await reopened.getByRole('link', { name: 'Download offline HTML' }).click();
     const download = await downloadEvent;

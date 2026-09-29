@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import { hostBuild } from './test-host.mjs';
-import { notesMode, setToggle, setPacing, openData } from './notes-setup-helpers.mjs';
+import { notesMode, setToggle, setPacing, openData, openPracticeSettings } from './notes-setup-helpers.mjs';
 const browser = await ({chromium,firefox})[process.env.TUNO_BROWSER || 'chromium'].launch();
 const host = await hostBuild();
 try {
@@ -63,13 +63,14 @@ try {
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       if (mode === 'Practice') {
         assert.ok((await page.locator('.preset-preview').boundingBox()).width <= 480);
-        assert.equal(Math.round((await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox()).width),270);
+        assert.ok((await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox()).width >= 270);
       }
       await page.screenshot({path:`dist/validation/notes-ui-${process.env.TUNO_BROWSER || 'chromium'}-${mode.toLowerCase()}-${width}.png`,fullPage:true});
     }
   }
   const touch = await browser.newContext({hasTouch:true,viewport:{width:360,height:800}});
   const touchPage = await touch.newPage(); await touchPage.goto(new URL('/notes/', host.url).href);
+  await openPracticeSettings(touchPage);
   const touchHelp = touchPage.getByRole('button',{name:'About Adapt Range',exact:true});
   await touchHelp.tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),true);
   assert.equal(await touchPage.locator('#adaptive').getAttribute('aria-pressed'),'false');

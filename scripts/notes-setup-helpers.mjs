@@ -39,6 +39,7 @@ export async function openData(page) {
 }
 export async function setToggle(page, id, selected) {
   if (id === 'remember-progress') await openData(page); else await notesMode(page,'Practice');
+  if (id !== 'remember-progress') await openPracticeSettings(page);
   const control = page.locator(`#${id}`);
   if ((await control.getAttribute('aria-pressed') === 'true') !== selected) await control.click();
 }
@@ -46,4 +47,9 @@ export async function setPacing(page, label) {
   await notesMode(page,'Options');
   await page.getByRole('group',{name:'Continue After',exact:true}).getByRole('button',{name:label,exact:true}).click();
   await notesMode(page,'Practice');
+}
+
+export async function openPracticeSettings(page) {
+  const settings = page.locator('.practice-settings');
+  if (await settings.isVisible() && !await settings.evaluate(node => node.open)) await settings.locator('summary').click();
 }

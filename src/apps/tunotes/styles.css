@@ -354,3 +354,102 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .multiplayer-round--head-to-head .multiplayer-note .staff { height: 125px; max-height: 125px; }
 }
 @media (max-width: 700px) { .multiplayer-panels { grid-template-columns: minmax(0,1fr); } }
+
+/* Practice prototype: one activity surface across setup, introduction and play. */
+.notes-home { padding-block: 24px 12px; }
+.app-header { margin-bottom: 20px; }
+.notes-home > footer { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-top: 12px; font-size: 12px; color: var(--color-muted); }
+.notes-home > footer p { margin: 0; }
+.footer-options { flex-shrink: 0; min-height: 44px; padding: 8px 4px; border: 0; background: none; color: var(--color-ink); text-decoration: underline; font: inherit; cursor: pointer; }
+.notes-installation { margin-top: 28px; border-top: 1px solid var(--color-line); }
+.notes-installation .row { display: flex; flex-wrap: wrap; gap: 8px; }
+#notes-practice { height: clamp(520px, calc(100dvh - 180px), 680px); padding: 28px; overflow: auto; scrollbar-gutter: stable; border-radius: 28px; background: var(--color-surface); }
+#notes-practice .practice-view { min-height: 100%; margin: 0; align-items: start; grid-template-columns: minmax(0,1fr) 170px; gap: 24px; }
+#notes-practice .practice-companion { align-self: center; }
+#notes-practice .practice-companion .uno { width: 170px; height: 190px; }
+#notes-practice .practice-stage h2 { margin: 0 0 16px; font-size: 24px; }
+#notes-practice .practice-stage h2:focus:not(:focus-visible) { outline: none; }
+#notes-practice .practice-stage > .muted:empty { display: none; }
+#notes-practice .preset-preview { margin-top: 16px; max-width: 400px; gap: 20px; }
+#notes-practice .preset-preview .endpoint-staff { max-height: 100px; }
+#notes-practice .preset-preview h4 { margin: 0; }
+#notes-practice .preset-preview output { font-size: 20px; }
+#notes-practice #preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
+.practice-settings { margin-top: 16px; border-block: 1px solid var(--color-line); }
+.practice-settings > summary { display: list-item; font-size: 16px; }
+.practice-settings > summary .muted { display: block; margin-left: 18px; font: 13px/1.5 var(--font-body); }
+.practice-settings .practice-toggles { margin: 8px 0; }
+.practice-settings .pacing-setting { margin: 12px 0 16px; }
+.practice-settings .setting-label { font-size: 14px; }
+#notes-practice .practice-setup > .control--primary { margin-top: 20px; }
+#notes-practice .practice-play h2 { font-size: 20px; margin-bottom: 4px; }
+#notes-practice .counts { font-size: 14px; color: var(--color-muted); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+#notes-practice .staff-panel { display: grid; align-items: center; height: clamp(160px, 27dvh, 240px); }
+#notes-practice .staff { max-height: 100%; }
+#notes-practice .feedback { min-height: 2.5em; margin: 4px 0; font-size: 15px; }
+#notes-practice #expansion-announcement { min-height: 0; margin: 4px 0; font-size: 14px; }
+.practice-help { margin: 0 0 8px; font-size: 14px; }
+.practice-help summary { width: fit-content; min-height: 44px; padding: 10px 0; color: var(--color-muted); }
+.practice-help p { margin: 0 0 12px; }
+#notes-practice .answer-preview { font-size: 12px; }
+#notes-practice .practice-results { padding-top: 32px; }
+#notes-practice #result-summary { font-size: 22px; line-height: 1.6; }
+#notes-practice #recommendation { color: var(--color-teal); }
+.practice-result-details { margin-top: 24px; font-size: 14px; color: var(--color-muted); }
+#notes-practice .practice-view.previewing { grid-template-columns: minmax(0,1fr); }
+#notes-practice .preview-scene { margin-top: 20px; }
+@media (min-width: 761px) and (max-height: 850px) {
+  #notes-practice { padding-block: 20px; }
+  #notes-practice .staff-panel { height: 160px; }
+  #notes-practice .practice-play .answer-rows { gap: 6px; }
+  #notes-practice .practice-play .answers { grid-template-rows: 44px 48px 44px; gap: 4px 0; }
+  #notes-practice .practice-play .answer-key-hints { grid-template-rows: 44px 48px 44px; gap: 4px; }
+  #notes-practice .practice-play .answer { min-height: 44px; }
+}
+@media (max-width: 1000px) and (min-width: 761px) {
+  #notes-practice .practice-view { grid-template-columns: minmax(0,1fr) 120px; gap: 16px; }
+  #notes-practice .practice-companion .uno { width: 120px; height: 140px; }
+}
+@media (max-width: 760px) {
+  .notes-home { padding: 12px 8px; }
+  .app-header { gap: 10px; margin-bottom: 12px; }
+  .brand { width: 100%; justify-content: space-between; gap: 8px; }
+  .tagline { font-size: 12px; }
+  .wordmark { font-size: 28px; }
+  #notes-practice { height: auto; min-height: calc(100svh - 190px); padding: 16px 12px; border-radius: 20px; overflow: visible; scrollbar-gutter: auto; }
+  #notes-practice .practice-view { position: relative; display: block; min-height: 0; }
+  #notes-practice .practice-companion { position: absolute; top: 0; right: 0; width: 72px; }
+  #notes-practice .practice-companion .uno { width: 72px; height: 72px; }
+  #notes-practice .practice-stage h2 { padding-right: 76px; font-size: 21px; min-height: 56px; margin-bottom: 12px; }
+  #notes-practice .practice-play h2 { font-size: 18px; min-height: 44px; margin-bottom: 6px; }
+  #notes-practice .practice-companion .treat-progress { font-size: 10px; margin: 0; }
+  #notes-practice .preset-preview { margin-top: 16px; }
+  #notes-practice .practice-setup > .control--primary { width: 100%; }
+  #notes-practice .staff-panel { height: clamp(140px, 20svh, 220px); }
+  #notes-practice .feedback { min-height: 2em; }
+  #notes-practice .counts { font-size: 12px; padding-right: 76px; }
+  #notes-practice .practice-results { padding-top: 0; }
+  #notes-practice #result-summary { font-size: 20px; }
+  #notes-practice .preview-scene { grid-template-columns: minmax(0,1fr) 72px; gap: 0; }
+  #notes-practice .preview-staff { height: 240px; }
+  .notes-home > footer { flex-wrap: wrap; gap: 0 12px; }
+}
+/* A phone keyboard has one column per letter, with accidentals above/below.
+   Repeated octave endpoints are redundant when answering a note name. */
+@media (max-width: 600px) {
+  #notes-practice .answer-rows { display: block; }
+  #notes-practice .answer-key-hints { display: none; }
+  #notes-practice .answers { min-width: 0; grid-template-columns: repeat(7,minmax(0,1fr)); grid-template-rows: repeat(3,44px); gap: 4px 2px; }
+  #notes-practice .answer { min-width: 0; min-height: 44px; padding: 8px 0; font-size: 15px; }
+  #notes-practice .answer[data-repeat='true'] { display: none; }
+  #notes-practice .answer[data-letter='C'] { grid-column: 1 !important; }
+  #notes-practice .answer[data-letter='D'] { grid-column: 2 !important; }
+  #notes-practice .answer[data-letter='E'] { grid-column: 3 !important; }
+  #notes-practice .answer[data-letter='F'] { grid-column: 4 !important; }
+  #notes-practice .answer[data-letter='G'] { grid-column: 5 !important; }
+  #notes-practice .answer[data-letter='A'] { grid-column: 6 !important; }
+  #notes-practice .answer[data-letter='B'] { grid-column: 7 !important; }
+}
+
+#notes-practice .adjust-range { min-height: 44px; padding: 8px 12px; font-size: 14px; }
+#notes-practice .practice-setup > .control--primary { position: sticky; bottom: 0; }

@@ -54,8 +54,13 @@ export function mountNotes(root: HTMLElement) {
   notices.append(el('summary', '', 'About tuNotes and licenses'),
     el('p', '', 'Copyright © 2026 Justin Butterfras. Code and original artwork are licensed under GNU GPLv3. No warranty.'),
     source, el('pre', '', projectLicense), el('h2', '', 'Bundled font licenses'), el('pre', '', FONT_LICENSES));
-  footer.append(offline, createReleaseControls(tunotes),
-    notices);
+  const installation = el('section','notes-installation');
+  installation.append(el('h2','','Install and offline access'), createReleaseControls(tunotes), notices);
+  practice.options.append(installation);
+  const optionsLink = el('button','footer-options','Install · About'); optionsLink.type = 'button';
+  optionsLink.addEventListener('click', () => { links[3]!.click(); installation.scrollIntoView({ block: 'nearest' }); installation.querySelector('h2')!.focus(); });
+  installation.querySelector('h2')!.tabIndex = -1;
+  footer.append(offline, optionsLink);
   home.append(header, ...views, footer);
   root.append(home);
   const dispose = () => { practice.dispose(); multiplayer?.dispose(); };

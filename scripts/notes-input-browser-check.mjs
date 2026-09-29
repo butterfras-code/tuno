@@ -58,9 +58,9 @@ try {
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await page.keyboard.down('ArrowDown'); await page.keyboard.press('b'); await page.keyboard.up('ArrowDown'); await count(page,3);
-  const positions = await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
+  const positions = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
-  assert.deepEqual(await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
+  assert.deepEqual(await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
   // Mouse can start at out-of-pool natural B and slide to the visible flat B.
   let from = await center(button(page, 'B')), to = await center(button(page, 'B', -1));
   await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(to.x,to.y,{steps:4});
@@ -103,7 +103,7 @@ try {
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:950});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
-    assert.ok(await page.locator('.answer').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
+    assert.ok(await page.locator('.answer:visible').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
     await page.screenshot({path:`dist/validation/notes-input-${name}-${width}.png`,fullPage:true});
   }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click();

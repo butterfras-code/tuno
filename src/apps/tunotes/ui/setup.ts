@@ -75,7 +75,12 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     } catch (error) { saveMessage.textContent = (error as Error).message; }
   }),saveMessage);
   node.append(pickerUI.node,custom,preview,summary); refresh();
-  return { node,picker,refresh, selectPreset: (id: string) => { selectedId = id; loadCustom(); }, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveForRoster: () => {
+  return { node,picker,refresh, editCurrent: () => {
+    if (!current) return;
+    editor.load(current); selectedId = 'custom'; nameOverride = false;
+    pickerUI.set('custom','Custom'); summarize();
+    custom.querySelector<HTMLElement>('button, input, select, [tabindex="0"]')?.focus();
+  }, selectPreset: (id: string) => { selectedId = id; loadCustom(); }, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveForRoster: () => {
     if (!current) return undefined;
     if (custom.hidden) return current;
     try {
