@@ -7,7 +7,7 @@ export type Modifier = 'key' | 'flat' | 'natural' | 'sharp';
 export interface PresetSource {
   readonly editorVersion?: 2; readonly modifiers?: readonly Modifier[]; readonly availableClefs?: readonly Clef[]; readonly endpointClefs?: readonly [Clef, Clef];
   readonly id: string; readonly name: string; readonly clef: Clef; readonly range: readonly [string, string]; readonly content: Content;
-  readonly key?: KeySignature; readonly accidentals?: Policy; readonly ledgerBelow?: number; readonly ledgerAbove?: number;
+  readonly key?: KeySignature; readonly keyless?: boolean; readonly exactRange?: boolean; readonly accidentals?: Policy; readonly ledgerBelow?: number; readonly ledgerAbove?: number;
   readonly instrument?: string; readonly expansion?: readonly [string, string];
 }
 export interface Preset extends PresetSource { readonly version: 1; readonly key: KeySignature; readonly pool: readonly WrittenPitch[] }
@@ -15,8 +15,10 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
   if (!source.id || !source.name || !['treble', 'bass', 'alto', 'tenor'].includes(source.clef)) throw new Error('Preset needs an ID, name and supported clef.');
   if (!['lines', 'spaces', 'lines-and-spaces'].includes(source.content)) throw new Error('Choose lines, spaces or both.');
   const low = parsePitch(source.range[0]), high = parsePitch(source.range[1]);
-  if (diatonic(low) > diatonic(high) || source.editorVersion === 2 && chromatic(low) > chromatic(high)) throw new Error('Lowest note must not be above highest note.');
-  if (source.editorVersion === undefined && (low.accidental || high.accidental)) throw new Error('Use ascending natural range boundaries.');
+  if (diatonic(low) > diatonic(high) || chromatic(low) > chromatic(high)) throw new Error('Lowest note must not be above highest note.');
+  if (source.editorVersion === undefined && !source.exactRange && !source.keyless && (low.accidental || high.accidental)) throw new Error('Use ascending natural range boundaries.');
+  if (source.keyless !== undefined && typeof source.keyless !== 'boolean') throw new Error('Invalid key signature choice.');
+  if (source.exactRange !== undefined && typeof source.exactRange !== 'boolean') throw new Error('Invalid exact range choice.');
   if (source.editorVersion !== undefined && source.editorVersion !== 2) throw new Error('Unsupported custom editor version.');
   if (source.editorVersion === 2) {
     if (!source.modifiers?.length || new Set(source.modifiers).size !== source.modifiers.length || source.modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) throw new Error('Select at least one modifier.');
@@ -25,6 +27,9 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
     if (source.ledgerBelow !== undefined || source.ledgerAbove !== undefined) throw new Error('Graphical ranges do not use ledger limits.');
   } else if (source.modifiers || source.availableClefs || source.endpointClefs) throw new Error('Graphical settings require editor version 2.');
   const selectedKey = source.key ?? keySignature('C');
+  const exactRange = source.exactRange || source.keyless || Boolean(low.accidental || high.accidental);
+  if (source.keyless && selectedKey.fifths !== 0) throw new Error('An exercise without a key signature must use natural key settings.');
+  if (source.keyless && source.modifiers?.includes('key')) throw new Error('An exercise without a key signature cannot enable the key modifier.');
   const key = source.editorVersion === 2 && !source.modifiers!.includes('key') ? keySignature('C') : selectedKey, policy = source.accidentals ?? 'key-only';
   if (!Number.isInteger(selectedKey.fifths) || Math.abs(selectedKey.fifths) > 7 || selectedKey.mode !== 'major' || keySignature(keyName(selectedKey)).tonic.letter !== selectedKey.tonic.letter || keySignature(keyName(selectedKey)).tonic.accidental !== selectedKey.tonic.accidental) throw new Error('Invalid major key.');
   if (!options.legacySpellings && key.fifths === -7) throw new Error('C♭ major is unavailable in this answer layout. Choose another key.');
@@ -40,6 +45,10 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
     if (policy !== 'key-only') alterations.add(0);
     if (policy === 'sharps' || policy === 'both') alterations.add(1);
     if (policy === 'flats' || policy === 'both') alterations.add(-1);
+    if (exactRange && source.editorVersion !== 2) {
+      if (diatonic(natural) === diatonic(low)) alterations.add(low.accidental);
+      if (diatonic(natural) === diatonic(high)) alterations.add(high.accidental);
+    }
     if (source.editorVersion === 2) {
       alterations.clear();
       if (source.modifiers!.includes('key')) alterations.add(keyAccidental(natural.letter, key));
@@ -47,15 +56,16 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
       if (source.modifiers!.includes('natural')) alterations.add(0);
       if (source.modifiers!.includes('sharp')) alterations.add(1);
     }
-    for (const accidental of alterations) {
+    for (const accidental of exactRange && source.editorVersion !== 2 ? [...alterations].sort((a,b) => a-b) : alterations) {
       const pitch = { ...natural, accidental };
-      if (source.editorVersion === 2 && (chromatic(pitch) < chromatic(low) || chromatic(pitch) > chromatic(high))) continue;
+      if ((source.editorVersion === 2 || exactRange) && (chromatic(pitch) < chromatic(low) || chromatic(pitch) > chromatic(high))) continue;
       if (options.legacySpellings || supportedAnswer(pitch)) pool.push(Object.freeze(pitch));
     }
   }
   if (!pool.length) throw new Error('These settings produce an empty pool. Widen the range or change content or modifiers.');
   const graphical = source.editorVersion === 2 ? { modifiers: Object.freeze([...source.modifiers!]), availableClefs: Object.freeze([...source.availableClefs!]), endpointClefs: Object.freeze([...source.endpointClefs!]) as readonly [Clef,Clef] } : {};
-  return Object.freeze({ ...source, ...graphical, accidentals: policy, range: Object.freeze([...source.range]) as readonly [string, string], version: 1, key, pool: Object.freeze(pool) });
+  const keyless = source.keyless || source.editorVersion === 2 && !source.modifiers!.includes('key');
+  return Object.freeze({ ...source, ...graphical, ...(keyless ? { keyless: true } : {}), accidentals: policy, range: Object.freeze([...source.range]) as readonly [string, string], version: 1, key, pool: Object.freeze(pool) });
 }
 export const clefs = ['treble','bass','alto','tenor'] as const;
 /** Stable assignment keeps each note in the most readable enabled clef. */
@@ -68,7 +78,7 @@ export function clefForPitch(source: PresetSource, pitch: WrittenPitch): Clef {
 }
 export function modifiersFor(source: PresetSource): readonly Modifier[] {
   if (source.modifiers) return source.modifiers;
-  return ['key', ...(source.accidentals && source.accidentals !== 'key-only' ? ['natural' as const] : []), ...(source.accidentals === 'flats' || source.accidentals === 'both' ? ['flat' as const] : []), ...(source.accidentals === 'sharps' || source.accidentals === 'both' ? ['sharp' as const] : [])];
+  return [...(source.keyless ? ['natural' as const] : ['key' as const]), ...(!source.keyless && source.accidentals && source.accidentals !== 'key-only' ? ['natural' as const] : []), ...(source.accidentals === 'flats' || source.accidentals === 'both' ? ['flat' as const] : []), ...(source.accidentals === 'sharps' || source.accidentals === 'both' ? ['sharp' as const] : [])];
 }
 /** Stable default label; modifier order follows the configurator, not click order. */
 export function generatedPresetName(source: PresetSource): string {
@@ -87,30 +97,119 @@ const ledgerPresets = clefs.flatMap(clef => ([1,2,4] as const).flatMap(count => 
   id: `${clef}-ledger-${count}-${side}`, name: `${clef} — ${count} ledger ${count === 1 ? 'line' : 'lines'} ${side}`,
   clef, range: [pitchLabel(pitchAt(side === 'above' ? 0 : -count * 2, clef)), pitchLabel(pitchAt(side === 'below' ? 8 : 8 + count * 2, clef))], content: 'lines-and-spaces',
 }))));
+type InstrumentLevel = { readonly id: string; readonly name: string; readonly range: readonly [string, string]; readonly key: string | null; readonly accidentals?: Policy };
+type InstrumentDefinition = {
+  readonly id: string; readonly name: string; readonly clef: Clef; readonly transpose: number;
+  readonly ranges: { readonly start: { readonly range: readonly [string, string]; readonly key: string | null; readonly accidentals?: Policy }; readonly full: readonly [string, string]; readonly levels?: readonly InstrumentLevel[] };
+};
+// Ranges use exact written pitches (Bb2 and F#4 are valid endpoints). Set key to
+// null for no key signature, and accidentals to 'both' for chromatic practice.
+// Full is the adaptive limit, not an extra picker choice. IDs are unique per instrument.
 export const instruments = [
-  { id: 'flute', name: 'Flute', clef: 'treble', range: ['F4','C5'], expansion: ['B3','B5'], transpose: 0, key: 'F' },
-  { id: 'oboe', name: 'Oboe', clef: 'treble', range: ['F4','C5'], expansion: ['B3','B5'], transpose: 0, key: 'F' },
-  { id: 'bassoon', name: 'Bassoon', clef: 'bass', range: ['F2','C3'], expansion: ['B1','B3'], transpose: 0, key: 'F' },
-  { id: 'keyboards', name: 'Keyboards', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 0, key: 'C' },
-  { id: 'clarinet-bb', name: 'B♭ Clarinet', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 2, key: 'C' },
-  { id: 'alto-sax', name: 'Alto saxophone', clef: 'treble', range: ['G4','D5'], expansion: ['C4','C6'], transpose: 9, key: 'G' },
-  { id: 'trumpet-bb', name: 'B♭ Trumpet', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 2, key: 'C' },
-  { id: 'horn-f', name: 'F Horn', clef: 'treble', range: ['C4','G4'], expansion: ['F3','F5'], transpose: 7, key: 'C' },
-  { id: 'trombone', name: 'Trombone', clef: 'bass', range: ['B2','F3'], expansion: ['E2','E4'], transpose: 0, key: 'Bb' },
-  { id: 'euphonium', name: 'Euphonium (bass clef)', clef: 'bass', range: ['B2','F3'], expansion: ['E2','E4'], transpose: 0, key: 'Bb' },
-  { id: 'tuba', name: 'Tuba (bass clef)', clef: 'bass', range: ['B1','F2'], expansion: ['E1','E3'], transpose: 0, key: 'Bb' },
-] as const;
+  { id: 'flute', name: 'Flute', clef: 'treble', transpose: 0, ranges: {
+    start: { range: ['F4','C5'], key: 'F' }, full: ['B3','C7'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','F5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
+    ],
+  } },
+  { id: 'oboe', name: 'Oboe', clef: 'treble', transpose: 0, ranges: {
+    start: { range: ['F4','C5'], key: 'F' }, full: ['Bb3','A6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Bb3','F5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
+    ],
+  } },
+  { id: 'bassoon', name: 'Bassoon', clef: 'bass', transpose: 0, ranges: {
+    start: { range: ['F2','C3'], key: 'F' }, full: ['Bb1','Bb4'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F2','F3'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','C4'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'F' },
+    ],
+  } },
+  { id: 'keyboards', name: 'Keyboards', clef: 'treble', transpose: 0, ranges: {
+    start: { range: ['C4','G4'], key: 'C' }, full: ['C3','C6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','G5'], key: 'C' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'C' },
+    ],
+  } },
+  { id: 'clarinet-bb', name: 'B♭ Clarinet', clef: 'treble', transpose: 2, ranges: {
+    start: { range: ['C4','G4'], key: 'C' }, full: ['E3','G6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F3','F4'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'F' },
+    ],
+  } },
+  { id: 'alto-sax', name: 'Alto saxophone', clef: 'treble', transpose: 9, ranges: {
+    start: { range: ['G4','D5'], key: 'G' }, full: ['Bb3','F6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['G4','G5'], key: 'G' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','G5'], key: 'G' },
+      { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'C' },
+    ],
+  } },
+  { id: 'trumpet-bb', name: 'B♭ Trumpet', clef: 'treble', transpose: 2, ranges: {
+    start: { range: ['C4','G4'], key: 'C' }, full: ['F#3','C6'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['C4','C5'], key: 'C' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['G3','C5'], key: 'C' },
+      { id: 'two-octaves', name: '2 octaves', range: ['G3','G5'], key: 'C' },
+    ],
+  } },
+  { id: 'horn-f', name: 'F Horn', clef: 'treble', transpose: 7, ranges: {
+    start: { range: ['C4','G4'], key: 'C' }, full: ['C2','G5'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['F3','F4'], key: 'F' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'F' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'F' },
+    ],
+  } },
+  { id: 'trombone', name: 'Trombone', clef: 'bass', transpose: 0, ranges: {
+    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['E2','Bb4'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['Bb2','Bb3'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','Bb3'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'Bb' },
+    ],
+  } },
+  { id: 'euphonium', name: 'Euphonium (bass clef)', clef: 'bass', transpose: 0, ranges: {
+    start: { range: ['Bb2','F3'], key: 'Bb' }, full: ['E2','Bb4'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['Bb2','Bb3'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','Bb3'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'Bb' },
+    ],
+  } },
+  { id: 'tuba', name: 'Tuba (bass clef)', clef: 'bass', transpose: 0, ranges: {
+    start: { range: ['Bb1','F2'], key: 'Bb' }, full: ['E1','Bb3'], levels: [
+      { id: 'one-octave', name: '1 octave', range: ['Bb1','Bb2'], key: 'Bb' },
+      { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F1','Bb2'], key: 'Bb' },
+      { id: 'two-octaves', name: '2 octaves', range: ['F1','F3'], key: 'Bb' },
+    ],
+  } },
+] as const satisfies readonly InstrumentDefinition[];
 export const writtenToConcert = (pitch: WrittenPitch, concertToWritten: number) => chromatic(pitch) - concertToWritten;
-export const instrumentPresets = instruments.map(i => normalizePreset({ id: `${i.id}-starter`, name: `${i.name} — Starter`, clef: i.clef, range: i.range, expansion: i.expansion, instrument: i.id, key: keySignature(i.key), content: 'lines-and-spaces' }));
-export const instrumentRangePresets = instruments.flatMap(i => {
-  const start = parsePitch(i.range[0]);
-  const octave = pitchLabel({ ...start, octave: start.octave+1 });
-  return ([['one-octave','1 octave',[i.range[0],octave]],['one-and-half-octaves','1.5 octaves',[i.expansion[0],octave]],['two-octaves','2 octaves',i.expansion]] as const).map(([id,label,range]) => normalizePreset({ id: `${i.id}-${id}`, name: `${i.name} — ${label}`, clef: i.clef, range, expansion: i.expansion, instrument: i.id, key: keySignature(i.key), content: 'lines-and-spaces' }));
-});
+function instrumentPreset(i: InstrumentDefinition, level: InstrumentLevel): Preset {
+  const fullLow = parsePitch(i.ranges.full[0]), fullHigh = parsePitch(i.ranges.full[1]);
+  const low = parsePitch(level.range[0]), high = parsePitch(level.range[1]);
+  if (chromatic(low) < chromatic(fullLow) || chromatic(high) > chromatic(fullHigh)) throw new Error(`${i.id}-${level.id} exceeds its full range.`);
+  return normalizePreset({ id: `${i.id}-${level.id}`, name: `${i.name} — ${level.name}`, clef: i.clef, range: level.range, expansion: i.ranges.full, instrument: i.id, key: keySignature(level.key ?? 'C'), ...(level.key === null ? { keyless: true } : {}), exactRange: true, accidentals: level.accidentals, content: 'lines-and-spaces' });
+}
+const instrumentIds = new Set<string>();
+for (const i of instruments) {
+  if (!/^[a-z0-9-]+$/.test(i.id) || instrumentIds.has(i.id)) throw new Error(`Duplicate or invalid instrument ID: ${i.id}`);
+  instrumentIds.add(i.id);
+  const fullLow = parsePitch(i.ranges.full[0]), fullHigh = parsePitch(i.ranges.full[1]);
+  if (chromatic(fullLow) > chromatic(fullHigh)) throw new Error(`Invalid full range: ${i.id}`);
+  const levelIds = new Set(['starter']);
+  for (const level of i.ranges.levels ?? []) {
+    if (!/^[a-z0-9-]+$/.test(level.id) || levelIds.has(level.id)) throw new Error(`Duplicate or invalid range ID: ${i.id}-${level.id}`);
+    levelIds.add(level.id);
+  }
+}
+export const instrumentPresets = instruments.map(i => instrumentPreset(i,{ id: 'starter', name: 'Starter', ...i.ranges.start }));
+export const instrumentRangePresets = instruments.flatMap(i => (i.ranges.levels ?? []).map(level => instrumentPreset(i,level)));
 export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets, ...instrumentRangePresets]);
+if (new Set(presets.map(p => p.id)).size !== presets.length) throw new Error('Duplicate catalog preset IDs.');
 export const defaultPreset = presets[2]!;
 export function fingerprint(p: Preset, adaptive = false, activity: 'practice' | 'challenge' = 'practice') {
-  const parts: unknown[] = [p.id, p.version, p.clef, keyName(p.key), p.accidentals, p.pool.map(pitchLabel), activity, adaptive, 'letters'];
+  const parts: unknown[] = [p.id, p.version, p.clef, p.keyless && p.editorVersion !== 2 ? 'none' : keyName(p.key), p.accidentals, p.pool.map(pitchLabel), activity, adaptive, 'letters'];
   if (p.editorVersion === 2) parts.push({ version: 2, clefs: clefs.filter(c => p.availableClefs!.includes(c)), modifiers: ['key','flat','natural','sharp'].filter(m => p.modifiers!.includes(m as Modifier)) });
   return JSON.stringify(parts);
 }

@@ -4,7 +4,7 @@ Status: Stages 0–5 implemented as a local Practice, solo Challenge and Multi P
 
 This is the implementation reference derived from the [initial specification](tuNotes_initial-spec.md) and [design conversation](tuNotes_chat.txt), reviewed against repository revision `c3759c8f08ce400c67443d1673f4175e2d088a31`. Preserve those inputs as design history. The [staged build plan](tuNotes_build-plan.md) defines delivery order and acceptance gates.
 
-Requirements inherited from the source documents are commitments. Exact defaults, algorithms, ranges, paths, and interaction rules supplied here are **proposed implementation decisions**, not previously approved classroom findings. Implement these defaults unless changed during review; record changes here before dependent work. The Starter keys/ranges below have teacher approval; the Phase 3 instrument range decision below authorizes replacement expansion bounds; engraving/device acceptance still requires the review identified in the build plan.
+Requirements inherited from the source documents are commitments. Exact defaults, algorithms, ranges, paths, and interaction rules supplied here are **proposed implementation decisions**, not previously approved classroom findings. Implement these defaults unless changed during review; record changes here before dependent work. The Starter keys/ranges below have teacher approval; the instrument-specific revision below supersedes the original Phase 3 expansion bounds. Engraving/device acceptance still requires the review identified in the build plan.
 
 ## 1. Product and release boundary
 
@@ -72,7 +72,7 @@ Original Stage 2 Custom controls (superseded by [Preset picker and graphical con
 
 Clef catalog, for each clef: staff Lines (0,2,4,6,8), staff Spaces (1,3,5,7), staff Both (0…8); plus 1 or 2 ledger lines above/below/both and 4 above-only/below-only. Expansion envelopes include all positions from the staff through the last named ledger line, inclusively: +1 above ends at 10, +2 below starts at -4, +4 above ends at 16. Default key C and key-only. Clef adaptation may expand one eligible position at a time within -8…16; Lines/Spaces filters continue to apply. No implicit accidentals or key changes through adaptation.
 
-The teacher-approved Starter catalog follows. Its historical proposed expansion column is superseded by the Phase 3 instrument range decision below. These are limited reading exercises, **not certified beginner curricula or full playable ranges**. Retain “Starter” labels. All use key-only, both lines and spaces; expansions keep the starting key. Teacher-reviewed written keys (2026-09-27) are F for flute, oboe and bassoon; G for alto saxophone; C for clarinet, trumpet, horn and keyboards; and B♭ for bass-clef brass. Bounds constrain adaptive growth.
+The teacher-approved Starter catalog follows. Its historical proposed expansion column is superseded by the instrument-specific revision below. These are limited reading exercises, **not certified beginner curricula or full playable ranges**. Retain “Starter” labels. All use key-only, both lines and spaces; adaptive expansion keeps the selected level's key. Teacher-reviewed written Starter keys (2026-09-27) are F for flute, oboe and bassoon; G for alto saxophone; C for clarinet, trumpet, horn and keyboards; and B♭ for bass-clef brass. Bounds constrain adaptive growth.
 
 | Instrument/preset | Clef | Starting written range | Expansion bounds | Concert → written semitones |
 | --- | --- | --- | --- | --- |
@@ -88,22 +88,26 @@ The teacher-approved Starter catalog follows. Its historical proposed expansion 
 | Tuba (bass clef) | Bass | B♭1–F2 | E1–B♭2 | 0 |
 | Keyboards | Treble | C4–G4 | C4–G4 | 0 |
 
-Table bounds indicate inclusive staff positions; normalize source range boundaries to natural letter/octave strings and derive accidentals from the stated key. Thus trombone starts at source position B2 with key Bb, producing B♭2, C3, D3, E♭3, F3. Expansion bounds are reading limits rather than playable-range promises (including low F in the proposed trumpet/horn pool). The teacher confirmed the starting keys/ranges above on 2026-09-27: clarinet/trumpet sound B♭3–F4, alto saxophone sounds B♭3–F4, and horn sounds F3–C4. These original expansion proposals were not approved; use the replacement Phase 3 ranges below for all instruments, including oboe, bassoon and keyboards. Instrument metadata must resolve transposition with octave (e.g. +14 for a later tenor-sax profile), not infer it from an ambiguous `Bb` string. Euphonium treble-clef convention is a separate future preset. Do not reuse the initial illustrative clarinet E3–C6 as an endorsed beginner range.
+Table bounds indicate inclusive staff positions; the original catalog normalized source boundaries to natural letter/octave strings and derived accidentals from the key. Thus trombone originally started at source position B2 with key Bb, producing B♭2, C3, D3, E♭3, F3. The current catalog spells B♭2 explicitly. The teacher confirmed the starting keys/ranges above on 2026-09-27: clarinet/trumpet sound B♭3–F4, alto saxophone sounds B♭3–F4, and horn sounds F3–C4. The original expansion proposals were superseded; use the instrument-specific bounds below. Instrument metadata must resolve transposition with octave (e.g. +14 for a later tenor-sax profile), not infer it from an ambiguous `Bb` string. Euphonium treble-clef convention is a separate future preset. Do not reuse the initial illustrative clarinet E3–C6 as an endorsed beginner range.
 
-### Phase 3 instrument range decision (2026-09-27)
+### Instrument-specific range revision (2026-09-28)
 
-The implementation-time review supersedes the proposed expansion bounds in the historical table above. Every instrument keeps Starter and adds **1 octave** (original lowest written pitch through the octave above), **1.5 octaves** (a perfect fifth below the original lowest pitch through that same upper octave), and **2 octaves** (the same lower fifth through two octaves above that lower note). These are inclusive written-pitch ranges; the 1.5 label is the requested level name for a perfect-twelfth span. Existing keys and key-only spelling remain unchanged. Starter and smaller levels may adapt toward the new two-octave bounds, alternating lower/upper positions, starting lower. This replaces, rather than approves, the earlier wider proposed envelopes.
+The band director replaced the original Phase 3 formula with explicit written ranges for each instrument. Starter retains its previously reviewed values. The named octave levels are teaching choices and need not be nested or exactly 18 semitones for a “1.5 octaves” label. Each level has its own key. The separate `full` bound is the limit for adaptive growth from any of that instrument's levels; it is not a picker choice.
 
-| Instruments | 1 octave | 1.5 octaves | 2 octaves / adaptive bounds |
-| --- | --- | --- | --- |
-| Flute, oboe | F4–F5 | B♭3–F5 | B♭3–B♭5 |
-| Bassoon | F2–F3 | B♭1–F3 | B♭1–B♭3 |
-| Clarinet, trumpet, horn, keyboards | C4–C5 | F3–C5 | F3–F5 |
-| Alto saxophone | G4–G5 | C4–G5 | C4–C6 |
-| Trombone, euphonium | B♭2–B♭3 | E♭2–B♭3 | E♭2–E♭4 |
-| Tuba | B♭1–B♭2 | E♭1–B♭2 | E♭1–E♭3 |
+| Instrument | 1 octave | 1.5 octaves | 2 octaves | Full/adaptive bound |
+| --- | --- | --- | --- | --- |
+| Flute | F4–F5 | C4–F5 | C4–C6 | B3–C7 |
+| Oboe | F4–F5 | B♭3–F5 | C4–C6 | B♭3–A6 |
+| Bassoon | F2–F3 | F2–C4 | F2–F4 | B♭1–B♭4 |
+| Keyboards | C4–C5 | C4–G5 | C4–C6 | C3–C6 |
+| B♭ clarinet | F3–F4 | F3–C5 | F3–F5 | E3–G6 |
+| Alto saxophone | G4–G5 | C4–G5 | C4–C6 | B♭3–F6 |
+| B♭ trumpet | C4–C5 | G3–C5 | G3–G5 | F♯3–C6 |
+| F horn | F3–F4 | F3–C5 | F3–F5 | C2–G5 |
+| Trombone, euphonium | B♭2–B♭3 | F2–B♭3 | F2–F4 | E2–B♭4 |
+| Tuba | B♭1–B♭2 | F1–B♭2 | F1–F3 | E1–B♭3 |
 
-Range authorization does not constitute engraving or physical-device acceptance. Source boundaries remain natural staff positions with accidentals derived from the preserved key.
+The catalog records these values in `src/apps/tunotes/domain/presets.ts`. It spells altered endpoints explicitly (for example, `Bb2` or `F#3`), independently of the exercise key. All named clarinet and horn levels use F major; the 2 octave alto saxophone level uses C major. Other keys remain as in the Starter catalog. A level may use `key: null` for no key signature and `accidentals: 'both'` for chromatic spellings. Level IDs remain unique within each instrument. Range authorization does not constitute engraving or physical-device acceptance.
 
 ## 4. Answer entry and exercise engine
 
@@ -302,7 +306,7 @@ Endpoint clefs initially move together and preserve pitch. Changing the opposite
 
 Graphical endpoints are inclusive chromatic bounds within the selected written positions. For example, D4–D♯4 with Flat/Natural/Sharp includes D4 and D♯4, but not D♭4. With Key disabled, practice shows no key signature and uses the C-based answer layout; the selected major key is retained for re-enabling Key. Unsupported B♯/C♭/E♯/F♭ endpoint buttons are disabled to match the answer layout.
 
-Implementation and browser evidence: [preset/configurator validation](validation/tunotes-configurator.md). Phase 3 adds the three approved instrument levels; see [Phase 3 validation](validation/tunotes-stage3.md).
+Implementation and browser evidence: [preset/configurator validation](validation/tunotes-configurator.md). Phase 3 introduced three named instrument levels; see [Phase 3 validation](validation/tunotes-stage3.md). Their ranges were later revised as described above.
 
 Custom preset names default to a deterministic `<low>–<high> <Line|Space|Both> [in <key> major] [+ ♭ ♮ ♯]` label. Include the key only when Key is enabled, and only the explicitly enabled accidental modifiers in flat/natural/sharp order. For example: `D♭4–F♯5 Line in B♭ major + ♭ ♮ ♯`. The actual input value follows configuration changes until the user overrides it. Clearing the input restores automatic naming. Saved overrides are restored; saved names matching their generated definition resume automatic naming. Practice and saved presets both use the resolved name.
 

@@ -6,14 +6,14 @@ import { defaultPreset } from '../src/apps/tunotes/domain/presets.ts';
 import { fingerprint } from '../src/apps/tunotes/domain/presets.ts';
 import { NotesStore } from '../src/apps/tunotes/persistence/store.ts';
 
-test('turns and pairs cover every roster size once, with an odd final solo heat',() => {
+test('all play formats cover every roster size once, with an odd final solo heat',() => {
   for (let size=1;size<=8;size++) {
     const roster = Array.from({length:size},(_,i)=>i);
-    for (const format of ['turns','pairs'] as const) {
+    for (const format of ['turns','pairs','head-to-head'] as const) {
       const heats = schedule(roster,format);
       assert.deepEqual(heats.flat(),roster);
-      assert.equal(heats.length,Math.ceil(size/(format === 'pairs' ? 2 : 1)));
-      assert.equal(heats.at(-1)!.length,format === 'pairs' && size%2 ? 1 : format === 'pairs' ? 2 : 1);
+      assert.equal(heats.length,Math.ceil(size/(format === 'turns' ? 1 : 2)));
+      assert.equal(heats.at(-1)!.length,format === 'turns' || size%2 ? 1 : 2);
     }
   }
   assert.throws(()=>schedule([], 'turns'));

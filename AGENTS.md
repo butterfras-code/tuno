@@ -6,6 +6,8 @@ Cloudflare Pages hosts tUno at https://tuno.cc. The production branch is `main`:
 
 Use `dev` for staging before promotion to `main`. Fetch remote branches before work and ensure `dev` includes `origin/main`, merging without discarding legitimate dev-only commits when needed. Preserve unrelated user changes. Feature worktrees may start from `dev`, but completed staging work belongs on `dev`.
 
+Before moving work from a feature branch onto `dev` or another branch, give the user a brief update naming the source and target branches, the intended operation, and whether it affects local branches or a remote. Afterward, report the resulting commit and whether anything was pushed.
+
 Validate on `dev`, review its Cloudflare preview, then use a PR from `dev` into `main`. Do not merge or push to `main` unless the user has authorized publishing. Changes to `main`, including documentation-only changes, publish production.
 
 See [hosting setup](docs/hosting.md) for deployment settings and preview behavior.

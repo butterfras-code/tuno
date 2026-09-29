@@ -27,7 +27,7 @@ async function answerLetter(panel) {
 }
 async function start(page,format='turns') {
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
-  if(format==='pairs') await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Split Screen'}).click();
+  if(format!=='turns') await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:format==='pairs'?'Split Screen':'Head to Head'}).click();
   await button(page,'Start round').click(); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }
@@ -57,6 +57,98 @@ async function run(page,url,label) {
     assert.equal(await page.locator('.multiplayer-result-row').count(),size);
   }
   evidence.push(`${label}: all 1–8 paired rosters completed once, including odd final solo heats`);
+
+  await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:1280,height:800});await start(page,'head-to-head');
+  const head=page.locator('.multiplayer-round--head-to-head');
+  assert.equal(await head.count(),1);
+  const headPanels=head.locator('.multiplayer-panel');
+  assert.equal(await headPanels.count(),2);
+  const seats=await head.locator('.multiplayer-seat').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height};}));
+  assert.equal(seats.length,2);assert.ok(Math.abs(seats[0].width-seats[1].width)<2);
+  assert.ok(Math.abs(seats[0].x+seats[0].width-seats[1].x)<3);
+  for(let i=0;i<2;i++) {
+    const panel=await headPanels.nth(i).boundingBox();
+    assert.ok(Math.abs(panel.x-seats[i].x)<3 && Math.abs(panel.y-seats[i].y)<3);
+    assert.ok(Math.abs(panel.width-seats[i].width)<3 && Math.abs(panel.height-seats[i].height)<3);
+  }
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(let i=0;i<2;i++) {
+    const target=headPanels.nth(i).locator('.answer-natural').first();
+    const box=await target.boundingBox();
+    assert.ok(box.x>seats[i].x && box.x+box.width<seats[i].x+seats[i].width);
+    await target.click();
+    assert.match(await headPanels.nth(i).locator('.muted').first().textContent(),/1 attempts/);
+  }
+  if(await button(page,'Enter fullscreen').isVisible()) {
+    await button(page,'Enter fullscreen').click();
+    await button(page,'Exit fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement===document.documentElement),true);
+    await button(page,'Exit fullscreen').click();
+    await button(page,'Enter fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
+    await button(page,'Resume').waitFor({state:'visible'});
+    await button(page,'Resume').click();
+  }
+  await page.setViewportSize({width:600,height:960});
+  await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
+  await page.clock.runFor(250);
+  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
+  const portraitSeats=await head.locator('.multiplayer-seat').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height};}));
+  assert.ok(Math.abs(portraitSeats[0].y+portraitSeats[0].height-portraitSeats[1].y)<3);
+  for(let i=0;i<2;i++) {
+    const panel=await headPanels.nth(i).boundingBox();
+    assert.ok(Math.abs(panel.x-portraitSeats[i].x)<3 && Math.abs(panel.y-portraitSeats[i].y)<3);
+    assert.ok(Math.abs(panel.width-portraitSeats[i].width)<3 && Math.abs(panel.height-portraitSeats[i].height)<3);
+    assert.equal(await headPanels.nth(i).evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await headPanels.nth(i).locator('.answer-natural').first().click();
+    assert.match(await headPanels.nth(i).locator('.muted').first().textContent(),/2 attempts/);
+  }
+  await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head-portrait.png`});
+  await page.setViewportSize({width:1280,height:800});
+  await page.clock.runFor(250);
+  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
+  await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head.png`});
+  await button(page,'End round').click();
+  await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
+  await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Head to Head'}).click();
+  assert.equal(await button(page,'Start round').isDisabled(),false);
+  if(await button(page,'Enter fullscreen').isVisible()) {
+    await button(page,'Enter fullscreen').click();
+    await button(page,'Exit fullscreen').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>document.fullscreenElement===document.documentElement),true);
+    await button(page,'Exit fullscreen').click();
+    await button(page,'Enter fullscreen').waitFor({state:'visible'});
+  }
+  await page.setViewportSize({width:960,height:600});await start(page,'head-to-head');
+  assert.equal(await page.locator('.multiplayer-panel').count(),2);
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    assert.equal(await panel.evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await page.clock.fastForward(15050);
+  assert.equal(await page.locator('.multiplayer-panel').count(),1);
+  await readyAndExpire(page);
+  assert.equal(await page.locator('.multiplayer-result-row').count(),3);
+  await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:600,height:960});await start(page,'head-to-head');
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    assert.equal(await panel.evaluate(node=>node.scrollHeight<=node.clientHeight+1),true);
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await button(page,'End round').click();
+  await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:390,height:844});await start(page,'head-to-head');
+  assert.equal(await page.locator('.multiplayer-panel').count(),2);
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  for(const panel of await page.locator('.multiplayer-panel').all()) {
+    await panel.locator('.answer-natural').first().click();
+    assert.match(await panel.locator('.muted').first().textContent(),/1 attempts/);
+  }
+  await button(page,'End round').click();
+  evidence.push(`${label}: head-to-head panels face the short ends in either viewport orientation, fit tablet answers, remain available on small phones, and run an odd solo heat`);
+  await page.setViewportSize({width:1280,height:900});
 
   await open(page,url);await addPlayers(page,3);
   assert.equal(await button(page,'Coming Soon').isDisabled(),true);
@@ -177,7 +269,7 @@ async function run(page,url,label) {
   await page.setViewportSize({width:760,height:900});
   await page.locator('.multiplayer-recovery').waitFor({state:'visible'});
   assert.equal(await page.locator('.multiplayer-recovery').isVisible(),true);
-  assert.equal(await button(page,'Resume Split Screen').isDisabled(),true);
+  assert.equal(await button(page.locator('.multiplayer-recovery'),'Resume Split Screen').isDisabled(),true);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-recovery.png`,fullPage:true});
   await button(page,'Restart as turns').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
   await page.setViewportSize({width:360,height:800});
