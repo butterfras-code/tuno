@@ -38,13 +38,13 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const node = el('section','multiplayer-view'); node.setAttribute('aria-label','Multi Player'); node.hidden = true;
   const setup = el('section','multiplayer-setup');
   setup.append(el('h2','','Multi Player'));
-  const mode = segments<'challenge' | 'soon'>('Game mode',[['challenge','Challenge'],['soon','Coming Soon']],() => {});
-  mode.update(['challenge']); mode.buttons[1]!.disabled = true;
-  const modeGroup = el('div','setting'); modeGroup.append(el('span','setting-label','Game mode'),mode.node);
+  const rosterSection = el('section','multiplayer-roster-section');
   const playersHeading = el('h3','multiplayer-players-heading');
   const roster = el('div','multiplayer-roster'); roster.setAttribute('role','group'); roster.setAttribute('aria-label','Players');
+  const selectedSummary = el('p','muted multiplayer-selected-summary');
   const add = button('Add player',() => { if (players.length < 8 && commitEditor()) { players.push(newPlayer(players.length+1)); selectedId = players.at(-1)!.id; renderSetup(); focusPlayerName(); } });
   add.classList.add('multiplayer-add');
+  rosterSection.append(playersHeading,roster,selectedSummary);
   const editor = el('section','multiplayer-editor');
   editor.id = 'multiplayer-player-settings';
   const editorHeading = el('h4');
@@ -57,10 +57,13 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   let selectedFormat: Format = 'turns'; format.update([selectedFormat]);
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
+  const roundSetup = el('section','multiplayer-round-setup');
+  roundSetup.append(el('h3','','Round format'),formatGroup,pairAdvice,rules.node);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
-  setup.append(modeGroup,playersHeading,roster,editor,formatGroup,pairAdvice,rules.node,setupError,setupFullscreen,start);
+  const setupActions = el('div','multiplayer-setup-actions'); setupActions.append(setupError,setupFullscreen,start);
+  setup.append(rosterSection,editor,roundSetup,setupActions);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
   const roundHeader = el('div','multiplayer-round-header');
@@ -148,8 +151,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function pairFits() {
     const visibleWidth = Math.min(window.innerWidth,window.visualViewport?.width ?? window.innerWidth);
     const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight);
-    const width = Math.min(visibleWidth,node.getBoundingClientRect().width || visibleWidth);
-    return canPair(width,visibleHeight);
+    return canPair(visibleWidth,visibleHeight);
   }
   function showPairAdvice() {
     pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may need scrolling; you can switch to Turns. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'Split Screen needs a larger screen (at least 960 × 600). Choose Turns here.';
@@ -162,6 +164,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function renderSetup() {
     const current = players.find(p => p.id === selectedId) ?? players[0]!; selectedId = current.id;
     playersHeading.textContent = `Players (${players.length})`;
+    selectedSummary.textContent = `Selected: ${current.name.trim() || `Player ${players.indexOf(current)+1}`} · ${current.preset.name}`;
     roster.replaceChildren();
     players.forEach((player,index) => {
       const slot = el('div','multiplayer-slot');
@@ -184,7 +187,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const index = players.indexOf(current);
     editorHeading.textContent = `Player ${index+1} settings`;
     const name = el('input','control'); name.value = current.name; name.maxLength = 40; name.setAttribute('aria-label',`Player ${index+1} name`);
-    name.addEventListener('input',() => { current.name = name.value; });
+    name.addEventListener('input',() => { current.name = name.value; selectedSummary.textContent = `Selected: ${name.value.trim() || `Player ${index+1}`} · ${current.preset.name}`; });
     name.addEventListener('blur',() => { roster.querySelectorAll('.multiplayer-player-tab')[index]!.textContent = name.value.trim() || `Player ${index+1}`; });
     name.addEventListener('keydown',event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); name.blur(); focusSelectedPlayer(); } });
     const nameLabel = el('label','setting','Name'); nameLabel.append(name);
@@ -217,7 +220,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (next?.disabled) focusSelectedPlayer(); else next?.focus();
   }
   function move(index: number,delta: number) { if (!commitEditor()) return; const [player] = players.splice(index,1); players.splice(index+delta,0,player!); renderSetup(); focusSelectedPlayer(); }
-  presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) player.preset = chosen; });
+  presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) { player.preset = chosen; selectedSummary.textContent = `Selected: ${player.name.trim() || `Player ${players.indexOf(player)+1}`} · ${chosen.name}`; } });
   function commitEditor() {
     if (!presetUI.selected()) return false;
     if (!presets.some(p => p.id === presetUI.selected()!.id)) return Boolean(presetUI.saveForRoster());

@@ -540,3 +540,104 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .configurator-options .configurator-tile { margin: 0; }
   .configurator-options .configurator-tile:last-child { grid-column: 1 / -1; }
 }
+
+/* Challenge and Multiplayer use the same bounded activity surface as Practice. */
+#notes-challenge, #notes-multi\ player { height: clamp(520px, calc(100dvh - 180px), 680px); padding: 28px; overflow: auto; scrollbar-gutter: stable; border-radius: 28px; background: var(--color-surface); }
+#notes-challenge .practice-view { min-height: 100%; margin: 0; align-items: start; grid-template-columns: minmax(0,1fr) 170px; gap: 24px; }
+#notes-challenge .practice-view.challenge-active { grid-template-columns: minmax(0,1fr); }
+#notes-challenge .practice-companion { align-self: center; }
+#notes-challenge .practice-companion .uno { width: 170px; height: 190px; }
+#notes-challenge .practice-stage h2 { margin: 0 0 16px; font-size: 24px; }
+#notes-challenge .preset-preview { margin-top: 16px; max-width: 400px; gap: 20px; }
+#notes-challenge .preset-preview .endpoint-staff { max-height: 100px; }
+#notes-challenge .preset-preview h4 { margin: 0; }
+#notes-challenge .preset-preview output { font-size: 20px; }
+#notes-challenge #preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
+#notes-challenge .practice-setup { display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,400px); gap: 0 24px; }
+#notes-challenge .practice-setup > h2 { grid-column: 1 / -1; }
+#notes-challenge .practice-setup > .preset-setup { grid-column: 1; grid-row: 2 / span 3; }
+#notes-challenge .practice-setup > .practice-toggles, #notes-challenge .practice-setup > .challenge-settings, #notes-challenge .practice-setup > .control--primary { grid-column: 2; }
+#notes-challenge .practice-setup > .practice-toggles { margin-top: 0; }
+#notes-challenge .practice-setup > .control--primary { margin-top: 12px; width: 100%; }
+#notes-challenge .practice-play h2 { font-size: 20px; }
+#notes-challenge .challenge-scene { min-height: 420px; background: var(--color-canvas); }
+#notes-challenge .practice-play .feedback { min-height: 2em; margin: 4px 0; }
+#notes-challenge .practice-help { margin: 0 0 8px; }
+.challenge-settings { padding: 0; border: 0; margin: 18px 0 0; }
+.challenge-settings legend { font: 700 18px var(--font-heading); padding: 0; }
+.challenge-settings > .segments { max-width: 400px; margin: 10px 0; }
+.challenge-main-fields { max-width: 400px; }
+.challenge-rule-summary { font-size: 14px; margin: 4px 0 12px; }
+.challenge-advanced { max-width: 400px; border-block: 1px solid var(--color-line); }
+.challenge-advanced summary { min-height: 44px; padding: 10px 0; font-size: 15px; }
+.challenge-advanced .muted { font-size: 13px; }
+.challenge-advanced-fields .setting { margin-top: 0; }
+
+#notes-multi\ player .multiplayer-view { margin: 0; min-height: 100%; }
+#notes-multi\ player .multiplayer-setup { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0,1fr); gap: 12px 20px; max-width: none; }
+.multiplayer-setup > h2 { grid-column: 1 / -1; margin: 0; }
+.multiplayer-roster-section { min-width: 0; min-height: 0; overflow-y: auto; }
+.multiplayer-players-heading, .multiplayer-round-setup h3 { margin: 0 0 10px; font-size: 18px; }
+.multiplayer-roster { display: grid; align-content: start; padding-right: 4px; }
+.multiplayer-slot { width: 100%; }
+.multiplayer-player-tab { flex: 1; max-width: none; text-align: left; }
+.multiplayer-selected-summary { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.multiplayer-editor { min-width: 0; min-height: 0; margin: 0; padding: 16px; overflow-y: auto; border-radius: var(--radius-card); background: var(--color-canvas); }
+.multiplayer-editor .preset-preview { margin-top: 12px; }
+.multiplayer-editor .preset-preview .endpoint-staff { max-height: 90px; }
+.multiplayer-editor [id$='preset-summary'] { font-size: 13px; margin: 8px 0; }
+.multiplayer-editor .multiplayer-player-fields .setting { flex-basis: 170px; margin: 0; }
+.multiplayer-editor .multiplayer-player-fields > .control { margin: 0; }
+.multiplayer-editor .multiplayer-player-controls { margin-top: 12px; padding-top: 12px; }
+.multiplayer-round-setup, .multiplayer-setup-actions { grid-column: 1 / -1; }
+.multiplayer-round-setup { padding-top: 14px; border-top: 1px solid var(--color-line); }
+.multiplayer-round-setup .setting { margin: 0; }
+.multiplayer-round-setup .challenge-settings { margin-top: 16px; }
+.multiplayer-round-setup .challenge-settings legend { font-size: 16px; }
+.multiplayer-round-setup .muted { font-size: 14px; }
+.multiplayer-setup-actions { display: flex; align-items: center; gap: 12px; padding: 8px 0 0; background: var(--color-surface); border-top: 1px solid var(--color-line); }
+.multiplayer-setup-actions .feedback { flex: 1; min-height: 0; margin: 0; }
+.multiplayer-setup-actions .feedback:empty { display: none; }
+.multiplayer-setup-actions .control { margin: 0; }
+.multiplayer-setup-actions .control--primary { margin-left: auto; }
+#notes-multi\ player .multiplayer-round, #notes-multi\ player .multiplayer-result { min-height: 100%; }
+#notes-multi\ player .multiplayer-result h2 { margin-top: 0; }
+#notes-multi\ player .multiplayer-board { max-height: 350px; overflow-y: auto; }
+#notes-multi\ player .multiplayer-round-header h2 { margin: 0; }
+#notes-multi\ player .multiplayer-round:not(.multiplayer-round--head-to-head) .multiplayer-panel { min-height: 490px; }
+#notes-multi\ player .multiplayer-round--head-to-head { min-height: 0; }
+.multiplayer-setup:has(.preset-setup.is-editing) { display: block !important; }
+.multiplayer-setup:has(.preset-setup.is-editing) .multiplayer-editor { padding: 0; overflow: visible; border: 0; background: transparent; }
+#notes-multi\ player .multiplayer-setup:has(.preset-setup.is-editing) .custom-editor { height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); max-height: none; }
+#notes-challenge .practice-view:has(.preset-setup.is-editing) { display: block; min-height: 0; }
+#notes-challenge .practice-setup:has(.preset-setup.is-editing) { display: block; }
+#notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { overflow: hidden; }
+#notes-challenge .custom-editor { height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); max-height: none; }
+@media (min-width: 950px) {
+  #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(150px,180px) minmax(0,1fr) minmax(250px,290px); grid-template-rows: auto minmax(0,1fr) auto; height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); gap: 12px; }
+  .multiplayer-roster-section { grid-column: 1; }
+  .multiplayer-editor { grid-column: 2; }
+  .multiplayer-round-setup { grid-column: 3; min-height: 0; padding: 0 4px; overflow-y: auto; border-top: 0; }
+  .multiplayer-setup-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  #notes-challenge, #notes-multi\ player { height: auto; min-height: calc(100svh - 190px); padding: 16px 12px; overflow: visible; scrollbar-gutter: auto; border-radius: 20px; }
+  #notes-challenge .practice-view { position: relative; display: block; min-height: 0; }
+  #notes-challenge .practice-setup { display: block; }
+  #notes-challenge .practice-companion { position: absolute; top: 0; right: 0; width: 72px; }
+  #notes-challenge .practice-companion .uno { width: 72px; height: 72px; }
+  #notes-challenge .practice-stage h2 { padding-right: 76px; min-height: 56px; font-size: 21px; }
+  #notes-challenge .practice-setup > .control--primary { width: 100%; }
+  #notes-challenge .challenge-scene { min-height: 400px; }
+  #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(0,1fr); grid-template-rows: auto; height: auto; gap: 16px; }
+  .multiplayer-roster-section, .multiplayer-editor, .multiplayer-round-setup, .multiplayer-setup-actions { grid-column: 1; }
+  .multiplayer-roster-section { overflow: visible; }
+  .multiplayer-roster { display: flex; flex-wrap: nowrap; max-height: none; overflow-x: auto; overflow-y: hidden; }
+  .multiplayer-slot { width: auto; flex: none; }
+  .multiplayer-player-tab { max-width: 150px; }
+  .multiplayer-editor { padding: 12px; overflow: visible; }
+  .multiplayer-setup-actions { flex-wrap: wrap; }
+  .multiplayer-setup-actions .control--primary { flex: 1; justify-content: center; }
+  #notes-challenge .custom-editor, #notes-multi\ player .multiplayer-setup:has(.preset-setup.is-editing) .custom-editor { height: max(470px, calc(100dvh - 224px)); }
+  #notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { min-height: 0; }
+}

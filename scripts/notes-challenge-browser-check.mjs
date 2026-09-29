@@ -24,7 +24,7 @@ async function run(page,url,label) {
   assert.equal(await page.locator('.challenge-scene').isVisible(),true);
   assert.equal(await page.locator('.challenge-notation').isVisible(),false);
   assert.equal(await page.locator('.challenge-backdrop .staff').isVisible(),true);
-  const bounds=()=>page.locator('.challenge-scene').evaluate(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y+scrollY,width:r.width,height:r.height};});
+  const bounds=()=>page.locator('.challenge-scene').evaluate(n=>{const r=n.getBoundingClientRect();const panel=n.closest('#notes-challenge');return {x:r.x,y:r.y+scrollY+(panel?.scrollTop ?? 0),width:r.width,height:r.height};});
   const frame=await bounds();
   const stableFrame=async()=>{const box=await bounds();for(const key of ['x','y','width','height']) assert.ok(Math.abs(box[key]-frame[key])<1,`Stable scene ${key}: ${box[key]} vs ${frame[key]}`);};
   const save=async(state)=>{await page.screenshot({path:`dist/validation/notes-challenge-${name}-${label}-${state}.png`,fullPage:true});};
