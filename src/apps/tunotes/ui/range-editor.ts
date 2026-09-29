@@ -63,6 +63,8 @@ export function rangeEditor(label: string, initial: string, changed: () => void,
     accidental.buttons.forEach((b,i) => { b.disabled = !supportedAnswer({...pitch,accidental:(i-1) as Accidental}); });
   }
   stage.append(staff);
-  node.append(heading,readout,clefSelect,stage,accidental.node); update();
+  const identity = el('div','endpoint-identity'); identity.append(heading,readout);
+  const header = el('div','endpoint-header'); header.append(identity,clefSelect);
+  node.append(header,stage,accidental.node); update();
   return {node,setLimits(low: number, high: number) { staff.setAttribute('aria-valuemin',String(low)); staff.setAttribute('aria-valuemax',String(high)); },get pitch() { return pitch; },get clef() { return clef; },set(value: string, nextClef: Clef) { pitch = parsePitch(value.replace('♯','#').replace('♭','b')); clef = nextClef; update(); },setClef(value: Clef) { clef = value; update(); }};
 }

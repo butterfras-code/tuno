@@ -21,7 +21,7 @@ try {
     await customTab(page,'Range');
     assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).isVisible(),false);
     assert.equal(await page.locator('.practice-companion').isVisible(),false);
-    for (const tab of ['Range','Notes','Clefs']) {
+    for (const tab of ['Range','Options','Clefs']) {
       await customTab(page,tab);
       assert.equal(await page.getByRole('tabpanel').count(),1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth),true,`${width}: ${tab} horizontal overflow`);
@@ -29,7 +29,7 @@ try {
       // The content viewport must end before the persistent actions, even when scrolled.
       const body = await page.locator('.configurator-body').boundingBox();
       const footer = await page.locator('.custom-editor-footer').boundingBox();
-      if (tab === 'Notes' && width >= 761 && height >= 768) {
+      if (tab === 'Options' && width >= 761 && height >= 768) {
         const spellings = await page.getByRole('group',{name:'Additional spellings',exact:true}).boundingBox();
         assert.ok(spellings.y+spellings.height <= body.y+body.height,`${width}: spelling controls should fit without scrolling`);
       }
@@ -55,7 +55,7 @@ try {
     await page.getByRole('tab',{name:'Range',exact:true}).focus(); await page.keyboard.press('ArrowLeft');
     assert.equal(await page.getByRole('tab',{name:'Clefs',exact:true}).getAttribute('aria-selected'),'true');
     await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
-    assert.equal(await page.getByRole('tab',{name:'Notes',exact:true}).getAttribute('aria-selected'),'true');
+    assert.equal(await page.getByRole('tab',{name:'Options',exact:true}).getAttribute('aria-selected'),'true');
     assert.equal(await page.locator('[role=tab][tabindex="0"]').count(),1);
     await page.getByRole('button',{name:'Cancel',exact:true}).click();
     assert.equal(await page.locator('#preset-summary').textContent(),original);

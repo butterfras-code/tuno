@@ -10,11 +10,11 @@ import { titleCase } from './preset-picker.ts';
 export function customConfigurator(changed: () => void, idPrefix = '') {
   const node = el('section','custom-configurator');
   const tabs = el('div','configurator-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Custom range settings');
-  const panels = ['Range','Notes','Clefs'].map((_name,index) => {
+  const panels = ['Range','Options','Clefs'].map((_name,index) => {
     const panel = el('section','configurator-panel'); panel.id = `${idPrefix}custom-panel-${index}`; panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',`${idPrefix}custom-tab-${index}`);
     return panel;
   });
-  const tabButtons = ['Range','Notes','Clefs'].map((name,index) => {
+  const tabButtons = ['Range','Options','Clefs'].map((name,index) => {
     const tab = el('button','control',name); tab.type = 'button'; tab.id = `${idPrefix}custom-tab-${index}`; tab.setAttribute('role','tab'); tab.setAttribute('aria-controls',panels[index]!.id);
     tab.addEventListener('click',() => showTab(index));
     tab.addEventListener('keydown',event => {
@@ -104,7 +104,7 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   const help = el('details','range-instructions'); help.append(el('summary','','How to edit the range'),el('p','','Tap the staff or drag the note. Arrow keys move one position; Page Up/Down move an octave. Changing a clef also enables it for practice. Choose your final practice clefs in the Clefs tab.'));
   panels[0]!.append(endpointSwitch,range,help,ledger);
   const tile = (title: string, ...children: HTMLElement[]) => { const section = el('section','configurator-tile'); section.append(el('h3','',title),...children); return section; };
-  panels[1]!.classList.add('configurator-notes');
+  panels[1]!.classList.add('configurator-options');
   panels[1]!.append(tile('Staff content',contentSegments.node),tile('Key signature',keyGroup),tile('Additional spellings',modifierSegments.node,el('p','muted','Add spellings within your range. Select any combination.')));
   availableSegments.node.classList.add('clef-tiles');
   panels[2]!.append(el('h3','','Clefs used in practice'),el('p','muted','Choose one or more. Each note uses the enabled clef with the fewest ledger lines.'),availableSegments.node);

@@ -21,7 +21,7 @@ export async function endpointTab(page,label) {
   if (await selector.isVisible()) await selector.click();
 }
 export async function setKey(page,value) {
-  await customTab(page,'Notes');
+  await customTab(page,'Options');
   await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'On',exact:true}).click();
   await page.getByLabel('Major key',{exact:true}).selectOption(value);
 }
@@ -46,7 +46,7 @@ export async function setEndpoint(page,label,pitch) {
   await page.getByRole('group',{name:`${label} accidental`,exact:true}).getByRole('button',{name:accidental === '#' ? 'Sharp' : accidental === 'b' ? 'Flat' : 'Natural',exact:true}).click();
 }
 export async function setModifiers(page,values) {
-  await customTab(page,'Notes');
+  await customTab(page,'Options');
   await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:values.includes('key') ? 'On' : 'Off',exact:true}).click();
   for (const [id,label] of [['flat','♭ Flat'],['natural','♮ Natural'],['sharp','♯ Sharp']]) {
     const button = page.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:label,exact:true});

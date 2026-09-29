@@ -37,9 +37,9 @@ try {
   await setKey(page,'F'); assert.match(await page.locator('#preset-summary').textContent(),/F4–F4/);
   await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
   assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isEnabled(),true);
-  await customTab(page,'Notes'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
+  await customTab(page,'Options'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/No notes match/);
-  await customTab(page,'Notes'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
+  await customTab(page,'Options'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
   await saveCustom(page,'Middle C');
   results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, answerable out-of-pool spellings, explicit sharp keyboard answer and focused Enter submission');
   await expandData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
