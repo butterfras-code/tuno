@@ -20,7 +20,7 @@ try {
   page.on('response', (response) => { if (response.status() >= 400) failures.push(response.url()); });
   await page.goto(origin);
   assert.equal(page.url(), host.url);
-  const notesLink = page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'Notes' });
+  const notesLink = page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'tuNotes (Note Reading)' });
   assert.equal(await notesLink.getAttribute('href'), '/notes/');
   await notesLink.click();
   assert.equal(page.url(), origin + '/notes/');

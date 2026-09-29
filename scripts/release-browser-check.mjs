@@ -113,7 +113,7 @@ try {
   portable.on('request', (request) => requests.push(request.url()));
   const fileUrl = pathToFileURL(saved).href;
   await portable.goto(fileUrl);
-  assert.equal(await portable.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'Notes' }).getAttribute('href'), 'https://tuno.cc/notes/');
+  assert.equal(await portable.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'tuNotes (Note Reading)' }).getAttribute('href'), 'https://tuno.cc/notes/');
   assert.equal(await portable.locator('meta[name="tuno-version"]').getAttribute('content'), version);
   assert.equal(await portable.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
   await portable.getByRole('button', { name: 'Play tone', exact: true }).click();

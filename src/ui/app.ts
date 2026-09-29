@@ -41,7 +41,8 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   tinker.setAttribute('aria-label', 'Settings');
   tinker.classList.add('tinker-control');
   navigation.append(tinker);
-  const notes = el('a', 'control', 'Notes');
+  const notes = el('a', 'control');
+  notes.append(el('span', '', 'tuNotes'), el('span', 'notes-subtitle', '(Note Reading)'));
   notes.href = location.protocol === 'file:' ? 'https://tuno.cc/notes/' : '/notes/';
   navigation.append(notes);
   header.append(brand, navigation);
