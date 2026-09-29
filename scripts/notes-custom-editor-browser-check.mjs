@@ -29,6 +29,10 @@ try {
       // The content viewport must end before the persistent actions, even when scrolled.
       const body = await page.locator('.configurator-body').boundingBox();
       const footer = await page.locator('.custom-editor-footer').boundingBox();
+      if (tab === 'Notes' && width >= 761 && height >= 768) {
+        const spellings = await page.getByRole('group',{name:'Additional spellings',exact:true}).boundingBox();
+        assert.ok(spellings.y+spellings.height <= body.y+body.height,`${width}: spelling controls should fit without scrolling`);
+      }
       assert.ok(body.y+body.height <= footer.y+1,`${width}: ${tab} overlaps footer`);
       await page.getByRole('button',{name:'Use range',exact:true}).scrollIntoViewIfNeeded();
       assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).evaluate(node => {
