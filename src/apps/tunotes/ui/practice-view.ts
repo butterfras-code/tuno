@@ -39,6 +39,7 @@ export function practiceView() {
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
   const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.picker;
+  presetsUI.practicePresentation(true);
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
@@ -158,7 +159,7 @@ export function practiceView() {
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     closePreview(); session?.finish(); session = undefined; resetInput();
-    dogHome.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
+    (activity === 'practice' ? presetsUI.companion : dogHome).prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
   };
@@ -290,6 +291,7 @@ export function practiceView() {
   resultDetails.append(el('summary','','Session details'),resultTiming);
   result.append(resultHeading, resultSummary, coaching, resultControls, resultDetails);
   stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
+  presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
@@ -324,7 +326,7 @@ export function practiceView() {
   return { node, options, store, dispose, enter: () => { dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
-    activity = next; node.dataset.activity = next; showSetup();
+    activity = next; node.dataset.activity = next; presetsUI.practicePresentation(next === 'practice'); showSetup();
     setupHeading.textContent = next === 'practice' ? 'Choose your notes' : 'Set your challenge';
     if (next === 'challenge') setup.insertBefore(toggles, rulesUI.node); else settings.append(toggles, practicePacing);
     settings.hidden = next === 'challenge';

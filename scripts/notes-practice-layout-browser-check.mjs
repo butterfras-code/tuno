@@ -62,7 +62,7 @@ try {
         await page.getByRole('button',{name:'Edit setup',exact:true}).click();
       }
       const rangeSummary = await page.locator('#preset-summary').textContent();
-      await page.getByRole('button',{name:'Adjust range',exact:true}).click();
+      await page.getByRole('button',{name:'Customize…',exact:true}).click();
       assert.equal(await page.locator('#preset-summary').textContent(),rangeSummary);
       assert.equal(await page.getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);
       await page.getByRole('button',{name:'Save as preset…',exact:true}).click();

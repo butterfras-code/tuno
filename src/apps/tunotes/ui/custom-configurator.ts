@@ -105,7 +105,7 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   panels[0]!.append(endpointSwitch,range,help,ledger);
   const tile = (title: string, ...children: HTMLElement[]) => { const section = el('section','configurator-tile'); section.append(el('h3','',title),...children); return section; };
   panels[1]!.classList.add('configurator-options');
-  panels[1]!.append(tile('Staff content',contentSegments.node),tile('Key signature',keyGroup),tile('Additional spellings',modifierSegments.node,el('p','muted','Add spellings within your range. Select any combination.')));
+  panels[1]!.append(tile('Staff content',contentSegments.node),tile('Key signature',keyGroup),tile('Additional spellings',modifierSegments.node,el('p','muted','Unmarked notes are always included. Add flats or sharps within your range; Natural adds cancellations of the key signature.')));
   availableSegments.node.classList.add('clef-tiles');
   panels[2]!.append(el('h3','','Clefs used in practice'),el('p','muted','Choose one or more. Each note uses the enabled clef with the fewest ledger lines.'),availableSegments.node);
   body.append(notice);

@@ -96,6 +96,17 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .preset-picker > .control { justify-content: space-between; text-align: left; width: 100%; }
 .preset-dialog { position: fixed; margin: 0; padding: 16px; width: min(420px, calc(100vw - 16px)); max-height: min(520px, calc(100dvh - 16px)); overflow-y: auto; background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: 0 12px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }
 .preset-dialog::backdrop { background: color-mix(in srgb, var(--color-ink) 18%, transparent); }
+.preset-dialog--preview[open] { display: flex; flex-direction: column; overflow: hidden; }
+.preset-dialog--preview::backdrop { background: transparent; }
+.preset-dialog--preview .picker-header, .preset-dialog--preview .picker-trail, .picker-footer { flex-shrink: 0; }
+.preset-dialog--preview .picker-header > .control { min-width: 44px; }
+.preset-dialog--preview .picker-choices { overflow-y: auto; min-height: 44px; }
+.picker-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--color-line); }
+.picker-range-preview { flex-shrink: 0; border-bottom: 1px solid var(--color-line); padding-bottom: 8px; margin-bottom: 12px; }
+.picker-range-preview .preset-preview { margin: 0 !important; }
+.picker-range-preview .endpoint-staff { max-height: 48px !important; }
+.picker-range-preview h4 { font-size: 12px; }
+.picker-range-preview output { font-size: 16px !important; }
 .picker-header { display: flex; align-items: center; gap: 8px; }
 .picker-header h3 { margin: 0; font-size: 18px; flex: 1; }
 .picker-header .control { padding: 8px; font-size: 14px; }
@@ -103,6 +114,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .picker-choices { display: grid; gap: 8px; }
 .picker-choices > .control { justify-content: space-between; gap: 12px; text-align: left; }
 .picker-choices small { white-space: nowrap; font: 13px var(--font-body); }
+.picker-choices > .control[aria-pressed='true'] small { color: inherit; }
 .picker-choices h4 { margin: 8px 0 0; }
 .picker-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .picker-categories .control { justify-content: center; }
@@ -453,6 +465,42 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 #notes-practice .adjust-range { min-height: 44px; padding: 8px 12px; font-size: 14px; }
 #notes-practice .practice-setup > .control--primary { position: sticky; bottom: 0; }
+
+/* Practice setup groups the chosen notes and Uno in one compact preview. */
+#notes-practice:has(.practice-view[data-screen='setup']):not(:has(.preset-setup.is-editing)) {
+  height: auto; min-height: 0; overflow: visible; scrollbar-gutter: auto;
+}
+#notes-practice .practice-view[data-screen='setup'] { display: block; min-height: 0; }
+#notes-practice .practice-view[data-screen='setup'] > .practice-companion { display: none; }
+#notes-practice .practice-setup { max-width: 760px; }
+#notes-practice .practice-setup > h2 { min-height: 0; padding-right: 0; }
+#notes-practice .preset-picker--separate {
+  display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px 20px; max-width: 720px;
+}
+#notes-practice .preset-picker--separate > .setting-label { grid-column: 1 / -1; }
+#notes-practice .preset-name { font: 700 18px/1.4 var(--font-heading); overflow-wrap: anywhere; }
+#notes-practice .preset-picker--separate > .control { width: auto; max-width: none; white-space: nowrap; }
+#notes-practice .preset-preview-scene {
+  display: grid; grid-template-columns: minmax(0,480px) 200px; align-items: end; gap: 24px; max-width: 720px; margin-top: 20px;
+}
+#notes-practice .preset-preview-scene .preset-preview { max-width: none; margin-top: 0; gap: 24px; }
+#notes-practice .preset-preview-scene .endpoint-staff { max-height: 130px; }
+#notes-practice .preset-preview-scene output { font-size: 22px; }
+#notes-practice .preset-preview-companion .uno { display: block; width: 200px; height: 180px; }
+#notes-practice .practice-setup > .control--primary { position: static; }
+@media (max-width: 1000px) {
+  #notes-practice .preset-preview-scene { grid-template-columns: minmax(0,480px) 160px; gap: 16px; }
+  #notes-practice .preset-preview-companion .uno { width: 160px; height: 160px; }
+}
+@media (max-width: 600px) {
+  #notes-practice .preset-picker--separate { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  #notes-practice .preset-picker--separate > .control { justify-self: start; }
+  #notes-practice .preset-preview-scene { display: block; position: relative; margin-top: 16px; }
+  #notes-practice .preset-preview-scene .preset-preview { gap: 16px; }
+  #notes-practice .preset-preview-companion { position: absolute; top: 100%; right: 0; }
+  #notes-practice .preset-preview-companion .uno { width: 96px; height: 96px; }
+  #notes-practice .preset-overview > #preset-summary { max-width: calc(100% - 108px); }
+}
 
 /* Custom range editing occupies the activity surface, with a separate action bar. */
 .practice-setup:has(.preset-setup.is-editing) > :not(.preset-setup),

@@ -21,7 +21,7 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
   if (source.exactRange !== undefined && typeof source.exactRange !== 'boolean') throw new Error('Invalid exact range choice.');
   if (source.editorVersion !== undefined && source.editorVersion !== 2) throw new Error('Unsupported custom editor version.');
   if (source.editorVersion === 2) {
-    if (!source.modifiers?.length || new Set(source.modifiers).size !== source.modifiers.length || source.modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) throw new Error('Select at least one modifier.');
+    if (!source.modifiers || new Set(source.modifiers).size !== source.modifiers.length || source.modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) throw new Error('Invalid spelling modifiers.');
     if (!source.availableClefs?.length || new Set(source.availableClefs).size !== source.availableClefs.length || source.availableClefs.some(c => !clefs.includes(c))) throw new Error('Select at least one available clef.');
     if (!source.endpointClefs || source.endpointClefs.length !== 2 || source.endpointClefs.some(c => !clefs.includes(c))) throw new Error('Choose two endpoint clefs.');
     if (source.ledgerBelow !== undefined || source.ledgerAbove !== undefined) throw new Error('Graphical ranges do not use ledger limits.');
@@ -51,7 +51,9 @@ export function normalizePreset(source: PresetSource, options: { legacySpellings
     }
     if (source.editorVersion === 2) {
       alterations.clear();
+      // Unmarked notes follow the key, or are natural when no key is enabled.
       if (source.modifiers!.includes('key')) alterations.add(keyAccidental(natural.letter, key));
+      else if (!source.modifiers!.includes('natural')) alterations.add(0);
       if (source.modifiers!.includes('flat')) alterations.add(-1);
       if (source.modifiers!.includes('natural')) alterations.add(0);
       if (source.modifiers!.includes('sharp')) alterations.add(1);

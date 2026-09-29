@@ -21,13 +21,23 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
   const pickerUI = presetPicker(() => store.data.customPresets,id => {
     if (id === 'custom') openEditor(defaultPreset); else selectPreset(id);
-  },idPrefix);
+  },idPrefix,true,'Preset',{
+    begin: () => {
+      const source = currentSource, selected = current, error = selectionError;
+      return () => { currentSource = source; current = selected; selectionError = error; renderOverview(); };
+    },
+    select: id => selectPreset(id),
+    range: () => preview,
+  });
   const picker = pickerUI.picker;
   const editor = customConfigurator(() => { if (editing) summarizeDraft(); },idPrefix);
   const frame = el('section','custom-editor'); frame.hidden = true; frame.setAttribute('aria-label','Custom range editor');
   const heading = el('h2','','Custom range');
   const summary = el('p','preset-summary'); summary.id = `${idPrefix}preset-summary`; summary.setAttribute('role','status');
   const preview = el('div','preset-preview range-grid');
+  const previewScene = el('div','preset-preview-scene');
+  const companion = el('div','preset-preview-companion'); companion.hidden = true;
+  previewScene.append(preview,companion);
   const saveName = el('input','control'); saveName.maxLength = 80; saveName.setAttribute('aria-label','Custom preset name');
   let nameOverride = false;
   const draftSource = () => {
@@ -62,7 +72,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   const footer = el('div','custom-editor-footer'); footer.append(summary,savePanel,message,actions);
   frame.append(heading,editor.node,footer);
   const adjustRange = button('Adjust range',() => { if (currentSource) openEditor(current ?? currentSource); }); adjustRange.classList.add('adjust-range');
-  overview.append(pickerUI.node,preview,summary,adjustRange); node.append(overview,frame);
+  overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame);
 
   function describe(preset: Preset) {
     const low = preset.pool[0]!, high = preset.pool.at(-1)!;
@@ -122,7 +132,10 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     return true;
   }
   refresh();
-  return { node,picker,refresh, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
+  return { node,picker,refresh,companion, practicePresentation: (enabled: boolean) => {
+    pickerUI.separateName(enabled); companion.hidden = !enabled;
+    adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
+  }, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
     selected: () => editing ? undefined : current, onChange: (fn: () => void) => { changed = fn; },
     saveForRoster: () => {
       if (editing || !currentSource) return undefined;

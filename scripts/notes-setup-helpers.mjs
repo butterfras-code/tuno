@@ -10,9 +10,10 @@ export async function choosePreset(page,id) {
   if (preset.instrument) await dialog.getByRole('button',{name:preset.name.split(' — ')[0],exact:true}).click();
   else await dialog.getByRole('button',{name:preset.clef[0].toUpperCase()+preset.clef.slice(1),exact:true}).click();
   await dialog.locator(`[data-preset-id="${id}"]`).click();
+  if (await dialog.getByRole('button',{name:'Use preset',exact:true}).isVisible()) await dialog.getByRole('button',{name:'Use preset',exact:true}).click();
 }
 export async function customTab(page,name) {
-  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:'Adjust range',exact:true}).click();
+  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:/^(Adjust range|Customize…)$/}).click();
   await page.getByRole('tab',{name,exact:true}).click();
 }
 export async function endpointTab(page,label) {
