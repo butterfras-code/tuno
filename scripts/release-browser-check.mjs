@@ -29,12 +29,13 @@ try {
   await page.getByRole('spinbutton', { name: 'A4 reference (Hz)' }).fill('440');
   await page.getByRole('button', { name: 'Save settings', exact: true }).click();
   const installControl = page.getByRole('button', { name: 'Install', exact: true });
+  assert.equal(await page.getByRole('navigation', { name: 'Information and installation' }).getByRole('button', { name: 'Install' }).count(), 1);
   await installControl.click();
   await page.getByRole('dialog', { name: 'Keep tUno close' }).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).isVisible(), true);
   await page.keyboard.press('Escape');
   assert.equal(await installControl.evaluate((button) => document.activeElement === button), true);
-  for (const [name, title] of [['About', 'About tUno'], ['Uno', 'Meet Uno'], ['Support', 'Support tUno'], ['Privacy', 'Your privacy']]) {
+  for (const [name, title] of [['About', 'About tUno'], ['Uno', 'Meet Uno'], ['Tech tips', 'Tech tips'], ['Privacy', 'Your privacy']]) {
     const trigger = page.getByRole('button', { name, exact: true });
     await trigger.click();
     const dialog = page.getByRole('dialog', { name: title, exact: true });
@@ -47,8 +48,11 @@ try {
       const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
       assert.equal(await dialog.getByRole('link', { name: 'Source code for this version' }).getAttribute('href'), `https://github.com/butterfras-code/tuno/tree/${release.revision}`);
     }
-    if (name === 'Uno' || name === 'Support') {
+    if (name === 'Uno') {
       assert.equal(await dialog.getByRole('link', { name: 'Support on Ko-fi' }).getAttribute('href'), 'https://ko-fi.com/qjayapp');
+    }
+    if (name === 'Tech tips') {
+      assert.match(await dialog.textContent(), /Noise cancellation or voice isolation can filter out musical notes/);
     }
     if (name === 'Uno') {
       assert.match(await dialog.textContent(), /Uno was my first dog and my best friend\. Always the goodest boy\./);
@@ -109,6 +113,7 @@ try {
   portable.on('request', (request) => requests.push(request.url()));
   const fileUrl = pathToFileURL(saved).href;
   await portable.goto(fileUrl);
+  assert.equal(await portable.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'tuNotes (Note Reading)' }).getAttribute('href'), 'https://tuno.cc/notes/');
   assert.equal(await portable.locator('meta[name="tuno-version"]').getAttribute('content'), version);
   assert.equal(await portable.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
   await portable.getByRole('button', { name: 'Play tone', exact: true }).click();

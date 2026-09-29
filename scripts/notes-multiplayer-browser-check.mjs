@@ -151,7 +151,7 @@ async function run(page,url,label) {
   await page.setViewportSize({width:1280,height:900});
 
   await open(page,url);await addPlayers(page,3);
-  assert.equal(await button(page,'Coming Soon').isDisabled(),true);
+  assert.equal(await button(page,'Coming Soon').count(),0);
   await page.getByLabel('Player 3 name').fill('Ready');
   await page.getByLabel('Player 3 name').press('Enter');
   assert.equal(await button(page,'Edit Player 3').textContent(),'Ready');

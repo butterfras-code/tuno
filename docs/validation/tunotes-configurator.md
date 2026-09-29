@@ -1,5 +1,11 @@
 # tuNotes preset and custom configurator validation
 
+The current tabbed-editor refinement supersedes the inline layout and symbol-cycling controls described in the archived report below. Range / Options / Clefs now share a summary and separate action bar, with one endpoint visible on phones. Use range applies a draft, Cancel restores the prior selection, and Save as preset creates a named copy.
+
+`notes-custom-editor-browser-check.mjs` covers 320–1366 pixel widths, phone landscape, keyboard tab navigation, focus restoration, non-overlapping actions, draft apply/cancel, saving/copying/reloading, invalid pools, older preset repair, zoom, and Challenge/player isolation. The new checks and existing configurator, input, profile/backup, adaptation, and responsive Practice checks passed in Chromium and Firefox. Full release verification and physical-device acceptance remain separate.
+
+## Earlier inline configurator evidence
+
 Implemented on the existing `t3code/create-note-reading-game` branch, 2026-09-27. This is a local preview, not publication. The archived [release metadata](tunotes-configurator/release.json) identifies the tested build.
 
 ## Implemented decisions

@@ -2,6 +2,10 @@
 
 Implemented locally in the existing branch/worktree on 2026-09-27. This updates Stage 2; no publication is implied. The implementation, including the later modifier glow and arrow keycaps, is recorded in local commit `73eba41`. The archived tuNotes build `7bb676f904fff2ea` and [release.json](tunotes-input/release.json) cover the offset-layout revision before those later visual additions; they are not evidence for the current working tree or the concurrent configurator refinement.
 
+## Tap-only follow-up (2026-09-28)
+
+Answer controls now use direct taps/clicks with the offset layout and the hint “Tap a note to answer.” Leaving the pressed target cancels; releasing over another note cannot answer it. Keyboard input and prompt/cancellation protections remain. The earlier gesture behavior and archived checks below describe historical versions. Current browser checks verify mouse and emulated-touch drag cancellation followed by direct submission.
+
 ## Behavior and decisions
 
 The accidental dropdown is replaced with a tonic-to-tonic octave. Sharps and flats sit a full half-key width between neighboring naturals, with matching sharp/flat positions aligned vertically. B♯, C♭, E♯ and F♭ are absent from both controls and generated pools. The tonic appears at both ends, and either copy submits the same spelling. Modified tonics stay on their alteration row; B♭ major runs from B♭ to B♭ around the natural row B–C–D–E–F–G–A. Targets outside the active exercise pool are inactive. In-key spellings are outlined. Targets rotate only when the configured key changes, and remain fixed during play. Direct clicks/taps and mouse/touch press-slide-release use the same spelling and availability model. Releasing outside an enabled target cancels; pause, prompt changes, lost pointer capture, pointer cancellation and blur clear pending gestures.

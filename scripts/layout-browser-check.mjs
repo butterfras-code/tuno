@@ -22,7 +22,7 @@ try {
         if (!el.checkVisibility() || !el.getBoundingClientRect().width) return false;
         return true;
       };
-      const controls = [...document.querySelectorAll('.install-control, nav button, main button, main select, main input:not([type=range]), .tool-strip button, .tool-strip input')]
+      const controls = [...document.querySelectorAll('nav .control, main button, main select, main input:not([type=range]), .tool-strip button, .tool-strip input')]
         .filter(el => visible(el) && !el.closest('.piano, [popover]'));
       for (const el of controls) {
         const box = el.getBoundingClientRect();
@@ -46,7 +46,7 @@ try {
     await page.goto(host.url);
     await page.evaluate(() => document.fonts.ready);
     const selectTool = async name => {
-      await page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
+      await page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('button', { name, exact: true }).click();
       if (width <= 650) await page.getByRole('tab', { name: { Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' }[name], exact: true }).click();
     };
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
@@ -124,7 +124,7 @@ try {
     await inspect(width, 'playing');
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
     if (width <= 650) {
-      const nav = page.getByRole('navigation', { name: 'Practice focus' });
+      const nav = page.getByRole('navigation', { name: 'Practice and apps' });
       for (const [name, view] of [['Tuner', 'tuner'], ['Reference tone', 'tone'], ['Metronome', 'metronome']]) {
         const selectedBefore = await page.getByRole('tab', { selected: true }).textContent();
         await nav.getByRole('button', { name, exact: true }).click();

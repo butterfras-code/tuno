@@ -1,5 +1,5 @@
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
-import { choosePreset, setEndpoint, setModifiers } from './notes-setup-helpers.mjs';
+import { choosePreset, setEndpoint, setModifiers, setKey, useRange } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -58,14 +58,16 @@ try {
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await page.keyboard.down('ArrowDown'); await page.keyboard.press('b'); await page.keyboard.up('ArrowDown'); await count(page,3);
-  const positions = await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
+  const positions = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
-  assert.deepEqual(await page.locator('.answer').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
-  // Mouse can start at out-of-pool natural B and slide to the visible flat B.
+  assert.deepEqual(await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
+  // Dragging between notes cancels; only a direct click submits.
   let from = await center(button(page, 'B')), to = await center(button(page, 'B', -1));
   await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(to.x,to.y,{steps:4});
-  assert.match(await page.locator('.answer-preview').textContent(), /Release to answer B♭/);
-  await page.mouse.up(); await count(page,4);
+  assert.equal(await page.locator('.answer-preview').textContent(), 'Tap a note to answer.');
+  assert.equal(await page.locator('.answer-pending').count(), 0);
+  await page.mouse.up(); await count(page,3);
+  await button(page,'B',-1).click(); await count(page,4);
   await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
   from = await center(button(page,'B',-1));
   await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(1,1); await page.mouse.up(); await count(page,4);
@@ -78,10 +80,10 @@ try {
   await starts.last().click(); await count(page,5);
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await starts.first().click(); await count(page,6);
-  results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse slide from out-of-pool natural to flat; outside release and pause cancel');
+  results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse drag between notes cancels; outside release and pause cancel');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await choosePreset(page,'custom');
-  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await page.getByLabel('Major key',{exact:true}).selectOption('C'); await setModifiers(page,['key','flat','natural','sharp']);
+  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await setKey(page,'C'); await setModifiers(page,['key','flat','natural','sharp']); await useRange(page);
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
   const submitted=[];
@@ -103,7 +105,7 @@ try {
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:950});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
-    assert.ok(await page.locator('.answer').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
+    assert.ok(await page.locator('.answer:visible').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
     await page.screenshot({path:`dist/validation/notes-input-${name}-${width}.png`,fullPage:true});
   }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click();
@@ -143,13 +145,14 @@ try {
     const cdp=await context.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x,y:from.y}]});
     await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:to.x,y:to.y}]});
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await count(touch,1);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await count(touch,0);
+    await button(touch,'B',-1).tap(); await count(touch,1);
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
     from=await center(button(touch,'B',-1));
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
     await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]}); await count(touch,1);
     await button(touch,'B',-1).tap(); await count(touch,2);
-    await context.close(); results.push('Chromium touch emulation: self-paced direct answer/Continue; automatic-feedback slide from natural to flat, pointer cancellation, subsequent direct tap, no duplicate synthetic click');
+    await context.close(); results.push('Chromium touch emulation: self-paced direct answer/Continue; drag between notes cancels; direct tap with automatic feedback, pointer cancellation, subsequent direct tap, no duplicate synthetic click');
   }
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});

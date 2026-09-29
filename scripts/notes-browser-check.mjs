@@ -1,4 +1,4 @@
-import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
+import { notesMode, openData, setToggle, setPacing, openPracticeSettings } from './notes-setup-helpers.mjs';
 import { choosePreset } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -112,7 +112,7 @@ async function loop(page, mode) {
   for (const width of [360, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    const sizes = await page.locator('.answer').evaluateAll(buttons => buttons.map(b => ({ w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height })));
+    const sizes = await page.locator('.answer:visible').evaluateAll(buttons => buttons.map(b => ({ w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height })));
     assert.ok(sizes.every(s => s.w >= 44 && s.h >= 44));
     await page.screenshot({ path: `dist/validation/notes-${name}-${mode}-${width}.png` });
   }
@@ -123,7 +123,8 @@ async function loop(page, mode) {
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
-  await page.locator('#preset').focus();
+  await openPracticeSettings(page);
+  await page.locator('.practice-settings summary').focus();
   for (let tabs = 0; tabs < 5 && !await page.locator('#adaptive:focus').count(); tabs++) await page.keyboard.press('Tab');
   assert.equal(await page.locator('#adaptive:focus').count(), 1);
   assert.notEqual(await page.locator('#adaptive').evaluate(node => getComputedStyle(node).outlineStyle), 'none');

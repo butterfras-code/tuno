@@ -1,6 +1,6 @@
 import { el } from '../../../shared/ui/components.ts';
 import { clefForPitch, modifiersFor, generatedPresetName, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
-import type { Preset } from '../domain/presets.ts';
+import type { Preset, PresetSource } from '../domain/presets.ts';
 import { pitchLabel, spelling } from '../domain/notation.ts';
 import { titleCase, presetPicker } from './preset-picker.ts';
 import { customConfigurator } from './custom-configurator.ts';
@@ -14,89 +14,131 @@ function select(label: string, values: readonly (string | readonly [string,strin
   input.value = initial; node.append(input); return { node,input };
 }
 export function presetSetup(store: NotesStore, idPrefix = '') {
-  const node = el('div');
-  let current: Preset | undefined; let changed = () => {}; let selectedId = store.data.configuration.presetId;
-  const pickerUI = presetPicker(() => store.data.customPresets,id => { selectedId = id; loadCustom(); },idPrefix);
+  const node = el('div','preset-setup');
+  const overview = el('div','preset-overview');
+  let current: Preset | undefined, currentSource: PresetSource | undefined;
+  let selectionError = '';
+  let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
+  const pickerUI = presetPicker(() => store.data.customPresets,id => {
+    if (id === 'custom') openEditor(defaultPreset); else selectPreset(id);
+  },idPrefix);
   const picker = pickerUI.picker;
-  const editor = customConfigurator(() => summarize()); const custom = editor.node;
-  const summary = el('p'); summary.id = `${idPrefix}preset-summary`; summary.setAttribute('role','status');
+  const editor = customConfigurator(() => { if (editing) summarizeDraft(); },idPrefix);
+  const frame = el('section','custom-editor'); frame.hidden = true; frame.setAttribute('aria-label','Custom range editor');
+  const heading = el('h2','','Custom range');
+  const summary = el('p','preset-summary'); summary.id = `${idPrefix}preset-summary`; summary.setAttribute('role','status');
   const preview = el('div','preset-preview range-grid');
   const saveName = el('input','control'); saveName.maxLength = 80; saveName.setAttribute('aria-label','Custom preset name');
   let nameOverride = false;
-  const customSource = () => {
-    const source = editor.source(selectedId === 'custom' ? 'custom-current' : selectedId,'Custom');
+  const draftSource = () => {
+    const source = editor.source('custom-current','Custom');
     const generated = generatedPresetName(source);
     if (!nameOverride) saveName.value = generated;
     return {...source,name:saveName.value.trim() || generated};
   };
-  saveName.addEventListener('input',() => { nameOverride = !!saveName.value.trim(); summarize(); });
-  const summarize = () => {
-    custom.hidden = selectedId !== 'custom' && !store.data.customPresets.some(p => p.id === selectedId);
+  saveName.addEventListener('input',() => { nameOverride = !!saveName.value.trim(); summarizeDraft(); });
+  const savePanel = el('label','setting custom-save-name','Preset name'); savePanel.append(saveName); savePanel.hidden = true;
+  const message = el('p','custom-save-message'); message.setAttribute('role','status');
+  const saveToggle = button('Save as preset…',() => {
+    savePanel.hidden = !savePanel.hidden;
+    saveToggle.textContent = savePanel.hidden ? 'Save as preset…' : 'Back to editing';
+    saveToggle.setAttribute('aria-expanded',String(!savePanel.hidden));
+    apply.textContent = savePanel.hidden ? 'Use range' : 'Save preset';
+    if (!savePanel.hidden) { saveName.focus(); saveName.select(); }
+  }); saveToggle.classList.add('custom-save-toggle'); saveToggle.setAttribute('aria-expanded','false');
+  const apply = button('Use range',() => {
+    if (!draft) return;
     try {
-      current = custom.hidden ? presets.find(p => p.id === selectedId)! : normalizePreset(customSource());
-      if (!current) throw new Error('Choose a preset.');
-      const low = current.pool[0]!, high = current.pool.at(-1)!;
-      const modifiers = modifiersFor(current);
-      const additions = modifiers.filter(m => m !== 'key').map(m => ({flat:'flats',natural:'naturals',sharp:'sharps'}[m])).join(', ');
-      const clefs = (current.availableClefs ?? [current.clef]).map(titleCase).join(' / ');
-      summary.textContent = `${modifiers.includes('key') ? `${spelling(current.key.tonic)} Major` : 'No key signature'} · ${pitchLabel(low)}–${pitchLabel(high)} · ${current.content === 'lines-and-spaces' ? 'Lines and Spaces' : titleCase(current.content)}${additions ? ` (${additions})` : ''} · ${clefs} ${current.availableClefs && current.availableClefs.length > 1 ? 'clefs' : 'clef'}`;
-      if (!custom.hidden) editor.describe(current);
-      preview.replaceChildren();
-      for (const [label,pitch] of [['Low note',low],['High note',high]] as const) {
+      let source = draftSource();
+      if (!savePanel.hidden) {
+        source = {...source,id:`custom-${crypto.randomUUID()}`};
+        store.update(data => { data.customPresets.push(source); data.configuration.presetId = source.id; });
+      }
+      currentSource = source; current = normalizePreset(source); closeEditor();
+    } catch (error) { message.textContent = (error as Error).message; }
+  }); apply.classList.add('control--primary');
+  const cancel = button('Cancel',() => closeEditor());
+  const actions = el('div','custom-editor-actions'); actions.append(saveToggle,cancel,apply);
+  const footer = el('div','custom-editor-footer'); footer.append(summary,savePanel,message,actions);
+  frame.append(heading,editor.node,footer);
+  const adjustRange = button('Adjust range',() => { if (currentSource) openEditor(current ?? currentSource); }); adjustRange.classList.add('adjust-range');
+  overview.append(pickerUI.node,preview,summary,adjustRange); node.append(overview,frame);
+
+  function describe(preset: Preset) {
+    const low = preset.pool[0]!, high = preset.pool.at(-1)!;
+    const modifiers = modifiersFor(preset);
+    const additions = modifiers.filter(m => m !== 'key').map(m => ({flat:'flats',natural:'naturals',sharp:'sharps'}[m])).join(', ');
+    const clefs = (preset.availableClefs ?? [preset.clef]).map(titleCase).join(' / ');
+    return `${modifiers.includes('key') ? `${spelling(preset.key.tonic)} Major` : 'No key signature'} · ${pitchLabel(low)}–${pitchLabel(high)} · ${preset.content === 'lines-and-spaces' ? 'Lines and Spaces' : titleCase(preset.content)}${additions ? ` (${additions})` : ''} · ${clefs} ${preset.availableClefs && preset.availableClefs.length > 1 ? 'clefs' : 'clef'}`;
+  }
+  function summarizeDraft() {
+    message.textContent = '';
+    try { draft = normalizePreset(draftSource()); summary.textContent = describe(draft); editor.describe(draft); }
+    catch (error) {
+      draft = undefined; editor.clearDescription();
+      summary.textContent = (error as Error).message.replace('Select at least one modifier.', 'Turn on a key signature or choose an additional spelling.').replace('These settings produce an empty pool. Widen the range or change content or modifiers.', 'No notes match these settings. Widen the range or change staff content or spellings.');
+    }
+    apply.disabled = !draft;
+  }
+  function renderOverview() {
+    preview.replaceChildren();
+    if (currentSource) pickerUI.set(currentSource.id,currentSource.name);
+    if (!current) summary.textContent = selectionError;
+    if (current) {
+      pickerUI.set(current.id,current.name); summary.textContent = describe(current);
+      for (const [label,pitch] of [['Low note',current.pool[0]!],['High note',current.pool.at(-1)!]] as const) {
         const endpoint = el('div','range-endpoint');
-        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless);
-        staff.classList.replace('staff','endpoint-staff');
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless); staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
       }
-      preview.hidden = !custom.hidden;
-    } catch (error) { current = undefined; editor.clearDescription(); summary.textContent = (error as Error).message; preview.replaceChildren(); }
+    }
     changed();
+  }
+  function openEditor(source: PresetSource) {
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : picker;
+    // All changes stay in the editor until applied, including edits to saved presets.
+    editing = true; overview.hidden = true; frame.hidden = false; node.classList.add('is-editing');
+    footer.prepend(summary); nameOverride = false; savePanel.hidden = true; saveToggle.textContent = 'Save as preset…'; saveToggle.setAttribute('aria-expanded','false'); apply.textContent = 'Use range';
+    editor.load(source); editor.resetView(); editor.focus();
+  }
+  function closeEditor(focus = true) {
+    editing = false; frame.hidden = true; overview.hidden = false; node.classList.remove('is-editing');
+    overview.insertBefore(summary,adjustRange); renderOverview();
+    if (focus) (returnFocus?.isConnected && returnFocus.getClientRects().length ? returnFocus : picker).focus();
+  }
+  function selectPreset(id: string) {
+    currentSource = store.data.customPresets.find(p => p.id === id) ?? presets.find(p => p.id === id) ?? defaultPreset;
+    try { current = normalizePreset(currentSource); selectionError = ''; }
+    catch (error) { current = undefined; selectionError = (error as Error).message; }
+    closeEditor(false);
+  }
+  const refresh = () => selectPreset(store.data.configuration.presetId);
+  function persistCurrent() {
+    if (!currentSource || !current || editing) return false;
+    if (!presets.some(p => p.id === current!.id)) {
+      const source = currentSource;
+      store.update(data => { const index = data.customPresets.findIndex(p => p.id === source.id); if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source; });
+    }
+    return true;
+  }
+  refresh();
+  return { node,picker,refresh, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
+    selected: () => editing ? undefined : current, onChange: (fn: () => void) => { changed = fn; },
+    saveForRoster: () => {
+      if (editing || !currentSource) return undefined;
+      try {
+        if (currentSource.id === 'custom-current') { currentSource = {...currentSource,id:`custom-${crypto.randomUUID()}`}; current = normalizePreset(currentSource); }
+        if (!persistCurrent()) return undefined;
+        renderOverview(); return current;
+      } catch (error) { summary.textContent = (error as Error).message; return undefined; }
+    },
+    saveConfiguration: (selfPaced: boolean) => {
+      try {
+        if (!persistCurrent()) return false;
+        store.update(data => { data.configuration.presetId = current!.id; data.configuration.selfPaced = selfPaced; }); return true;
+      } catch (error) { summary.textContent = (error as Error).message; return false; }
+    }
   };
-  const loadCustom = () => {
-    const p = store.data.customPresets.find(p => p.id === selectedId);
-    if (p) { nameOverride = p.name !== generatedPresetName(p); saveName.value = p.name; editor.load(p); }
-    else if (selectedId === 'custom') nameOverride = false;
-    pickerUI.set(selectedId,p?.name ?? presets.find(p => p.id === selectedId)?.name ?? 'Custom');
-    summarize();
-  };
-  const refresh = () => {
-    selectedId = store.data.configuration.presetId;
-    if (!presets.some(p => p.id === selectedId) && !store.data.customPresets.some(p => p.id === selectedId)) selectedId = defaultPreset.id;
-    loadCustom();
-  };
-  const saveMessage = el('p'); saveMessage.setAttribute('role','status');
-  const nameLabel = el('label','setting','Preset name'); nameLabel.append(saveName);
-  custom.append(nameLabel,button('Save Custom preset',() => {
-    if (!current) return;
-    if (!saveName.value.trim()) { saveMessage.textContent = 'Enter a name for this preset.'; return; }
-    try {
-      const p = { ...customSource(), id: `custom-${crypto.randomUUID()}`, name: saveName.value.trim() };
-      store.update(data => { data.customPresets.push(p); data.configuration.presetId = p.id; }); refresh(); saveMessage.textContent = 'Custom preset saved.';
-    } catch (error) { saveMessage.textContent = (error as Error).message; }
-  }),saveMessage);
-  node.append(pickerUI.node,custom,preview,summary); refresh();
-  return { node,picker,refresh, selectPreset: (id: string) => { selectedId = id; loadCustom(); }, selected: () => current, onChange: (fn: () => void) => { changed = fn; }, saveForRoster: () => {
-    if (!current) return undefined;
-    if (custom.hidden) return current;
-    try {
-      const source = customSource();
-      if (selectedId === 'custom') source.id = `custom-${crypto.randomUUID()}`;
-      store.update(data => {
-        const index = data.customPresets.findIndex(p => p.id === source.id);
-        if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source;
-      });
-      selectedId = source.id; loadCustom(); return current;
-    } catch (error) { summary.textContent = (error as Error).message; return undefined; }
-  }, saveConfiguration: (selfPaced: boolean) => {
-    if (!current) return false;
-    try { store.update(data => {
-      if (!custom.hidden) {
-        const source = customSource(); const index = data.customPresets.findIndex(p => p.id === source.id);
-        if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source;
-      }
-      data.configuration.presetId = current!.id; data.configuration.selfPaced = selfPaced;
-    }); return true; } catch (error) { summary.textContent = (error as Error).message; return false; }
-  } };
 }
 export function localData(store: NotesStore, reload: () => void, playerChanged: () => void = () => {}) {
   const node = el('details','local-data'); node.append(el('summary','','Profiles and backups'));

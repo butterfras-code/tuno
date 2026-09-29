@@ -27,7 +27,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   const brand = el('div', 'brand');
   brand.append(el('h1', 'wordmark', 'tUno'), el('p', 'tagline', 'Practice with a friend.'));
   const navigation = el('nav', 'focus-navigation');
-  navigation.setAttribute('aria-label', 'Practice focus');
+  navigation.setAttribute('aria-label', 'Practice and apps');
   const links = TOOLS.map((tool) => {
     const control = button(tool.label, () => store.dispatch({ type: 'focus', value: tool.id }));
     responsiveLabel(control, tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune', tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune');
@@ -41,7 +41,11 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   tinker.setAttribute('aria-label', 'Settings');
   tinker.classList.add('tinker-control');
   navigation.append(tinker);
-  header.append(brand, navigation, information.installButton);
+  const notes = el('a', 'control');
+  notes.append(el('span', '', 'tuNotes'), el('span', 'notes-subtitle', '(Note Reading)'));
+  notes.href = location.protocol === 'file:' ? 'https://tuno.cc/notes/' : '/notes/';
+  navigation.append(notes);
+  header.append(brand, navigation);
 
   const main = el('main', 'practice-surface');
   main.id = 'practice';
