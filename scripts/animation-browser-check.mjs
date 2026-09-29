@@ -16,7 +16,7 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(url);
-    const focus = name => page.getByRole('navigation', { name: 'Practice focus' }).getByRole('button', { name, exact: true }).click();
+    const focus = name => page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('button', { name, exact: true }).click();
     await focus('Metronome');
     await page.evaluate(() => {
       window.nods = 0;

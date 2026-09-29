@@ -20,6 +20,11 @@ try {
   page.on('response', (response) => { if (response.status() >= 400) failures.push(response.url()); });
   await page.goto(origin);
   assert.equal(page.url(), host.url);
+  const notesLink = page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'Notes' });
+  assert.equal(await notesLink.getAttribute('href'), '/notes/');
+  await notesLink.click();
+  assert.equal(page.url(), origin + '/notes/');
+  await page.goto(host.url);
   await page.getByText('Offline ready', { exact: true }).waitFor();
   await page.reload();
   await page.getByText('Offline ready', { exact: true }).waitFor();

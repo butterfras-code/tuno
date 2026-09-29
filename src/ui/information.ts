@@ -19,12 +19,11 @@ export function createInformationControls() {
     actions.append(close);
     dialog.append(heading, ...content, actions);
     dialogs.push(dialog);
-    return (label: string, className?: string) => {
+    return (label: string) => {
       const trigger = button(label, popover ? undefined : () => (dialog as HTMLDialogElement).showModal());
       if (popover) trigger.popoverTargetElement = dialog;
       trigger.setAttribute('aria-haspopup', 'dialog');
       trigger.setAttribute('aria-controls', id);
-      if (className) trigger.classList.add(className);
       return trigger;
     };
   };
@@ -74,13 +73,12 @@ export function createInformationControls() {
     el('p', '', 'Your practice settings are saved in this browser when storage is available. Clear this site’s data in your browser to remove them. A downloaded file may keep settings separately, depending on your browser.'),
     el('p', '', 'There are no ads or tracking analytics in tUno. Opening the website or getting an update uses the internet. Once it says “Offline ready,” you can practice without a connection.'),
   ]);
-  const support = createDialog('support-information', 'Support tUno', [
-    el('p', '', 'tUno is free and ad-free.'),
-    el('p', '', 'If you find value in this project, please consider giving time or service to your local animal shelter. You can also support more cute things on Ko-fi.'),
-    supportLink(),
+  const tips = createDialog('tips-information', 'Tech tips', [
+    el('p', '', 'If the tuner cannot hear your instrument, check your microphone permission and move closer to the mic.'),
+    el('p', '', 'Noise cancellation or voice isolation can filter out musical notes. Try turning these features off in your device or headset settings if the signal is weak.'),
   ]);
   const footerNavigation = el('nav', 'information-navigation');
-  footerNavigation.setAttribute('aria-label', 'About and support');
-  footerNavigation.append(about('About'), uno('Uno'), support('Support'), privacy('Privacy'));
-  return { installButton: install('Install', 'install-control'), footerNavigation, dialogs };
+  footerNavigation.setAttribute('aria-label', 'Information and installation');
+  footerNavigation.append(install('Install'), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'));
+  return { footerNavigation, dialogs };
 }
