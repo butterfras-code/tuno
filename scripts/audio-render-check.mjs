@@ -38,6 +38,17 @@ window.renderClicks = async (sampleRate, volume, sound) => {
     const start = Math.floor((0.1 + i / 6) * sampleRate);
     return Math.max(...data.subarray(start, start + Math.floor(0.04 * sampleRate)).map(Math.abs));
   }) };
+};
+window.renderMixedPeak = async (sampleRate, sound) => {
+  const ac = new OfflineAudioContext(1, sampleRate, sampleRate);
+  const voice = createReferenceTone(ac, 440, 'rich');
+  voice.gain.gain.value = 0.2;
+  const timeline = createTimeline(0.1);
+  for (let i = 0; i < 25; i++) scheduleClick(ac, timeline.next({ tempo: 240, beats: 2, subdivision: 7 }), { accent: true, clickVolume: 100, clickSound: sound });
+  const data = (await ac.startRendering()).getChannelData(0);
+  let peak = 0;
+  for (const sample of data) peak = Math.max(peak, Math.abs(sample));
+  return peak;
 };`, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'iife', platform: 'browser' });
 const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
 try {
@@ -50,6 +61,10 @@ try {
       result.onsets.forEach((time, index) => assert.ok(Math.abs(time - (0.1 + index / 6)) < 0.001));
       assert.ok(result.accents[0] > result.accents[3]);
       assert.ok(result.accents[3] > result.accents[1]);
+      assert.ok(result.accents[0] > 0.2, `${sound}: default downbeat has useful peak level`);
+      assert.ok(result.accents[3] > 0.1, `${sound}: default beat has useful peak level`);
+      const mixedPeak = await page.evaluate(([rate, sound]) => window.renderMixedPeak(rate, sound), [sampleRate, sound]);
+      assert.ok(mixedPeak < 1, `${sound}: full-volume clicks and tone do not clip (${mixedPeak})`);
       const silent = await page.evaluate(([rate, sound]) => window.renderClicks(rate, 0, sound), [sampleRate, sound]);
       assert.equal(silent.peak, 0);
       assert.deepEqual(silent.onsets, []);

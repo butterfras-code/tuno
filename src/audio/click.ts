@@ -19,8 +19,10 @@ export function scheduleClick(context: BaseAudioContext, pulse: Pulse, settings:
   } else {
     oscillator.frequency.value = (beep ? (accented ? 2080 : 1560) : accented ? 1500 : 1000) * subdivisionPitch;
   }
+  // Short clicks need more peak level than a sustained tone to remain audible.
+  // Leave room for a full-volume reference tone (0.2) on the strongest accent.
   // Square waves carry more energy, so reduce their gain to balance the choices.
-  const level = settings.clickVolume / 100 * (accented ? 0.3 : pulse.part === 0 ? 0.2 : 0.1) * (beep ? 0.65 : 1);
+  const level = settings.clickVolume / 100 * (accented ? 0.75 : pulse.part === 0 ? 0.5 : 0.25) * (beep ? 0.65 : 1);
   gain.gain.setValueAtTime(0, pulse.time);
   gain.gain.linearRampToValueAtTime(level, pulse.time + (beep ? 0.001 : 0.002));
   if (level > 0) gain.gain.exponentialRampToValueAtTime(0.00001, pulse.time + duration - 0.005);
