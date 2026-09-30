@@ -1,3 +1,4 @@
+import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
 import { Challenge } from '../engine/challenge.ts';
 import { challengeSetup } from './challenge-setup.ts';
@@ -13,7 +14,7 @@ import { onUnmount } from '../../../shared/ui/unmount.ts';
 import { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
-import { spelling } from '../domain/notation.ts';
+import { spelling, pitchLabel } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
 import { segments } from './range-editor.ts';
@@ -34,11 +35,10 @@ export function practiceView() {
   const dog = animatedUno(); dog.pose('rest');
   const stage = el('div', 'practice-stage');
   const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
-  const setup = el('section');
-  setup.className = 'practice-setup';
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
   const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.picker;
+  presetsUI.setupPresentation(true);
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
@@ -97,14 +97,13 @@ export function practiceView() {
     adaptive.setAttribute('aria-pressed',String(useAdaptation)); previewToggle.setAttribute('aria-pressed',String(showIntro));
     adaptiveGroup.classList.toggle('selected',useAdaptation);
   };
-  const settings = el('details','practice-settings');
-  const settingsSummary = el('summary');
-  const settingsValue = el('span','muted');
-  settingsSummary.append(el('span','','Practice settings'),settingsValue);
-  settings.append(settingsSummary);
+  const settings = el('section','practice-settings');
+  const setupUI = activitySetup(presetsUI.node,settings);
+  const setup = setupUI.node;
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
-    settingsValue.textContent = [pacingLabel, showIntro ? 'Intro on' : 'Intro off', ...(useAdaptation ? ['Adaptive'] : [])].join(' · ');
+    const preset = selected();
+    setupUI.summary([...(preset ? [`${pitchLabel(preset.pool[0]!)}–${pitchLabel(preset.pool.at(-1)!)}`] : []), ...(activity === 'challenge' ? [rulesUI.summary()] : [pacingLabel, showIntro ? 'Intro on' : 'Intro off']), ...(useAdaptation ? ['Adaptive'] : [])].join(' · '));
   }
   refreshPreferences(); refreshSettingsSummary();
   let shownPresetId = store.data.configuration.presetId;
@@ -117,8 +116,8 @@ export function practiceView() {
   const toggles = el('div','control-row practice-toggles'); toggles.append(adaptiveGroup,previewToggle);
   const practicePacing = pacingSetting();
   settings.append(toggles, practicePacing);
-  const setupHeading = el('h2','','Choose your notes');
-  setup.append(setupHeading, presetsUI.node, settings, rulesUI.node);
+  settings.append(rulesUI.node);
+  rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
@@ -157,8 +156,9 @@ export function practiceView() {
   const expansion = el('p'); expansion.id = 'expansion-announcement'; expansion.setAttribute('role','status');
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
+    setupUI.select('notes');
     closePreview(); session?.finish(); session = undefined; resetInput();
-    dogHome.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
+    presetsUI.companion.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
   };
@@ -248,7 +248,7 @@ export function practiceView() {
   const start = () => {
     hideHelp();
     const preset = selected(); if (!preset) return;
-    const rules = activity === 'challenge' ? rulesUI.read() : undefined;
+    const rules = activity === 'challenge' ? rulesUI.read(() => setupUI.select('settings')) : undefined;
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
@@ -279,7 +279,7 @@ export function practiceView() {
   };
   const startButton = button('Start Practice', start); startButton.disabled = !selected();
   presetsUI.onChange(() => { startButton.disabled = !selected(); refreshPreferences(); refreshSettingsSummary(); });
-  startButton.classList.add('control--primary'); setup.append(startButton);
+  startButton.classList.add('control--primary'); setupUI.action(startButton);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
@@ -290,6 +290,7 @@ export function practiceView() {
   resultDetails.append(el('summary','','Session details'),resultTiming);
   result.append(resultHeading, resultSummary, coaching, resultControls, resultDetails);
   stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
+  presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
@@ -325,12 +326,11 @@ export function practiceView() {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; showSetup();
-    setupHeading.textContent = next === 'practice' ? 'Choose your notes' : 'Set your challenge';
-    if (next === 'challenge') setup.insertBefore(toggles, rulesUI.node); else settings.append(toggles, practicePacing);
-    settings.hidden = next === 'challenge';
+    setupUI.settingsLabel(next === 'practice' ? 'Practice settings' : 'Challenge settings');
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practicePacing.hidden = next === 'challenge'; previewToggle.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
+    refreshSettingsSummary();
   }, leave: () => {
     hideHelp(); resetInput(); store.flush();
     if (introduction) showSetup();

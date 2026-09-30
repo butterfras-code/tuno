@@ -19,10 +19,20 @@ try {
       if (height >= 768) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
     };
     await check('setup');
+    const notesTab = page.getByRole('tab',{name:'Notes',exact:true});
+    const settingsTab = page.getByRole('tab',{name:'Practice settings',exact:true});
+    const startBefore = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
+    assert.equal(await notesTab.getAttribute('aria-selected'),'true');
     assert.equal(await page.locator('#meet-notes').isVisible(),false);
     await openPracticeSettings(page);
+    assert.equal(await settingsTab.getAttribute('aria-selected'),'true');
+    assert.equal(await page.locator('#preset').isVisible(),false);
+    const startAfter = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
+    assert.ok(Math.abs(startAfter.y-startBefore.y) < 1,`${width}: Start Practice stays in place across tabs`);
     assert.equal(await page.locator('#meet-notes').isVisible(),true);
-    await page.locator('.practice-settings summary').click();
+    await settingsTab.focus(); await page.keyboard.press('ArrowLeft');
+    assert.equal(await notesTab.evaluate(node => node === document.activeElement),true);
+    assert.equal(await notesTab.getAttribute('aria-selected'),'true');
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
     await page.waitForSelector('.note-preview');
     await check('intro');
@@ -62,7 +72,7 @@ try {
         await page.getByRole('button',{name:'Edit setup',exact:true}).click();
       }
       const rangeSummary = await page.locator('#preset-summary').textContent();
-      await page.getByRole('button',{name:'Adjust range',exact:true}).click();
+      await page.getByRole('button',{name:'Customize…',exact:true}).click();
       assert.equal(await page.locator('#preset-summary').textContent(),rangeSummary);
       assert.equal(await page.getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);
       await page.getByRole('button',{name:'Save as preset…',exact:true}).click();

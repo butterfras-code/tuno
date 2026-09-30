@@ -124,7 +124,7 @@ async function loop(page, mode) {
   await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
   await openPracticeSettings(page);
-  await page.locator('.practice-settings summary').focus();
+  await page.getByRole('tab',{name:'Practice settings',exact:true}).focus();
   for (let tabs = 0; tabs < 5 && !await page.locator('#adaptive:focus').count(); tabs++) await page.keyboard.press('Tab');
   assert.equal(await page.locator('#adaptive:focus').count(), 1);
   assert.notEqual(await page.locator('#adaptive').evaluate(node => getComputedStyle(node).outlineStyle), 'none');

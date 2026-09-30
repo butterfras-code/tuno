@@ -23,7 +23,7 @@ try {
     assert.equal(await page.locator('.practice-companion').isVisible(),false);
     for (const tab of ['Range','Options','Clefs']) {
       await customTab(page,tab);
-      assert.equal(await page.getByRole('tabpanel').count(),1);
+      assert.equal(await page.locator('.custom-editor').getByRole('tabpanel').count(),1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth),true,`${width}: ${tab} horizontal overflow`);
       if (height >= 768) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight<=innerHeight),true,`${width}: ${tab} page fit`);
       // The content viewport must end before the persistent actions, even when scrolled.
@@ -56,11 +56,11 @@ try {
     assert.equal(await page.getByRole('tab',{name:'Clefs',exact:true}).getAttribute('aria-selected'),'true');
     await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
     assert.equal(await page.getByRole('tab',{name:'Options',exact:true}).getAttribute('aria-selected'),'true');
-    assert.equal(await page.locator('[role=tab][tabindex="0"]').count(),1);
+    assert.equal(await page.locator('.custom-editor [role=tab][tabindex="0"]').count(),1);
     await page.getByRole('button',{name:'Cancel',exact:true}).click();
     assert.equal(await page.locator('#preset-summary').textContent(),original);
     assert.equal(await page.evaluate(() => localStorage.getItem('tunotes:data:v1')),stored);
-    assert.equal(await page.getByRole('button',{name:'Adjust range',exact:true}).evaluate(node => node === document.activeElement),true);
+    assert.equal(await page.getByRole('button',{name:'Customize…',exact:true}).evaluate(node => node === document.activeElement),true);
     await setEndpoint(page,'Lowest note','D4'); await useRange(page);
     assert.match(await page.locator('#preset-summary').textContent(),/D4–F5/);
     await setEndpoint(page,'Highest note','G5');
@@ -68,20 +68,24 @@ try {
     await page.getByLabel('Custom preset name',{exact:true}).fill('My range');
     await page.screenshot({path:`dist/validation/custom-${engine}-${width}-save.png`,fullPage:true});
     await page.getByRole('button',{name:'Save preset',exact:true}).click();
-    assert.match(await page.locator('#preset').textContent(),/My range/);
+    assert.match(await page.locator('#preset-name').textContent(),/My range/);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets);
     assert.equal(saved.length,1); assert.deepEqual(saved[0].range,['D4','G5']);
     await setEndpoint(page,'Highest note','A5'); await saveCustom(page,'Range copy');
     const copies = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets);
     assert.equal(copies.length,2); assert.deepEqual(copies[0],saved[0]); assert.deepEqual(copies[1].range,['D4','A5']);
-    await page.reload(); assert.match(await page.locator('#preset').textContent(),/Range copy/);
+    await page.reload(); assert.match(await page.locator('#preset-name').textContent(),/Range copy/);
     await setToggle(page,'meet-notes',false);
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
     await page.getByRole('button',{name:'Finish',exact:true}).click();
     await page.getByRole('button',{name:'Edit setup',exact:true}).click();
-    // Empty drafts cannot replace a valid range.
+    // Natural-only drafts are valid; a staff-content mismatch still blocks apply.
     const beforeInvalid = await page.locator('#preset-summary').textContent();
     await setModifiers(page,[]);
+    assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isEnabled(),true);
+    await setEndpoint(page,'Lowest note','G4'); await setEndpoint(page,'Highest note','G4');
+    await customTab(page,'Options');
+    await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
     assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isDisabled(),true);
     await page.getByRole('button',{name:'Save as preset…',exact:true}).click();
     assert.equal(await page.getByRole('button',{name:'Save preset',exact:true}).isDisabled(),true);
@@ -102,7 +106,8 @@ try {
       assert.equal(await page.locator('#multi-preset-summary').textContent(),multiBefore);
       await setEndpoint(page,'Lowest note','C4'); await useRange(page);
       await page.getByRole('button',{name:'Add player',exact:true}).click();
-      await page.getByRole('button',{name:'Previous player',exact:true}).click();
+      await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
+      await page.getByRole('button',{name:'Select Player 1',exact:true}).click();
       assert.match(await page.locator('#multi-preset-summary').textContent(),/C4/);
     }
     await page.close();
@@ -116,7 +121,7 @@ try {
   await legacyPage.addInitScript(data => localStorage.setItem('tunotes:data:v1',JSON.stringify(data)),legacy);
   await legacyPage.goto(new URL('/notes/',host.url).href);
   assert.equal(await legacyPage.getByRole('button',{name:'Start Practice',exact:true}).isDisabled(),true);
-  assert.match(await legacyPage.locator('#preset').textContent(),/Earlier C-flat/);
+  assert.match(await legacyPage.locator('#preset-name').textContent(),/Earlier C-flat/);
   await setKey(legacyPage,'C'); await useRange(legacyPage);
   assert.equal(await legacyPage.getByRole('button',{name:'Start Practice',exact:true}).isEnabled(),true);
   await legacyPage.close();

@@ -15,7 +15,8 @@ test('modifiers are independent additive spellings, bounded by accidental endpoi
   assert.deepEqual(labels({...base,range:['D4','D#4'],modifiers:['flat','natural','sharp']}),['D4','D♯4']);
   assert.equal(normalizePreset({...base,modifiers:['sharp']}).key.fifths,0);
   assert.throws(() => normalizePreset({...base,range:['F4','F4']}),/empty pool/);
-  assert.throws(() => normalizePreset({...base,modifiers:[]}),/modifier/);
+  assert.deepEqual(labels({...base,modifiers:[]}),['F4','G4']);
+  assert.throws(() => normalizePreset({...base,modifiers:undefined}),/modifier/);
   assert.throws(() => normalizePreset({...base,range:['D#4','Db4']}),/Lowest/);
 });
 test('mixed clefs use readable assignment, apply staff content in that clef and do not clip ledgers',() => {
@@ -49,4 +50,26 @@ test('generated names describe the range, content, optional key and modifiers in
   assert.equal(generatedPresetName({...base,range:['Db4','F#5'],content:'lines',key:keySignature('Bb'),modifiers:['sharp','key','natural','flat']}),'D♭4–F♯5 Line in B♭ major + ♭ ♮ ♯');
   assert.equal(generatedPresetName({...base,content:'spaces',modifiers:['flat']}),'F4–G4 Space + ♭');
   assert.equal(generatedPresetName({...base,name:'An override',modifiers:['natural','key']}),generatedPresetName({...base,modifiers:['key','natural']}));
+});
+
+test('keyless additional spellings retain every natural within the range',() => {
+  const source: PresetSource = {...base,range:['F4','F5'],modifiers:['flat','sharp']};
+  const p = normalizePreset(source);
+  assert.equal(p.keyless,true);
+  assert.deepEqual(p.pool.filter(n => n.accidental === 0).map(pitchLabel),['F4','G4','A4','B4','C5','D5','E5','F5']);
+  assert.deepEqual(p.pool.map(pitchLabel),['F4','F♯4','G4','G♭4','G♯4','A4','A♭4','A♯4','B4','B♭4','C5','C♯5','D5','D♭5','D♯5','E5','E♭5','F5']);
+  assert.deepEqual(labels({...base,range:['D4','E4'],modifiers:['flat']}),['D4','E4','E♭4']);
+  assert.deepEqual(labels({...base,range:['D4','E4'],modifiers:['sharp']}),['D4','D♯4','E4']);
+  assert.deepEqual(new Set(labels({...base,modifiers:['flat','sharp']})),new Set(labels({...base,modifiers:['flat','natural','sharp']})));
+  assert.deepEqual(labels({...base,modifiers:['key','flat']}),['F♯4','G4','G♭4']);
+});
+test('keyless natural-only presets and practice contexts survive persistence',() => {
+  const source: PresetSource = {...base,modifiers:[]};
+  const p = normalizePreset(source), store = new NotesStore();
+  store.update(d => { d.customPresets.push(source); d.profiles.push({id:'player',name:'Player',results:[],contexts:[],defaultPresetId:source.id}); });
+  const session = new Practice(p,true);
+  session.answer(session.token,session.pitch); store.observe('player',p,session.last!); store.flush();
+  const restored = validateSnapshot(JSON.parse(store.export()));
+  assert.deepEqual(restored,store.data);
+  assert.deepEqual(labels(restored.customPresets[0]!),['F4','G4']);
 });
