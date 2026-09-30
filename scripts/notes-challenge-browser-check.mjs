@@ -15,6 +15,7 @@ async function run(page,url,label) {
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.clock.install();await page.goto(url);
   await notesMode(page,'Challenge');
+  await page.getByRole('tab',{name:'Challenge settings',exact:true}).click();
   assert.equal(await page.locator('.challenge-settings').isVisible(),true);
   assert.equal(await button(page,'Show Intro').isVisible(),false);
   await page.getByLabel('Duration (seconds)').fill('14');await button(page,'Start Challenge').click();assert.match(await page.getByRole('alert').textContent(),/15 to 300/);
@@ -53,7 +54,7 @@ async function run(page,url,label) {
   await save('scoreboard');await stableFrame();
   await button(page,'Play again').click();assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
   await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('.scoreboard-value strong').textContent(),'0.00');assert.match(await page.locator('.round-details').textContent(),/Unranked/);
-  await button(page,'Change setup').click();await button(page,'Target').click();await page.getByLabel('Correct-note target').fill('1');await page.getByLabel('Timeout (seconds)').fill('15');
+  await button(page,'Change setup').click();await page.getByRole('tab',{name:'Challenge settings',exact:true}).click();await button(page,'Target').click();await page.getByLabel('Correct-note target').fill('1');await page.getByLabel('Timeout (seconds)').fill('15');
   await button(page,'Start Challenge').click();await button(page,'Ready').click();await page.clock.runFor(3050);await page.keyboard.press(await answer());
   assert.equal(await page.locator('.scoreboard-value span').textContent(),'seconds');assert.match(await page.locator('.round-details').textContent(),/Qualified/);
   assert.equal(await page.locator('#challenge-correct').textContent(),'1');
@@ -65,7 +66,7 @@ async function run(page,url,label) {
   await button(page,'Resume').click();await page.keyboard.press(await answer());assert.match(await page.locator('#challenge-result').textContent(),/pause[\s\S]*Unranked.*Interrupted/);
   await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(18050);assert.match(await page.locator('#challenge-result').textContent(),/Nice practice.*0 of 1[\s\S]*Unranked/);
   await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(3050);await button(page,'Finish').click();assert.match(await page.locator('#challenge-result').textContent(),/ended this round early[\s\S]*Unranked/);
-  await button(page,'Change setup').click();await button(page,'Timed').click();await page.getByLabel('Duration (seconds)').fill('60');
+  await button(page,'Change setup').click();await page.getByRole('tab',{name:'Challenge settings',exact:true}).click();await button(page,'Timed').click();await page.getByLabel('Duration (seconds)').fill('60');
   await button(page,'Start Challenge').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   await page.evaluate(()=>{
     window.treatCatches=0;
@@ -85,11 +86,11 @@ async function run(page,url,label) {
   assert.equal(await page.locator('#challenge-correct').textContent(),'61');assert.equal(await page.locator('#challenge-accuracy').textContent(),'98%');
   for(const width of [360,768,1280]) {await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`dist/validation/notes-challenge-${name}-${label}-${width}.png`,fullPage:true});
     await page.locator('.round-details summary').click();assert.equal(await page.getByText('Qualified',{exact:true}).isVisible(),true);await page.locator('.round-details summary').click();}
-  await button(page,'Change setup').click();
+  await button(page,'Change setup').click();await page.getByRole('tab',{name:'Challenge settings',exact:true}).click();
   await page.emulateMedia({reducedMotion:'reduce'});
   await button(page,'Start Challenge').click();await button(page,'Ready').click();
   assert.equal(await page.locator('.challenge-dog .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
-  await page.clock.runFor(3100);await button(page,'Finish').click();await button(page,'Change setup').click();
+  await page.clock.runFor(3100);await button(page,'Finish').click();await button(page,'Change setup').click();await page.getByRole('tab',{name:'Challenge settings',exact:true}).click();
   await page.emulateMedia({reducedMotion:'no-preference'});
   await notesMode(page,'Practice');assert.equal(await button(page,'Start Practice').isVisible(),true);assert.equal(await page.locator('.challenge-settings').isVisible(),false);
   assert.deepEqual(errors,[]);evidence.push(`${label}: rules validation, Ready/countdown gating, timed score, zero attempts, Target completion/timeout, visibility pause, partial run, retry, navigation, stable note area, centered wagging count-in, compact scoreboard/details, eight treats in a 61-correct run, mistake relief, reduced motion and responsive layout passed`);

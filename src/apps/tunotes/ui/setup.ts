@@ -133,7 +133,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     return true;
   }
   refresh();
-  return { node,picker,refresh,companion, practicePresentation: (enabled: boolean) => {
+  return { node,picker,refresh,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {

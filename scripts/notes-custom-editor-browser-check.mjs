@@ -106,7 +106,8 @@ try {
       assert.equal(await page.locator('#multi-preset-summary').textContent(),multiBefore);
       await setEndpoint(page,'Lowest note','C4'); await useRange(page);
       await page.getByRole('button',{name:'Add player',exact:true}).click();
-      await page.getByRole('button',{name:'Previous player',exact:true}).click();
+      await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
+      await page.getByRole('button',{name:'Select Player 1',exact:true}).click();
       assert.match(await page.locator('#multi-preset-summary').textContent(),/C4/);
     }
     await page.close();
