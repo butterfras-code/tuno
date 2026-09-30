@@ -387,9 +387,12 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .preset-preview h4 { margin: 0; }
 #notes-practice .preset-preview output { font-size: 20px; }
 #notes-practice #preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
-.practice-settings { margin-top: 16px; border-block: 1px solid var(--color-line); }
-.practice-settings > summary { display: list-item; font-size: 16px; }
-.practice-settings > summary .muted { display: block; margin-left: 18px; font: 13px/1.5 var(--font-body); }
+.practice-settings { margin-top: 0; }
+.practice-setup-tabs { display: flex; gap: 12px; padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--color-line); }
+.practice-setup-tabs .control { background: transparent; border: 1px solid var(--color-line); border-radius: 8px; }
+.practice-setup-tabs [aria-selected='true'] { background: var(--color-tint); border-color: var(--color-accent); color: var(--color-accent); }
+.practice-setup-panels > [role='tabpanel'] { min-height: 350px; }
+.practice-setup-summary { border-top: 1px solid var(--color-line); padding-top: 12px; margin: 16px 0 0; font-size: 13px; }
 .practice-settings .practice-toggles { margin: 8px 0; }
 .practice-settings .pacing-setting { margin: 12px 0 16px; }
 .practice-settings .setting-label { font-size: 14px; }
@@ -475,9 +478,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .practice-setup { max-width: 760px; }
 #notes-practice .practice-setup > h2 { min-height: 0; padding-right: 0; }
 #notes-practice .preset-picker--separate {
-  display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px 20px; max-width: 720px;
+  display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; max-width: 720px;
 }
-#notes-practice .preset-picker--separate > .setting-label { grid-column: 1 / -1; }
+#notes-practice .preset-picker--separate > .setting-label { display: none; }
+#notes-practice .preset-selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#notes-practice .preset-selection-actions > .control { width: auto; max-width: none; white-space: nowrap; }
 #notes-practice .preset-name { font: 700 18px/1.4 var(--font-heading); overflow-wrap: anywhere; }
 #notes-practice .preset-picker--separate > .control { width: auto; max-width: none; white-space: nowrap; }
 #notes-practice .preset-preview-scene {
@@ -499,11 +504,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #notes-practice .preset-preview-scene .preset-preview { gap: 16px; }
   #notes-practice .preset-preview-companion { position: absolute; top: 100%; right: 0; }
   #notes-practice .preset-preview-companion .uno { width: 96px; height: 96px; }
-  #notes-practice .preset-overview > #preset-summary { max-width: calc(100% - 108px); }
+  #notes-practice .preset-overview > #preset-summary { max-width: calc(100% - 108px); min-height: 96px; }
 }
 
 /* Custom range editing occupies the activity surface, with a separate action bar. */
-.practice-setup:has(.preset-setup.is-editing) > :not(.preset-setup),
+.practice-setup:has(.preset-setup.is-editing) > :not(.preset-setup):not(.practice-setup-panels),
 .practice-view:has(.preset-setup.is-editing) > .practice-companion,
 .multiplayer-editor:has(.preset-setup.is-editing) > :not(.preset-setup),
 .multiplayer-setup:has(.preset-setup.is-editing) > :not(.multiplayer-editor) { display: none; }

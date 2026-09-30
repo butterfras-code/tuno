@@ -23,7 +23,7 @@ try {
     assert.equal(await page.locator('.practice-companion').isVisible(),false);
     for (const tab of ['Range','Options','Clefs']) {
       await customTab(page,tab);
-      assert.equal(await page.getByRole('tabpanel').count(),1);
+      assert.equal(await page.locator('.custom-editor').getByRole('tabpanel').count(),1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth),true,`${width}: ${tab} horizontal overflow`);
       if (height >= 768) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight<=innerHeight),true,`${width}: ${tab} page fit`);
       // The content viewport must end before the persistent actions, even when scrolled.
@@ -56,7 +56,7 @@ try {
     assert.equal(await page.getByRole('tab',{name:'Clefs',exact:true}).getAttribute('aria-selected'),'true');
     await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
     assert.equal(await page.getByRole('tab',{name:'Options',exact:true}).getAttribute('aria-selected'),'true');
-    assert.equal(await page.locator('[role=tab][tabindex="0"]').count(),1);
+    assert.equal(await page.locator('.custom-editor [role=tab][tabindex="0"]').count(),1);
     await page.getByRole('button',{name:'Cancel',exact:true}).click();
     assert.equal(await page.locator('#preset-summary').textContent(),original);
     assert.equal(await page.evaluate(() => localStorage.getItem('tunotes:data:v1')),stored);

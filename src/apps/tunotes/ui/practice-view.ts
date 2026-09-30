@@ -13,7 +13,7 @@ import { onUnmount } from '../../../shared/ui/unmount.ts';
 import { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
-import { spelling } from '../domain/notation.ts';
+import { spelling, pitchLabel } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
 import { segments } from './range-editor.ts';
@@ -98,14 +98,12 @@ export function practiceView() {
     adaptive.setAttribute('aria-pressed',String(useAdaptation)); previewToggle.setAttribute('aria-pressed',String(showIntro));
     adaptiveGroup.classList.toggle('selected',useAdaptation);
   };
-  const settings = el('details','practice-settings');
-  const settingsSummary = el('summary');
-  const settingsValue = el('span','muted');
-  settingsSummary.append(el('span','','Practice settings'),settingsValue);
-  settings.append(settingsSummary);
+  const settings = el('section','practice-settings');
+  const settingsValue = el('p','muted practice-setup-summary');
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
-    settingsValue.textContent = [pacingLabel, showIntro ? 'Intro on' : 'Intro off', ...(useAdaptation ? ['Adaptive'] : [])].join(' · ');
+    const preset = selected();
+    settingsValue.textContent = [...(preset ? [`${pitchLabel(preset.pool[0]!)}–${pitchLabel(preset.pool.at(-1)!)}`] : []), pacingLabel, showIntro ? 'Intro on' : 'Intro off', ...(useAdaptation ? ['Adaptive'] : [])].join(' · ');
   }
   refreshPreferences(); refreshSettingsSummary();
   let shownPresetId = store.data.configuration.presetId;
@@ -119,7 +117,30 @@ export function practiceView() {
   const practicePacing = pacingSetting();
   settings.append(toggles, practicePacing);
   const setupHeading = el('h2','','Choose your notes');
-  setup.append(setupHeading, presetsUI.node, settings, rulesUI.node);
+  const setupTabs = el('div','practice-setup-tabs'); setupTabs.setAttribute('role','tablist'); setupTabs.setAttribute('aria-label','Practice setup');
+  const notesTab = button('Notes',() => selectSetupTab('notes'));
+  const settingsTab = button('Practice settings',() => selectSetupTab('settings'));
+  const setupPanels = el('div','practice-setup-panels');
+  setupPanels.append(presetsUI.node,settings);
+  for (const [tab,panel,id] of [[notesTab,presetsUI.node,'notes'],[settingsTab,settings,'settings']] as const) {
+    tab.id = `practice-${id}-tab`; tab.setAttribute('role','tab'); tab.setAttribute('aria-controls',`practice-${id}-panel`);
+    panel.id = `practice-${id}-panel`; panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
+    setupTabs.append(tab);
+    tab.addEventListener('keydown',event => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      const target = event.key === 'Home' ? notesTab : event.key === 'End' ? settingsTab : tab === notesTab ? settingsTab : notesTab;
+      target.click(); target.focus();
+    });
+  }
+  function selectSetupTab(tab: 'notes' | 'settings') {
+    const notes = activity === 'challenge' || tab === 'notes';
+    presetsUI.node.hidden = !notes; settings.hidden = activity === 'challenge' || notes;
+    notesTab.setAttribute('aria-selected',String(notes)); settingsTab.setAttribute('aria-selected',String(!notes));
+    notesTab.tabIndex = notes ? 0 : -1; settingsTab.tabIndex = notes ? -1 : 0;
+  }
+  setupHeading.hidden = true; selectSetupTab('notes');
+  setup.append(setupHeading,setupTabs,setupPanels,settingsValue,rulesUI.node);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
@@ -158,6 +179,7 @@ export function practiceView() {
   const expansion = el('p'); expansion.id = 'expansion-announcement'; expansion.setAttribute('role','status');
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
+    selectSetupTab('notes');
     closePreview(); session?.finish(); session = undefined; resetInput();
     (activity === 'practice' ? presetsUI.companion : dogHome).prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
@@ -328,8 +350,15 @@ export function practiceView() {
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; presetsUI.practicePresentation(next === 'practice'); showSetup();
     setupHeading.textContent = next === 'practice' ? 'Choose your notes' : 'Set your challenge';
-    if (next === 'challenge') setup.insertBefore(toggles, rulesUI.node); else settings.append(toggles, practicePacing);
-    settings.hidden = next === 'challenge';
+    setupHeading.hidden = next === 'practice'; setupTabs.hidden = next === 'challenge'; settingsValue.hidden = next === 'challenge';
+    if (next === 'challenge') {
+      setup.insertBefore(presetsUI.node,setupPanels); setup.insertBefore(toggles,rulesUI.node);
+      presetsUI.node.removeAttribute('role'); presetsUI.node.removeAttribute('aria-labelledby');
+    } else {
+      setupPanels.prepend(presetsUI.node); settings.append(toggles,practicePacing);
+      presetsUI.node.setAttribute('role','tabpanel'); presetsUI.node.setAttribute('aria-labelledby',notesTab.id);
+    }
+    setupPanels.hidden = next === 'challenge'; selectSetupTab('notes');
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practicePacing.hidden = next === 'challenge'; previewToggle.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
