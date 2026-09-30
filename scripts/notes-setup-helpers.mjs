@@ -1,6 +1,7 @@
 import { presets } from '../src/apps/tunotes/domain/presets.ts';
 export async function choosePreset(page,id) {
   await notesMode(page,'Practice');
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
   await page.locator('#preset').click();
   const dialog = page.getByRole('dialog');
   if (id === 'custom') { await dialog.getByRole('button',{name:'＋ Create custom',exact:true}).click(); return; }
@@ -10,9 +11,12 @@ export async function choosePreset(page,id) {
   if (preset.instrument) await dialog.getByRole('button',{name:preset.name.split(' — ')[0],exact:true}).click();
   else await dialog.getByRole('button',{name:preset.clef[0].toUpperCase()+preset.clef.slice(1),exact:true}).click();
   await dialog.locator(`[data-preset-id="${id}"]`).click();
+  if (await dialog.getByRole('button',{name:'Use preset',exact:true}).isVisible()) await dialog.getByRole('button',{name:'Use preset',exact:true}).click();
 }
 export async function customTab(page,name) {
-  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:'Adjust range',exact:true}).click();
+  const notes = page.getByRole('tab',{name:'Notes',exact:true});
+  if (await notes.isVisible()) await notes.click();
+  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:/^(Adjust range|Customize…)$/}).click();
   await page.getByRole('tab',{name,exact:true}).click();
 }
 export async function endpointTab(page,label) {
@@ -73,6 +77,6 @@ export async function setPacing(page, label) {
 }
 
 export async function openPracticeSettings(page) {
-  const settings = page.locator('.practice-settings');
-  if (await settings.isVisible() && !await settings.evaluate(node => node.open)) await settings.locator('summary').click();
+  const tab = page.getByRole('tab',{name:'Practice settings',exact:true});
+  if (await tab.isVisible()) await tab.click();
 }

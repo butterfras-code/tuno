@@ -89,13 +89,24 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .control.control--destructive:hover:not(:disabled) { background: #783039; border-color: #783039; }
 .control:disabled { opacity: .6; cursor: default; }
 
-@media (max-width: 400px) { .notes-home { padding-inline: 4px; } }
+@media (max-width: 400px) { .notes-home { padding-inline: 2px; } }
 
 /* Presets and graphical note ranges share the application's theme tokens. */
 .preset-picker { display: grid; gap: 6px; max-width: 560px; }
 .preset-picker > .control { justify-content: space-between; text-align: left; width: 100%; }
 .preset-dialog { position: fixed; margin: 0; padding: 16px; width: min(420px, calc(100vw - 16px)); max-height: min(520px, calc(100dvh - 16px)); overflow-y: auto; background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: 0 12px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }
 .preset-dialog::backdrop { background: color-mix(in srgb, var(--color-ink) 18%, transparent); }
+.preset-dialog--preview[open] { display: flex; flex-direction: column; overflow: hidden; }
+.preset-dialog--preview::backdrop { background: transparent; }
+.preset-dialog--preview .picker-header, .preset-dialog--preview .picker-trail, .picker-footer { flex-shrink: 0; }
+.preset-dialog--preview .picker-header > .control { min-width: 44px; }
+.preset-dialog--preview .picker-choices { overflow-y: auto; min-height: 44px; }
+.picker-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--color-line); }
+.picker-range-preview { flex-shrink: 0; border-bottom: 1px solid var(--color-line); padding-bottom: 8px; margin-bottom: 12px; }
+.picker-range-preview .preset-preview { margin: 0 !important; }
+.picker-range-preview .endpoint-staff { max-height: 48px !important; }
+.picker-range-preview h4 { font-size: 12px; }
+.picker-range-preview output { font-size: 16px !important; }
 .picker-header { display: flex; align-items: center; gap: 8px; }
 .picker-header h3 { margin: 0; font-size: 18px; flex: 1; }
 .picker-header .control { padding: 8px; font-size: 14px; }
@@ -103,6 +114,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .picker-choices { display: grid; gap: 8px; }
 .picker-choices > .control { justify-content: space-between; gap: 12px; text-align: left; }
 .picker-choices small { white-space: nowrap; font: 13px var(--font-body); }
+.picker-choices > .control[aria-pressed='true'] small { color: inherit; }
 .picker-choices h4 { margin: 8px 0 0; }
 .picker-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .picker-categories .control { justify-content: center; }
@@ -172,7 +184,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .control { font: 700 16px/1.3 var(--font-heading); background: var(--color-tint); border-color: transparent; }
 .control:hover:not(:disabled) { border-color: var(--color-accent); }
 .control--primary, .control[aria-pressed='true']:not(.segments .control) { background: var(--color-accent); color: var(--color-surface); }
-.practice-setup > .control--primary { margin-top: 20px; width: 270px; max-width: 100%; justify-content: center; }
 .practice-toggles { margin-top: 20px; }
 .adaptive-control { position: relative; display: inline-flex; border-radius: var(--radius-control); background: var(--color-tint); }
 .adaptive-control.selected { background: var(--color-accent); color: var(--color-surface); }
@@ -261,7 +272,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-setup { max-width: 900px; }
 .multiplayer-players-heading { margin: 24px 0 8px; }
 .multiplayer-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
-.multiplayer-slot { display: inline-flex; min-width: 0; }
+.multiplayer-slot { display: inline-flex; align-items: center; padding-inline: 6px; min-width: 0; border-radius: var(--radius-control); background: var(--color-tint); }
+.multiplayer-roster .multiplayer-slot:not(.selected) > .control { background: transparent; border-radius: 0; }
 .multiplayer-slot.selected { border-radius: var(--radius-control); background: var(--color-accent); }
 .multiplayer-roster .control { min-height: 44px; padding: 8px 14px; }
 .multiplayer-player-tab { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,24 +281,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-roster .multiplayer-slot.selected .control:first-child { border-radius: var(--radius-control) 0 0 var(--radius-control); }
 .multiplayer-roster .multiplayer-slot.selected .control:last-child { border-radius: 0 var(--radius-control) var(--radius-control) 0; }
 .multiplayer-roster .multiplayer-move { width: 44px; padding: 0; justify-content: center; font-size: 22px; }
-.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab { padding-inline: 4px; }
-.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab:first-child { padding-left: 14px; }
+.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab { padding-inline: 2px; }
+.multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab:first-child { padding-left: 8px; }
 .multiplayer-roster .multiplayer-slot.selected .multiplayer-player-tab:last-child { padding-right: 14px; }
 .multiplayer-roster .multiplayer-add { border: 1px dashed var(--color-accent); background: transparent; }
-.multiplayer-editor { margin: 0 0 24px; padding: 16px; border: 1px solid var(--color-line); border-radius: 0 var(--radius-card) var(--radius-card) var(--radius-card); background: var(--color-surface); }
-.multiplayer-editor h4 { margin: 0 0 12px; }
-.multiplayer-player-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 8px 16px; }
-.multiplayer-player-fields .setting { flex: 1 1 220px; }
-.multiplayer-player-fields input, .multiplayer-player-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font: inherit; }
-.multiplayer-player-fields > .control { min-height: 44px; margin-bottom: 12px; }
-.multiplayer-player-controls { justify-content: space-between; align-items: center; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-line); }
-.multiplayer-player-navigation { display: flex; gap: 6px; }
-.multiplayer-player-navigation .control { padding: 8px 12px; }
-.multiplayer-player-controls .multiplayer-remove { background: #8f3f48; border-color: #8f3f48; color: var(--color-surface); }
-.multiplayer-player-controls .multiplayer-remove:hover:not(:disabled) { background: #783039; border-color: #783039; }
-.multiplayer-setup > .control--primary { margin-top: 16px; }
 .multiplayer-setup-fullscreen { margin: 16px 12px 0 0; }
-.multiplayer-setup > .feedback:empty { display: none; }
 .multiplayer-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-top: 16px; }
 .multiplayer-panels:has(> :only-child) { grid-template-columns: minmax(0,1fr); max-width: 640px; }
 .multiplayer-panels:has(> :only-child) .multiplayer-panel { min-height: 440px; }
@@ -369,19 +368,23 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .practice-companion .uno { width: 170px; height: 190px; }
 #notes-practice .practice-stage h2 { margin: 0 0 16px; font-size: 24px; }
 #notes-practice .practice-stage h2:focus:not(:focus-visible) { outline: none; }
-#notes-practice .practice-stage > .muted:empty { display: none; }
-#notes-practice .preset-preview { margin-top: 16px; max-width: 400px; gap: 20px; }
-#notes-practice .preset-preview .endpoint-staff { max-height: 100px; }
-#notes-practice .preset-preview h4 { margin: 0; }
-#notes-practice .preset-preview output { font-size: 20px; }
-#notes-practice #preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
-.practice-settings { margin-top: 16px; border-block: 1px solid var(--color-line); }
-.practice-settings > summary { display: list-item; font-size: 16px; }
-.practice-settings > summary .muted { display: block; margin-left: 18px; font: 13px/1.5 var(--font-body); }
+.practice-view .practice-stage > .muted:empty { display: none; }
+.practice-settings { margin-top: 0; }
+.activity-setup-toolbar { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 12px; padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--color-line); }
+.practice-setup-tabs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.activity-setup-toolbar > .control--primary { margin: 0; justify-content: center; max-width: 160px; }
+@media (max-width: 760px) {
+  .activity-setup-toolbar { gap: 8px; }
+  .activity-setup-toolbar .control { padding-inline: 10px; }
+  .activity-setup-toolbar > .control--primary { max-width: 104px; }
+}
+.practice-setup-tabs .control { min-width: 0; max-width: 100%; overflow-wrap: anywhere; background: transparent; border: 1px solid var(--color-line); border-radius: 8px; }
+.practice-setup-tabs [aria-selected='true'] { background: var(--color-tint); border-color: var(--color-accent); color: var(--color-accent); }
+.practice-setup-panels > [role='tabpanel'] { min-height: 350px; }
+.practice-setup-summary { border-top: 1px solid var(--color-line); padding-top: 12px; margin: 16px 0 0; font-size: 13px; }
 .practice-settings .practice-toggles { margin: 8px 0; }
 .practice-settings .pacing-setting { margin: 12px 0 16px; }
 .practice-settings .setting-label { font-size: 14px; }
-#notes-practice .practice-setup > .control--primary { margin-top: 20px; }
 #notes-practice .practice-play h2 { font-size: 20px; margin-bottom: 4px; }
 #notes-practice .counts { font-size: 14px; color: var(--color-muted); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
 #notes-practice .staff-panel { display: grid; align-items: center; height: clamp(160px, 27dvh, 240px); }
@@ -424,7 +427,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #notes-practice .practice-play h2 { font-size: 18px; min-height: 44px; margin-bottom: 6px; }
   #notes-practice .practice-companion .treat-progress { font-size: 10px; margin: 0; }
   #notes-practice .preset-preview { margin-top: 16px; }
-  #notes-practice .practice-setup > .control--primary { width: 100%; }
   #notes-practice .staff-panel { height: clamp(140px, 20svh, 220px); }
   #notes-practice .feedback { min-height: 2em; }
   #notes-practice .counts { font-size: 12px; padding-right: 76px; }
@@ -451,14 +453,50 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #notes-practice .answer[data-letter='B'] { grid-column: 7 !important; }
 }
 
-#notes-practice .adjust-range { min-height: 44px; padding: 8px 12px; font-size: 14px; }
-#notes-practice .practice-setup > .control--primary { position: sticky; bottom: 0; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .adjust-range { min-height: 44px; padding: 8px 12px; font-size: 14px; }
+
+/* Activity setup groups the chosen notes and Uno in one compact preview. */
+:is(#notes-practice,#notes-challenge):has(.practice-view[data-screen='setup']):not(:has(.preset-setup.is-editing)) {
+  height: auto; min-height: 0; overflow: visible; scrollbar-gutter: auto; padding: 28px;
+}
+.practice-view[data-screen='setup']:has(.activity-setup) { display: block; min-height: 0; }
+.practice-view[data-screen='setup']:has(.activity-setup) > .practice-companion { display: none; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup { max-width: 760px; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup > h2 { min-height: 0; padding-right: 0; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-picker--separate {
+  display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; max-width: 720px;
+}
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-picker--separate > .setting-label { display: none; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-selection-actions > .control { width: auto; max-width: none; white-space: nowrap; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-name { font: 700 18px/1.4 var(--font-heading); overflow-wrap: anywhere; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-picker--separate > .control { width: auto; max-width: none; white-space: nowrap; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene {
+  display: grid; grid-template-columns: minmax(0,480px) 200px; align-items: end; gap: 24px; max-width: 720px; margin-top: 20px;
+}
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene .preset-preview { max-width: none; margin-top: 0; gap: 24px; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene .endpoint-staff { max-height: 130px; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene output { font-size: 22px; }
+:is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-companion .uno { display: block; width: 200px; height: 180px; }
+@media (max-width: 1000px) {
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene { grid-template-columns: minmax(0,480px) 160px; gap: 16px; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-companion .uno { width: 160px; height: 160px; }
+}
+@media (max-width: 600px) {
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-picker--separate { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-picker--separate > .control { justify-self: start; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene { display: block; position: relative; margin-top: 16px; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-scene .preset-preview { gap: 16px; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-companion { position: absolute; top: 100%; right: 0; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-preview-companion .uno { width: 96px; height: 96px; }
+  :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .preset-overview > [id$='preset-summary'] { max-width: calc(100% - 108px); min-height: 96px; }
+}
 
 /* Custom range editing occupies the activity surface, with a separate action bar. */
-.practice-setup:has(.preset-setup.is-editing) > :not(.preset-setup),
+.practice-setup:has(.preset-setup.is-editing) > :not(.preset-setup):not(.practice-setup-panels),
 .practice-view:has(.preset-setup.is-editing) > .practice-companion,
 .multiplayer-editor:has(.preset-setup.is-editing) > :not(.preset-setup),
-.multiplayer-setup:has(.preset-setup.is-editing) > :not(.multiplayer-editor) { display: none; }
+.multiplayer-setup:has(.preset-setup.is-editing) > :not(.activity-setup) { display: none; }
 #notes-practice .practice-view:has(.preset-setup.is-editing) { display: block; min-height: 0; }
 #notes-practice:has(.preset-setup.is-editing) { overflow: hidden; }
 .preset-setup.is-editing { min-width: 0; }
@@ -501,7 +539,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .custom-editor-footer .preset-summary, .custom-editor-footer .preset-summary { margin: 0 0 8px; color: var(--color-muted); font-size: 13px; line-height: 1.4; }
 .custom-editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .custom-editor-actions .control { font-size: 15px; }
-.custom-save-toggle { margin-right: auto; background: transparent; border-color: transparent; text-decoration: underline; padding-inline: 4px; }
+.custom-save-toggle { margin-right: auto; background: transparent; border-color: transparent; text-decoration: underline; padding-inline: 2px; }
 .custom-save-name { margin-bottom: 8px; font-size: 14px; }
 .custom-save-name input { width: 100%; }
 .custom-save-message { font-size: 13px; margin: 0 0 8px; }
@@ -548,17 +586,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-challenge .practice-companion { align-self: center; }
 #notes-challenge .practice-companion .uno { width: 170px; height: 190px; }
 #notes-challenge .practice-stage h2 { margin: 0 0 16px; font-size: 24px; }
-#notes-challenge .preset-preview { margin-top: 16px; max-width: 400px; gap: 20px; }
-#notes-challenge .preset-preview .endpoint-staff { max-height: 100px; }
-#notes-challenge .preset-preview h4 { margin: 0; }
-#notes-challenge .preset-preview output { font-size: 20px; }
-#notes-challenge #preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
-#notes-challenge .practice-setup { display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,400px); gap: 0 24px; }
-#notes-challenge .practice-setup > h2 { grid-column: 1 / -1; }
-#notes-challenge .practice-setup > .preset-setup { grid-column: 1; grid-row: 2 / span 3; }
-#notes-challenge .practice-setup > .practice-toggles, #notes-challenge .practice-setup > .challenge-settings, #notes-challenge .practice-setup > .control--primary { grid-column: 2; }
-#notes-challenge .practice-setup > .practice-toggles { margin-top: 0; }
-#notes-challenge .practice-setup > .control--primary { margin-top: 12px; width: 100%; }
 #notes-challenge .practice-play h2 { font-size: 20px; }
 #notes-challenge .challenge-scene { min-height: 420px; background: var(--color-canvas); }
 #notes-challenge .practice-play .feedback { min-height: 2em; margin: 4px 0; }
@@ -574,32 +601,17 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .challenge-advanced-fields .setting { margin-top: 0; }
 
 #notes-multi\ player .multiplayer-view { margin: 0; min-height: 100%; }
-#notes-multi\ player .multiplayer-setup { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0,1fr); gap: 12px 20px; max-width: none; }
-.multiplayer-setup > h2 { grid-column: 1 / -1; margin: 0; }
+#notes-multi\ player .multiplayer-setup { display: grid; grid-template-columns: 260px minmax(0,1fr); align-items: start; gap: 12px 20px; max-width: none; }
 .multiplayer-roster-section { min-width: 0; min-height: 0; overflow-y: auto; }
 .multiplayer-players-heading, .multiplayer-round-setup h3 { margin: 0 0 10px; font-size: 18px; }
 .multiplayer-roster { display: grid; align-content: start; padding-right: 4px; }
 .multiplayer-slot { width: 100%; }
 .multiplayer-player-tab { flex: 1; max-width: none; text-align: left; }
-.multiplayer-selected-summary { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
-.multiplayer-editor { min-width: 0; min-height: 0; margin: 0; padding: 16px; overflow-y: auto; border-radius: var(--radius-card); background: var(--color-canvas); }
-.multiplayer-editor .preset-preview { margin-top: 12px; }
-.multiplayer-editor .preset-preview .endpoint-staff { max-height: 90px; }
-.multiplayer-editor [id$='preset-summary'] { font-size: 13px; margin: 8px 0; }
-.multiplayer-editor .multiplayer-player-fields .setting { flex-basis: 170px; margin: 0; }
-.multiplayer-editor .multiplayer-player-fields > .control { margin: 0; }
-.multiplayer-editor .multiplayer-player-controls { margin-top: 12px; padding-top: 12px; }
-.multiplayer-round-setup, .multiplayer-setup-actions { grid-column: 1 / -1; }
-.multiplayer-round-setup { padding-top: 14px; border-top: 1px solid var(--color-line); }
+.multiplayer-editor { min-width: 0; min-height: 0; margin: 0; padding: 0; overflow: visible; background: transparent; }
 .multiplayer-round-setup .setting { margin: 0; }
 .multiplayer-round-setup .challenge-settings { margin-top: 16px; }
 .multiplayer-round-setup .challenge-settings legend { font-size: 16px; }
 .multiplayer-round-setup .muted { font-size: 14px; }
-.multiplayer-setup-actions { display: flex; align-items: center; gap: 12px; padding: 8px 0 0; background: var(--color-surface); border-top: 1px solid var(--color-line); }
-.multiplayer-setup-actions .feedback { flex: 1; min-height: 0; margin: 0; }
-.multiplayer-setup-actions .feedback:empty { display: none; }
-.multiplayer-setup-actions .control { margin: 0; }
-.multiplayer-setup-actions .control--primary { margin-left: auto; }
 #notes-multi\ player .multiplayer-round, #notes-multi\ player .multiplayer-result { min-height: 100%; }
 #notes-multi\ player .multiplayer-result h2 { margin-top: 0; }
 #notes-multi\ player .multiplayer-board { max-height: 350px; overflow-y: auto; }
@@ -613,31 +625,60 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-challenge .practice-setup:has(.preset-setup.is-editing) { display: block; }
 #notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { overflow: hidden; }
 #notes-challenge .custom-editor { height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); max-height: none; }
-@media (min-width: 950px) {
-  #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(150px,180px) minmax(0,1fr) minmax(250px,290px); grid-template-rows: auto minmax(0,1fr) auto; height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); gap: 12px; }
-  .multiplayer-roster-section { grid-column: 1; }
-  .multiplayer-editor { grid-column: 2; }
-  .multiplayer-round-setup { grid-column: 3; min-height: 0; padding: 0 4px; overflow-y: auto; border-top: 0; }
-  .multiplayer-setup-actions { grid-column: 1 / -1; }
-}
 @media (max-width: 760px) {
   #notes-challenge, #notes-multi\ player { height: auto; min-height: calc(100svh - 190px); padding: 16px 12px; overflow: visible; scrollbar-gutter: auto; border-radius: 20px; }
   #notes-challenge .practice-view { position: relative; display: block; min-height: 0; }
-  #notes-challenge .practice-setup { display: block; }
   #notes-challenge .practice-companion { position: absolute; top: 0; right: 0; width: 72px; }
   #notes-challenge .practice-companion .uno { width: 72px; height: 72px; }
   #notes-challenge .practice-stage h2 { padding-right: 76px; min-height: 56px; font-size: 21px; }
-  #notes-challenge .practice-setup > .control--primary { width: 100%; }
   #notes-challenge .challenge-scene { min-height: 400px; }
   #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(0,1fr); grid-template-rows: auto; height: auto; gap: 16px; }
-  .multiplayer-roster-section, .multiplayer-editor, .multiplayer-round-setup, .multiplayer-setup-actions { grid-column: 1; }
   .multiplayer-roster-section { overflow: visible; }
   .multiplayer-roster { display: flex; flex-wrap: nowrap; max-height: none; overflow-x: auto; overflow-y: hidden; }
   .multiplayer-slot { width: auto; flex: none; }
   .multiplayer-player-tab { max-width: 150px; }
-  .multiplayer-editor { padding: 12px; overflow: visible; }
-  .multiplayer-setup-actions { flex-wrap: wrap; }
-  .multiplayer-setup-actions .control--primary { flex: 1; justify-content: center; }
+
   #notes-challenge .custom-editor, #notes-multi\ player .multiplayer-setup:has(.preset-setup.is-editing) .custom-editor { height: max(470px, calc(100dvh - 224px)); }
   #notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { min-height: 0; }
 }
+
+/* Setup layout is shared; activity-specific geometry applies only during play. */
+.activity-setup { max-width: 760px; }
+.activity-setup .preset-preview h4 { margin: 0; }
+.activity-setup .preset-summary { margin: 10px 0; font-size: 14px; color: var(--color-muted); }
+.activity-setup .challenge-settings { margin-top: 16px; }
+.activity-setup .challenge-settings legend { display: none; }
+
+@media (max-width: 1100px) {
+  :is(#notes-practice,#notes-challenge):has(.practice-view[data-screen='setup']):not(:has(.preset-setup.is-editing)) { padding: 20px; }
+}
+@media (max-width: 760px) {
+  :is(#notes-practice,#notes-challenge):has(.practice-view[data-screen='setup']):not(:has(.preset-setup.is-editing)) { padding: 16px 12px; }
+}
+
+#notes-multi\ player:has(.multiplayer-setup:not([hidden])):not(:has(.preset-setup.is-editing)) { height: auto; min-height: 0; overflow: visible; scrollbar-gutter: auto; }
+.multiplayer-setup > .activity-setup { min-width: 0; width: 100%; }
+#notes-multi\ player .activity-setup .preset-preview-scene { grid-template-columns: minmax(0,1fr) 160px; gap: 16px; }
+#notes-multi\ player .activity-setup .preset-preview-companion .uno { width: 160px; height: 160px; }
+.multiplayer-setup .feedback:empty { display: none; }
+.multiplayer-setup .multiplayer-round-setup { min-width: 0; border: 0; padding: 0; }
+@media (max-width: 1000px) {
+  #notes-multi\ player .activity-setup .preset-preview-scene { display: block; position: relative; }
+  #notes-multi\ player .activity-setup .preset-preview-companion { position: absolute; top: 100%; right: 0; }
+  #notes-multi\ player .activity-setup .preset-preview-companion .uno { width: 96px; height: 96px; }
+  #notes-multi\ player .activity-setup .preset-overview > [id$='preset-summary'] { max-width: calc(100% - 108px); min-height: 96px; }
+}
+
+.multiplayer-roster :is(.multiplayer-edit,.multiplayer-delete) { flex: none; width: 44px; padding: 0; justify-content: center; }
+.multiplayer-edit svg { width: 16px; height: 16px; }
+.multiplayer-delete svg { width: 18px; height: 18px; padding: 3px; border-radius: 4px; color: var(--color-surface); background: #8f3f48; }
+.multiplayer-delete:hover:not(:disabled) svg { background: #783039; }
+.multiplayer-move { flex: none; }
+.multiplayer-roster .multiplayer-move:first-child { justify-content: end; padding-right: 2px; }
+.multiplayer-roster .multiplayer-move:not(:first-child) { justify-content: start; padding-left: 2px; }
+.multiplayer-player-popover { position: fixed; margin: 0; width: min(300px,calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; padding: 16px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #0002; }
+.multiplayer-player-popover::backdrop { background: #0002; }
+.multiplayer-player-popover h3 { margin: 0 0 12px; font-size: 18px; }
+.multiplayer-player-popover .setting { margin: 0 0 12px; }
+.multiplayer-player-popover input, .multiplayer-player-popover select { width: 100%; min-width: 0; }
+.multiplayer-player-popover .control-row { justify-content: flex-end; }

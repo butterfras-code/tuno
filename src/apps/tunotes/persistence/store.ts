@@ -140,7 +140,7 @@ function validateContext(value: string, validPresets: Set<string>) {
     const extra = object(parts[9],['version','clefs','modifiers']);
     const clefs = array(extra.clefs,4).map(v => string(v));
     const modifiers = array(extra.modifiers,4).map(v => string(v));
-    if (extra.version !== 2 || !clefs.length || clefs.some(c => !['treble','bass','alto','tenor'].includes(c)) || !modifiers.length || modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) fail('Invalid graphical practice context.');
+    if (extra.version !== 2 || !clefs.length || clefs.some(c => !['treble','bass','alto','tenor'].includes(c)) || modifiers.some(m => !['key','flat','natural','sharp'].includes(m))) fail('Invalid graphical practice context.');
     unique(clefs); unique(modifiers);
   }
   if (key !== 'none') keySignature(string(key));

@@ -64,7 +64,14 @@ async function run(page,mode) {
   await presetName.fill(''); assert.equal(await presetName.inputValue(),'F4–G4 Both + ♭ ♮ ♯');
 
   await page.getByRole('button',{name:'Back to editing',exact:true}).click();
-  await setModifiers(page,[]); assert.equal(await apply(page).isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/additional spelling/);
+  await setModifiers(page,[]); assert.equal(await apply(page).isEnabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/No key signature.*F4–G4/);
+  await setEndpoint(page,'Highest note','F5');
+  await setModifiers(page,['flat','sharp']);
+  assert.match(await page.locator('#preset-summary').textContent(),/No key signature.*F4–F5.*flats, sharps/);
+  await apply(page).click();
+  assert.deepEqual(await page.locator('.range-endpoint:visible output').allTextContents(),['F4','F5']);
+  assert.equal(await page.locator('.endpoint-staff:visible .note-accidental').count(),0);
+  await setEndpoint(page,'Highest note','G4');
   await setKey(page,'F'); assert.equal(await group(page,'Key signature').getByRole('button',{name:'On',exact:true}).getAttribute('aria-pressed'),'true');
   await customTab(page,'Range');
   // Clefs start linked. A second endpoint change must be acknowledged.
@@ -80,6 +87,10 @@ async function run(page,mode) {
   assert.match(await high.getAttribute('aria-valuetext'),/^G4, treble clef/);
   await customTab(page,'Clefs'); assert.equal(await group(page,'Available clefs').getByRole('button',{name:'Treble',exact:true}).getAttribute('aria-pressed'),'true');
   assert.equal(await group(page,'Available clefs').getByRole('button',{name:'Bass',exact:true}).getAttribute('aria-pressed'),'true');
+  for (const clef of ['Alto','Tenor']) {
+    const button = group(page,'Available clefs').getByRole('button',{name:clef,exact:true});
+    if (await button.getAttribute('aria-pressed') === 'true') await button.click();
+  }
   await group(page,'Available clefs').getByRole('button',{name:'Treble',exact:true}).click(); await group(page,'Available clefs').getByRole('button',{name:'Bass',exact:true}).click();
   assert.match(await page.locator('.configurator-notice').textContent(),/at least one/);
   await group(page,'Available clefs').getByRole('button',{name:'Treble',exact:true}).click();
@@ -87,9 +98,9 @@ async function run(page,mode) {
   assert.match(await page.locator('.ledger-description').textContent(),/ledger/);
   await page.getByRole('button',{name:'Save as preset…',exact:true}).click();
   await page.getByLabel('Custom preset name').fill('Two clefs'); await page.getByRole('button',{name:'Save preset',exact:true}).click();
-  assert.match(await page.locator('#preset').textContent(),/Two clefs/);
+  assert.match(await page.locator('#preset-name').textContent(),/Two clefs/);
   await page.reload();
-  if (mode === 'hosted') assert.match(await page.locator('#preset').textContent(),/Two clefs/);
+  if (mode === 'hosted') assert.match(await page.locator('#preset-name').textContent(),/Two clefs/);
   assert.equal(await page.locator('.custom-editor').isVisible(),false);
   await setPacing(page,'Click/Tap'); await start(page).click();
   const seen = new Set();
@@ -112,7 +123,7 @@ async function run(page,mode) {
   await page.mouse.click(glyph.x,glyph.y);
   assert.equal(await page.getByLabel('Highest note clef',{exact:true}).evaluate(node => node === document.activeElement),true);
   await page.getByLabel('Highest note clef',{exact:true}).selectOption('bass'); assert.match(await high.getAttribute('aria-valuetext'),/^B8, bass clef/);
-  results.push(`${mode}: wizard/back/Escape/focus, ordered keys, keyboard/tap/drag range, clamped keyboard/pointer/accidental bounds, generated/overridden names, empty settings, additive modifiers, linked and mixed clefs with Cancel/OK, explicit clefs, ledger description, save/reload, mixed-clef practice, 360/768/1280 layouts and zoom`);
+  results.push(`${mode}: wizard/back/Escape/focus, ordered keys, keyboard/tap/drag range, clamped keyboard/pointer/accidental bounds, generated/overridden names, natural-only settings, keyless additive spellings, linked and mixed clefs with Cancel/OK, explicit clefs, ledger description, save/reload, mixed-clef practice, 360/768/1280 layouts and zoom`);
 }
 try {
   await mkdir('dist/validation',{recursive:true});

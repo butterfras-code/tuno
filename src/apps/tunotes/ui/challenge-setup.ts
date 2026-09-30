@@ -32,10 +32,15 @@ export function challengeSetup(title = 'Solo Challenge') {
   mode.buttons.forEach(control => control.addEventListener('click',updateGoal)); updateGoal();
   const error = el('p','feedback'); error.hidden = true; error.setAttribute('role','alert');
   node.append(mode.node,timed,target,ruleSummary,advanced,error);
-  return { node, read() {
+  let changed = () => {};
+  node.addEventListener('input',() => changed()); node.addEventListener('change',() => changed());
+  mode.buttons.forEach(control => control.addEventListener('click',() => changed()));
+  return { node, onChange: (fn: () => void) => { changed = fn; },
+    summary: () => goal === 'timed' ? `Timed · ${seconds.value || '—'} seconds` : `Target · ${count.value || '—'} correct · ${timeout.value || '—'} seconds`,
+    read(onInvalid?: () => void) {
     try {
       const rules = validateRules(goal === 'timed' ? { goal, seconds: seconds.valueAsNumber, scoring: scoring.value } : { goal, target: count.valueAsNumber, timeout: timeout.valueAsNumber, accuracyFloor: floor.valueAsNumber });
       error.textContent = ''; error.hidden = true; return rules;
-    } catch (e) { error.hidden = false; error.textContent = (e as Error).message; const invalid = (goal === 'timed' ? [seconds] : [count,timeout,floor]).find(i => !i.validity.valid); if (invalid === floor) advanced.open = true; invalid?.focus(); return undefined; }
+    } catch (e) { onInvalid?.(); error.hidden = false; error.textContent = (e as Error).message; const invalid = (goal === 'timed' ? [seconds] : [count,timeout,floor]).find(i => !i.validity.valid); if (invalid === floor) advanced.open = true; invalid?.focus(); return undefined; }
   } };
 }
