@@ -190,7 +190,7 @@ try {
     assert.equal(await reopened.evaluate(() => window.unoListeners), 1);
     await reopened.evaluate(() => document.querySelector('main').remove());
     await reopened.waitForFunction(() => window.unoListeners === 0);
-    assert.equal(await tuner.evaluate(() => window.unoListeners), 2);
+    assert.equal(await tuner.evaluate(() => window.unoListeners), 3, 'two Uno instances and the metronome visualization preference');
     await tuner.evaluate(() => document.querySelector('#app').replaceChildren());
     await tuner.waitForFunction(() => window.unoListeners === 0);
     await context.close();
