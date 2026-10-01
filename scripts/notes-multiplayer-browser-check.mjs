@@ -29,7 +29,7 @@ async function answerLetter(panel) {
 async function start(page,format='turns') {
   await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
-  if(format!=='turns') await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:format==='pairs'?'Split Screen':'Head to Head'}).click();
+  await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:format==='pairs'?'Split Screen':format==='turns'?'Turns':'Head to Head'}).click();
   await button(page,'Start round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }

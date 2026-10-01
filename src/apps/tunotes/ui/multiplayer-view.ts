@@ -51,7 +51,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   editor.append(presetUI.node);
   const rules = challengeSetup('Round rules'); rules.node.hidden = false;
   const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
-  let selectedFormat: Format = 'turns'; format.update([selectedFormat]);
+  let selectedFormat: Format = 'pairs'; format.update([selectedFormat]);
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
