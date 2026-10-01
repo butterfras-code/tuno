@@ -30,7 +30,7 @@ async function start(page,format='turns') {
   await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
   if(format!=='turns') await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:format==='pairs'?'Split Screen':'Head to Head'}).click();
-  await button(page,'Start round').click(); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
+  await button(page,'Start round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }
 async function run(page,url,label) {
@@ -94,7 +94,7 @@ async function run(page,url,label) {
   await page.setViewportSize({width:600,height:960});
   await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
   await page.clock.runFor(250);
-  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
+  assert.equal(await head.locator('.multiplayer-fit-warning').isVisible(),false);
   const portraitSeats=await head.locator('.multiplayer-seat').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height};}));
   assert.ok(Math.abs(portraitSeats[0].y+portraitSeats[0].height-portraitSeats[1].y)<3);
   for(let i=0;i<2;i++) {
@@ -108,7 +108,7 @@ async function run(page,url,label) {
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head-portrait.png`});
   await page.setViewportSize({width:1280,height:800});
   await page.clock.runFor(250);
-  assert.equal(await head.locator('.multiplayer-recovery').isVisible(),false);
+  assert.equal(await head.locator('.multiplayer-fit-warning').isVisible(),false);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head.png`});
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
@@ -272,11 +272,12 @@ async function run(page,url,label) {
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});});
   await button(page,'Resume').click();
   await page.setViewportSize({width:760,height:900});
-  await page.locator('.multiplayer-recovery').waitFor({state:'visible'});
-  assert.equal(await page.locator('.multiplayer-recovery').isVisible(),true);
-  assert.equal(await button(page.locator('.multiplayer-recovery'),'Resume Split Screen').isDisabled(),true);
+  await page.locator('.multiplayer-fit-warning').waitFor({state:'visible'});
+  assert.equal(await page.locator('.multiplayer-fit-warning').isVisible(),true);
+  assert.equal(await button(page,'Pause').isVisible(),true);
+  assert.equal(await page.locator('.multiplayer-panel[data-phase="paused"]').count(),0);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-recovery.png`,fullPage:true});
-  await button(page,'Restart as turns').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
+  await button(page,'Switch to Turns').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
   await page.setViewportSize({width:360,height:800});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-turn.png`,fullPage:true});
@@ -309,7 +310,8 @@ async function run(page,url,label) {
   await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:760,height:900});
   await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Split Screen'}).click();
-  assert.equal(await button(page,'Start round').isDisabled(),true);
+  assert.equal(await button(page,'Start round').isDisabled(),false);
+  assert.match(await page.locator('.multiplayer-round-setup').textContent(),/may work better with Turns/);
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Turns'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   await page.setViewportSize({width:1280,height:900});
@@ -332,8 +334,8 @@ async function run(page,url,label) {
   await page.getByLabel('Player 2 saved profile').selectOption({label:'Bass Player'});
   await button(page.getByRole('dialog'),'Save').click();
   assert.match(await page.locator('.multiplayer-editor .preset-name').textContent(),/Bass — Lines \+ Spaces/);
-  assert.deepEqual(errors,[]);evidence.push(`${label}: shared visibility pause, resize recovery, explicit turns restart and phone/tablet layout`);
-  evidence.push(`${label}: separate presets, global adaptation across roster changes, profile defaults and small-screen pair start guard`);
+  assert.deepEqual(errors,[]);evidence.push(`${label}: shared visibility pause, nonblocking resize advice, explicit turns restart and phone/tablet layout`);
+  evidence.push(`${label}: separate presets, global adaptation across roster changes, profile defaults and nonblocking small-screen pair advice`);
 }
 try {
   await mkdir('dist/validation',{recursive:true});

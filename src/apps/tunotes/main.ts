@@ -3,6 +3,7 @@ import projectLicense from '../../../LICENSE.txt';
 import { el } from '../../shared/ui/components.ts';
 import { practiceView } from './ui/practice-view.ts';
 import { multiplayerView } from './ui/multiplayer-view.ts';
+import { playSurface } from './ui/play-surface.ts';
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { createReleaseControls } from '../../distribution/release.ts';
@@ -44,6 +45,19 @@ export function mountNotes(root: HTMLElement) {
     navigation.append(control); return control;
   });
   header.append(navigation);
+  const fullscreen = el('button','control notes-fullscreen','Enter fullscreen'); fullscreen.type = 'button';
+  fullscreen.hidden = true;
+  const fullscreenStatus = el('p','fullscreen-status'); fullscreenStatus.setAttribute('role','status');
+  fullscreen.addEventListener('click',async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+      fullscreenStatus.textContent = '';
+    } catch { fullscreenStatus.textContent = 'Fullscreen is unavailable in this browser.'; }
+  });
+  const updateFullscreen = () => { fullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'; };
+  document.addEventListener('fullscreenchange',updateFullscreen);
+  header.append(fullscreen,fullscreenStatus);
   const footer = el('footer');
   const offline = el('p');
   offline.id = 'offline-status';
@@ -63,7 +77,8 @@ export function mountNotes(root: HTMLElement) {
   footer.append(offline, optionsLink);
   home.append(header, ...views, footer);
   root.append(home);
-  const dispose = () => { practice.dispose(); multiplayer?.dispose(); };
+  const stopFitting = playSurface(home,practice.options);
+  const dispose = () => { stopFitting(); document.removeEventListener('fullscreenchange',updateFullscreen); practice.dispose(); multiplayer?.dispose(); };
   const stopWatching = onUnmount(home, dispose);
   return () => { stopWatching(); dispose(); home.remove(); };
 }
