@@ -189,7 +189,7 @@ async function run(page,url,label) {
   assert.equal(await page.locator('.multiplayer-editor .multiplayer-player-controls').count(),0);
   assert.equal(await remove.locator('svg').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(143, 63, 72)');
   const removeBox=await remove.boundingBox();
-  assert.ok(removeBox.width >= 44 && removeBox.height >= 44);
+  assert.ok(removeBox.width >= 43.99 && removeBox.height >= 43.99,`44px touch target (allowing subpixel rounding): ${JSON.stringify(removeBox)}`);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-setup.png`,fullPage:true});
   await page.setViewportSize({width:360,height:800});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
