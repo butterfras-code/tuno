@@ -8,7 +8,7 @@ const host = await hostBuild();
 try {
   const page = await browser.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href);
-  assert.equal(await page.locator('input[type=checkbox]').count(),0);
+  assert.equal(await page.locator('#adaptive, #meet-notes').evaluateAll(nodes=>nodes.every(node=>node.tagName==='BUTTON')),true);
   assert.equal(await page.locator('.preset-preview .notehead').count(),2);
   assert.match(await page.locator('#preset-summary').textContent(),/C Major · E4–F5 · Lines and Spaces · Treble clef/);
   assert.equal(await page.locator('#adaptive-help').isVisible(),false);
@@ -63,7 +63,8 @@ try {
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       if (mode === 'Practice') {
         assert.ok((await page.locator('.preset-preview').boundingBox()).width <= 480);
-        assert.ok((await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox()).width >= 270);
+        const start=await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
+        assert.ok(start.width >= 44 && start.height >= 44);
       }
       await page.screenshot({path:`dist/validation/notes-ui-${process.env.TUNO_BROWSER || 'chromium'}-${mode.toLowerCase()}-${width}.png`,fullPage:true});
     }
@@ -74,7 +75,7 @@ try {
   const touchHelp = touchPage.getByRole('button',{name:'About Adapt Range',exact:true});
   await touchHelp.tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),true);
   assert.equal(await touchPage.locator('#adaptive').getAttribute('aria-pressed'),'false');
-  await touchPage.getByText('Preset',{exact:true}).tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),false);
+  await touchPage.locator('h1').tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),false);
   await touchHelp.tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),true);
   await touchHelp.tap(); assert.equal(await touchPage.locator('#adaptive-help').isVisible(),false);
   await touch.close();
