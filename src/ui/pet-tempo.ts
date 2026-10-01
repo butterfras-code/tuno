@@ -9,21 +9,37 @@ export function petTempo(store: PracticeStore, audio: AudioController) {
   const node = el('div', 'pet-tempo');
   const head = button('Tap Uno’s head to set tempo');
   head.className = 'pet-head';
-  const body = button('Double-tap Uno’s body to switch tail motion');
+  const body = button('Double-tap Uno’s body to switch visualization');
   body.className = 'pet-body';
   for (const target of [head, body]) {
     target.setAttribute('aria-label', target.textContent!);
     target.textContent = '';
   }
   node.append(dog.node, head, body);
-  let sideToSide = false;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const motions = ['bounce', 'sides', 'edges'] as const;
+  const labels = { bounce: 'Vertical wag', sides: 'Horizontal wag', edges: 'Green edges' };
+  let motion: typeof motions[number] = reduced.matches ? 'edges' : 'bounce';
+  let chosen = false;
   let looking = false;
   let lastTap: { time: number; x: number; y: number } | undefined;
   let contact: { id: number; x: number; y: number; moved: boolean } | undefined;
-  node.dataset.tailMotion = 'bounce';
-  const toggleTailMotion = () => {
-    sideToSide = !sideToSide;
-    node.dataset.tailMotion = sideToSide ? 'sides' : 'bounce';
+  const updateMotion = () => {
+    node.dataset.tailMotion = motion;
+    body.setAttribute('aria-label', `${labels[motion]}. Double-tap Uno’s body or press Enter or Space to switch visualization`);
+  };
+  const motionChanged = () => {
+    if (!chosen) {
+      motion = reduced.matches ? 'edges' : 'bounce';
+      updateMotion();
+    }
+  };
+  updateMotion();
+  reduced.addEventListener('change', motionChanged);
+  const cycleVisualization = () => {
+    chosen = true;
+    motion = motions[(motions.indexOf(motion) + 1) % motions.length]!;
+    updateMotion();
   };
   // Head taps have no double-tap ambiguity: update tempo and nod on contact.
   head.addEventListener('pointerdown', event => {
@@ -48,14 +64,14 @@ export function petTempo(store: PracticeStore, audio: AudioController) {
     if (contact?.id !== event.pointerId) return;
     if (!contact.moved) {
       if (lastTap && event.timeStamp - lastTap.time <= 300 && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 24) {
-        toggleTailMotion();
+        cycleVisualization();
         lastTap = undefined;
       } else lastTap = { time: event.timeStamp, x: event.clientX, y: event.clientY };
     } else lastTap = undefined;
     contact = undefined;
     if (body.hasPointerCapture(event.pointerId)) body.releasePointerCapture(event.pointerId);
   });
-  body.addEventListener('click', event => { if (event.detail === 0) toggleTailMotion(); });
+  body.addEventListener('click', event => { if (event.detail === 0) cycleVisualization(); });
   const cancel = () => {
     const id = contact?.id;
     contact = undefined;
@@ -71,14 +87,16 @@ export function petTempo(store: PracticeStore, audio: AudioController) {
   const unsubscribe = store.subscribe(state => { if (state.focus !== 'metronome' || !state.showUno) cancel(); });
   const untap = audio.onTap(() => { if (!looking && store.get().showUno && store.get().focus === 'metronome') dog.nod(); });
   const unpulse = audio.onPulseFrame((angle, playing, index, accent) => {
-    dog.accent(accent);
+    dog.accent(motion === 'edges' ? 0 : accent);
+    const sideToSide = motion === 'sides';
     const mirrored = sideToSide && index !== null && index % 2 === 0;
-    dog.tail(sideToSide && playing ? TAIL_RAISED_ANGLE : angle, playing, mirrored);
+    dog.tail(motion === 'edges' ? 0 : sideToSide && playing ? TAIL_RAISED_ANGLE : angle, playing, mirrored, motion !== 'edges');
     const side = index === null ? '' : index % 2 === 0 ? 'left' : 'right';
     if (node.dataset.beat !== side) node.dataset.beat = side;
   });
   onUnmount(node, () => {
     cancel(); unsubscribe(); untap(); unpulse(); dog.dispose();
+    reduced.removeEventListener('change', motionChanged);
     window.removeEventListener('blur', cancel);
     document.removeEventListener('visibilitychange', visibilityChanged);
   });

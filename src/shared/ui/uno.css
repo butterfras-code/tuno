@@ -25,7 +25,7 @@
 .uno-animated[data-pose='catch'] .uno-reward { opacity: 1; transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .uno-animated *, .uno-rest { animation: none !important; transition: none !important; }
-  .uno-tail-side, .uno-tail, .uno-head { transform: none !important; }
+  .uno-animated:not(.uno-tail-motion) .uno-tail-side, .uno-animated:not(.uno-tail-motion) .uno-tail, .uno-head { transform: none !important; }
 }
 .uno-animated[data-pose='sleep'] .uno-sit { opacity: 0; }
 .uno-animated[data-pose='sleep'] .uno-rest { opacity: 1; }
