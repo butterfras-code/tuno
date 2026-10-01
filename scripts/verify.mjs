@@ -19,7 +19,7 @@ try {
   run('extended synthetic pitch benchmark', process.execPath, ['scripts/pitch-benchmark.ts', '--check']);
   run('release integrity', process.execPath, ['scripts/release-check.mjs']);
   for (const browser of ['chromium', 'firefox']) {
-    for (const check of ['browser-check', 'layout-browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'site-browser-check', 'audio-render-check', 'performance-check', 'release-browser-check', 'dual-app-browser-check', 'notes-browser-check', 'notes-stage2-browser-check', 'notes-input-browser-check', 'notes-configurator-browser-check', 'notes-preset-preview-browser-check', 'notes-custom-editor-browser-check', 'notes-adaptive-browser-check', 'notes-ui-browser-check', 'notes-practice-layout-browser-check', 'notes-mode-layout-browser-check', 'notes-misses-browser-check', 'notes-challenge-browser-check', 'notes-multiplayer-browser-check']) {
+    for (const check of ['browser-check', 'layout-browser-check', 'tempo-browser-check', 'animation-browser-check', 'offline-check', 'site-browser-check', 'audio-render-check', 'performance-check', 'release-browser-check', 'dual-app-browser-check', 'notes-browser-check', 'notes-stage2-browser-check', 'notes-input-browser-check', 'notes-configurator-browser-check', 'notes-preset-preview-browser-check', 'notes-custom-editor-browser-check', 'notes-adaptive-browser-check', 'notes-ui-browser-check', 'notes-practice-layout-browser-check', 'notes-mode-layout-browser-check', 'notes-misses-browser-check', 'notes-challenge-browser-check', 'notes-multiplayer-browser-check', 'notes-viewport-browser-check']) {
       run(`${browser}: ${check}`, process.execPath, [`scripts/${check}.mjs`], { ...process.env, TUNO_BROWSER: browser });
     }
   }

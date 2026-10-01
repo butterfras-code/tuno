@@ -51,7 +51,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   editor.append(presetUI.node);
   const rules = challengeSetup('Round rules'); rules.node.hidden = false;
   const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
-  let selectedFormat: Format = 'turns'; format.update([selectedFormat]);
+  let selectedFormat: Format = 'pairs'; format.update([selectedFormat]);
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
@@ -77,7 +77,6 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const ready = button('Ready',() => { const startAt = performance.now(); active.forEach(l => l.session.ready(startAt)); ready.hidden = true; resetInput(); renderRound(); }); ready.classList.add('control--primary');
   const pause = button('Pause',() => {
     if (active.some(l => l.session.state === 'paused')) {
-      if (resizeRecovery || selectedFormat === 'pairs' && !pairFits()) return;
       active.forEach(l => l.session.resume());
     } else active.forEach(l => l.session.pause());
     resetInput(); renderRound();
@@ -86,13 +85,13 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const fullscreen = button('Enter fullscreen',toggleFullscreen);
   const fullscreenHelp = el('p','muted multiplayer-fullscreen-help'); fullscreenHelp.setAttribute('role','status');
   roundActions.append(ready,pause,fullscreen,end);
-  const recovery = el('div','multiplayer-recovery'); recovery.hidden = true;
-  const recoveryText = el('p','feedback','This screen is too small for Split Screen. Restore a larger view to resume, or restart as turns.');
-  const restore = button('Resume Split Screen',() => { if (!pairFits()) return; resizeRecovery = false; active.forEach(l => l.session.resume()); resetInput(); renderRound(); });
-  const restart = button('Restart as turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); resizeRecovery = false; startRound(); });
-  recovery.append(recoveryText,restore,restart);
+  const fitWarning = el('div','multiplayer-fit-warning'); fitWarning.hidden = true;
+  const fitWarningText = el('p','','This screen may work better with Turns. Switching starts a new round.');
+  fitWarning.setAttribute('role','status');
+  const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); startRound(); });
+  fitWarning.append(fitWarningText,restart);
   const panels = el('div','multiplayer-panels');
-  roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp,recovery);
+  roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
   round.append(roundHeader,panels);
 
   const result = el('section','multiplayer-result'); result.hidden = true;
@@ -102,7 +101,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const resultActions = el('div','control-row');
   resultActions.append(button('Retry',startRound),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
   result.append(resultTitle,resultSummary,board,resultActions);
-  node.append(setup,round,result);
+  node.append(setup,fitWarning,round,result);
 
   let players: Player[] = [newPlayer(1)];
   let selectedId = players[0]!.id;
@@ -114,17 +113,16 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const guestContexts = new Map<string,Context>();
   const gate = new PressGate();
   const held = [new Set<string>(),new Set<string>()];
-  let resizeRecovery = false;
   let requestedFullscreen = false;
   let disposed = false;
 
   function fullscreenSupported() { return document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === 'function'; }
   function updateFullscreen() {
-    fullscreen.hidden = selectedFormat !== 'head-to-head' || !fullscreenSupported();
+    fullscreen.hidden = !fullscreenSupported();
     setupFullscreen.hidden = fullscreen.hidden;
     fullscreen.textContent = document.fullscreenElement === document.documentElement ? 'Exit fullscreen' : 'Enter fullscreen';
     setupFullscreen.textContent = fullscreen.textContent;
-    fullscreenHelp.textContent = selectedFormat === 'head-to-head' && !fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches ? 'For a view without browser bars, open tuNotes from your Home Screen.' : '';
+    fullscreenHelp.textContent = !fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches ? 'For a view without browser bars, open tuNotes from your Home Screen.' : '';
   }
   async function toggleFullscreen() {
     if (document.fullscreenElement === document.documentElement) { await document.exitFullscreen(); return; }
@@ -153,14 +151,14 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function profilePreset(id: string): Preset { return presets.find(p => p.id === id) ?? normalizePreset(store.data.customPresets.find(p => p.id === id)!); }
   function pairFits() {
-    const visibleWidth = Math.min(window.innerWidth,window.visualViewport?.width ?? window.innerWidth);
-    const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight);
+    const viewport = node.closest<HTMLElement>('.play-viewport');
+    const visibleWidth = Math.min(window.innerWidth,window.visualViewport?.width ?? window.innerWidth,viewport?.clientWidth ?? Infinity);
+    const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight,viewport?.clientHeight ?? Infinity);
     return canPair(visibleWidth,visibleHeight);
   }
   function showPairAdvice() {
-    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may need scrolling; you can switch to Turns. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'Split Screen needs a larger screen (at least 960 × 600). Choose Turns here.';
-    if (selectedFormat === 'head-to-head' && !fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
-    start.disabled = selectedFormat === 'pairs' && !pairFits();
+    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may work better with Turns. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'This screen may work better with Turns.';
+    if (!fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
@@ -279,7 +277,6 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (!commitEditor()) { setupError.textContent = 'Fix the selected preset before starting.'; return; }
     const names = players.map(p => p.name.trim());
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
-    if (selectedFormat === 'pairs' && !pairFits()) { setupError.textContent = 'Choose Turns or use a larger screen for Split Screen.'; showPairAdvice(); return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
     const nextRules = rules.read(() => setupUI.select('settings')); if (!nextRules) return;
@@ -320,10 +317,10 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     active = heats[heatIndex]!.map(makeLane);
     updateKeyHelp();
     panels.replaceChildren(...active.map(l => { const seat = el('div','multiplayer-seat'); seat.append(l.node); return seat; }));
-    resizeRecovery = false; resetInput();
+    resetInput();
     roundTitle.textContent = selectedFormat !== 'turns' ? `Heat ${heatIndex+1} of ${heats.length}` : `Turn ${heatIndex+1} of ${heats.length}`;
     roundSummary.textContent = describeRules(rulesValue!);
-    ready.hidden = false; pause.hidden = true; recovery.hidden = true;
+    ready.hidden = false; pause.hidden = true; fitWarning.hidden = true;
     renderRound(); roundTitle.focus({preventScroll:true});
   }
   function record(lane: Lane) {
@@ -339,6 +336,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function finishRound() {
     finishActive(true); resetInput();
+    fitWarning.hidden = true;
     leaveFullscreen();
     round.hidden = true; setup.hidden = true; result.hidden = false;
     renderResults(); resultTitle.focus({preventScroll:true});
@@ -365,6 +363,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function showSetup() {
     leaveFullscreen();
+    fitWarning.hidden = true;
     finishActive(true); resetInput(); active.forEach(l => l.dog.dispose()); active = []; panels.replaceChildren();
     setup.hidden = false; round.hidden = true; result.hidden = true; renderSetup();
   }
@@ -373,7 +372,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const paused = active.some(l => l.session.state === 'paused');
     pause.hidden = active.every(l => l.session.phase === 'ready' || l.session.state === 'finished');
     pause.textContent = paused ? 'Resume' : 'Pause';
-    recovery.hidden = !resizeRecovery; restore.disabled = selectedFormat === 'pairs' && !pairFits();
+    fitWarning.hidden = selectedFormat !== 'pairs' || pairFits();
     ready.hidden = !active.every(l => l.session.phase === 'ready' && l.session.state === 'running');
     for (const lane of active) {
       const s = lane.session;
@@ -461,9 +460,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     });
     showPairAdvice();
     updateKeyHelp();
-    if (!round.hidden && selectedFormat === 'pairs' && active.some(l => l.session.state !== 'finished') && !pairFits()) {
-      active.forEach(l => l.session.pause()); resizeRecovery = true; resetInput(); renderRound();
-    } else if (resizeRecovery) renderRound();
+    if (!round.hidden) fitWarning.hidden = selectedFormat !== 'pairs' || pairFits();
   };
   const timer = setInterval(() => {
     if (round.hidden || disposed) return;
@@ -482,11 +479,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   window.addEventListener('blur',resetInput); window.addEventListener('resize',resize);
   window.visualViewport?.addEventListener('resize',resize); screen.orientation?.addEventListener('change',resize);
   window.addEventListener('orientationchange',resize);
+  const surfaceResize = new ResizeObserver(resize); surfaceResize.observe(node);
   renderSetup();
   return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
     closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
-    if (disposed) return; disposed = true; closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => l.dog.dispose());
+    if (disposed) return; disposed = true; surfaceResize.disconnect(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => l.dog.dispose());
     document.removeEventListener('keydown',keydown); document.removeEventListener('keyup',keyup);
     document.removeEventListener('visibilitychange',visibility); document.removeEventListener('fullscreenchange',fullscreenChanged);
     window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);
