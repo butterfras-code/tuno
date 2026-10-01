@@ -24,7 +24,7 @@ try {
   await page.goto(new URL('/notes/', host.url).href); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
   await custom(page); assert.match(await page.locator('#preset-summary').textContent(),/F♯4/);
   await useRange(page); await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
-  assert.equal(await page.locator('.key-accidental:visible').count(),1); assert.equal(await page.locator('.note-accidental:visible').count(),0);
+  assert.equal(await page.locator('.key-accidental:visible').count(),0); assert.equal(await page.locator('.note-accidental:visible').count(),1);
   assert.ok(!(await page.locator('.staff').getAttribute('aria-label')).includes('F♯'));
   assert.equal(await page.locator('.answer').count(),18);
   assert.equal(await page.getByRole('button',{name:'F',exact:true}).first().getAttribute('aria-disabled'),'false');
@@ -80,7 +80,15 @@ try {
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();
   }
   results.push('Denied/corrupt/quota storage allows play and explicit memory-only import');
-  const fixtureCode = await build({stdin:{contents:`import { renderStaff } from './src/apps/tunotes/ui/staff.ts'; import { keyNames,keySignature,parsePitch } from './src/apps/tunotes/domain/notation.ts'; for(const clef of ['treble','bass','alto','tenor']) for(const key of keyNames) { const section=document.createElement('section'); const h=document.createElement('h3'); h.textContent=clef+' '+key; section.append(h,renderStaff(parsePitch('C4'),clef,keySignature(key))); document.body.append(section); } for(const [pitch,clef,key] of [['F4','treble','G'],['F#4','treble','C'],['Gb4','treble','C'],['B#3','treble','C#'],['Cb4','bass','Cb'],['C7','treble','C']]) { const s=document.createElement('section'); const h=document.createElement('h3'); h.textContent=pitch+' '+clef+' '+key; s.append(h,renderStaff(parsePitch(pitch),clef,keySignature(key))); document.body.append(s); }`,resolveDir:process.cwd()},bundle:true,write:false,format:'iife'});
+  const fixtureCode = await build({stdin:{contents:`import { renderStaff, renderPreviewStaff } from './src/apps/tunotes/ui/staff.ts'; import { keyNames,keySignature,parsePitch } from './src/apps/tunotes/domain/notation.ts'; for (const clef of ['treble','bass','alto','tenor']) for (const [pitch,key] of [['Bb4','Bb'],['F#4','G'],['F4','G'],['B4','Bb']]) {
+    for (const render of [renderStaff,renderPreviewStaff]) {
+      const note = parsePitch(pitch), signature = keySignature(key), svg = render(note,clef,signature);
+      if (svg.querySelectorAll('.key-accidental').length || svg.querySelectorAll('.note-accidental').length !== (note.accidental ? 1 : 0)) throw new Error('Default note accidentals: '+clef+' '+pitch);
+      const traditional = render(note,clef,signature,false,true);
+      if (traditional.querySelectorAll('.key-accidental').length !== Math.abs(signature.fifths) || traditional.querySelectorAll('.note-accidental').length !== (note.accidental ? 0 : 1)) throw new Error('Signature notation: '+clef+' '+pitch);
+    }
+  }
+  for(const clef of ['treble','bass','alto','tenor']) for(const key of keyNames) { const section=document.createElement('section'); const h=document.createElement('h3'); h.textContent=clef+' '+key; section.append(h,renderStaff(parsePitch('C4'),clef,keySignature(key),false,true)); document.body.append(section); } for(const [pitch,clef,key] of [['F4','treble','G'],['F#4','treble','C'],['Gb4','treble','C'],['B#3','treble','C#'],['Cb4','bass','Cb'],['C7','treble','C']]) { const s=document.createElement('section'); const h=document.createElement('h3'); h.textContent=pitch+' '+clef+' '+key; s.append(h,renderStaff(parsePitch(pitch),clef,keySignature(key),false,true)); document.body.append(s); }`,resolveDir:process.cwd()},bundle:true,write:false,format:'iife'});
   const fixture = await browser.newPage({viewport:{width:1400,height:1000}}); await fixture.setContent('<style>body{display:grid;grid-template-columns:repeat(4,1fr);font:16px sans-serif}svg{width:100%;height:180px}h3{margin:8px}</style>'); await fixture.addScriptTag({content:fixtureCode.outputFiles[0].text});
   assert.equal(await fixture.locator('svg').count(),66); assert.equal(await fixture.locator('.key-accidental').count(),239); await fixture.screenshot({path:`dist/validation/notes-stage2-${name}-notation.png`,fullPage:true});
   results.push('66 notation review fixtures: every clef/key, natural cancellation, explicit sharp/flat, B-sharp/C-flat octave identities and flute C7 ledger extent');

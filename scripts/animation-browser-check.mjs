@@ -12,6 +12,15 @@ await mkdir('dist/validation/animations', { recursive: true });
 try {
   for (const [mode, url] of [['hosted', host.url], ['portable', pathToFileURL(resolve('dist/portable/tuno.html')).href]]) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, offline: mode === 'portable' });
+    const defaults = await context.newPage();
+    await defaults.emulateMedia({ reducedMotion: 'reduce' });
+    await defaults.goto(url);
+    assert.equal(await defaults.locator('.pet-tempo').getAttribute('data-tail-motion'), 'edges', 'reduced motion defaults to edges');
+    await defaults.emulateMedia({ reducedMotion: 'no-preference' });
+    await defaults.waitForFunction(() => document.querySelector('.pet-tempo').dataset.tailMotion === 'bounce');
+    await defaults.emulateMedia({ reducedMotion: 'reduce' });
+    await defaults.waitForFunction(() => document.querySelector('.pet-tempo').dataset.tailMotion === 'edges');
+    await defaults.close();
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -48,7 +57,9 @@ try {
     assert.equal(await page.evaluate(() => window.nods), beforeBody, 'body taps never nod');
     assert.equal(await tempo.inputValue(), beforeBodyTempo, 'body taps never set tempo');
     await body.press('Enter');
-    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'body keyboard activation switches the tail');
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'edges', 'keyboard reaches green edges');
+    await body.press('Space');
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'keyboard completes the three-way cycle');
 
     for (const target of [tempo, page.locator('.tempo-drag-area')]) {
       await tempo.fill('96'); await tempo.press('Enter');
@@ -79,6 +90,7 @@ try {
     await head.tap();
     assert.equal(await page.evaluate(() => window.nods), beforeTouch + 1, 'touch head tap nods immediately');
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'system preference changes preserve an explicit choice');
     await head.press('Enter'); await head.tap();
     assert.equal(await page.evaluate(() => window.nods), beforeTouch + 1, 'reduced motion suppresses nod');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -139,15 +151,33 @@ try {
     assert.ok(sides.some(sample => sample.tipX < 0.25) && sides.some(sample => sample.tipX > 0.75), 'tail tip stays distinct from the torso on each side');
     await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-tail-sides.png` });
     await body.dblclick();
-    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'mouse double-click also toggles tail motion');
-    await body.dblclick();
-    assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'edges', 'mouse double-click reaches green edges');
+    await page.waitForTimeout(60);
+    assert.notEqual(await pet.evaluate(node => getComputedStyle(node).boxShadow), 'none', 'edges work without reduced motion');
+    assert.equal(await pet.locator('.uno-tail').evaluate(node => node.style.transform), 'rotate(0deg)');
+    assert.ok(await pet.locator('.uno-eyebrow, .uno-ear').evaluateAll(nodes => nodes.every(node => !node.style.transform)), 'edges leave the face still');
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.waitForTimeout(60);
     assert.match(await pet.getAttribute('data-beat'), /left|right/);
     assert.notEqual(await pet.evaluate(node => getComputedStyle(node).boxShadow), 'none');
     assert.equal(await page.locator('.pet-tempo .uno-tail').evaluate(node => getComputedStyle(node).transform), 'none');
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('.pet-tempo')).boxShadow === 'none');
+    await body.tap(); await page.waitForTimeout(80); await body.tap();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'bounce', 'reduced-motion users can select vertical wag');
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
+    await page.waitForFunction(() => {
+      const tail = document.querySelector('.pet-tempo .uno-tail');
+      return Math.abs(new DOMMatrix(getComputedStyle(tail).transform).b) > 0.1;
+    });
+    assert.equal(await pet.evaluate(node => getComputedStyle(node).boxShadow), 'none');
+    await body.dblclick();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'sides');
+    await page.waitForFunction(() => new DOMMatrix(getComputedStyle(document.querySelector('.pet-tempo .uno-tail-side')).transform).a === -1);
+    await body.dblclick();
+    assert.equal(await pet.getAttribute('data-tail-motion'), 'edges', 'reduced-motion cycle returns to edges');
+    await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().click();
+    await body.press('Enter');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await tempo.fill('30'); await tempo.press('Enter');
     for (const motion of ['bounce', 'sides']) {

@@ -42,6 +42,8 @@ try {
       assert.ok(action.y >= d.y && action.y+action.height <= d.y+d.height,`${width}: apply remains visible`);
     };
     await openBass();
+    assert.equal(await dialog.getByLabel('Show key signature').isChecked(),false);
+    await dialog.getByLabel('Show key signature').check();
     await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();
     assert.equal(await dialog.isVisible(),true);
     assert.match(await summary.textContent(),/Bass clef/);
@@ -58,8 +60,11 @@ try {
     await page.keyboard.press('Escape');
     assert.equal(await summary.textContent(),original);
     await openBass();
+    assert.equal(await dialog.getByLabel('Show key signature').isChecked(),false);
+    await dialog.getByLabel('Show key signature').check();
     await dialog.locator('[data-preset-id="bass-spaces"]').click();
     await dialog.getByRole('button',{name:'Use preset',exact:true}).click();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true);
     assert.match(await page.locator(`#${prefix}preset-name`).textContent(),/Bass — Spaces/);
     assert.match(await summary.textContent(),/Bass clef/);
     assert.equal(await page.locator('.preset-dialog:visible').count(),0);

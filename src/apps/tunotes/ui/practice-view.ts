@@ -200,7 +200,7 @@ export function practiceView() {
     feedback.hidden = isChallenge && (waiting || paused); expansion.hidden = isChallenge && (waiting || paused);
     controls.hidden = false; pause.hidden = isChallenge && paused;
     if (session instanceof Challenge) {
-      scene.update(session,progress.remaining);
+      scene.update(session,progress.remaining,store.data.configuration.showKeySignature);
       const state = `${session.session}:${paused ? 'paused' : session.phase}`;
       if (presentedState !== state) {
         presentedState = state;
@@ -211,9 +211,9 @@ export function practiceView() {
     }
     pause.textContent = paused ? 'Resume' : 'Pause';
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
-    const identity = `${session.session}:${session.prompt}`;
+    const identity = `${session.session}:${session.prompt}:${store.data.configuration.showKeySignature ?? false}`;
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless));
+      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
     }
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;
@@ -273,7 +273,7 @@ export function practiceView() {
     if (showIntro && activity === 'practice') {
       node.dataset.screen = 'intro';
       setup.hidden = true; result.hidden = true; play.hidden = true; dog.node.hidden = true; node.classList.add('previewing'); resetInput();
-      introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin);
+      introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin,store.data.configuration.showKeySignature);
       stage.append(introduction.node); introduction.start();
     } else begin({ shown: false, skipped: false, completed: false });
   };
@@ -322,7 +322,7 @@ export function practiceView() {
     window.removeEventListener('blur', resetInput);
   };
   const stopWatching = onUnmount(node, dispose);
-  return { node, options, store, dispose, enter: () => { dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
+  return { node, options, store, dispose, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; showSetup();

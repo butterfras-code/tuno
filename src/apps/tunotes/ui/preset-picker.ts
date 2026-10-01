@@ -8,13 +8,14 @@ export const titleCase = (text: string) => text[0]!.toUpperCase() + text.slice(1
 export function control(text: string, action: () => void) {
   const node = el('button','control',text); node.type = 'button'; node.addEventListener('click',action); return node;
 }
-type PickerPreview = { begin: () => () => void; select: (id: string) => void; range: () => HTMLElement };
+type PickerPreview = { begin: () => () => void; select: (id: string) => void; range: () => HTMLElement; notation: { get: () => boolean; preview: (value: boolean) => void; apply: (value: boolean) => void } };
 export function presetPicker(customs: () => readonly PresetSource[], select: (id: string) => void, idPrefix = '', allowCreateCustom = true, labelText = 'Preset', preview?: PickerPreview) {
   const node = el('div','preset-picker');
   const label = el('span','setting-label',labelText); label.id = `${idPrefix}preset-label`;
   const nameText = el('span','preset-name'); nameText.id = `${idPrefix}preset-name`; nameText.hidden = true;
   let rollback: (() => void) | undefined, pendingId = '';
   const picker = control('',() => {
+    signature.checked = preview?.notation.get() ?? false;
     pendingId = picker.value; rollback = separateName ? preview?.begin() : undefined;
     dialog.classList.toggle('preset-dialog--preview',Boolean(rollback));
     footer.hidden = !rollback; rangePreview.hidden = true;
@@ -32,12 +33,17 @@ export function presetPicker(customs: () => readonly PresetSource[], select: (id
   const trail = el('p','muted picker-trail');
   const choices = el('div','picker-choices');
   const rangePreview = el('div','picker-range-preview'); rangePreview.hidden = true;
-  const use = control('Use preset',() => { rollback = undefined; dialog.close(); }); use.classList.add('control--primary');
+  const use = control('Use preset',() => { preview?.notation.apply(signature.checked); rollback = undefined; dialog.close(); }); use.classList.add('control--primary');
   const cancel = control('Cancel',dismiss);
   const footer = el('div','picker-footer'); footer.hidden = true; footer.append(cancel,use);
+  const notation = el('label','picker-notation');
+  const signature = el('input'); signature.type = 'checkbox';
+  signature.addEventListener('change',() => { preview?.notation.preview(signature.checked); position(); });
+  notation.append(signature,el('span','','Show key signature'));
+  notation.hidden = !preview;
   let step = 0, category: 'clef' | 'instrument' = 'clef', item = '';
   const back = control('← Back',() => { step--; render(); });
-  header.append(back,heading,close); dialog.append(rangePreview,header,trail,choices,footer);
+  header.append(back,heading,close); dialog.append(rangePreview,header,trail,choices,notation,footer);
   const markSelection = () => {
     choices.querySelectorAll<HTMLButtonElement>('[data-preset-id]').forEach(choice => choice.setAttribute('aria-pressed',String(choice.dataset.presetId === pendingId)));
   };

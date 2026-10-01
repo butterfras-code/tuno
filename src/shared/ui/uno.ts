@@ -103,10 +103,11 @@ export function animatedUno() {
     dispose,
     accent,
     pose(value: UnoPose) { if (node.dataset.pose !== value) node.dataset.pose = value; },
-    tail(angle: number, playing: boolean, mirrored = false) {
+    tail(angle: number, playing: boolean, mirrored = false, allowMotion = false) {
       node.classList.toggle('uno-playing', playing);
-      tail.style.transform = `rotate(${reduced.matches ? 0 : angle}deg)`;
-      tailSide.style.transform = mirrored && !reduced.matches ? 'scaleX(-1)' : '';
+      node.classList.toggle('uno-tail-motion', allowMotion);
+      tail.style.transform = `rotate(${reduced.matches && !allowMotion ? 0 : angle}deg)`;
+      tailSide.style.transform = mirrored && (!reduced.matches || allowMotion) ? 'scaleX(-1)' : '';
     },
     nod() {
       if (disposed || reduced.matches) return;

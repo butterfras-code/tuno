@@ -8,7 +8,7 @@ import { renderPreviewStaff } from './staff.ts';
 import { button } from './setup.ts';
 export interface PreviewExposure { shown: boolean; skipped: boolean; completed: boolean }
 /** Own all callbacks; finishing a preview can never start play without a user action. */
-export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void) {
+export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void, showKeySignature = false) {
   const node = el('section','note-preview');
   const heading = el('h2','','Meet your notes'); heading.tabIndex = -1;
   const status = el('p'); status.setAttribute('role','status');
@@ -32,7 +32,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   function showNote(index: number, labeled = false) {
     noteIndex = Math.max(0,Math.min(total-1,index));
     const pitch = pitches[noteIndex]!;
-    const svg = renderPreviewStaff(pitch,clefForPitch(preset,pitch),preset.key,preset.keyless);
+    const svg = renderPreviewStaff(pitch,clefForPitch(preset,pitch),preset.key,preset.keyless,showKeySignature);
     svg.querySelector('.preview-note')!.classList.toggle('revealed',labeled);
     svg.querySelector('.preview-note-status')!.textContent = `${noteIndex+1} of ${total}`;
     stage.replaceChildren(svg);

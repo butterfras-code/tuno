@@ -271,10 +271,8 @@ img { display: block; max-width: 100%; }
 .hold-progress::-webkit-progress-value { background: var(--color-accent); border-radius: 4px; }
 .hold-progress::-moz-progress-bar { background: var(--color-accent); border-radius: 4px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-tempo[data-beat='left'] { box-shadow: inset 4px 0 var(--color-teal); }
-  .pet-tempo[data-beat='right'] { box-shadow: inset -4px 0 var(--color-teal); }
-}
+.pet-tempo[data-tail-motion='edges'][data-beat='left'] { box-shadow: inset 4px 0 var(--color-teal); }
+.pet-tempo[data-tail-motion='edges'][data-beat='right'] { box-shadow: inset -4px 0 var(--color-teal); }
 
 /* Current Figma shell: compact, persistent controls in four equal columns. */
 .app-header { flex-wrap: nowrap; }

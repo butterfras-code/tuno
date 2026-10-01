@@ -68,10 +68,22 @@ async function run(page,url,mode) {
   let data=await readData(page);assert.deepEqual(data.profiles[0].contexts,[]);assert.deepEqual(data.profiles[0].results,[]);
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:900});
+    // The fitted play surface schedules resize work on animation frames, which
+    // this test's installed clock pauses. Let that work settle before measuring.
+    let layout;
+    for(let frame=0;frame<10;frame++) {
+      await page.clock.runFor(100);
+      layout=await page.evaluate(()=>{
+        const bounds=selector=>document.querySelector(selector).getBoundingClientRect().toJSON();
+        return {staff:bounds('.preview-staff'),dog:bounds('.note-preview .uno'),head:bounds('.preview-staff .notehead'),
+          previous:bounds('.preview-navigation button:first-child'),next:bounds('.preview-navigation button:last-child')};
+      });
+      if(layout.previous.y===layout.next.y && layout.dog.x>=layout.staff.x+layout.staff.width
+        && Math.abs(layout.head.x+layout.head.width/2-layout.staff.x-layout.staff.width/2)<1) break;
+    }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    const staff=await page.locator('.preview-staff').boundingBox(), dog=await page.locator('.note-preview .uno').boundingBox(), head=await page.locator('.preview-staff .notehead').boundingBox();
+    const {staff,dog,head,previous,next}=layout;
     assert.ok(dog.x >= staff.x+staff.width); assert.ok(Math.abs(head.x+head.width/2-staff.x-staff.width/2)<1);
-    const previous=await button(page,'Previous').boundingBox(), next=await button(page,'Next').boundingBox();
     assert.equal(previous.y,next.y);
     await page.screenshot({path:`dist/validation/notes-adaptive-${name}-${mode}-${width}.png`,fullPage:true});
   }
