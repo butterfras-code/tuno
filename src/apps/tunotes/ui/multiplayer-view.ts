@@ -303,7 +303,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const note = el('div','multiplayer-note'); note.append(staff);
     const cue = el('strong','multiplayer-cue');
     const intro = el('div','multiplayer-intro');
-    const blankStaff = renderStaff(session.pitch,clefForPitch(session.preset,session.pitch),session.preset.key,session.preset.keyless);
+    const blankStaff = renderStaff(session.pitch,clefForPitch(session.preset,session.pitch),session.preset.key,session.preset.keyless,store.data.configuration.showKeySignature);
     blankStaff.querySelectorAll('.notehead,.note-accidental,.ledger').forEach(n=>n.remove()); blankStaff.removeAttribute('aria-label'); blankStaff.setAttribute('aria-hidden','true');
     intro.append(blankStaff,cue,el('p','muted',player.preset.name));
     const dog = animatedUno(); dog.pose('wag');
@@ -394,8 +394,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       }
       if (phase === 'playing') {
         if (!lane.tenSeconds && s.remainingMs <= 10000) { lane.tenSeconds = true; lane.announcement.textContent = '10 seconds left.'; }
-        const identity = `${s.session}:${s.prompt}`;
-        if (lane.prompt !== identity) { lane.prompt = identity; lane.inputSince = performance.now(); lane.staff.replaceChildren(renderStaff(s.pitch,clefForPitch(s.preset,s.pitch),s.preset.key,s.preset.keyless)); }
+        const identity = `${s.session}:${s.prompt}:${store.data.configuration.showKeySignature ?? false}`;
+        if (lane.prompt !== identity) { lane.prompt = identity; lane.inputSince = performance.now(); lane.staff.replaceChildren(renderStaff(s.pitch,clefForPitch(s.preset,s.pitch),s.preset.key,s.preset.keyless,store.data.configuration.showKeySignature)); }
       }
       lane.feedback.textContent = phase === 'playing' && s.state === 'feedback' ? s.last!.correct ? `Correct — ${spelling(s.pitch)}.` : `That note is ${spelling(s.pitch)}.` : '';
       lane.answers.update(s.activePreset,s.token,phase !== 'playing' || s.state !== 'running');

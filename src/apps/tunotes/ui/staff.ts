@@ -14,12 +14,13 @@ function svgNode(tag: string, attrs: Record<string, string | number>) {
 // Original project-owned vector clefs. No system music font or remote glyph dependency.
 const treble = 'M 66 156 C 87 159 87 132 76 105 L 62 64 C 53 35 72 19 76 38 C 81 58 45 82 43 104 C 39 130 79 142 88 116 C 96 93 59 82 55 105 C 52 116 64 123 73 118 M 66 156 C 52 154 54 143 61 143';
 const bass = 'M 45 83 C 43 59 76 58 77 80 C 79 99 59 115 44 121 M 45 82 C 57 85 58 70 48 70 C 40 70 39 79 45 82';
-export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless = false) {
+export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless = false, showKeySignature = false) {
 
+  const signature = showKeySignature && !keyless;
   const geometry = staffGeometry(pitch, clef);
-  const offset = Math.abs(key.fifths) * 19;
+  const offset = signature ? Math.abs(key.fifths) * 19 : 0;
   const top = Math.min(0, geometry.noteY - 30), bottom = Math.max(200, geometry.noteY + 30);
-  const svg = svgNode('svg', { viewBox: `0 ${top} ${360 + offset} ${bottom - top}`, role: 'img', 'aria-label': `${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major`}, ${positionDescription(geometry.position)}`, class: 'staff' });
+  const svg = svgNode('svg', { viewBox: `0 ${top} ${360 + offset} ${bottom - top}`, role: 'img', 'aria-label': `${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major${showKeySignature ? '' : ', accidentals on notes'}`}, ${positionDescription(geometry.position)}`, class: 'staff' });
   for (let p = 0; p <= 8; p += 2) svg.append(svgNode('line', { x1: 24, x2: 336 + offset, y1: staffY(p), y2: staffY(p), stroke: 'currentColor', 'stroke-width': 1.5 }));
   const glyph = svgNode('g', { 'aria-hidden': 'true', fill: 'none', stroke: 'currentColor', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
   if (clef === 'treble' || clef === 'bass') {
@@ -32,8 +33,8 @@ export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, 
   }
   svg.append(glyph);
   const positions = keyPositions[clef][key.fifths > 0 ? 'sharp' : 'flat'];
-  positions.slice(0, Math.abs(key.fifths)).forEach((p, i) => svg.append(accidentalGlyph(key.fifths > 0 ? 1 : -1, 117 + i * 19, staffY(p), 'key-accidental')));
-  if (pitch.accidental !== keyAccidental(pitch.letter, key)) svg.append(accidentalGlyph(pitch.accidental, 192 + offset, geometry.noteY, 'note-accidental'));
+  positions.slice(0, signature ? Math.abs(key.fifths) : 0).forEach((p, i) => svg.append(accidentalGlyph(key.fifths > 0 ? 1 : -1, 117 + i * 19, staffY(p), 'key-accidental')));
+  if (pitch.accidental !== (signature ? keyAccidental(pitch.letter, key) : 0)) svg.append(accidentalGlyph(pitch.accidental, 192 + offset, geometry.noteY, 'note-accidental'));
   for (const ledger of geometry.ledgers) svg.append(svgNode('line', { class: 'ledger', x1: ledger.x1 + offset, x2: ledger.x2 + offset, y1: ledger.y, y2: ledger.y, stroke: 'currentColor', 'stroke-width': 2 }));
   svg.append(svgNode('path', { class: 'notehead', fill: 'currentColor', 'fill-rule': 'evenodd', d: 'M -17 0 a 17 10 0 1 0 34 0 a 17 10 0 1 0 -34 0 M -7 0 a 7 8 0 1 0 14 0 a 7 8 0 1 0 -14 0', transform: `translate(${230 + offset} ${geometry.noteY}) rotate(-15)` }));
   return svg;
@@ -46,11 +47,11 @@ function accidentalGlyph(value: number, x: number, y: number, kind: string) {
 }
 
 /** Instructional version of the exercise staff, with one centered pitch and its label. */
-export function renderPreviewStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless = false) {
-  const svg = renderStaff(pitch,clef,key,keyless);
+export function renderPreviewStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless = false, showKeySignature = false) {
+  const svg = renderStaff(pitch,clef,key,keyless,showKeySignature);
   svg.classList.replace('staff','preview-staff');
-  svg.setAttribute('aria-label',`${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major`}, note introduction`);
-  const width = 460+Math.abs(key.fifths)*38;
+  svg.setAttribute('aria-label',`${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major${showKeySignature ? '' : ', accidentals on notes'}`}, note introduction`);
+  const width = 460+(showKeySignature && !keyless ? Math.abs(key.fifths)*38 : 0);
   const y = staffGeometry(pitch,clef).noteY;
   const top = Math.min(0,y-60), bottom = Math.max(200,y+55);
   svg.setAttribute('viewBox',`0 ${top} ${width} ${bottom-top+55}`);

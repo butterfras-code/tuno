@@ -165,3 +165,15 @@ test('feedback pacing round-trips and old self-paced settings remain readable', 
   assert.equal(parseBackup(JSON.stringify(old)).configuration.selfPaced,true);
   assert.throws(() => validateSnapshot({...old,configuration:{...old.configuration,continueAfter:'sometimes'}}),/pacing/);
 });
+
+
+test('notation preference defaults to note accidentals and survives backup round trips', () => {
+  const old = emptySnapshot();
+  assert.equal(validateSnapshot(old).configuration.showKeySignature ?? false, false);
+  for (const showKeySignature of [true, false]) {
+    const store = new NotesStore();
+    store.update(data => { data.configuration.showKeySignature = showKeySignature; });
+    assert.equal(parseBackup(store.export()).configuration.showKeySignature, showKeySignature);
+  }
+  assert.throws(() => validateSnapshot({ ...old, configuration: { ...old.configuration, showKeySignature: 'yes' } }), /true or false/);
+});

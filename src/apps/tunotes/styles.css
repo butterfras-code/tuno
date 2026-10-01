@@ -798,3 +798,13 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-viewport .multiplayer-fit-warning { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 8px 12px; font-size: 14px; }
 #home .play-viewport .multiplayer-fit-warning p { flex: 1 1 200px; margin: 0; }
 #home .play-viewport .multiplayer-fit-warning .control { min-height: 44px; margin: 0; }
+
+.picker-notation { flex-shrink: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 8px; cursor: pointer; }
+.picker-notation input { width: 20px; height: 20px; accent-color: var(--color-accent); }
+
+@media (max-height: 450px) {
+  .preset-dialog--preview .picker-trail { margin: 4px 0; }
+  .preset-dialog--preview .picker-range-preview { margin-bottom: 4px; padding-bottom: 4px; }
+  .preset-dialog--preview .picker-footer { margin-top: 4px; padding-top: 4px; }
+  .preset-dialog--preview .picker-notation { margin-top: 0; }
+}

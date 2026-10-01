@@ -18,16 +18,25 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   const overview = el('div','preset-overview');
   let current: Preset | undefined, currentSource: PresetSource | undefined;
   let selectionError = '';
+  let signaturePreview: boolean | undefined;
   let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
   const pickerUI = presetPicker(() => store.data.customPresets,id => {
     if (id === 'custom') openEditor(defaultPreset); else selectPreset(id);
   },idPrefix,true,'Preset',{
     begin: () => {
       const source = currentSource, selected = current, error = selectionError;
-      return () => { currentSource = source; current = selected; selectionError = error; renderOverview(); };
+      return () => { signaturePreview = undefined; currentSource = source; current = selected; selectionError = error; renderOverview(); };
     },
     select: id => selectPreset(id),
     range: () => preview,
+    notation: {
+      get: () => store.data.configuration.showKeySignature ?? false,
+      preview: value => { signaturePreview = value; renderOverview(); },
+      apply: value => {
+        store.update(data => { data.configuration.showKeySignature = value; });
+        signaturePreview = undefined; renderOverview();
+      },
+    },
   });
   const picker = pickerUI.picker;
   const editor = customConfigurator(() => { if (editing) summarizeDraft(); },idPrefix);
@@ -99,7 +108,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
       pickerUI.set(current.id,current.name); summary.textContent = describe(current);
       for (const [label,pitch] of [['Low note',current.pool[0]!],['High note',current.pool.at(-1)!]] as const) {
         const endpoint = el('div','range-endpoint');
-        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless); staff.classList.replace('staff','endpoint-staff');
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,signaturePreview ?? store.data.configuration.showKeySignature); staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
       }
     }
@@ -133,7 +142,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     return true;
   }
   refresh();
-  return { node,picker,refresh,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
