@@ -26,8 +26,21 @@ async function run(page,url,label) {
   assert.equal(await page.locator('.challenge-notation').isVisible(),false);
   assert.equal(await page.locator('.challenge-backdrop .staff').isVisible(),true);
   const bounds=()=>page.locator('.challenge-scene').evaluate(n=>{const r=n.getBoundingClientRect();const panel=n.closest('#notes-challenge');return {x:r.x,y:r.y+scrollY+(panel?.scrollTop ?? 0),width:r.width,height:r.height};});
-  const frame=await bounds();
-  const stableFrame=async()=>{const box=await bounds();for(const key of ['x','y','width','height']) assert.ok(Math.abs(box[key]-frame[key])<1,`Stable scene ${key}: ${box[key]} vs ${frame[key]}`);};
+  await page.clock.runFor(50);
+  const frame=await bounds(), scene=await page.locator('.challenge-scene').elementHandle();
+  // The same scene now flexes to reserve room for the full answer keyboard.
+  // Results may scroll; active play must stay inside the viewport and card.
+  const stableFrame=async()=>{
+    assert.equal(await scene.evaluate(node=>node.isConnected && node===document.querySelector('.challenge-scene')),true);
+    const fits=await page.locator('.practice-view').evaluate(view=>{
+      if(view.dataset.screen!=='playing') return true;
+      const panel=view.closest('#notes-challenge').getBoundingClientRect();
+      return [...view.querySelectorAll('.challenge-scene,.answer,button')].filter(n=>n.getClientRects().length && !n.closest('[hidden]')).every(n=>{
+        const r=n.getBoundingClientRect();return r.top>=0 && r.left>=0 && r.right<=innerWidth+1 && r.bottom<=Math.min(innerHeight,panel.bottom)+1;
+      });
+    });
+    assert.equal(fits,true,'Scene and all play controls fit the viewport');
+  };
   const save=async(state)=>{await page.screenshot({path:`dist/validation/notes-challenge-${name}-${label}-${state}.png`,fullPage:true});};
   await save('ready');
   await button(page,'Ready').click();await page.clock.runFor(1050);assert.equal(await page.locator('.challenge-cue').textContent(),'2');

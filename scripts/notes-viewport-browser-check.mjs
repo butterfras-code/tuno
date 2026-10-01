@@ -17,12 +17,12 @@ async function check(page,label) {
     const stage=document.querySelector('.play-stage'), viewport=document.querySelector('.play-viewport');
     if (!stage || !viewport) return false;
     const s=stage.getBoundingClientRect(), v=viewport.getBoundingClientRect();
-    return Math.abs(s.width-v.width)<1 && Math.abs(s.height-v.height)<1;
+    return Math.abs(s.width-v.width)<1 && Math.abs(s.bottom-v.bottom)<1;
   },undefined,{timeout:3000});
   const geometry = await page.evaluate(() => {
     const visible = node => node.getClientRects().length && !node.closest('[hidden]');
     const stage = document.querySelector('.play-stage');
-    const targets = [...stage.querySelectorAll('.answer, .staff-panel, button')].filter(visible);
+    const targets = [...document.querySelector('.play-viewport').querySelectorAll('.answer, .staff-panel, button')].filter(visible);
     const failures = [];
     for (const target of targets) {
       const r = target.getBoundingClientRect();
@@ -89,6 +89,8 @@ try {
         await page.setViewportSize({width:760,height:600});await page.clock.runFor(100);
         assert.equal(await button(page,'Pause').isVisible(),true,'Resize must not pause or disable Split Screen');
         assert.equal(await page.locator('.multiplayer-fit-warning').isVisible(),true);
+        const switchButton=await button(page,'Switch to Turns').boundingBox();
+        assert.ok(switchButton.height>=44,'Turns warning remains a usable touch target');
         await check(page,`${label} resized`);
         await button(page,'Switch to Turns').click();
         assert.equal(await lanes.count(),1);await check(page,`${label} switched to turns`);

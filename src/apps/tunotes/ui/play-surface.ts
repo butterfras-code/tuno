@@ -19,7 +19,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
   let frame = 0, disposed = false;
   const clear = () => {
     stage?.classList.remove('play-stage','play-stage--compact','play-stage--short');
-    stage?.style.removeProperty('width'); stage?.style.removeProperty('height'); stage?.style.removeProperty('transform');
+    stage?.style.removeProperty('width'); stage?.style.removeProperty('height'); stage?.style.removeProperty('transform'); stage?.style.removeProperty('top');
     viewport?.classList.remove('play-viewport');
   };
   const fit = () => {
@@ -37,8 +37,11 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       if (stage) window.scrollTo(0,0);
     }
     if (!stage || !viewport) return;
-    const width = viewport.clientWidth, height = viewport.clientHeight;
+    const warning = viewport.querySelector<HTMLElement>('.multiplayer-fit-warning:not([hidden])');
+    const inset = warning ? warning.offsetHeight+16 : 0;
+    const width = viewport.clientWidth, height = viewport.clientHeight-inset;
     if (!width || !height) return;
+    stage.style.top = `${inset}px`;
     const head = stage.classList.contains('multiplayer-round--head-to-head');
     const multiplayer = stage.classList.contains('multiplayer-round');
     const pairs = multiplayer && stage.querySelectorAll('.multiplayer-seat').length > 1;

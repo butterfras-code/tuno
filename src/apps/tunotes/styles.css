@@ -320,7 +320,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-round--head-to-head .multiplayer-round-header .muted { font-size: 13px; }
 .multiplayer-round--head-to-head .multiplayer-round-header .control { min-height: 40px; padding: 5px 10px; font-size: 15px; }
 .multiplayer-round--head-to-head .multiplayer-fullscreen-help:empty { display: none; }
-.multiplayer-round--head-to-head .multiplayer-fit-warning { width: 100%; margin: 0; padding: 4px 8px; }
 .multiplayer-round--head-to-head .multiplayer-panels { position: relative; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; container-type: size; }
 .multiplayer-round--head-to-head .multiplayer-seat { position: relative; overflow: hidden; }
 .multiplayer-round--head-to-head .multiplayer-seat + .multiplayer-seat { box-shadow: inset 2px 0 var(--color-accent); }
@@ -745,8 +744,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage .multiplayer-round-header > .control-row { margin-left: auto; gap: 8px; }
 #home .play-stage .multiplayer-round-header .control { font-size: 16px; min-height: 44px; padding: 8px 12px; }
 #home .play-stage .multiplayer-fullscreen-help:empty { display: none; }
-#home .play-stage .multiplayer-fit-warning { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 4px 8px; font-size: 14px; }
-#home .play-stage .multiplayer-fit-warning p { margin: 0; }
 #home .play-stage .multiplayer-panels { flex: 1; min-height: 0; max-width: none; width: 100%; margin: 0; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 #home .play-stage .multiplayer-panels:has(> :only-child) { grid-template-columns: minmax(0,1fr); }
 #home .play-stage .multiplayer-seat { min-height: 0; }
@@ -796,3 +793,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage .preview-scene > .uno { max-height: 100%; }
 #home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) { grid-template-rows: minmax(0,1fr); padding: 0; gap: 0; }
 #home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) > :is(.app-header,footer) { display: none; }
+
+/* Advice remains readable even when small split-screen lanes need scaling. */
+#home .play-viewport .multiplayer-fit-warning { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 8px 12px; font-size: 14px; }
+#home .play-viewport .multiplayer-fit-warning p { flex: 1 1 200px; margin: 0; }
+#home .play-viewport .multiplayer-fit-warning .control { min-height: 44px; margin: 0; }

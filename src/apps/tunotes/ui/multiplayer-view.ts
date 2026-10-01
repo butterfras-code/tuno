@@ -86,12 +86,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const fullscreenHelp = el('p','muted multiplayer-fullscreen-help'); fullscreenHelp.setAttribute('role','status');
   roundActions.append(ready,pause,fullscreen,end);
   const fitWarning = el('div','multiplayer-fit-warning'); fitWarning.hidden = true;
-  const fitWarningText = el('p','','This screen may work better with Turns.');
+  const fitWarningText = el('p','','This screen may work better with Turns. Switching starts a new round.');
   fitWarning.setAttribute('role','status');
   const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); startRound(); });
   fitWarning.append(fitWarningText,restart);
   const panels = el('div','multiplayer-panels');
-  roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp,fitWarning);
+  roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
   round.append(roundHeader,panels);
 
   const result = el('section','multiplayer-result'); result.hidden = true;
@@ -101,7 +101,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const resultActions = el('div','control-row');
   resultActions.append(button('Retry',startRound),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
   result.append(resultTitle,resultSummary,board,resultActions);
-  node.append(setup,round,result);
+  node.append(setup,fitWarning,round,result);
 
   let players: Player[] = [newPlayer(1)];
   let selectedId = players[0]!.id;
@@ -336,6 +336,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function finishRound() {
     finishActive(true); resetInput();
+    fitWarning.hidden = true;
     leaveFullscreen();
     round.hidden = true; setup.hidden = true; result.hidden = false;
     renderResults(); resultTitle.focus({preventScroll:true});
@@ -362,6 +363,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function showSetup() {
     leaveFullscreen();
+    fitWarning.hidden = true;
     finishActive(true); resetInput(); active.forEach(l => l.dog.dispose()); active = []; panels.replaceChildren();
     setup.hidden = false; round.hidden = true; result.hidden = true; renderSetup();
   }
