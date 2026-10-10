@@ -17,7 +17,7 @@ p { line-height: 1.5; }
 .field { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-label { font-size: 14px; font-weight: 700; }
 select { max-width: 100%; }
-.score-scroll { overflow-x: auto; padding-bottom: 8px; margin: 12px -8px 0; }
+.score-scroll { overflow-x: auto; scroll-padding-inline: 8px; padding-bottom: 8px; margin: 12px -8px 0; }
 .measure { min-width: 480px; position: relative; }
 .notation { display: block; width: 100%; height: auto; }
 .counts { height: 62px; position: relative; }

@@ -23,7 +23,6 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Preserve the supplied handoff and its reference image in the repository. | Future work must not depend on access to another conversation or attachment. |
 | 2026-10-10 | Focus the first release on functional Count Writing. | Pin down notation and correctness before real-time performance. |
 | 2026-10-10 | Resolve remaining performance questions as that work approaches. | Timing tolerances, latency calibration, performance scores, and interruption policy do not block Count Writing. |
-
 | 2026-10-10 | Dotted-quarter internal `&` is teacher-dependent. | The prototype offers required, optional, and provisional review of both variants. |
 
 ## Shared foundation and future work

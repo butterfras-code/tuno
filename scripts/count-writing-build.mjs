@@ -24,7 +24,7 @@ export async function buildCountWriting(dev = false) {
   if (!dev) { await esbuild.build(options); return; }
   const context = await esbuild.context(options);
   await context.watch();
-  const { port } = await context.serve({ servedir: path.join(root, 'dist/hosted'), host: '0.0.0.0', port: 5173 });
+  const { port } = await context.serve({ servedir: path.join(root, 'dist/hosted'), host: '127.0.0.1', port: 5173 });
   console.log(`Count Writing review: http://127.0.0.1:${port}/prototypes/count-writing/`);
   process.on('SIGINT', async () => { await context.dispose(); process.exit(0); });
   process.on('SIGTERM', async () => { await context.dispose(); process.exit(0); });

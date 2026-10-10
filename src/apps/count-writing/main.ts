@@ -43,7 +43,7 @@ const live = el('p', 'selection'); live.setAttribute('role', 'status'); live.set
 const instructions = el('p', 'instructions', 'Select a position, then type or tap a symbol. ← → move; Backspace/Delete erase; ( or ) toggles parentheses. Tab reaches all controls.');
 instructions.id = 'instructions';
 function edit() { if (result) changed = true; refresh(); }
-function focusSlot(index: number) { selected = Math.max(0, Math.min(7, index)); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+function focusSlot(index: number) { selected = Math.max(0, Math.min(7, index)); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0) score.scrollLeft = 0; }
 function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
 function toggleRest() { answer.rests[selected] = !answer.rests[selected]; edit(); }
 function lineTap(tick: number) {
@@ -123,11 +123,15 @@ function renderFeedback() {
 }
 function renderLines() {
   lines.replaceChildren(); lineControls.replaceChildren();
+  const lanes: Span[][] = [];
   answer.spans.forEach((span, index) => {
+    let lane = lanes.findIndex(items => items.every(s => span.start > s.end || span.end < s.start));
+    if (lane < 0) { lane = lanes.length; lanes.push([]); }
+    lanes[lane]!.push(span);
     const track = el('div', 'duration-line');
     track.style.left = `${tickX(span.start)}%`;
     track.style.width = `${(span.end - span.start) * 11}%`;
-    track.style.top = `${index * 44 + 2}px`;
+    track.style.top = `${lane * 44 + 2}px`;
     for (const endpoint of ['start', 'end'] as const) {
       const handle = el('button', `line-handle ${endpoint}`); handle.type = 'button';
       handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `Line ${index + 1} ${endpoint}`);
@@ -141,6 +145,11 @@ function renderLines() {
         handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : 7));
         const input = lineControls.querySelector<HTMLSelectElement>(`[aria-label="Line ${index + 1} ${endpoint} position"]`);
         if (input) input.value = String(span[endpoint]);
+        track.querySelectorAll<HTMLElement>('.line-handle').forEach(other => {
+          const side = other.classList.contains('start') ? 'start' : 'end';
+          other.setAttribute('aria-valuemin', String(side === 'start' ? 0 : span.start));
+          other.setAttribute('aria-valuemax', String(side === 'start' ? span.end : 7));
+        });
         if (isEdit) edit();
       };
       update(false);
@@ -182,6 +191,6 @@ function renderLines() {
     control.append(button(`Remove line ${index + 1}`, () => { answer.spans.splice(index, 1); edit(); renderLines(); lineButton.focus(); }));
     lineControls.append(control);
   });
-  lines.style.height = `${Math.max(1, answer.spans.length) * 44}px`;
+  lines.style.height = `${Math.max(1, lanes.length) * 44}px`;
 }
 reset(false);
