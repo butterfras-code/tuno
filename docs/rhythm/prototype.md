@@ -14,7 +14,13 @@ Physical keyboard and symbol keypad support entry, replacement and erasure. Left
 
 Duration lines use two taps (start action, then an end position), draggable snapping endpoints, arrow/Home/End endpoint keys, and labeled start/end selects. Visible Shorten/Lengthen buttons change the ending position one grid step at a time. Set end lets a student tap a new ending position in the measure. These work on touch without dragging. Endpoint dots are larger, with 44px hit targets. Lines can be removed independently. Internal counts covered by a line become smaller and raised; the onset stays full-size; the line is below them. The score and count grid scroll together at narrow widths; keyboard navigation scrolls the focused position into view. Focus indicators, semantic labels, state announcements and text verdicts accompany color feedback.
 
-## Audit and architecture
+## Shared model migration — 2026-10-10
+
+The prototype now consumes the [canonical written-event model](music-model.md). Its four fixtures are flat value/modifier sequences in `src/apps/count-writing/fixtures.ts`; starts and durations are derived. `countGrid` isolates the reviewed eighth-spaced 4/4 answer policy from musical time, and unsupported model features are rejected at that adapter. The earlier eighth-tick implementation described in the audit below has been superseded. Count entry, provisional convention controls and visible fixture scope remain the same.
+
+Migration validation: Node 24.21.0 and `npm ci`; `npm run check` passed with 118 tests and the hosted/portable build checks. Existing Count Writing browser regression checks passed in Chromium and Firefox, covering all four fixtures, independent feedback, keyboard/touch entry, line controls and narrow viewport layouts. The T3 local preview could not navigate to the environment server; no successful interactive T3 review is claimed for this migration. Physical-device checks and full release verification remain outstanding.
+
+## Original audit and architecture
 
 - Existing `src/apps/tunotes/ui/staff.ts` supplies the precedent for project-owned SVG notation without remote assets or a runtime notation package. Its single-pitch/clef geometry is not suitable for timed rhythm layout, so the small rhythm renderer is separate.
 - Shared UI controls, Nunito fonts, color tokens and the existing Uno SVG are reused. No new mascot art or notation dependency was introduced.

@@ -4,13 +4,17 @@ import '../../shared/ui/fonts.css';
 import './styles.css';
 import uno from '../../assets/uno-happy.svg';
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { countWritingFixtures } from '../../music/measure.ts';
-import { alphabet, blankAnswer, evaluate, positionLabel } from './evaluation.ts';
+import { countWritingFixtures } from './fixtures.ts';
+import { countGrid, slotX } from './grid.ts';
+import { alphabet, blankAnswer, evaluate } from './evaluation.ts';
 import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './evaluation.ts';
-import { renderMeasure, tickX } from './notation.ts';
+import { renderMeasure } from './notation.ts';
 
 let fixture = countWritingFixtures[0]!;
-let answer = blankAnswer();
+let grid = countGrid(fixture);
+let answer = blankAnswer(fixture);
+const positionLabel = (slot: number) => grid.slots[slot]!.label;
+const tickX = (slot: number) => slotX(slot, grid.slots.length);
 let selected = 0;
 let lineStart: number | null = null;
 let lineEnd: number | null = null;
@@ -44,7 +48,7 @@ const live = el('p', 'selection'); live.setAttribute('role', 'status'); live.set
 const instructions = el('p', 'instructions', 'Select a position, then type or tap a symbol. ← → move; Backspace/Delete erase; ( or ) toggles parentheses. Tab reaches all controls.');
 instructions.id = 'instructions';
 function edit() { if (result) changed = true; refresh(); }
-function focusSlot(index: number) { selected = Math.max(0, Math.min(7, index)); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0) score.scrollLeft = 0; }
+function focusSlot(index: number) { selected = Math.max(0, Math.min(grid.slots.length - 1, index)); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0) score.scrollLeft = 0; }
 function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
 function toggleRest() { answer.rests[selected] = !answer.rests[selected]; edit(); }
 function lineTap(tick: number) {
@@ -54,28 +58,31 @@ function lineTap(tick: number) {
     lineStart = null; edit(); renderLines();
   }
 }
-for (let tick = 0; tick < 8; tick++) {
-  const slot = button('', () => {
-    selected = tick;
-    if (lineEnd !== null) {
-      const span = answer.spans[lineEnd]!;
-      span.end = Math.max(span.start, tick); lineEnd = null;
-      edit(); renderLines();
-    } else if (lineStart !== null) lineTap(tick); else refresh();
-  });
-  slot.className = 'count-slot'; slot.style.left = `${tickX(tick)}%`;
-  slot.setAttribute('aria-describedby', 'instructions');
-  slot.addEventListener('focus', () => { selected = tick; refresh(); });
-  slot.addEventListener('keydown', event => {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if ((alphabet as readonly string[]).includes(event.key)) { event.preventDefault(); put(event.key as CountSymbol); }
-    else if (event.key === 'Backspace' || event.key === 'Delete') { event.preventDefault(); put(''); }
-    else if (event.key === '(' || event.key === ')') { event.preventDefault(); toggleRest(); }
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); focusSlot(selected + (event.key === 'ArrowLeft' ? -1 : 1)); }
-    else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); focusSlot(event.key === 'Home' ? 0 : 7); }
-    else if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
-  });
-  slots.push(slot); counts.append(slot);
+function renderSlots() {
+  slots.length = 0; counts.replaceChildren();
+  for (let tick = 0; tick < grid.slots.length; tick++) {
+    const slot = button('', () => {
+      selected = tick;
+      if (lineEnd !== null) {
+        const span = answer.spans[lineEnd]!;
+        span.end = Math.max(span.start, tick); lineEnd = null;
+        edit(); renderLines();
+      } else if (lineStart !== null) lineTap(tick); else refresh();
+    });
+    slot.className = 'count-slot'; slot.style.left = `${tickX(tick)}%`;
+    slot.setAttribute('aria-describedby', 'instructions');
+    slot.addEventListener('focus', () => { selected = tick; refresh(); });
+    slot.addEventListener('keydown', event => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if ((alphabet as readonly string[]).includes(event.key)) { event.preventDefault(); put(event.key as CountSymbol); }
+      else if (event.key === 'Backspace' || event.key === 'Delete') { event.preventDefault(); put(''); }
+      else if (event.key === '(' || event.key === ')') { event.preventDefault(); toggleRest(); }
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); focusSlot(selected + (event.key === 'ArrowLeft' ? -1 : 1)); }
+      else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); focusSlot(event.key === 'Home' ? 0 : grid.slots.length - 1); }
+      else if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
+    });
+    slots.push(slot); counts.append(slot);
+  }
 }
 measure.append(notation, counts, lines); score.append(measure);
 const keypad = el('div', 'keypad'); keypad.setAttribute('role', 'group'); keypad.setAttribute('aria-label', 'Symbol keypad');
@@ -99,12 +106,12 @@ card.append(field('Review fixture', picker), conventionField, score, instruction
 main.append(header, banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
 app.append(main);
 function reset(focus: boolean) {
-  answer = blankAnswer(); selected = 0; lineStart = null; lineEnd = null; result = null; changed = false;
-  notation.replaceChildren(renderMeasure(fixture)); renderLines(); refresh();
+  grid = countGrid(fixture); answer = blankAnswer(fixture); selected = 0; lineStart = null; lineEnd = null; result = null; changed = false;
+  renderSlots(); notation.replaceChildren(renderMeasure(fixture)); renderLines(); refresh();
   if (focus) focusSlot(0);
 }
 function refresh() {
-  conventionField.hidden = fixture.id !== 'dotted-quarter';
+  conventionField.hidden = !grid.slots.some(s => s.dottedInternal);
   slots.forEach((slot, tick) => {
     const symbol = answer.symbols[tick]!;
     slot.textContent = answer.rests[tick] ? `(${symbol || '·'})` : symbol || '·';
@@ -140,30 +147,30 @@ function renderLines() {
     lanes[lane]!.push(span);
     const track = el('div', 'duration-line');
     track.style.left = `${tickX(span.start)}%`;
-    track.style.width = `${(span.end - span.start) * 11}%`;
+    track.style.width = `${tickX(span.end) - tickX(span.start)}%`;
     track.style.top = `${lane * 44 + 2}px`;
     for (const endpoint of ['start', 'end'] as const) {
       const handle = el('button', `line-handle ${endpoint}`); handle.type = 'button';
       handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `Line ${index + 1} ${endpoint}`);
       handle.setAttribute('aria-valuemin', String(endpoint === 'start' ? 0 : span.start));
-      handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : 7));
+      handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : grid.slots.length - 1));
       const update = (isEdit = true) => {
         handle.setAttribute('aria-valuenow', String(span[endpoint]));
         handle.setAttribute('aria-valuetext', positionLabel(span[endpoint]));
-        track.style.left = `${tickX(span.start)}%`; track.style.width = `${(span.end - span.start) * 11}%`;
+        track.style.left = `${tickX(span.start)}%`; track.style.width = `${tickX(span.end) - tickX(span.start)}%`;
         handle.setAttribute('aria-valuemin', String(endpoint === 'start' ? 0 : span.start));
-        handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : 7));
+        handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : grid.slots.length - 1));
         const input = lineControls.querySelector<HTMLSelectElement>(`[aria-label="Line ${index + 1} ${endpoint} position"]`);
         if (input) input.value = String(span[endpoint]);
         const panel = lineControls.children[index];
         const heading = panel?.querySelector('.line-title');
         if (heading) heading.textContent = `Line ${index + 1} · ends at ${positionLabel(span.end)}`;
         const lengthButtons = panel?.querySelectorAll<HTMLButtonElement>('.line-touch-controls button');
-        if (lengthButtons) { lengthButtons[0]!.disabled = span.end === span.start; lengthButtons[1]!.disabled = span.end === 7; }
+        if (lengthButtons) { lengthButtons[0]!.disabled = span.end === span.start; lengthButtons[1]!.disabled = span.end === grid.slots.length - 1; }
         track.querySelectorAll<HTMLElement>('.line-handle').forEach(other => {
           const side = other.classList.contains('start') ? 'start' : 'end';
           other.setAttribute('aria-valuemin', String(side === 'start' ? 0 : span.start));
-          other.setAttribute('aria-valuemax', String(side === 'start' ? span.end : 7));
+          other.setAttribute('aria-valuemax', String(side === 'start' ? span.end : grid.slots.length - 1));
         });
         if (isEdit) edit();
       };
@@ -175,8 +182,8 @@ function renderLines() {
       handle.addEventListener('pointermove', event => {
         if (!dragging) return;
         const rect = measure.getBoundingClientRect();
-        const tick = Math.round(((event.clientX - rect.left) / rect.width * 100 - 16) / 11);
-        span[endpoint] = Math.max(endpoint === 'start' ? 0 : span.start, Math.min(endpoint === 'start' ? span.end : 7, tick));
+        const tick = Math.round(((event.clientX - rect.left) / rect.width * 100 - 16) / (88 / grid.slots.length));
+        span[endpoint] = Math.max(endpoint === 'start' ? 0 : span.start, Math.min(endpoint === 'start' ? span.end : grid.slots.length - 1, tick));
         update();
       });
       handle.addEventListener('pointerup', () => { dragging = false; });
@@ -184,7 +191,7 @@ function renderLines() {
       handle.addEventListener('keydown', event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
-        const min = endpoint === 'start' ? 0 : span.start, max = endpoint === 'start' ? span.end : 7;
+        const min = endpoint === 'start' ? 0 : span.start, max = endpoint === 'start' ? span.end : grid.slots.length - 1;
         span[endpoint] = event.key === 'Home' ? min : event.key === 'End' ? max : Math.max(min, Math.min(max, span[endpoint] + (event.key === 'ArrowLeft' ? -1 : 1)));
         update();
       });
@@ -195,7 +202,7 @@ function renderLines() {
     control.append(el('strong', 'line-title', `Line ${index + 1} · ends at ${positionLabel(span.end)}`));
     const touchControls = el('div', 'line-touch-controls');
     const changeLength = (delta: number, name: string) => {
-      span.end = Math.max(span.start, Math.min(7, span.end + delta));
+      span.end = Math.max(span.start, Math.min(grid.slots.length - 1, span.end + delta));
       edit(); renderLines();
       const next = [...lineControls.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === name && !b.disabled);
       if (next) next.focus({ preventScroll: true });
@@ -203,14 +210,14 @@ function renderLines() {
     };
     const shorter = button(`Shorten line ${index + 1}`, () => changeLength(-1, `Shorten line ${index + 1}`));
     const longer = button(`Lengthen line ${index + 1}`, () => changeLength(1, `Lengthen line ${index + 1}`));
-    shorter.disabled = span.end === span.start; longer.disabled = span.end === 7;
+    shorter.disabled = span.end === span.start; longer.disabled = span.end === grid.slots.length - 1;
     const setEnd = button(`Set line ${index + 1} end`, () => {
       lineStart = null; lineEnd = index; refresh();
       score.scrollIntoView({ block: 'nearest' });
     });
     touchControls.append(shorter, longer, setEnd); control.append(touchControls);
     for (const endpoint of ['start', 'end'] as const) {
-      const input = select(Array.from({ length: 8 }, (_, tick) => ({ value: tick, label: positionLabel(tick) })), value => {
+      const input = select(Array.from({ length: grid.slots.length }, (_, tick) => ({ value: tick, label: positionLabel(tick) })), value => {
         span[endpoint] = Number(value);
         if (span.start > span.end) span[endpoint === 'start' ? 'end' : 'start'] = span[endpoint];
         edit(); renderLines();

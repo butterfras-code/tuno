@@ -21,3 +21,7 @@ See [hosting setup](docs/hosting.md) for deployment settings and preview behavio
 ## Validation
 
 Use Node.js 24 and install dependencies with `npm ci`. Run checks appropriate to the change; documentation-only edits need link/content review and `git diff --check`, not an application rebuild. For application changes, use `npm run check` and the relevant browser checks. Follow [release instructions](docs/releasing.md) for full candidate verification with `npm run verify` and required physical-device checks.
+
+## Rhythm activities
+
+Before changing rhythm notation, generation, counting or performance logic, read [the canonical rhythm model](docs/rhythm/music-model.md) and [current rhythm direction](docs/rhythm/README.md). Use the shared written-event model and derived time; keep counting conventions and UI support limits separate from the music domain.

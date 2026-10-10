@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { countWritingFixtures, duration, validateMeasure } from '../src/music/measure.ts';
+import { deriveMeasure, validateMeasure } from '../src/music/measure.ts';
+import { countWritingFixtures } from '../src/apps/count-writing/fixtures.ts';
+import { toNumber } from '../src/music/fraction.ts';
 import { blankAnswer, evaluate } from '../src/apps/count-writing/evaluation.ts';
 import type { CountAnswer } from '../src/apps/count-writing/evaluation.ts';
 const solutions: CountAnswer[] = [
@@ -14,10 +16,10 @@ test('all four fixtures have exact onsets and fill 4/4', () => {
   const lengths = [[4, 2, 1, 1], [3, 1, 4], [2, 2, 1, 1, 2], [6, 2]];
   countWritingFixtures.forEach((fixture, i) => {
     validateMeasure(fixture);
-    assert.deepEqual(fixture.events.map(e => e.start), positions[i]);
-    assert.deepEqual(fixture.events.map(duration), lengths[i]);
+    assert.deepEqual(deriveMeasure(fixture).events.map(e => toNumber(e.start) * 8), positions[i]);
+    assert.deepEqual(deriveMeasure(fixture).events.map(e => toNumber(e.duration) * 8), lengths[i]);
   });
-  assert.throws(() => validateMeasure({ ...countWritingFixtures[0]!, events: [{ kind: 'note', start: 0, value: 'quarter' }] }));
+  assert.throws(() => validateMeasure({ ...countWritingFixtures[0]!, events: [['Q']] }));
 });
 countWritingFixtures.forEach((fixture, i) => {
   test(`${fixture.id}: independent correct and incorrect dimensions; checking does not mutate`, () => {
@@ -51,7 +53,7 @@ test('disputed dotted-quarter & and endpoint variants are provisional, not wrong
   assert.equal(evaluate(countWritingFixtures[1]!, answer).spans.verdict, 'revise');
 });
 test('empty rest count and missing parentheses are assessed independently', () => {
-  const answer = blankAnswer();
+  const answer = blankAnswer(countWritingFixtures[2]!);
   assert.equal(evaluate(countWritingFixtures[2]!, answer).rests.verdict, 'revise');
   answer.rests[2] = true;
   assert.equal(evaluate(countWritingFixtures[2]!, answer).rests.verdict, 'correct');

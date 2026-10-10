@@ -10,9 +10,10 @@ This is the owner's decision following review of the supplied handoff. It supers
 
 Read in this order:
 
-1. [Count Writing first-release plan](count-writing.md): current requirements, proposed delivery sequence, and unresolved interaction decisions.
-2. [Original handoff](reference/RHYTHM_GAME_HANDOFF.md): preserved source context, broader rhythm requirements, and future performance planning. Section 12 contains the original Count Writing requirements.
-3. [Reference provenance](reference/README.md): origin and usage of the supplied screenshot and document.
+1. [Canonical rhythm model](music-model.md): compact written events, exact derived time, beat coordinates and ties.
+2. [Count Writing first-release plan](count-writing.md): current requirements, proposed delivery sequence, and unresolved interaction decisions.
+3. [Original handoff](reference/RHYTHM_GAME_HANDOFF.md): preserved source context, broader rhythm requirements, and future performance planning. Section 12 contains the original Count Writing requirements.
+4. [Reference provenance](reference/README.md): origin and usage of the supplied screenshot and document.
 
 Where these documents differ, this current direction and the Count Writing plan take precedence over the original handoff. The handoff's confirmed/proposal/open labels remain useful; importing it does not approve its proposals. Its Rhythm Walk acceptance matrix is not the first-release checklist for Count Writing.
 
@@ -25,10 +26,11 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Resolve remaining performance questions as that work approaches. | Timing tolerances, latency calibration, performance scores, and interruption policy do not block Count Writing. |
 | 2026-10-10 | Dotted-quarter internal `&` is teacher-dependent. | The prototype offers required, optional, and provisional review of both variants. |
 | 2026-10-10 | Duration lines begin at the note onset. | Keep the onset count full-size; raise internal counts. Ending positions remain provisional. |
+| 2026-10-10 | Adopt compact written event sequences with derived time, beat grouping and ties as the shared model. | See the [canonical contract](music-model.md); do not build new work on the original fixed eighth-note clock. |
 
 ## Shared foundation and future work
 
-Both activities should consume a shared symbolic representation of musical positions, durations, rests, ties, and meters. Count Writing evaluates entered counts and markings; Rhythm Walk evaluates timed input. Keep those answer and evaluation models separate. Audit existing code before choosing interfaces, dependencies, or notation rendering technology.
+Both activities use the [canonical music model](music-model.md) for written events and derived positions, durations, rests, ties, and meters. Count Writing evaluates entered counts and markings; Rhythm Walk evaluates timed input. Keep those answer and evaluation models separate. Audit existing code before choosing interfaces, dependencies, or notation rendering technology.
 
 The original handoff preserves the future performance requirements: short/continuous/journey formats, tap and hold, independent presentation/review guidance, bounded vocabulary progression, and separate rhythm/pulse/tempo assessment. Their release order and detailed numerical policies remain unresolved.
 
