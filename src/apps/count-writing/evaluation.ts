@@ -30,15 +30,16 @@ export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConv
     if (answer.rests[tick] !== (event.kind === 'rest' && (required || Boolean(symbol)))) rests.issues.push(`Check parentheses at ${positionLabel(tick)}.`);
   }
   const expected = measure.events.filter(e => e.kind === 'note' && duration(e) > 2)
-    .map(e => ({ start: e.start + 1, end: e.start + duration(e) - 1 }));
+    .map(e => ({ start: e.start, end: e.start + duration(e) - 1 }));
   const exact = expected.length === answer.spans.length && expected.every(span => answer.spans.some(s => s.start === span.start && s.end === span.end));
-  if (!exact) spans.issues.push('Review duration lines: the trial span covers internal positions through the last subdivision before the next note. Exact endpoints need teacher approval.');
+  if (!exact) spans.issues.push('Review duration lines: start the line at the note onset. Its ending position is still provisional.');
   const sustained = measure.events.filter(e => e.kind === 'note' && duration(e) > 2);
   const outsideSustain = answer.spans.some(s => !sustained.some(e => s.start >= e.start && s.end < e.start + duration(e)));
   const wrongLineCount = answer.spans.length !== sustained.length || sustained.some(e => answer.spans.filter(s => s.start >= e.start && s.end < e.start + duration(e)).length !== 1);
+  const wrongAnchor = answer.spans.some(s => sustained.some(e => s.start >= e.start && s.end < e.start + duration(e) && s.start !== e.start));
   const invalidSpan = answer.spans.some(s => !Number.isInteger(s.start) || !Number.isInteger(s.end) || s.start < 0 || s.end > 7 || s.start > s.end);
-  spans.verdict = exact ? 'correct' : invalidSpan || outsideSustain || wrongLineCount ? 'revise' : 'provisional';
-  if (spans.verdict === 'revise') spans.issues = ['Use one duration line per sustained note; keep each line within that note. Exact internal endpoints remain provisional.'];
+  spans.verdict = exact ? 'correct' : invalidSpan || outsideSustain || wrongLineCount || wrongAnchor ? 'revise' : 'provisional';
+  if (spans.verdict === 'revise') spans.issues = ['Start each duration line at its note onset and keep it within that note. Use one line per sustained note; ending positions remain provisional.'];
   counts.verdict = counts.issues.length ? 'revise' : countReview ? 'provisional' : 'correct';
   if (countReview && !counts.issues.length) counts.issues.push(measure.id === 'dotted-quarter' ? 'The dotted-quarter internal & is teacher-dependent. Select a convention, or review both variants provisionally.' : 'Extra valid subdivisions are accepted provisionally pending teacher review.');
   rests.verdict = rests.issues.length ? 'revise' : 'correct';

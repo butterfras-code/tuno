@@ -37,7 +37,7 @@ Implemented prototype: review a small set of editable one-measure examples befor
 
 | Example | What it should clarify |
 | --- | --- |
-| 4/4: half note, quarter note, two eighths | Enter `1`, internal sustained `2`, then `3`, `4`, and the chosen offbeat symbol. Establish slot alignment and the half-note duration line. |
+| 4/4: half note, quarter note, two eighths | Enter `1`, internal sustained `2`, then `3`, `4`, and the chosen offbeat symbol. Establish slot alignment and the half-note duration line, anchored at `1` as confirmed during teacher review. |
 | 4/4: dotted quarter, eighth, half | Resolve required versus optional internal subdivisions and duration-line boundaries for the dotted quarter. |
 | 4/4: quarter note, quarter rest, two eighths, quarter | Clarify rest parentheses, rest counts, and separate marking feedback. |
 | 4/4: dotted half, quarter | Establish multiple sustained internal counts (`2`, `3`) and line editing. |

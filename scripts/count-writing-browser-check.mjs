@@ -24,10 +24,10 @@ try {
   const addLine = async (start, end) => { await slots.nth(start).tap(); await control('Start duration line').tap(); await slots.nth(end).tap(); };
   const check = async () => { await control('Check').click(); return dimensions(); };
   const solutions = [
-    { id: 'half', starts: [0,4,6,7], lengths: [4,2,1,1], symbols: ['1','','2','','3','','4','&'], spans: [[1,3]] },
-    { id: 'dotted-quarter', starts: [0,3,4], lengths: [3,1,4], symbols: ['1','','2','&','3','','4',''], spans: [[1,2],[5,7]] },
+    { id: 'half', starts: [0,4,6,7], lengths: [4,2,1,1], symbols: ['1','','2','','3','','4','&'], spans: [[0,3]] },
+    { id: 'dotted-quarter', starts: [0,3,4], lengths: [3,1,4], symbols: ['1','','2','&','3','','4',''], spans: [[0,2],[4,7]] },
     { id: 'rest', starts: [0,2,4,5,6], lengths: [2,2,1,1,2], symbols: ['1','','2','','3','&','4',''], spans: [] },
-    { id: 'dotted-half', starts: [0,6], lengths: [6,2], symbols: ['1','','2','','3','','4',''], spans: [[1,5]] },
+    { id: 'dotted-half', starts: [0,6], lengths: [6,2], symbols: ['1','','2','','3','','4',''], spans: [[0,5]] },
   ];
   for (const solution of solutions) {
     await fixture.selectOption(solution.id);
@@ -80,7 +80,15 @@ try {
   await page.keyboard.press('Tab'); assert.equal(await slots.nth(1).evaluate(n => n === document.activeElement), true);
   await control('2').tap(); assert.equal(await slots.nth(1).innerText(), '2');
   await control('Erase').tap(); assert.equal(await slots.nth(1).innerText(), '·');
-  await addLine(1, 3);
+  await addLine(0, 3);
+  assert.equal(await slots.nth(0).evaluate(n => n.classList.contains('sustained')), false);
+  assert.equal(await slots.nth(2).evaluate(n => n.classList.contains('sustained')), true);
+  await control('Shorten line 1').tap();
+  assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '2');
+  await control('Lengthen line 1').tap();
+  await control('Set line 1 end').tap(); await slots.nth(2).tap();
+  assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '2');
+  await control('Lengthen line 1').tap();
   const end = page.getByRole('slider', { name: 'Line 1 end', exact: true });
   await end.focus(); await page.keyboard.press('ArrowLeft'); assert.equal(await end.getAttribute('aria-valuenow'), '2');
   const box = await end.boundingBox(), target = await slots.nth(3).boundingBox();
@@ -109,6 +117,12 @@ try {
   report.checks.push('keyboard entry/replacement/deletion/navigation; touch keypad; drag/key/select span editing; cancellation; reset focus');
   for (const width of [320, 375, 768]) {
     await page.setViewportSize({ width, height: 900 });
+    await fixture.selectOption('half');
+    await addLine(0, 3);
+    await control('Shorten line 1').tap();
+    await control('Set line 1 end').tap(); await slots.nth(3).tap();
+    assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '3');
+    await page.screenshot({ path: `${output}/line-touch-${width}.png`, fullPage: true });
     await fixture.selectOption('rest');
     for (const [tick, symbol] of ['1','','2','','3','&','4',''].entries()) if (symbol) {
       await slots.nth(tick).tap(); await control(symbol).tap();

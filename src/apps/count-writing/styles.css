@@ -34,7 +34,7 @@ select { max-width: 100%; }
 .lines { position: relative; }
 .duration-line { position: absolute; height: 3px; background: var(--color-accent); margin-top: 0; min-width: 2px; }
 .line-handle { position: absolute; top: -22px; width: 44px; height: 44px; border: 0; background: transparent; padding: 0; cursor: ew-resize; touch-action: none; }
-.line-handle::after { content: ''; display: block; margin: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
+.line-handle::after { content: ''; display: block; margin: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
 .line-handle.start { left: -22px; }
 .line-handle.end { right: -22px; }
 .line-edit { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; padding: 12px 0; border-top: 1px solid var(--color-line); }
@@ -51,3 +51,7 @@ select { max-width: 100%; }
   .mascot { width: 64px; height: 80px; }
   .line-edit .field { flex: 1 1 130px; }
 }
+
+.line-title, .line-touch-controls { width: 100%; }
+.line-touch-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.control:disabled { opacity: .5; cursor: default; }

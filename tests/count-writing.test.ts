@@ -4,10 +4,10 @@ import { countWritingFixtures, duration, validateMeasure } from '../src/music/me
 import { blankAnswer, evaluate } from '../src/apps/count-writing/evaluation.ts';
 import type { CountAnswer } from '../src/apps/count-writing/evaluation.ts';
 const solutions: CountAnswer[] = [
-  { symbols: ['1', '', '2', '', '3', '', '4', '&'], spans: [{ start: 1, end: 3 }], rests: Array(8).fill(false) },
-  { symbols: ['1', '', '2', '&', '3', '', '4', ''], spans: [{ start: 1, end: 2 }, { start: 5, end: 7 }], rests: Array(8).fill(false) },
+  { symbols: ['1', '', '2', '', '3', '', '4', '&'], spans: [{ start: 0, end: 3 }], rests: Array(8).fill(false) },
+  { symbols: ['1', '', '2', '&', '3', '', '4', ''], spans: [{ start: 0, end: 2 }, { start: 4, end: 7 }], rests: Array(8).fill(false) },
   { symbols: ['1', '', '2', '', '3', '&', '4', ''], spans: [], rests: [false, false, true, false, false, false, false, false] },
-  { symbols: ['1', '', '2', '', '3', '', '4', ''], spans: [{ start: 1, end: 5 }], rests: Array(8).fill(false) },
+  { symbols: ['1', '', '2', '', '3', '', '4', ''], spans: [{ start: 0, end: 5 }], rests: Array(8).fill(false) },
 ];
 test('all four fixtures have exact onsets and fill 4/4', () => {
   const positions = [[0, 4, 6, 7], [0, 3, 4], [0, 2, 4, 5, 6], [0, 6]];
@@ -45,9 +45,9 @@ test('disputed dotted-quarter & and endpoint variants are provisional, not wrong
   const answer = structuredClone(solutions[1]!);
   answer.symbols[1] = '&';
   assert.equal(evaluate(countWritingFixtures[1]!, answer).counts.verdict, 'provisional');
-  answer.spans[0] = { start: 2, end: 2 };
+  answer.spans[0] = { start: 0, end: 1 };
   assert.equal(evaluate(countWritingFixtures[1]!, answer).spans.verdict, 'provisional');
-  answer.spans[0] = { start: 1, end: 3 };
+  answer.spans[0] = { start: 0, end: 3 };
   assert.equal(evaluate(countWritingFixtures[1]!, answer).spans.verdict, 'revise');
 });
 test('empty rest count and missing parentheses are assessed independently', () => {
@@ -75,4 +75,14 @@ test('teacher-selected dotted-quarter requirement changes only symbol evaluation
   answer.symbols[1] = 'e';
   assert.equal(evaluate(fixture, answer, 'optional').counts.verdict, 'revise');
   assert.equal(evaluate(fixture, answer, 'required').spans.verdict, 'correct');
+});
+
+test('duration lines anchor at the note onset without shrinking the onset count', () => {
+  const answer = structuredClone(solutions[0]!);
+  assert.equal(evaluate(countWritingFixtures[0]!, answer).spans.verdict, 'correct');
+  answer.spans[0]!.start = 1;
+  assert.equal(evaluate(countWritingFixtures[0]!, answer).spans.verdict, 'revise');
+  assert.equal(evaluate(countWritingFixtures[0]!, answer).counts.verdict, 'correct');
+  answer.spans[0] = { start: 0, end: 2 };
+  assert.equal(evaluate(countWritingFixtures[0]!, answer).spans.verdict, 'provisional');
 });

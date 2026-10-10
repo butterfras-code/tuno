@@ -13,6 +13,7 @@ let fixture = countWritingFixtures[0]!;
 let answer = blankAnswer();
 let selected = 0;
 let lineStart: number | null = null;
+let lineEnd: number | null = null;
 let result: Evaluation | null = null;
 let changed = false;
 let dottedConvention: DottedQuarterConvention = 'review';
@@ -56,7 +57,11 @@ function lineTap(tick: number) {
 for (let tick = 0; tick < 8; tick++) {
   const slot = button('', () => {
     selected = tick;
-    if (lineStart !== null) lineTap(tick); else refresh();
+    if (lineEnd !== null) {
+      const span = answer.spans[lineEnd]!;
+      span.end = Math.max(span.start, tick); lineEnd = null;
+      edit(); renderLines();
+    } else if (lineStart !== null) lineTap(tick); else refresh();
   });
   slot.className = 'count-slot'; slot.style.left = `${tickX(tick)}%`;
   slot.setAttribute('aria-describedby', 'instructions');
@@ -68,7 +73,7 @@ for (let tick = 0; tick < 8; tick++) {
     else if (event.key === '(' || event.key === ')') { event.preventDefault(); toggleRest(); }
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); focusSlot(selected + (event.key === 'ArrowLeft' ? -1 : 1)); }
     else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); focusSlot(event.key === 'Home' ? 0 : 7); }
-    else if (event.key === 'Escape') { lineStart = null; refresh(); }
+    else if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
   });
   slots.push(slot); counts.append(slot);
 }
@@ -78,8 +83,12 @@ for (const symbol of alphabet) keypad.append(button(symbol, () => put(symbol)));
 keypad.append(button('Erase', () => put('')));
 const restButton = button('( ) Rest', toggleRest); restButton.setAttribute('aria-pressed', 'false');
 keypad.append(restButton);
-const lineButton = button('Start duration line', () => { lineStart = lineStart === null ? selected : null; refresh(); });
-const lineHelp = el('p', 'instructions', 'Line: select its first covered position, choose Start duration line, then tap its last position. Scroll the measure sideways on small screens. Drag either handle to adjust; focus a handle and use ← →. Endpoints snap to positions.');
+const lineButton = button('Start duration line', () => {
+  if (lineStart !== null || lineEnd !== null) { lineStart = null; lineEnd = null; }
+  else lineStart = selected;
+  refresh();
+});
+const lineHelp = el('p', 'instructions', 'Start a line at the note onset (for example, 1), then tap its ending position. To change its length, use Shorten / Lengthen below, or Set end and tap a position. You can also drag the endpoint dots. Scroll the measure sideways on small screens; keyboard handles use ← →.');
 const lineControls = el('div', 'line-controls');
 const feedback = el('section', 'feedback'); feedback.setAttribute('aria-label', 'Answer feedback'); feedback.setAttribute('aria-live', 'polite');
 const actions = el('div', 'actions');
@@ -90,7 +99,7 @@ card.append(field('Review fixture', picker), conventionField, score, instruction
 main.append(header, banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
 app.append(main);
 function reset(focus: boolean) {
-  answer = blankAnswer(); selected = 0; lineStart = null; result = null; changed = false;
+  answer = blankAnswer(); selected = 0; lineStart = null; lineEnd = null; result = null; changed = false;
   notation.replaceChildren(renderMeasure(fixture)); renderLines(); refresh();
   if (focus) focusSlot(0);
 }
@@ -101,11 +110,12 @@ function refresh() {
     slot.textContent = answer.rests[tick] ? `(${symbol || '·'})` : symbol || '·';
     slot.setAttribute('aria-label', `${positionLabel(tick)}, ${symbol || 'empty'}${answer.rests[tick] ? ', parenthesized' : ''}`);
     slot.setAttribute('aria-pressed', String(selected === tick));
-    slot.classList.toggle('sustained', answer.spans.some(s => tick >= s.start && tick <= s.end));
+    slot.classList.toggle('sustained', answer.spans.some(s => tick > s.start && tick <= s.end));
     slot.classList.toggle('line-pending', lineStart === tick);
   });
   live.textContent = lineStart === null ? `Selected: ${positionLabel(selected)}.` : `Line starts at ${positionLabel(lineStart)}. Select the last covered position; Escape cancels.`;
-  lineButton.textContent = lineStart === null ? 'Start duration line' : 'Cancel duration line';
+  if (lineEnd !== null) live.textContent = `Changing line ${lineEnd + 1}: tap its new ending position. Escape cancels.`;
+  lineButton.textContent = lineStart === null && lineEnd === null ? 'Start duration line' : 'Cancel duration line';
   restButton.setAttribute('aria-pressed', String(answer.rests[selected]));
   renderFeedback();
 }
@@ -145,6 +155,11 @@ function renderLines() {
         handle.setAttribute('aria-valuemax', String(endpoint === 'start' ? span.end : 7));
         const input = lineControls.querySelector<HTMLSelectElement>(`[aria-label="Line ${index + 1} ${endpoint} position"]`);
         if (input) input.value = String(span[endpoint]);
+        const panel = lineControls.children[index];
+        const heading = panel?.querySelector('.line-title');
+        if (heading) heading.textContent = `Line ${index + 1} · ends at ${positionLabel(span.end)}`;
+        const lengthButtons = panel?.querySelectorAll<HTMLButtonElement>('.line-touch-controls button');
+        if (lengthButtons) { lengthButtons[0]!.disabled = span.end === span.start; lengthButtons[1]!.disabled = span.end === 7; }
         track.querySelectorAll<HTMLElement>('.line-handle').forEach(other => {
           const side = other.classList.contains('start') ? 'start' : 'end';
           other.setAttribute('aria-valuemin', String(side === 'start' ? 0 : span.start));
@@ -177,7 +192,23 @@ function renderLines() {
     }
     lines.append(track);
     const control = el('div', 'line-edit');
-    control.append(el('span', '', `Line ${index + 1}`));
+    control.append(el('strong', 'line-title', `Line ${index + 1} · ends at ${positionLabel(span.end)}`));
+    const touchControls = el('div', 'line-touch-controls');
+    const changeLength = (delta: number, name: string) => {
+      span.end = Math.max(span.start, Math.min(7, span.end + delta));
+      edit(); renderLines();
+      const next = [...lineControls.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === name && !b.disabled);
+      if (next) next.focus({ preventScroll: true });
+      else lineControls.querySelector<HTMLSelectElement>(`[aria-label="Line ${index + 1} end position"]`)?.focus({ preventScroll: true });
+    };
+    const shorter = button(`Shorten line ${index + 1}`, () => changeLength(-1, `Shorten line ${index + 1}`));
+    const longer = button(`Lengthen line ${index + 1}`, () => changeLength(1, `Lengthen line ${index + 1}`));
+    shorter.disabled = span.end === span.start; longer.disabled = span.end === 7;
+    const setEnd = button(`Set line ${index + 1} end`, () => {
+      lineStart = null; lineEnd = index; refresh();
+      score.scrollIntoView({ block: 'nearest' });
+    });
+    touchControls.append(shorter, longer, setEnd); control.append(touchControls);
     for (const endpoint of ['start', 'end'] as const) {
       const input = select(Array.from({ length: 8 }, (_, tick) => ({ value: tick, label: positionLabel(tick) })), value => {
         span[endpoint] = Number(value);
@@ -188,7 +219,7 @@ function renderLines() {
       input.value = String(span[endpoint]);
       control.append(field(`Line ${index + 1} ${endpoint} position`, input));
     }
-    control.append(button(`Remove line ${index + 1}`, () => { answer.spans.splice(index, 1); edit(); renderLines(); lineButton.focus(); }));
+    control.append(button(`Remove line ${index + 1}`, () => { answer.spans.splice(index, 1); lineEnd = null; edit(); renderLines(); lineButton.focus(); }));
     lineControls.append(control);
   });
   lines.style.height = `${Math.max(1, lanes.length) * 44}px`;
