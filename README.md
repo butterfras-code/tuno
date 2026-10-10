@@ -10,6 +10,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 ## Project documents
 
+- [Rhythm activities: current direction](docs/rhythm/README.md) and [Count Writing first-release plan](docs/rhythm/count-writing.md): Count Writing first, with the original rhythm handoff preserved for future performance work.
 - [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 4 Practice and solo Challenge preview with full presets, adaptation and optional local progress ([validation](docs/validation/tunotes-stage4.md)).
 
 - [Hosting setup](docs/hosting.md): Cloudflare Pages, tuno.cc, automatic production deployments, and the feature-branch/PR workflow.
@@ -23,7 +24,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 Read these in order. Keep commitments in the charter, distribution decisions in the architecture, and implementation milestones and validation results in the prototype plan. Add architecture decisions as implementation establishes them, rather than documenting an imagined finished system.
 
-Copyright © 2026 Justin Butterfras. tUno’s code, documentation, and original artwork are licensed under the [GNU General Public License, version 3 only](LICENSE.txt) (`GPL-3.0-only`), without warranty. You may redistribute and modify them under those terms. Bundled fonts retain SIL Open Font License 1.1; design-reference photographs retain their existing rights and are not covered by this grant. See [dependency provenance](docs/dependencies.md) for scope and third-party notices. Both app formats include the complete GPLv3 text and a source-code link in About.
+Copyright © 2026 Justin Butterfras. tUno’s code, documentation, and original artwork are licensed under the [GNU General Public License, version 3 only](LICENSE.txt) (`GPL-3.0-only`), without warranty. You may redistribute and modify them under those terms. Bundled fonts retain SIL Open Font License 1.1; design-reference photographs and third-party reference screenshots retain their existing rights and are not covered by this grant. See [dependency provenance](docs/dependencies.md) for scope and third-party notices. Both app formats include the complete GPLv3 text and a source-code link in About.
 
 ## Development
 

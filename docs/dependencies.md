@@ -19,6 +19,8 @@ The project code, documentation, and original artwork are licensed under GNU GPL
 
 ## Bundled visual assets
 
+The owner-supplied [ToneSavvy screenshot](rhythm/reference/README.md) is a documentation-only third-party reference. Its existing rights are retained, it is excluded from the project's GPL grant, and it is not an application asset.
+
 Imported 2026-09-19 from the user-supplied [tUno Figma design](https://www.figma.com/design/ubcjXuq2G1t6Fv8dfkJhKR/?node-id=5-2). Exports retain their original geometry except for the coordinate adaptation and issue #15 refinements documented below:
 
 | Local asset | Origin | Rights/provenance |
