@@ -14,17 +14,19 @@ export const expectedSymbol = (tick: number): CountSymbol => tick % 2 ? '&' : St
  * Extra valid subdivisions, line endpoints and rest grouping are provisional.
  * Dotted-quarter internal & is accepted both present and absent pending review.
  */
-export function evaluate(measure: RhythmMeasure, answer: CountAnswer): Evaluation {
+export type DottedQuarterConvention = 'review' | 'required' | 'optional';
+export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConvention: DottedQuarterConvention = 'review'): Evaluation {
   const counts: Dimension = { verdict: 'correct', issues: [] };
   const spans: Dimension = { verdict: 'correct', issues: [] };
   const rests: Dimension = { verdict: 'correct', issues: [] };
-  let countReview = measure.id === 'dotted-quarter';
+  let countReview = measure.id === 'dotted-quarter' && dottedConvention === 'review';
   for (let tick = 0; tick < 8; tick++) {
     const event = measure.events.find(e => tick >= e.start && tick < e.start + duration(e))!;
-    const required = tick === event.start || tick % 2 === 0;
+    const dottedInternal = measure.id === 'dotted-quarter' && tick === 1;
+    const required = tick === event.start || tick % 2 === 0 || (dottedInternal && dottedConvention === 'required');
     const symbol = answer.symbols[tick];
     if ((required || symbol) && symbol !== expectedSymbol(tick)) counts.issues.push(`Check the count at ${positionLabel(tick)}.`);
-    if (!required && symbol) countReview = true;
+    if (!required && symbol && !(dottedInternal && dottedConvention === 'optional')) countReview = true;
     if (answer.rests[tick] !== (event.kind === 'rest' && (required || Boolean(symbol)))) rests.issues.push(`Check parentheses at ${positionLabel(tick)}.`);
   }
   const expected = measure.events.filter(e => e.kind === 'note' && duration(e) > 2)
@@ -38,7 +40,7 @@ export function evaluate(measure: RhythmMeasure, answer: CountAnswer): Evaluatio
   spans.verdict = exact ? 'correct' : invalidSpan || outsideSustain || wrongLineCount ? 'revise' : 'provisional';
   if (spans.verdict === 'revise') spans.issues = ['Use one duration line per sustained note; keep each line within that note. Exact internal endpoints remain provisional.'];
   counts.verdict = counts.issues.length ? 'revise' : countReview ? 'provisional' : 'correct';
-  if (countReview && !counts.issues.length) counts.issues.push(measure.id === 'dotted-quarter' ? 'The dotted-quarter internal & is accepted present or absent pending teacher review.' : 'Extra valid subdivisions are accepted provisionally pending teacher review.');
+  if (countReview && !counts.issues.length) counts.issues.push(measure.id === 'dotted-quarter' ? 'The dotted-quarter internal & is teacher-dependent. Select a convention, or review both variants provisionally.' : 'Extra valid subdivisions are accepted provisionally pending teacher review.');
   rests.verdict = rests.issues.length ? 'revise' : 'correct';
   return { counts, spans, rests };
 }

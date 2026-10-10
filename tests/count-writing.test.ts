@@ -64,3 +64,15 @@ test('open alphabet has no implicit &/+ aliases and valid extra subdivisions are
   answer.symbols[1] = 'e';
   assert.equal(evaluate(countWritingFixtures[0]!, answer).counts.verdict, 'revise');
 });
+test('teacher-selected dotted-quarter requirement changes only symbol evaluation', () => {
+  const fixture = countWritingFixtures[1]!;
+  const answer = structuredClone(solutions[1]!);
+  assert.equal(evaluate(fixture, answer, 'required').counts.verdict, 'revise');
+  assert.equal(evaluate(fixture, answer, 'optional').counts.verdict, 'correct');
+  answer.symbols[1] = '&';
+  assert.equal(evaluate(fixture, answer, 'required').counts.verdict, 'correct');
+  assert.equal(evaluate(fixture, answer, 'optional').counts.verdict, 'correct');
+  answer.symbols[1] = 'e';
+  assert.equal(evaluate(fixture, answer, 'optional').counts.verdict, 'revise');
+  assert.equal(evaluate(fixture, answer, 'required').spans.verdict, 'correct');
+});

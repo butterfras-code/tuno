@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-body); }
 main { max-width: 940px; margin: auto; padding: 32px 24px; }
@@ -13,7 +14,7 @@ p { line-height: 1.5; }
 .control:hover { background: var(--color-tint); }
 .control--primary { background: var(--color-accent); color: white; border-color: var(--color-accent); }
 .control--primary:hover { background: #61465e; }
-.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-label { font-size: 14px; font-weight: 700; }
 select { max-width: 100%; }
 .score-scroll { overflow-x: auto; padding-bottom: 8px; margin: 12px -8px 0; }

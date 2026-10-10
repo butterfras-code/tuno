@@ -42,7 +42,7 @@ Implemented prototype: review a small set of editable one-measure examples befor
 | 4/4: quarter note, quarter rest, two eighths, quarter | Clarify rest parentheses, rest counts, and separate marking feedback. |
 | 4/4: dotted half, quarter | Establish multiple sustained internal counts (`2`, `3`) and line editing. |
 
-One ambiguity must be resolved explicitly: the handoff describes `1`, `&`, `2` for a dotted quarter starting on beat 1, while its default rule requires onsets and internal actual beats and does not force all subdivisions. Determine whether `&` is required, optional, or convention-dependent. Do not turn this example into a correctness rule without resolving that distinction.
+One ambiguity must be resolved explicitly: the handoff describes `1`, `&`, `2` for a dotted quarter starting on beat 1, while its default rule requires onsets and internal actual beats and does not force all subdivisions. The owner selected **teacher-dependent** on 2026-10-10. The prototype offers required/optional choices and provisionally accepts both until a teacher chooses; other optional subdivisions and exact span endpoints still need review.
 
 The prototype should make entry, deletion, replacement, focus movement, and line editing reviewable with keyboard and touch. It should expose how much the placement or number of empty slots reveals about an answer.
 

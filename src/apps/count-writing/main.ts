@@ -6,7 +6,7 @@ import uno from '../../assets/uno-happy.svg';
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { countWritingFixtures } from '../../music/measure.ts';
 import { alphabet, blankAnswer, evaluate, positionLabel } from './evaluation.ts';
-import type { CountSymbol, Evaluation, Span } from './evaluation.ts';
+import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './evaluation.ts';
 import { renderMeasure, tickX } from './notation.ts';
 
 let fixture = countWritingFixtures[0]!;
@@ -15,6 +15,7 @@ let selected = 0;
 let lineStart: number | null = null;
 let result: Evaluation | null = null;
 let changed = false;
+let dottedConvention: DottedQuarterConvention = 'review';
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main'); main.id = 'editor';
 const header = el('header');
@@ -27,6 +28,10 @@ const picker = select(countWritingFixtures.map(f => ({ value: f.id, label: f.lab
   fixture = countWritingFixtures.find(f => f.id === id)!;
   reset(false);
 });
+const convention = select([{ value: 'review', label: 'Teacher review — accept both provisionally' }, { value: 'required', label: 'Require internal &' }, { value: 'optional', label: 'Internal & is optional' }], value => {
+  dottedConvention = value as DottedQuarterConvention; edit();
+});
+const conventionField = field('Dotted-quarter counting convention', convention);
 const card = el('section', 'card'); card.setAttribute('aria-label', 'Editable measure');
 const score = el('div', 'score-scroll');
 const measure = el('div', 'measure');
@@ -78,10 +83,10 @@ const lineHelp = el('p', 'instructions', 'Line: select its first covered positio
 const lineControls = el('div', 'line-controls');
 const feedback = el('section', 'feedback'); feedback.setAttribute('aria-label', 'Answer feedback'); feedback.setAttribute('aria-live', 'polite');
 const actions = el('div', 'actions');
-const check = button('Check', () => { result = evaluate(fixture, answer); changed = false; refresh(); }, true);
+const check = button('Check', () => { result = evaluate(fixture, answer, dottedConvention); changed = false; refresh(); }, true);
 const resetButton = button('Reset answer', () => reset(true));
 actions.append(check, resetButton);
-card.append(field('Review fixture', picker), score, instructions, live, keypad, lineButton, lineHelp, lineControls, actions, feedback);
+card.append(field('Review fixture', picker), conventionField, score, instructions, live, keypad, lineButton, lineHelp, lineControls, actions, feedback);
 main.append(header, banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
 app.append(main);
 function reset(focus: boolean) {
@@ -90,6 +95,7 @@ function reset(focus: boolean) {
   if (focus) focusSlot(0);
 }
 function refresh() {
+  conventionField.hidden = fixture.id !== 'dotted-quarter';
   slots.forEach((slot, tick) => {
     const symbol = answer.symbols[tick]!;
     slot.textContent = answer.rests[tick] ? `(${symbol || '·'})` : symbol || '·';
