@@ -110,6 +110,10 @@ try {
   for (const width of [320, 375, 768]) {
     await page.setViewportSize({ width, height: 900 });
     await fixture.selectOption('rest');
+    for (const [tick, symbol] of ['1','','2','','3','&','4',''].entries()) if (symbol) {
+      await slots.nth(tick).tap(); await control(symbol).tap();
+    }
+    await slots.nth(2).tap(); await control('( ) Rest').tap();
     await slots.nth(0).click(); await page.keyboard.press('End');
     const layout = await page.evaluate(() => {
       const focus = document.activeElement.getBoundingClientRect(), scroll = document.querySelector('.score-scroll').getBoundingClientRect();
