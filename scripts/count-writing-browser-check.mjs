@@ -147,6 +147,69 @@ try {
     await page.screenshot({ path: `${output}/width-${width}.png`, fullPage: true });
     report.checks.push(`${width}px: aligned scroll region, no page overflow, keyboard focus visible`);
   }
+  // Settings must preserve work, apply supported choices, and keep future controls inert.
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await fixture.selectOption('dotted-quarter');
+  await enter(0, '1');
+  await check();
+  const nav = page.getByRole('navigation', { name: 'Rhythm pages' });
+  await nav.getByRole('link', { name: 'Settings', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForURL('**/#settings');
+  const settings = page.getByRole('region', { name: 'Rhythm settings', exact: true });
+  await settings.waitFor({ state: 'visible' });
+  assert.equal(await settings.isVisible(), true);
+  assert.equal(await page.getByRole('heading', { name: 'Rhythm settings', exact: true }).evaluate(n => n === document.activeElement), true);
+  assert.equal(await page.getByLabel('Editable measure', { exact: true }).isVisible(), false);
+  await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required');
+  await nav.getByRole('link', { name: 'Count Writing', exact: true }).click();
+  assert.equal(await slots.nth(0).innerText(), '1');
+  assert.match(await page.locator('.feedback').innerText(), /Answer edited/);
+  assert.equal(await convention.inputValue(), 'required');
+  // Editor changes synchronize back into Settings.
+  await convention.selectOption('optional');
+  await nav.getByRole('link', { name: 'Settings', exact: true }).click();
+  await settings.waitFor({ state: 'visible' });
+  assert.equal(await page.getByLabel('Dotted-quarter internal &', { exact: true }).inputValue(), 'optional');
+  assert.equal(await page.getByLabel('Practice exercise', { exact: true }).inputValue(), 'dotted-quarter');
+  await page.getByLabel('Practice exercise', { exact: true }).selectOption('rest');
+  await page.getByRole('link', { name: 'Back to Count Writing', exact: true }).click();
+  assert.equal(await fixture.inputValue(), 'rest');
+  assert.equal(await slots.filter({ hasText: '·' }).count(), 8);
+  await page.goBack();
+  await settings.waitFor({ state: 'visible' });
+  assert.equal(await settings.isVisible(), true);
+  await control('Expand all groups').click();
+  assert.equal(await settings.locator('details[open]').count(), 9);
+  const futureControls = settings.locator('.setting-row input, .setting-row button, .setting-row select');
+  assert.ok(await futureControls.count() > 0);
+  assert.ok(await futureControls.evaluateAll(nodes => nodes.every(n => n.disabled)), 'future controls must not accept configuration');
+  for (const label of ['Starting vocabulary', 'Progression goal vocabulary', 'Allowed meters', 'Rhythm Walk session format']) {
+    assert.equal(await settings.getByRole('group', { name: label, exact: true }).isVisible(), true);
+  }
+  assert.equal(await settings.getByRole('checkbox', { name: '4/4', exact: true }).isChecked(), true);
+  assert.equal(await settings.getByRole('checkbox', { name: 'Allow meter changes within an exercise', exact: true }).isChecked(), false);
+  assert.equal(await settings.getByRole('checkbox', { name: 'Guided review after performance', exact: true }).isChecked(), true);
+  assert.equal(await settings.getByRole('checkbox', { name: 'Live correctness feedback', exact: true }).isChecked(), false);
+  assert.equal(await settings.locator('[data-setting="starting-vocabulary"] input:checked').count(), 0);
+  assert.equal(await settings.locator('[data-setting="goal-vocabulary"] input:checked').count(), 0);
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'expanded settings must fit viewport');
+    await page.screenshot({ path: `${output}/settings-expanded-${width}.png`, fullPage: true });
+  }
+  await control('Collapse all groups').click();
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.screenshot({ path: `${output}/settings-375.png`, fullPage: true });
+  await page.reload();
+  await page.waitForURL('**/#settings');
+  assert.equal(await settings.isVisible(), true, 'settings deep link survives reload');
+  assert.equal(await page.getByLabel('Practice exercise', { exact: true }).inputValue(), 'half');
+  assert.equal(await page.getByLabel('Dotted-quarter internal &', { exact: true }).inputValue(), 'review');
+  await page.getByRole('link', { name: 'Skip to content', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await settings.isVisible(), true, 'skip link must not switch to practice');
+  report.checks.push('Settings: keyboard navigation, answer preservation, shared convention, fixture reset, history/deep link, disabled future options and responsive layout');
   assert.deepEqual(errors, []);
   report.passed = true;
 } finally {

@@ -11,9 +11,10 @@ This is the owner's decision following review of the supplied handoff. It supers
 Read in this order:
 
 1. [Canonical rhythm model](music-model.md): compact written events, exact derived time, beat coordinates and ties.
-2. [Count Writing first-release plan](count-writing.md): current requirements, proposed delivery sequence, and unresolved interaction decisions.
-3. [Original handoff](reference/RHYTHM_GAME_HANDOFF.md): preserved source context, broader rhythm requirements, and future performance planning. Section 12 contains the original Count Writing requirements.
-4. [Reference provenance](reference/README.md): origin and usage of the supplied screenshot and document.
+2. [Settings inventory and page](settings.md): active preferences and the handoff’s unavailable or undecided options.
+3. [Count Writing first-release plan](count-writing.md): current requirements, proposed delivery sequence, and unresolved interaction decisions.
+4. [Original handoff](reference/RHYTHM_GAME_HANDOFF.md): preserved source context, broader rhythm requirements, and future performance planning. Section 12 contains the original Count Writing requirements.
+5. [Reference provenance](reference/README.md): origin and usage of the supplied screenshot and document.
 
 Where these documents differ, this current direction and the Count Writing plan take precedence over the original handoff. The handoff's confirmed/proposal/open labels remain useful; importing it does not approve its proposals. Its Rhythm Walk acceptance matrix is not the first-release checklist for Count Writing.
 
@@ -27,6 +28,7 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Dotted-quarter internal `&` is teacher-dependent. | The prototype offers required, optional, and provisional review of both variants. |
 | 2026-10-10 | Duration lines begin at the note onset. | Keep the onset count full-size; raise internal counts. Ending positions remain provisional. |
 | 2026-10-10 | Adopt compact written event sequences with derived time, beat grouping and ties as the shared model. | See the [canonical contract](music-model.md); do not build new work on the original fixed eighth-note clock. |
+| 2026-10-10 | Build a basic settings page before further prototype UI refinement. | Include the handoff’s configurable areas, with unavailable and undecided controls clearly marked; see [settings](settings.md). |
 
 ## Shared foundation and future work
 

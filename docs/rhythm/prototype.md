@@ -6,6 +6,10 @@ Implemented 2026-10-10 for teacher review; this is not a full release or finaliz
 
 Use Node 24, `npm ci`, then `npm run dev:counts`. Open `http://127.0.0.1:5173/prototypes/count-writing/`. The same review-only path is built for the `dev` Cloudflare preview. It has no app navigation placement, manifest, worker, portable download, or saved progress. The path and title do not settle final routing or naming. Do not publish it to `main` without authorization.
 
+## Settings page — 2026-10-10
+
+The [settings page](settings.md) at `#settings` inventories configurable areas from the handoff. Exercise selection and the dotted-quarter convention work now; future controls are disabled with availability explanations. Switching between Settings and Count Writing preserves the current answer. This updates the implementation sequence: review the configurable surface before further editor refinement or generation work.
+
 ## Implemented boundary
 
 All four specified 4/4 fixtures render with original SVG rhythm glyphs on a conventional one-line rhythm staff: hollow half notes, solid quarter/eighth notes, dots, quarter rests, stems, paired-eighth beams, and an isolated eighth flag. Eight fixed positions are shared by the notation and count controls, including empty subdivisions. This deliberately reveals a uniform subdivision grid, not which counts are required. The editor is for student answers; the fixture score itself is fixed.

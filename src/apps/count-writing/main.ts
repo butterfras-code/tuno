@@ -9,6 +9,7 @@ import { countGrid, slotX } from './grid.ts';
 import { alphabet, blankAnswer, evaluate } from './evaluation.ts';
 import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './evaluation.ts';
 import { renderMeasure } from './notation.ts';
+import { createSettingsPage, dottedConventionOptions } from './settings.ts';
 
 let fixture = countWritingFixtures[0]!;
 let grid = countGrid(fixture);
@@ -26,14 +27,18 @@ const main = el('main'); main.id = 'editor';
 const header = el('header');
 const mascot = el('img', 'mascot'); mascot.src = uno; mascot.alt = '';
 const title = el('div');
-title.append(el('p', 'eyebrow', 'tUno · Teacher review'), el('h1', '', 'Count Writing'), el('p', 'subtitle', 'One measure. Read, write, and revise.'));
+const pageTitle = el('h1', '', 'Count Writing'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
+const subtitle = el('p', 'subtitle', 'One measure. Read, write, and revise.');
+title.append(el('p', 'eyebrow', 'tUno · Teacher review'), pageTitle, subtitle);
 header.append(title, mascot);
 const banner = el('p', 'review-note', 'Working prototype · Open entry · 4/4 · “&” offbeats. Counting conventions and duration-line endpoints are provisional.');
-const picker = select(countWritingFixtures.map(f => ({ value: f.id, label: f.label })), id => {
+function chooseFixture(id: string) {
+  if (id === fixture.id) return;
   fixture = countWritingFixtures.find(f => f.id === id)!;
-  reset(false);
-});
-const convention = select([{ value: 'review', label: 'Teacher review — accept both provisionally' }, { value: 'required', label: 'Require internal &' }, { value: 'optional', label: 'Internal & is optional' }], value => {
+  picker.value = id; reset(false);
+}
+const picker = select(countWritingFixtures.map(f => ({ value: f.id, label: f.label })), chooseFixture);
+const convention = select(dottedConventionOptions, value => {
   dottedConvention = value as DottedQuarterConvention; edit();
 });
 const conventionField = field('Dotted-quarter counting convention', convention);
@@ -103,7 +108,31 @@ const check = button('Check', () => { result = evaluate(fixture, answer, dottedC
 const resetButton = button('Reset answer', () => reset(true));
 actions.append(check, resetButton);
 card.append(field('Review fixture', picker), conventionField, score, instructions, live, keypad, lineButton, lineHelp, lineControls, actions, feedback);
-main.append(header, banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
+const practiceView = el('section'); practiceView.id = 'practice-view';
+practiceView.append(banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
+const settings = createSettingsPage({
+  fixture: chooseFixture,
+  convention: value => { dottedConvention = value; convention.value = value; edit(); },
+});
+const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
+const practiceLink = el('a', 'control', 'Count Writing'); practiceLink.href = '#practice';
+const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings';
+nav.append(practiceLink, settingsLink);
+main.append(header, nav, practiceView, settings.page);
+function showPage(focus = true) {
+  const isSettings = location.hash === '#settings';
+  practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
+  practiceLink.toggleAttribute('aria-current', !isSettings); settingsLink.toggleAttribute('aria-current', isSettings);
+  (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
+  pageTitle.textContent = isSettings ? 'Rhythm settings' : 'Count Writing';
+  subtitle.textContent = isSettings ? 'Counting, content, and what comes next.' : 'One measure. Read, write, and revise.';
+  document.title = `${isSettings ? 'Rhythm settings' : 'Count Writing'} — tUno prototype`;
+  settings.sync(fixture.id, dottedConvention);
+  if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
+}
+window.addEventListener('hashchange', () => {
+  if (['', '#settings', '#practice'].includes(location.hash)) showPage();
+});
 app.append(main);
 function reset(focus: boolean) {
   grid = countGrid(fixture); answer = blankAnswer(fixture); selected = 0; lineStart = null; lineEnd = null; result = null; changed = false;
@@ -111,6 +140,7 @@ function reset(focus: boolean) {
   if (focus) focusSlot(0);
 }
 function refresh() {
+  settings.sync(fixture.id, dottedConvention);
   conventionField.hidden = !grid.slots.some(s => s.dottedInternal);
   slots.forEach((slot, tick) => {
     const symbol = answer.symbols[tick]!;
@@ -232,3 +262,4 @@ function renderLines() {
   lines.style.height = `${Math.max(1, lanes.length) * 44}px`;
 }
 reset(false);
+showPage(false);
