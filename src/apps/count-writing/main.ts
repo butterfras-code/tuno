@@ -52,6 +52,7 @@ const counts = el('div', 'counts'); counts.setAttribute('role', 'group'); counts
 const answerArea = el('div', 'answer-area');
 const lines = el('div', 'lines'); lines.setAttribute('aria-label', 'Duration lines');
 const slots: HTMLButtonElement[] = [];
+const anchors: HTMLButtonElement[] = [];
 const live = el('p', 'selection'); live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
 const instructions = el('p', 'instructions', 'Select a position, then type or tap a symbol. ← → move; Backspace/Delete erase; ( or ) toggles parentheses. Tab reaches all controls.');
 instructions.id = 'instructions';
@@ -60,22 +61,23 @@ function focusSlot(index: number) { selected = Math.max(0, Math.min(grid.slots.l
 function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
 function toggleRest() { answer.rests[selected] = !answer.rests[selected]; edit(); }
 function lineTap(tick: number) {
-  if (lineStart === null) { lineStart = tick; refresh(); }
-  else {
+  selected = tick;
+  if (lineEnd !== null) {
+    const span = answer.spans[lineEnd]!;
+    span.end = Math.max(span.start, tick); lineEnd = null;
+    edit(); renderLines();
+  } else if (lineStart === null) { lineStart = tick; refresh(); }
+  else if (lineStart !== tick) {
     answer.spans.push({ start: Math.min(lineStart, tick), end: Math.max(lineStart, tick) });
     lineStart = null; edit(); renderLines();
   }
 }
 function renderSlots() {
-  slots.length = 0; counts.replaceChildren();
+  slots.length = 0; anchors.length = 0; counts.replaceChildren();
   for (let tick = 0; tick < grid.slots.length; tick++) {
     const slot = button('', () => {
       selected = tick;
-      if (lineEnd !== null) {
-        const span = answer.spans[lineEnd]!;
-        span.end = Math.max(span.start, tick); lineEnd = null;
-        edit(); renderLines();
-      } else if (lineStart !== null) lineTap(tick); else refresh();
+      if (lineEnd !== null || lineStart !== null) lineTap(tick); else refresh();
     });
     slot.className = 'count-slot'; slot.style.left = `${tickX(tick)}%`;
     slot.setAttribute('aria-describedby', 'instructions');
@@ -89,12 +91,19 @@ function renderSlots() {
       else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); focusSlot(event.key === 'Home' ? 0 : grid.slots.length - 1); }
       else if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
     });
-    const anchor = el('span', 'duration-anchor');
+    const anchor = button('', () => lineTap(tick));
+    anchor.className = 'duration-anchor';
+    anchor.setAttribute('aria-label', `Duration line anchor at ${positionLabel(tick)}`);
+    anchor.setAttribute('aria-describedby', 'line-instructions');
     anchor.style.left = `${tickX(tick)}%`;
-    anchor.setAttribute('aria-hidden', 'true');
-    slots.push(slot); counts.append(slot, anchor);
+    anchors.push(anchor);
+    slots.push(slot); counts.append(slot);
   }
+  counts.append(...anchors);
 }
+answerArea.addEventListener('keydown', event => {
+  if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
+});
 answerArea.append(counts, lines); measure.append(notation, answerArea); score.append(measure);
 const keypad = el('div', 'keypad'); keypad.setAttribute('role', 'group'); keypad.setAttribute('aria-label', 'Symbol keypad');
 for (const symbol of alphabet) keypad.append(button(symbol, () => put(symbol)));
@@ -106,7 +115,8 @@ const lineButton = button('Start duration line', () => {
   else lineStart = selected;
   refresh();
 });
-const lineHelp = el('p', 'instructions', 'Start a line at the note onset (for example, 1), then tap its ending position. To change its length, use Shorten / Lengthen below, or Set end and tap a position. You can also drag the endpoint dots. Scroll the measure sideways on small screens; keyboard handles use ← →.');
+const lineHelp = el('p', 'instructions', 'Click or tap a duration-line dot at the note onset (for example, 1), then another dot to finish the line. Escape cancels. To change its length, use Shorten / Lengthen below, or Set end and tap a position. You can also drag the endpoint dots. Scroll the measure sideways on small screens; keyboard handles use ← →.');
+lineHelp.id = 'line-instructions';
 const lineControls = el('div', 'line-controls');
 const feedback = el('section', 'feedback'); feedback.setAttribute('aria-label', 'Answer feedback'); feedback.setAttribute('aria-live', 'polite');
 const actions = el('div', 'actions');
@@ -151,6 +161,8 @@ function refresh() {
   answerArea.dataset.placement = presentation.linePlacement;
   answerArea.dataset.appearance = presentation.sustainAppearance;
   settings.sync(fixture.id, dottedConvention, presentation);
+  answerArea.classList.toggle('line-selecting', lineStart !== null || lineEnd !== null);
+  anchors.forEach((anchor, tick) => anchor.setAttribute('aria-pressed', String(lineStart === tick)));
   conventionField.hidden = !grid.slots.some(s => s.dottedInternal);
   slots.forEach((slot, tick) => {
     const symbol = answer.symbols[tick]!;
@@ -215,12 +227,15 @@ function renderLines() {
         if (isEdit) edit();
       };
       update(false);
-      let dragging = false, original: Span;
+      let dragging = false, moved = false, original: Span;
+      let pointerX = 0, pointerY = 0;
       handle.addEventListener('pointerdown', event => {
-        dragging = true; original = { ...span }; handle.setPointerCapture(event.pointerId);
+        dragging = true; moved = false; pointerX = event.clientX; pointerY = event.clientY; original = { ...span }; handle.setPointerCapture(event.pointerId);
       });
       handle.addEventListener('pointermove', event => {
         if (!dragging) return;
+        moved ||= Math.hypot(event.clientX - pointerX, event.clientY - pointerY) > 4;
+        if (!moved) return;
         const rect = measure.getBoundingClientRect();
         const anchorOffset = parseFloat(getComputedStyle(answerArea).getPropertyValue('--anchor-x'));
         const tick = Math.round(((event.clientX - rect.left - anchorOffset) / rect.width * 100 - 16) / (88 / grid.slots.length));
@@ -228,7 +243,8 @@ function renderLines() {
         update();
       });
       handle.addEventListener('pointerup', () => { dragging = false; });
-      handle.addEventListener('pointercancel', () => { dragging = false; Object.assign(span, original); update(false); refresh(); });
+      handle.addEventListener('click', () => { if (!moved) lineTap(span[endpoint]); });
+      handle.addEventListener('pointercancel', () => { dragging = false; moved = true; Object.assign(span, original); update(false); refresh(); });
       handle.addEventListener('keydown', event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();

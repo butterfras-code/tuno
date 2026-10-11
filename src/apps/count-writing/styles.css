@@ -24,7 +24,10 @@ select { max-width: 100%; }
 .answer-area[data-placement="above"] { --anchor-y: 20px; }
 .answer-area[data-placement="beside"] { --anchor-x: 28px; --anchor-y: 66px; }
 .counts { height: 140px; position: relative; }
-.duration-anchor { position: absolute; top: var(--anchor-y); margin-left: var(--anchor-x); transform: translate(-50%, -50%); width: 7px; height: 7px; border-radius: 50%; background: var(--color-muted); pointer-events: none; }
+.duration-anchor { position: absolute; top: var(--anchor-y); margin-left: var(--anchor-x); transform: translate(-50%, -50%); width: 44px; height: 44px; border: 0; border-radius: 50%; padding: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
+.duration-anchor::after { content: ''; display: block; margin: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--color-muted); }
+.duration-anchor:hover::after, .duration-anchor[aria-pressed="true"]::after { background: var(--color-teal); width: 12px; height: 12px; }
+.line-selecting .line-handle { pointer-events: none; }
 .count-slot { position: absolute; transform: translateX(-50%); width: 44px; height: 48px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); font: 800 25px var(--font-heading); color: var(--color-ink); cursor: pointer; top: 42px; }
 .count-slot[aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
 .answer-area[data-appearance="raised"] .count-slot.sustained { font-size: 19px; top: 24px; }

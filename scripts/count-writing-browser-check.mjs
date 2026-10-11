@@ -212,6 +212,44 @@ try {
   await page.getByLabel('Duration-line placement', { exact: true }).selectOption('below');
   await navigate('Count Writing');
   report.checks.push('All nine placement/appearance combinations: shared anchors, unchanged answers/feedback, full-size onsets, beside default and override, offset drag and mobile touch');
+  // Dots support two-step mouse, touch and keyboard entry in every placement.
+  const anchors = page.locator('.duration-anchor');
+  for (const placement of ['above', 'below', 'beside']) {
+    await navigate('Settings');
+    await page.getByLabel('Duration-line placement', { exact: true }).selectOption(placement);
+    await navigate('Count Writing');
+    await control('Reset answer').click();
+    await anchors.nth(0).click();
+    assert.equal(await anchors.nth(0).getAttribute('aria-pressed'), 'true');
+    await anchors.nth(0).click();
+    assert.equal(await page.locator('.duration-line').count(), 0, 'same anchor must not finish a line');
+    await anchors.nth(3).click();
+    assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '3');
+    assert.equal(await control('Start duration line').count(), 1);
+    await control('Reset answer').click();
+    await page.setViewportSize({ width: 375, height: 900 });
+    await anchors.nth(3).tap(); await anchors.nth(0).tap();
+    assert.equal(await page.getByRole('slider', { name: 'Line 1 start', exact: true }).getAttribute('aria-valuenow'), '0');
+    assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '3');
+    await control('Set line 1 end').tap(); await anchors.nth(2).tap();
+    assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '2');
+    // An existing endpoint dot can start a new line; pending anchors win hit testing.
+    await page.getByRole('slider', { name: 'Line 1 start', exact: true }).tap();
+    await anchors.nth(2).tap();
+    assert.equal(await page.locator('.duration-line').count(), 2);
+    await control('Reset answer').click();
+    await anchors.nth(0).focus(); await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    assert.equal(await control('Start duration line').count(), 1);
+    await page.keyboard.press('Space');
+    await anchors.nth(3).focus(); await page.keyboard.press('Enter');
+    assert.equal(await page.locator('.duration-line').count(), 1);
+    await control('Reset answer').click();
+  }
+  await navigate('Settings');
+  await page.getByLabel('Duration-line placement', { exact: true }).selectOption('below');
+  await navigate('Count Writing');
+  report.checks.push('Anchor mouse/touch/keyboard entry in all placements, reverse endpoints, same-dot guard, Escape, existing dots and Set end');
   // Settings must preserve work, apply supported choices, and keep future controls inert.
   await page.setViewportSize({ width: 1280, height: 1000 });
   await fixture.selectOption('dotted-quarter');
