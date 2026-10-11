@@ -4,7 +4,9 @@ Implemented 2026-10-10 after the owner requested the handoff's configurable opti
 
 ## What works now
 
-- **Practice exercise:** selects one of the same four reviewed fixtures. Changing exercise clears the answer; the page states this before the control is used.
+- **Counting system:** numbers with `&` or `+`. Both keys enter the chosen offbeat; changing the display preserves answers and grading. Other subdivision systems remain future work.
+
+- **Practice exercise:** selects a reviewed fixture. Changing exercise clears the answer; the page states this before the control is used.
 - **Dotted-quarter internal &:** teacher review, required, or optional. This shares state with the existing editor control, preserves the answer, and marks existing feedback stale until Check runs again.
 - **Duration-line placement:** below, above, or beside counts, with a visible anchor at every input position. Click or tap one anchor to start a line and another to finish it; Escape cancels. While active, a preview follows the mouse cursor; touch shows a short line to the right, stopping just before the next anchor (or the measure edge at the last anchor). Existing lines move with their anchors.
 - **Sustained-count appearance:** raised and smaller, lowered and smaller, or unchanged. Switching to beside counts selects raised and smaller; an explicit override remains until placement switches to beside again. Onset counts stay full-size. These display settings preserve answers and feedback.
@@ -26,7 +28,7 @@ This table maps the [original handoff](reference/RHYTHM_GAME_HANDOFF.md) to the 
 
 | Settings group | Options represented | Handoff sections |
 | --- | --- | --- |
-| Available now | Review exercise and teacher-dependent dotted-quarter rule | 4, 12; subsequent teacher decisions |
+| Available now | Counting system, review exercise, teacher-dependent dotted-quarter rule, duration-line placement and sustained-count appearance | 4, 12; subsequent teacher decisions |
 | Count Writing | Counting system / offbeat symbols, open vs guided symbol entry, required counts / extra subdivisions, keyboard and touch, line placement and endpoints, raised counts, parentheses grouping, hints / answer visibility | 12 |
 | Activity & exercises | Count Writing / Rhythm Walk, all three performance formats, passage length, fixed / generated / curated content, developmental presets and UIL I–VI, custom preset saving/sharing, quick-start defaults and instructions | 1, 3, 6, 7 |
 | Rhythm vocabulary | Starting and optional goal checklists: whole, half, quarter, single/paired/triplet eighths, sixteenths, dotted half/quarter, whole/half/quarter/eighth rests, ties; pattern/syncopation restrictions, dotted-eighth figures, ties across beats/bars, rest placement, sixteenth rests, double dots, duplets; undecided accents, articulation, swing, pickups and multiple parts | 4, 6, 7, 15 |

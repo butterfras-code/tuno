@@ -26,19 +26,17 @@ select { max-width: 100%; }
 .counts { height: 140px; position: relative; }
 .duration-anchor { position: absolute; top: var(--anchor-y); margin-left: var(--anchor-x); transform: translate(-50%, -50%); width: 44px; height: 44px; border: 0; border-radius: 50%; padding: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
 .duration-anchor::after { content: ''; display: block; margin: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--color-muted); }
+.duration-anchor.duration-target::before { content: ''; position: absolute; inset: 10px; border: 2px solid var(--color-teal); border-radius: 50%; }
 .duration-anchor:hover::after, .duration-anchor[aria-pressed="true"]::after { background: var(--color-teal); width: 12px; height: 12px; }
-.line-selecting .line-handle { pointer-events: none; }
+.line-selecting .line-handle, .line-selecting .duration-body { pointer-events: none; }
 .count-slot { position: absolute; transform: translateX(-50%); width: 44px; height: 48px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); font: 800 25px var(--font-heading); color: var(--color-ink); cursor: pointer; top: 42px; }
 .count-slot[aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
 .answer-area[data-appearance="raised"] .count-slot.sustained { font-size: 19px; top: 24px; }
 .answer-area[data-appearance="lowered"] .count-slot.sustained { font-size: 19px; top: 60px; }
 .count-slot.line-pending { border: 3px dashed var(--color-teal); }
 :focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
-.selection { margin: 8px 0; font-weight: 700; color: var(--color-accent); }
-.instructions, .footer-note { font-size: 14px; color: var(--color-muted); }
-.keypad, .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
-.keypad .control { min-width: 48px; }
-.keypad [aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
+.footer-note { font-size: 14px; color: var(--color-muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .lines { position: absolute; inset: 0; pointer-events: none; }
 .duration-preview { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
 .duration-preview line { stroke: var(--color-teal); stroke-width: 3px; stroke-linecap: round; opacity: .7; }
@@ -47,8 +45,6 @@ select { max-width: 100%; }
 .line-handle::after { content: ''; display: block; margin: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
 .line-handle.start { left: -22px; }
 .line-handle.end { right: -22px; }
-.line-edit { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; padding: 12px 0; border-top: 1px solid var(--color-line); }
-.line-edit > span { align-self: center; font-weight: 700; }
 .dimension { border-left: 4px solid var(--color-teal); background: #eef4ef; border-radius: 6px; padding: 12px; margin: 10px 0; }
 .dimension.revise { border-color: #99482d; background: #fbefe5; }
 .dimension.provisional { border-color: var(--color-accent); background: var(--color-tint); }
@@ -59,11 +55,8 @@ select { max-width: 100%; }
   main { padding: 16px 12px; }
   .card { padding: 16px; }
   .mascot { width: 64px; height: 80px; }
-  .line-edit .field { flex: 1 1 130px; }
 }
 
-.line-title, .line-touch-controls { width: 100%; }
-.line-touch-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .control:disabled { opacity: .5; cursor: default; }
 
 /* Settings share the prototype shell; disabled choices remain readable for review. */
@@ -108,3 +101,45 @@ select { max-width: 100%; }
   .settings-live select { width: 100%; font-size: 14px; }
   .group-count { display: none; }
 }
+
+/* Parentheses enclose one written rest, including its counts and duration line. */
+.rest-marks, .rest-targets { position: absolute; inset: 0; pointer-events: none; }
+.rest-group, .rest-open-group { position: absolute; pointer-events: none; }
+.rest-group svg, .rest-open-group svg { position: absolute; top: 0; width: 16px; height: 100%; overflow: visible; }
+.rest-group .rest-opening, .rest-open-group .rest-opening { left: 0; }
+.rest-group .rest-closing { right: 0; }
+.rest-group path, .rest-open-group path { fill: none; stroke: var(--color-ink); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.rest-target { position: absolute; width: 40px; height: 48px; padding: 0; border: 0; background: transparent; font: 400 38px var(--font-body); cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+.rest-target.rest-opening { margin-left: -60px; color: var(--color-muted); opacity: .4; }
+.rest-target.rest-opening:hover, .rest-target.rest-opening:focus-visible, .rest-target.rest-pending { opacity: 1; color: var(--color-teal); }
+.rest-target.rest-closing { margin-left: 24px; color: transparent; -webkit-text-stroke: 1.5px var(--color-teal); }
+.rest-target.rest-closing:hover, .rest-target.rest-closing:focus-visible, .rest-target.rest-closing.keyboard-target { color: var(--color-teal); }
+
+.rest-existing-opening, .rest-existing-closing { position: absolute; top: 0; width: 44px; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+.rest-existing-opening { left: -14px; }
+.rest-existing-closing { right: -14px; }
+.rest-existing-closing .rest-closing { right: 14px; }
+.rest-existing-opening .rest-opening { left: 14px; }
+.rest-existing-opening:hover path, .rest-existing-opening:focus-visible path, .rest-existing-closing:hover path, .rest-existing-closing:focus-visible path, .rest-open-group path { stroke: var(--color-teal); }
+
+/* Keep the drawn curve inside a clear mouse/touch hit area. */
+.rest-existing-opening svg, .rest-existing-closing svg { pointer-events: none; }
+.rest-existing-closing { min-height: 44px; border-radius: 10px; }
+.rest-existing-closing::before { content: ''; position: absolute; inset: 0; border: 1px solid var(--color-teal); border-radius: inherit; background: var(--color-tint); opacity: 0; pointer-events: none; }
+.rest-existing-closing:hover::before, .rest-existing-closing:focus-visible::before, .rest-existing-closing:active::before { opacity: .45; }
+@media (any-pointer: coarse) { .rest-existing-closing::before { opacity: .2; } }
+
+.count-slot, .notation g[data-start] { touch-action: none; }
+.notation g[data-start] { cursor: pointer; }
+.count-popover { position: fixed; z-index: 100; width: 260px; max-width: calc(100vw - 16px); padding: 10px 12px 12px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); box-shadow: 0 8px 28px #302a292e; touch-action: none; overflow-y: auto; }
+.count-popover-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.count-popover-heading { font-size: 14px; font-weight: 700; }
+.count-popover-dismiss { flex-shrink: 0; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--color-muted); font-size: 28px; cursor: pointer; }
+.count-popover-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.count-popover-row + .count-popover-row { margin-top: 6px; }
+.count-popover-symbol { height: 48px; min-width: 44px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-canvas); color: var(--color-ink); font: 800 25px var(--font-heading); cursor: pointer; touch-action: none; }
+.count-popover-symbol:hover, .count-popover-symbol.slide-selected { background: var(--color-tint); border-color: var(--color-teal); }
+.count-popover-dismiss:hover { background: var(--color-tint); }
+
+.duration-body { position: absolute; left: 0; top: -20px; width: 100%; height: 44px; border: 0; padding: 0; background: transparent; pointer-events: auto; cursor: pointer; }
+.line-handle { z-index: 1; }

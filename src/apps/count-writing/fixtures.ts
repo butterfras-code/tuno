@@ -6,5 +6,7 @@ export const countWritingFixtures: readonly CountFixture[] = [
   { id: 'dotted-quarter', label: 'Dotted quarter • eighth • half', meter: [4, 4], events: [['Q', { dots: 1 }], ['E'], ['H']] },
   { id: 'rest', label: 'Quarter • quarter rest • two eighths • quarter', meter: [4, 4], events: [['Q'], ['Q', { rest: true }], ['E'], ['E'], ['Q']] },
   { id: 'dotted-half', label: 'Dotted half • quarter', meter: [4, 4], events: [['H', { dots: 1 }], ['Q']] },
+  { id: 'half-rest', label: 'Half rest • quarter • two eighths', meter: [4, 4], events: [['H', { rest: true }], ['Q'], ['E'], ['E']] },
+  { id: 'two-rests', label: 'Two quarter rests • quarter • two eighths', meter: [4, 4], events: [['Q', { rest: true }], ['Q', { rest: true }], ['Q'], ['E'], ['E']] },
 ];
 countWritingFixtures.forEach(f => derivePassage([f]));

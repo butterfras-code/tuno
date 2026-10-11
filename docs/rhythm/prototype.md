@@ -2,6 +2,8 @@
 
 Implemented 2026-10-10 for teacher review; this is not a full release or finalized grading contract.
 
+Current interaction update: available count positions are adaptive, while duration lines can extend through hidden subdivisions. Rest parentheses now use one complete group per written rest, entered with a ghost opening and teal closing targets. Half-rest and adjacent-quarter-rest fixtures are included; long rests require a duration line. These behaviors supersede the original uniform-grid and individual-parentheses descriptions below.
+
 ## Review entry point
 
 Use Node 24, `npm ci`, then `npm run dev:counts`. Open `http://127.0.0.1:5173/prototypes/count-writing/`. The same review-only path is built for the `dev` Cloudflare preview. It has no app navigation placement, manifest, worker, portable download, or saved progress. The path and title do not settle final routing or naming. Do not publish it to `main` without authorization.
@@ -14,7 +16,7 @@ The [settings page](settings.md) at `#settings` inventories configurable areas f
 
 All four specified 4/4 fixtures render with original SVG rhythm glyphs on a conventional one-line rhythm staff: hollow half notes, solid quarter/eighth notes, dots, quarter rests, stems, paired-eighth beams, and an isolated eighth flag. Eight fixed positions are shared by the notation and count controls, including empty subdivisions. This deliberately reveals a uniform subdivision grid, not which counts are required. The editor is for student answers; the fixture score itself is fixed.
 
-Physical keyboard and symbol keypad support entry, replacement and erasure. Left/right and Home/End move between positions; Tab reaches all controls; parentheses toggle with `(` or `)`. Rest markings can be toggled even when the count is empty. Check preserves every symbol, span and marking. Editing after Check leaves the previous result visible with an explicit stale-feedback message. Reset clears the answer and returns focus to the first position; fixture switching clears the answer and keeps focus on the selector.
+Physical keyboard and contextual symbol popover support entry and replacement; Backspace/Delete erase counts. The permanent keypad and instructional/editing panel have been removed. Left/right, Tab/Shift+Tab and Home/End move between available positions; Tab exits the count row at its ends; `(` begins a rest group and `)` closes it. Rest markings can be toggled even when the count is empty. Check preserves every symbol, span and marking. Editing after Check leaves the previous result visible with an explicit stale-feedback message. The first available input receives focus on load. Enter evaluates without a placement or native-control context. Reset clears the answer and returns focus to the first position; fixture switching clears the answer and focuses the first available input; choosing a fixture in Settings focuses that input on return to the editor.
 
 Duration lines use two taps (start action, then an end position), draggable snapping endpoints, arrow/Home/End endpoint keys, and labeled start/end selects. Visible Shorten/Lengthen buttons change the ending position one grid step at a time. Set end lets a student tap a new ending position in the measure. These work on touch without dragging. Endpoint dots are larger, with 44px hit targets. Lines can be removed independently. Internal counts covered by a line become smaller and raised; the onset stays full-size; the line is below them. The score and count grid scroll together at narrow widths; keyboard navigation scrolls the focused position into view. Focus indicators, semantic labels, state announcements and text verdicts accompany color feedback.
 
@@ -34,7 +36,7 @@ Migration validation: Node 24.21.0 and `npm ci`; `npm run check` passed with 118
 
 ## Provisional review conventions
 
-Open alphabet: `1 2 3 4 & e a`, with `&` selected as the offbeat convention. `+` is not silently equated with it. The grid has only eighth-note resolution; `e` and `a` remain available in open entry and can be judged incorrect at these positions. Every onset and internal actual beat requires its ordinary number/offbeat symbol. Other valid offbeat entries receive teacher-review status pending agreement about optional subdivisions.
+Open alphabet: `1 2 3 4 & e a`, with `&` selected as the offbeat convention. The active counting-system setting chooses `&` or `+`; both keyboard keys enter the selected symbol. Answers retain canonical offbeat tokens so switching display conventions preserves grading. The grid has only eighth-note resolution; `e` and `a` remain available in open entry and can be judged incorrect at these positions. Every onset and internal actual beat requires its ordinary number/offbeat symbol. Other valid offbeat entries receive teacher-review status pending agreement about optional subdivisions.
 
 The owner selected **teacher-dependent** for the dotted-quarter internal `&` on 2026-10-10. A fixture-specific review selector offers required, optional, and review-both conventions. Until a teacher selects a convention, both presence and absence receive teacher-review status; neither is definitively wrong. Incorrect symbols at that position can still be identified independently of whether entry is required.
 

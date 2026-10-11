@@ -8,7 +8,7 @@ function node(tag: string, attrs: Record<string, string | number>) {
 }
 export function renderMeasure(measure: CountFixture) {
   const grid = countGrid(measure);
-  const svg = node('svg', { viewBox: '0 0 800 150', role: 'img', 'aria-label': `4/4 rhythm: ${measure.label}`, class: 'notation' });
+  const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${measure.label}`, class: 'notation' });
   const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
   svg.append(node('line', { x1: 80, x2: 788, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of [80, 788]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
@@ -20,6 +20,9 @@ export function renderMeasure(measure: CountFixture) {
     const nx = x(event.startSlot);
     const group = node('g', { 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind });
     if (event.kind === 'rest') {
+      if (event.written[0] === 'H') {
+        group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
+      } else
       group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
     } else {
       const hollow = event.written[0] === 'H';

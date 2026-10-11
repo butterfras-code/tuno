@@ -3,6 +3,7 @@ import { countWritingFixtures } from './fixtures.ts';
 import type { DottedQuarterConvention } from './evaluation.ts';
 import { linePlacementOptions, sustainAppearanceOptions } from './presentation.ts';
 import type { CountPresentation, LinePlacement, SustainAppearance } from './presentation.ts';
+import type { OffbeatSymbol } from './input.ts';
 import { settingsGroups } from './settings-catalog.ts';
 import type { Setting } from './settings-catalog.ts';
 
@@ -56,6 +57,7 @@ function placeholder(setting: Setting): HTMLElement {
 }
 
 export function createSettingsPage(callbacks: {
+  offbeat: (value: OffbeatSymbol) => void;
   placement: (value: LinePlacement) => void;
   appearance: (value: SustainAppearance) => void;
   fixture: (id: string) => void;
@@ -68,6 +70,10 @@ export function createSettingsPage(callbacks: {
   const activeBadge = el('span', 'availability availability--active', 'Applies immediately');
   const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
   const activeControls = el('div', 'settings-live-controls');
+  const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
+  offbeat.dataset.setting = 'count-system';
+  const systemField = field('Counting system', offbeat);
+  systemField.append(el('p', 'setting-hint', 'Either + or & enters the chosen offbeat symbol. Changing it preserves your answer.'));
   const fixture = select(countWritingFixtures.map(f => ({ value: f.id, label: f.label })), callbacks.fixture);
   fixture.dataset.setting = 'review-exercise';
   const fixtureField = field('Practice exercise', fixture);
@@ -90,7 +96,7 @@ export function createSettingsPage(callbacks: {
   const appearanceHint = el('p', 'setting-hint', 'Applies to counts inside your duration lines; the onset stays full-size. Unchanged allows lines beside counts to cross through them.');
   appearanceHint.id = 'settings-appearance-hint';
   appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
-  activeControls.append(fixtureField, conventionField, placementField, appearanceField);
+  activeControls.append(systemField, fixtureField, conventionField, placementField, appearanceField);
   available.append(activeHeader, activeControls, el('p', 'setting-hint', 'Changes last in this tab only. Reloading resets settings and answers.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
@@ -110,10 +116,10 @@ export function createSettingsPage(callbacks: {
     summary.append(title, el('span', 'group-count', `${group.settings.length} settings`));
     const content = el('div', 'settings-group-body');
     content.append(el('p', 'group-description', group.description));
-    group.settings.forEach(setting => content.append(placeholder(setting)));
+    group.settings.filter(setting => setting.id !== 'count-system').forEach(setting => content.append(placeholder(setting)));
     section.append(summary, content); page.append(section); sections.push(section);
   }
   const back = el('a', 'control control--primary', 'Back to Count Writing'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
-  return { page, sync: (fixtureId: string, value: DottedQuarterConvention, presentation: CountPresentation) => { fixture.value = fixtureId; convention.value = value; placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance; } };
+  return { page, sync: (fixtureId: string, value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol) => { offbeat.value = symbol; fixture.value = fixtureId; convention.value = value; placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance; } };
 }

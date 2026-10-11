@@ -32,6 +32,16 @@ Where these documents differ, this current direction and the Count Writing plan 
 
 | 2026-10-10 | Activate above/beside/below duration-line anchors and sustained-count appearance. | Beside defaults to raised and smaller; lowered and smaller and unchanged remain available, including a strikethrough effect. Display changes preserve answers and grading. |
 
+| 2026-10-10 | Show every beat and written onset; activate internal subdivisions only on affected beats. | Longer undotted figures expose one level below their written value (half → quarter); dotted and tuplet figures use their exact finer components. Availability remains separate from required counts. |
+
+| 2026-10-10 | Require one complete parenthesis pair around each written rest’s counts. | Half rests enclose both beats and the duration line; two quarter rests require separate pairs. Hover/touch ghost openings and teal closing targets support grouped entry. Existing right parentheses open for endpoint editing; left openings remove the group; no nesting. |
+
+| 2026-10-10 | Use contextual count popovers with next-position activation. | Beat numbers sit above subdivisions; mouse/touch glyph and box entry, touch-slide selection, dismissal, and viewport-bounded movement follow the active box. |
+
+| 2026-10-10 | Support keyboard correction/navigation and selectable `&`/`+` offbeats. | Backspace returns from empty boxes; Tab/Shift+Tab and arrows follow available positions. Both offbeat keys use the selected display convention without changing musical time or grading. |
+
+| 2026-10-10 | Place duration lines and rest endpoints with the keyboard. | Hold Shift and use arrows to choose an available duration count; release Shift to commit its implied endpoint, including trailing hidden subdivisions. Type `(`, choose a closing count with arrows, and press Enter to close the pair. |
+
 ## Shared foundation and future work
 
 Both activities use the [canonical music model](music-model.md) for written events and derived positions, durations, rests, ties, and meters. Count Writing evaluates entered counts and markings; Rhythm Walk evaluates timed input. Keep those answer and evaluation models separate. Audit existing code before choosing interfaces, dependencies, or notation rendering technology.
