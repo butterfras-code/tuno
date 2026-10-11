@@ -118,7 +118,7 @@ main.rhythm-app {
   .tap-response > .pad { min-height: 80px; border-radius: 12px; }
 }
 
-/* Reserve the count-in row throughout performance so the score never jumps. */
+/* Count-in appears inside the fixed-size pad, only during its count-in phase. */
 .count-in-display { display: flex; gap: 8px; align-items: start; margin-bottom: 8px; }
 .count-in-display[hidden] { display: none; }
 .count-in-beat { display: grid; justify-items: center; gap: 2px; min-width: 32px; }
@@ -128,21 +128,41 @@ main.rhythm-app {
 @keyframes count-in-pulse { from { box-shadow: 0 0 0 4px var(--color-tint); transform: scale(1.12); } to { box-shadow: 0 0 0 0 var(--color-tint); transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .count-in-beat.lit .count-in-dot { animation: none; } }
 
-/* Controls belong to the score; every measure reserves the same action row. */
-.rhythm-app .score-actions { min-height: 44px; display: flex; justify-content: space-between; align-items: end; gap: 8px; }
+/* Keep actions alongside counts when there is room for a separate end gutter. */
+.rhythm-app .score-actions { display: flex; justify-content: space-between; gap: 8px; min-height: 44px; }
+.rhythm-app .score-actions:empty { display: none; }
 .rhythm-app .score-actions .write-actions { margin: 0 0 0 auto; flex-wrap: nowrap; }
-.rhythm-app .score-actions .control { min-height: 44px; padding: 8px 12px; font-size: 14px; }
+.rhythm-app .score-actions .control { min-height: 44px; padding: 8px 10px; font-size: 13px; }
+@container (min-width: 960px) {
+  .passage-strip { margin-left: 20px; margin-right: 72px; }
+  .rhythm-app .score-actions { position: absolute; top: 42px; left: 0; right: -72px; min-height: 0; pointer-events: none; }
+  .rhythm-app .score-actions .control { pointer-events: auto; }
+  .rhythm-app .score-actions > .control { width: 44px; padding: 8px 4px; transform: translateX(-40px); }
+  .passage-strip[data-measures="1"] .score-actions > .control { transform: none; }
+  .rhythm-app .score-actions .write-actions { transform: translateX(-36px); }
+  .answer-area:has(.count-slot:nth-child(8):not([hidden])) .score-actions .write-actions { transform: none; }
+}
 .rhythm-app .setup-actions { display: flex; align-items: center; gap: 8px; }
 .rhythm-app .setup-actions .practice-help-trigger { width: 44px; flex: 0 0 44px; padding: 8px; }
 .rhythm-app .practice-help-popover { position: fixed; inset: auto; margin: 0; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #302a292e; }
 .practice-help-popover h2 { margin: 0; font: 700 20px var(--font-heading); }
 .practice-help-popover p { margin: 12px 0 0; font-size: 14px; }
 .practice-help-popover .performance-help { margin: 12px 0 0; padding-top: 0; border: 0; }
-.tap-response > .pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; }
+.performance-surface { position: relative; border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); overflow: hidden; }
+.performance-surface > .pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 144px; min-height: 144px; border: 0; border-radius: 0; padding: 12px 116px 12px 12px; background: transparent; }
+.performance-surface > .pad[aria-pressed=true] { background: #c3dce1; }
+.pad-tools { position: absolute; right: 10px; top: 10px; bottom: 10px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.rhythm-app .pad-tools .control { min-height: 44px; padding: 8px 10px; font-size: 13px; background: var(--color-surface); border: 1px solid var(--color-line); }
 .pad-action { font: 800 22px var(--font-heading); }
-.pad .status { font: 500 14px var(--font-body); }
+.pad .status { font: 500 12px/1.3 var(--font-body); max-width: 28ch; }
 .pad .pulse { width: 10px; height: 10px; margin: 0; }
-.tap-response > .actions { margin: 8px 0; }
+.pad .count-in-display { margin: 0; gap: 4px; }
+.timing-evidence { margin: 12px 0; }
+.timing-evidence > summary { cursor: pointer; min-height: 44px; padding: 10px 0; font-weight: 700; }
+@media (max-width: 540px) {
+  .performance-surface > .pad { padding-right: 94px; }
+  .rhythm-app .pad-tools .control { padding: 8px; font-size: 12px; }
+}
 .tap-response > .setup { gap: 8px 16px; }
 .tap-response > .setup .field { margin-bottom: 0; }
 @media (max-width: 540px) {
@@ -152,3 +172,5 @@ main.rhythm-app {
 .exercise-meta .exercise-summary { flex: 1; }
 .rhythm-app .exercise-meta .practice-help-trigger { width: 44px; flex: 0 0 44px; min-height: 44px; padding: 8px; margin-top: 4px; }
 .practice-status:empty { display: none; }
+.line-handle.line-delete { color: var(--color-surface); background: var(--color-accent); border-radius: 50%; font: 700 22px var(--font-body); cursor: pointer; width: 44px; height: 44px; top: -22px; right: -22px; }
+.line-handle.line-delete::after { display: none; }

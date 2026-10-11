@@ -145,29 +145,43 @@ try {
   await page.setViewportSize({ width: 1366, height: 650 });
   const pad = control('Performance pad'), status = page.locator('.tap-response .status');
   const record = async () => {
+    await page.locator('.timing-evidence > summary').click();
     const download = page.waitForEvent('download'); await control('Download timing evidence').click();
     const { readFile } = await import('node:fs/promises'); return JSON.parse(await readFile(await (await download).path(), 'utf8'));
   };
   assert.equal(await control('Start count-in').count(), 0);
   assert.equal(await control('Retry same exercise').count(), 0);
   assert.equal(await control('Wrap notation into systems').count(), 0);
+  assert.equal(await page.locator('.count-in-display').isVisible(), false, 'idle count-in is hidden');
   await pad.focus(); await page.keyboard.down('Space');
-  await status.filter({ hasText: 'Count-in' }).waitFor(); await page.keyboard.up('Space');
-  await control('Stop / Cancel').click();
+  await status.filter({ hasText: 'Count-in' }).waitFor();
+  assert.equal(await pad.locator('.count-in-display').isVisible(), true);
+  assert.equal(await pad.locator('.pad-action').innerText(), 'Count In');
+  await page.keyboard.up('Space');
+  await control('Stop').click();
   assert.equal((await record()).events.length, 0, 'starting Space and its release never enter rhythm capture');
+  assert.equal(await page.locator('.count-in-display').isVisible(), false, 'interrupted count-in is hidden');
   assert.match(await pad.innerText(), /Try again/);
   await pad.tap(); await status.filter({ hasText: 'Count-in' }).waitFor();
-  await control('Stop / Cancel').click();
+  await control('Stop').click();
   assert.equal((await record()).events.length, 0, 'starting touch and its release never enter rhythm capture');
   // A new press during count-in is retained separately, then the pad retries.
   await pad.focus(); await page.keyboard.press('Space'); await status.filter({ hasText: 'Count-in' }).waitFor();
   await page.locator('.count-in-beat[aria-current="true"]').first().waitFor();
-  await page.keyboard.press('Space'); await control('Stop / Cancel').click();
+  await page.keyboard.press('Space'); await control('Stop').click();
   const attempt = await record(); assert.equal(attempt.events.filter(e => e.accepted).length, 2);
   assert.ok(attempt.events.every(e => e.region === 'count-in'));
   await page.getByLabel('Tempo (quarter-note BPM)', { exact: true }).fill('180');
   await pad.tap(); await status.filter({ hasText: 'Count-in' }).waitFor();
+  const countInBounds = await page.locator('.performance-surface').boundingBox();
+  await status.filter({ hasText: 'Performing' }).waitFor({ timeout: 10000 });
+  assert.equal(await page.locator('.count-in-display').isVisible(), false, 'performing hides count-in indicators');
+  assert.equal(await pad.locator('.pad-action').innerText(), 'Tap / hold');
+  const inputBounds = await page.locator('.performance-surface').boundingBox();
+  assert.ok(Math.abs(inputBounds.y - countInBounds.y) < 1 && Math.abs(inputBounds.height - countInBounds.height) < 1, 'pad stays in place across count-in/input states');
   await status.filter({ hasText: 'Reviewing' }).waitFor({ timeout: 10000 });
+  assert.equal(await page.locator('.count-in-display').isVisible(), false);
+  assert.equal(await control('Download timing evidence').isVisible(), false, 'evidence download starts inside collapsed details');
   assert.match(await pad.innerText(), /Try again/);
   assert.equal((await record()).status, 'completed', 'pad-started attempt completes and offers retry');
   await page.getByLabel('Mode', { exact: true }).selectOption('write');
@@ -177,6 +191,9 @@ try {
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#practice-help').evaluate(n => n.matches(':popover-open')), false);
   assert.equal(await control('Clear').evaluate(n => n.closest('[data-measure]').dataset.measure), '1');
+  assert.equal(await control('Clear').evaluate(n => !!n.closest('.answer-area')), true);
+  assert.equal(await control('Check').evaluate(n => !!n.closest('.answer-area')), true);
+  assert.equal(await page.locator('.passage-line-controls').count(), 0);
   assert.equal(await control('Check').evaluate(n => n.closest('[data-measure]').dataset.measure), '2');
   report.checks.push('Idle pad starts/retries with keyboard and touch; starting gestures excluded from evidence; new count-in presses captured; consolidated help and first/last measure action placement');
   await page.getByLabel('Exercise preset', { exact: true }).selectOption('generated');
@@ -184,6 +201,17 @@ try {
     await page.setViewportSize({ width, height });
     for (const mode of ['write','tap','both']) {
       await page.getByLabel('Mode', { exact: true }).selectOption(mode); await page.evaluate(() => scrollTo(0,0));
+      if (mode !== 'tap') {
+        const overlaps = await page.evaluate(() => {
+          const actions = [...document.querySelectorAll('.score-actions .control')];
+          const targets = [...document.querySelectorAll('.count-slot:not([hidden]),.rest-target:not([hidden]),.rest-existing-opening,.rest-existing-closing')];
+          return actions.flatMap(action => {
+            const a = action.getBoundingClientRect();
+            return targets.filter(target => { const b = target.getBoundingClientRect(); return a.width && b.width && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }).map(target => `${action.textContent}: ${target.getAttribute('aria-label')}`);
+          });
+        });
+        assert.deepEqual(overlaps, [], `score actions must not cover count/rest targets at ${width}, ${mode}`);
+      }
       await page.screenshot({ path: `${output}/refinement-${width}-${mode}.png`, fullPage: true });
     }
   }

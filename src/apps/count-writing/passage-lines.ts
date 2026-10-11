@@ -1,4 +1,4 @@
-import { button, el, field, select } from '../../shared/ui/components.ts';
+import { button, el } from '../../shared/ui/components.ts';
 import { passageDurationEnd, spanPieces } from './passage.ts';
 import type { PassageGrid } from './passage.ts';
 import type { Span } from './evaluation.ts';
@@ -11,17 +11,10 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   let spans: Span[] = [];
   let draft: (Span & { editing?: number; keyboard?: boolean }) | null = null;
   const label = (position: number) => `measure ${grid.slots[position]!.measure + 1}, ${grid.slots[position]!.label}`;
-  const controls = el('section', 'passage-line-controls'); controls.setAttribute('aria-label', 'Passage duration line editor');
-  const status = el('p', 'setting-hint'); status.setAttribute('role', 'status');
-  const choices = grid.available.map(position => ({ value: String(position), label: label(position) }));
-  const start = select(choices, value => { if (draft) { draft.start = Number(value); draft.end = Math.max(draft.start, draft.end); } else draft = { start: Number(value), end: Number(value) }; render(); });
-  const end = select(choices, value => { if (!draft) draft = { start: Number(start.value), end: Number(value) }; else draft.end = Number(value); render(); });
-  const begin = button('Start passage duration line', () => { draft = { start: Number(start.value), end: Number(end.value) }; render(); });
-  const save = button('Save duration line', commit);
-  const cancel = button('Cancel line edit', () => { draft = null; render(); });
-  const remove = button('Remove duration line', () => { if (draft?.editing !== undefined) { spans.splice(draft.editing, 1); editors.forEach(e => e.markEdited()); } draft = null; render(); });
-  controls.append(el('p', 'setting-hint', 'Tied chains use one duration line across measures. Tap a start anchor, then its final covered count; or hold Shift and use arrows, then release Shift. Tap an existing line to edit. Escape cancels and keeps the saved answer.'), field('Passage line start', start), field('Passage line end', end), begin, save, cancel, remove, status);
-  root.after(controls);
+  const status = el('span', 'sr-only'); status.setAttribute('role', 'status'); root.append(status);
+  function removeSaved(index: number) {
+    spans.splice(index, 1); draft = null; editors.forEach(editor => editor.markEdited()); render();
+  }
   function commit() {
     if (!draft || draft.end < draft.start) return;
     const span = { start: draft.start, end: passageDurationEnd(grid, draft.end) };
@@ -92,7 +85,9 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   // Rendering an edited line replaces its focused button; Escape must still
   // cancel when focus has consequently returned to the document body.
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && draft) {
+    if (draft?.editing !== undefined && ['Delete', 'Backspace'].includes(event.key) && (event.target === document.body || root.contains(event.target as Node))) {
+      event.preventDefault(); event.stopImmediatePropagation(); removeSaved(draft.editing);
+    } else if (event.key === 'Escape' && draft) {
       event.preventDefault(); event.stopImmediatePropagation(); draft = null; render();
     }
   }, { capture: true, signal: lifecycle.signal });
@@ -101,7 +96,6 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
       if (draft.end > draft.start || draft.editing !== undefined) commit(); else { draft = null; render(); }
     }
   }, { signal: lifecycle.signal });
-  controls.addEventListener('keydown', event => { if (event.key === 'Escape') { draft = null; render(); } });
   window.addEventListener('blur', () => { draft = null; render(); }, { signal: lifecycle.signal });
   function render() {
     const all = spans.map(span => ({ ...span, draft: false }));
@@ -126,12 +120,14 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
         track.style.left = `${x1}%`; track.style.width = `${x2 - x1}%`; track.style.top = `calc(var(--anchor-y) + ${laneFor[index]! * 44}px)`;
         if (!span.draft) {
           const body = button('', () => { draft = { ...spans[index]!, end: lastAvailable(spans[index]!.end), editing: index }; render(); });
+          body.addEventListener('keydown', event => { if (['Delete', 'Backspace'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); removeSaved(index); } });
           body.className = 'duration-body'; body.setAttribute('aria-label', `Edit passage line ${index + 1}: ${label(span.start)} to ${label(span.end)}`); track.append(body);
           if (!piece.outgoing) {
             const handle = button('', () => { draft = { ...spans[index]!, end: lastAvailable(spans[index]!.end), editing: index }; render(); });
             handle.className = 'line-handle end'; handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `Passage line ${index + 1} end`);
             handle.setAttribute('aria-valuemin', String(span.start)); handle.setAttribute('aria-valuemax', String(grid.slots.length - 1)); handle.setAttribute('aria-valuenow', String(span.end)); handle.setAttribute('aria-valuetext', label(span.end));
             handle.addEventListener('keydown', event => {
+              if (['Delete', 'Backspace'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); removeSaved(index); return; }
               if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
                 event.preventDefault();
                 const next = event.key === 'Home' ? span.start : event.key === 'End' ? grid.available.at(-1)! : move(lastAvailable(span.end), event.key === 'ArrowLeft' ? -1 : 1, span.start);
@@ -143,19 +139,21 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
             track.append(handle);
           }
         }
+        if (span.draft && draft?.editing !== undefined && !piece.outgoing) {
+          const remove = button('×', () => { if (draft?.editing !== undefined) removeSaved(draft.editing); });
+          remove.className = 'line-handle end line-delete'; remove.setAttribute('aria-label', 'Delete duration line'); track.append(remove);
+        }
         layer.append(track);
       }));
       editor.resume();
     });
-    if (draft) { start.value = String(draft.start); end.value = String(draft.end); }
-    save.disabled = !draft || draft.end < draft.start; cancel.disabled = !draft; remove.disabled = draft?.editing === undefined;
-    status.textContent = draft ? `Line from ${label(draft.start)} to ${label(draft.end)}. Save or choose an endpoint; Escape cancels.` : 'Saved lines are kept while an endpoint edit is pending.';
+    status.textContent = draft ? `Line from ${label(draft.start)} to ${label(draft.end)}. Choose an endpoint to save; Escape cancels. Delete removes a selected saved line.` : '';
   }
   render();
   return {
     spans: () => spans,
     cancel: () => { draft = null; render(); },
     reset: () => { spans = []; draft = null; render(); },
-    destroy: () => { lifecycle.abort(); controls.remove(); },
+    destroy: () => { lifecycle.abort(); status.remove(); },
   };
 }

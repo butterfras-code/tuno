@@ -27,13 +27,13 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function persist() { if (tempo.checkValidity()) options.preferences.bpm = tempo.valueAsNumber; options.preferences.metronome = metronome.checked; options.changed(); }
   tempo.addEventListener('change', persist); metronome.addEventListener('change', persist);
   const status = el('span', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-  const countInDisplay = el('div', 'count-in-display'); countInDisplay.setAttribute('role', 'group');
+  const countInDisplay = el('span', 'count-in-display'); countInDisplay.hidden = true; countInDisplay.setAttribute('role', 'group');
   let countInDots: HTMLElement[] = [];
   function renderCountIn(plan: Plan) {
     const clicks = plan.pulses.filter(p => p.countIn);
     countInDisplay.setAttribute('aria-label', `Count-in: ${clicks.length} ${pulseLabel()} beats; Ready, Go on the final two`);
     countInDots = clicks.map((click, index) => {
-      const item = el('div', 'count-in-beat');
+      const item = el('span', 'count-in-beat');
       item.append(el('span', 'count-in-dot', String(click.beat)));
       const cue = index === clicks.length - 2 ? 'Ready' : index === clicks.length - 1 ? 'Go' : '';
       item.append(el('span', 'count-in-cue', cue));
@@ -42,18 +42,18 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     });
     countInDisplay.replaceChildren(...countInDots);
   }
-  function clearCountIn() { countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
-  const pulse = el('div', 'pulse'); pulse.setAttribute('aria-hidden', 'true');
+  function clearCountIn() { countInDisplay.hidden = true; countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
+  const pulse = el('span', 'pulse'); pulse.hidden = true; pulse.setAttribute('aria-hidden', 'true');
   const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
   const pad = button(''); pad.className = 'pad'; pad.setAttribute('aria-label', 'Performance pad');
-  const padAction = el('span', 'pad-action', 'Start'); pad.append(padAction, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
-  const stop = button('Stop / Cancel', () => cancel('Stopped by learner')); stop.disabled = true;
+  const padAction = el('span', 'pad-action', 'Start'); pad.append(padAction, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
+  const stop = button('Stop', () => cancel('Stopped by learner')); stop.disabled = true;
   const download = button('Download timing evidence', () => {
     if (!result) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
     const link = el('a'); link.href = url; link.download = `rhythm-walk-${result.exercise.id}.json`; link.click(); URL.revokeObjectURL(url);
   }); download.hidden = true;
-  const actions = el('div', 'actions'); actions.append(stop, download);
+  const actions = el('div', 'pad-tools'); actions.append(stop);
   const review = el('section'); review.setAttribute('aria-label', 'Attempt review');
   const timing = createTimingPanel({
     audio: async () => { audio ??= new AudioContext(); await audio.resume(); return audio; },
@@ -69,17 +69,20 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   actions.append(calibrate);
   const help = el('div', 'performance-help');
   help.append(instructions, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
-  main.append(pad, actions, setup, review, dialog);
+  const surface = el('div', 'performance-surface'); surface.append(pad, actions);
+  main.append(surface, setup, review, dialog);
 
   function lock(active: boolean) {
     timing.setLocked(active);
     main.classList.toggle('active', active); options.busy(active);
     tempo.disabled = metronome.disabled = active;
-    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Tap / hold' : result ? 'Try again' : 'Start'; download.disabled = calibrate.disabled = active;
+    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Start'; download.disabled = calibrate.disabled = active;
   }
   function tick(time: number) {
     if (!transport) return;
     const phase = transport.capture.phase(time);
+    countInDisplay.hidden = phase !== 'count-in'; pulse.hidden = phase === 'count-in';
+    padAction.textContent = phase === 'count-in' ? 'Count In' : 'Tap / hold';
     const next = phase === 'count-in' ? 'Count-in — release before the start' : time >= transport.capture.plan.duration ? 'Performing — capturing final release' : 'Performing';
     if (status.textContent !== next) status.textContent = next;
     const pulses = transport.capture.plan.pulses;
@@ -120,11 +123,12 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function finish(record: AttemptRecord) {
     const correction = record.timingOffset ?? timing.consider(record);
     if (correction) record = { ...record, timingOffset: correction };
-    clearCountIn();
+    clearCountIn(); pulse.hidden = true;
     result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
     download.hidden = false;
     const evaluation = evaluateAttempt(record);
-    review.replaceChildren(el('h2', '', record.status === 'completed' ? 'Completed attempt' : 'Interrupted attempt'));
+    const evidence = el('details', 'timing-evidence'); evidence.append(el('summary', '', 'Timing evidence'), download);
+    review.replaceChildren(el('h2', '', record.status === 'completed' ? 'Completed attempt' : 'Interrupted attempt'), evidence);
     if (evaluation.status === 'interrupted') {
       status.textContent = 'Interrupted'; review.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
     }
@@ -225,7 +229,6 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   refreshExercise();
   return {
     section: main,
-    countInDisplay,
     help,
     cancel,
     start: begin,

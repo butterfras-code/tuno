@@ -69,7 +69,7 @@
     const saved = review.innerText; tempo.value = '120'; metro.checked = false;
     assert(review.innerText === saved, 'settings editing preserves review');
     document.querySelector('.tap-response .pad').click(); await wait(() => status().startsWith('Count-in'));
-    button('Stop / Cancel').click(); await wait(() => status() === 'Interrupted');
+    button('Stop').click(); await wait(() => status() === 'Interrupted');
     assert(review.innerText.includes('Stopped by learner') && !review.innerText.includes('matched attacks'), 'cancel not graded');
     checks.push('preserved result and explicit retry/cancel');
     }

@@ -20,7 +20,7 @@ try {
   const practice = async () => { await page.getByRole('link', { name: 'Back to Uno234', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ notation: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), lines: [...node.querySelectorAll('.duration-line:not(.draft-line)')].map(n => [n.style.cssText, n.dataset.incoming, n.dataset.outgoing]), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
   const setRule = async () => { await settings(); await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice(); };
-  const add = async (start, end) => { await page.getByLabel('Passage line start', { exact: true }).selectOption(String(start)); await page.getByLabel('Passage line end', { exact: true }).selectOption(String(end)); await button('Save duration line').tap(); };
+  const add = async (start, end) => { await anchors.nth(start).tap(); await anchors.nth(end).tap(); };
   const fixtures = [
     ['tie-within-beat', [0,2,4,6], [[0,1],[4,6]]],
     ['tie-across-beat', [0,2,4,6], [[0,2],[4,6]]],
@@ -80,7 +80,7 @@ try {
   await anchors.nth(6).tap(); await anchors.nth(8).tap();
   const saved = await snapshot();
   await button('Edit passage line 1: measure 1, beat 4 to measure 2, beat 1 offbeat').first().tap();
-  await page.getByLabel('Passage line end', { exact: true }).selectOption('10');
+  const pendingEnd = await anchors.nth(10).boundingBox(); await page.mouse.move(pendingEnd.x + pendingEnd.width / 2, pendingEnd.y + pendingEnd.height / 2);
   await page.keyboard.press('Escape'); assert.deepEqual(await snapshot(), saved);
   await button('Edit passage line 1: measure 1, beat 4 to measure 2, beat 1 offbeat').first().tap();
   await settings(); await practice(); assert.deepEqual(await snapshot(), saved, 'view change cancels draft');
@@ -97,9 +97,11 @@ try {
   await slots.nth(8).focus(); await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Escape'); await page.keyboard.up('Shift');
   assert.deepEqual(await snapshot(), keyboardSaved, 'keyboard cancellation restores full cross-measure span');
   await button('Edit passage line 1: measure 1, beat 4 to measure 2, beat 1 offbeat').first().tap();
-  await page.getByLabel('Passage line end', { exact: true }).selectOption('10'); await button('Save duration line').tap();
+  await anchors.nth(10).tap();
   await slots.nth(6).press('4'); await slots.nth(8).press('4'); await button('Check').tap();
   assert.match(await page.locator('.feedback').allTextContents().then(v => v.join(' ')), /Incorrect sustained continuation count.*Incorrectly extended|Incorrectly extended.*Incorrect sustained continuation count/s);
+  await button('Edit passage line 1: measure 1, beat 4 to measure 2, beat 2 offbeat').first().tap();
+  await button('Delete duration line').tap(); assert.equal(await page.locator('.passage-duration').count(), 0, 'selected passage line deletes directly');
   report.checks.push('Touch and Shift+arrow entry cross measure/system boundaries; Escape and navigation restore saved endpoints; targeted continuation/extended-line feedback');
   async function solveGenerated() {
     const source = await bars.evaluateAll(nodes => nodes.map(node => ({ meter: [4,4], events: [...node.querySelectorAll('g[data-start]')].map(mark => [mark.dataset.value, { ...(mark.dataset.kind === 'rest' ? { rest: true } : {}), ...(Number(mark.dataset.dots) ? { dots: Number(mark.dataset.dots) } : {}), ...(mark.dataset.tieNext === 'true' ? { tieNext: true } : {}) }]) })));
@@ -107,11 +109,9 @@ try {
     for (const [position, slot] of grid.slots.entries()) if (slot.attack || slot.onCount || slot.dottedInternal) {
       await slots.nth(position).focus(); await page.keyboard.press(slot.symbol);
     }
-    const external = await page.getByLabel('Passage line start', { exact: true }).count();
     for (const sound of grid.sustained) {
       const end = grid.available.filter(p => p >= sound.start && p <= sound.end).at(-1);
-      if (external) await add(sound.start, end);
-      else { await anchors.nth(sound.start).tap(); await anchors.nth(end).tap(); }
+      await add(sound.start, end);
     }
     for (const sound of grid.sounding.filter(s => s.rest)) {
       const required = grid.slots.flatMap((s, p) => p >= sound.start && p <= sound.end && (s.attack || s.onCount || s.dottedInternal) ? [p] : []);

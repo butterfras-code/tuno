@@ -22,14 +22,9 @@ try {
   async function solve(source) {
     const grid = passageGrid(source);
     for (const [p, slot] of grid.slots.entries()) if (slot.attack || slot.onCount || slot.dottedInternal) await slots.nth(p).press(slot.symbol);
-    const external = await page.getByLabel('Passage line start', { exact: true }).count();
     for (const sound of grid.sustained) {
       const end = grid.available.filter(p => p >= sound.start && p <= sound.end).at(-1);
-      if (external) {
-        await page.getByLabel('Passage line start', { exact: true }).selectOption(String(sound.start));
-        await page.getByLabel('Passage line end', { exact: true }).selectOption(String(end));
-        await button('Save duration line').tap();
-      } else { await anchors.nth(sound.start).tap(); await anchors.nth(end).tap(); }
+      await anchors.nth(sound.start).tap(); await anchors.nth(end).tap();
     }
     for (const sound of grid.sounding.filter(s => s.rest)) {
       const end = grid.slots.flatMap((s, p) => p >= sound.start && p <= sound.end && (s.attack || s.onCount || s.dottedInternal) ? [p] : []).at(-1);
@@ -61,7 +56,7 @@ try {
         assert.equal(await bars.nth(1).locator('.passage-duration[data-incoming="true"]').count(), 1);
         const lineAnswer = await snapshot();
         await button('Edit passage line 2: measure 1, count 4 to measure 2, count 3').first().tap();
-        await page.getByLabel('Passage line end', { exact: true }).selectOption('9');
+        const pendingEnd = await anchors.nth(9).boundingBox(); await page.mouse.move(pendingEnd.x + pendingEnd.width / 2, pendingEnd.y + pendingEnd.height / 2);
         await page.keyboard.press('Escape'); assert.equal(await page.locator('.draft-line').count(), 0); assert.deepEqual(await snapshot(), lineAnswer, 'cancellation restores a cross-bar 6/8 line');
         await page.screenshot({ path: `${output}/${f.id}-original-${width}.png`, fullPage: true });
         await page.setViewportSize({ width: 320, height: 1000 }); await check();

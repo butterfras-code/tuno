@@ -78,6 +78,7 @@ help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', S
 help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. Next exercise starts a new score and clears both responses.'),
   el('p', '', 'Measures fit the available width. Counts restart at each barline. Use one pair of parentheses per written rest, and duration lines for sustained notes and rests.'),
+  el('p', '', 'Duration lines: tap a start anchor, then the last covered count. Use Shift + arrows on the keyboard. Select a saved line to change its endpoint or delete it with × or Delete. Escape cancels an edit.'),
   el('p', '', 'In 6/8, write every eighth count: 1 2 3 | 4 5 6. Performance follows two dotted-quarter pulses.'),
   el('p', '', 'Preferences are saved in this browser. Exercise settings apply on Next exercise. Reloading starts with blank responses.'));
 const passageFeedback = el('div', 'passage-feedback');
@@ -123,12 +124,11 @@ function newExercise(returnToPractice = false) {
 }
 const next = button('Next exercise', () => newExercise(Boolean(practiceView.hidden)));
 const reset = button('Clear', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
-actions.append(retry, check);
+actions.append(check);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 setup.append(sharedActions);
-writeResponse.append(summary, passageFeedback);
+writeResponse.append(retry, summary, passageFeedback);
 help.append(performance.help);
-passageScroll.before(performance.countInDisplay);
 passageScroll.after(performance.section);
 practiceView.append(banner, showCountsField, passage, writeResponse);
 const settings = createSettingsPage({
@@ -188,7 +188,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
     const row = el('div', 'score-actions');
     if (index === 0) row.append(reset);
     if (index === editors.length - 1) row.append(actions);
-    editor.card.append(row);
+    editor.card.querySelector('.answer-area')!.append(row);
   });
   tieNotation = renderPassageTies(measures, passageStrip);
   if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
@@ -238,7 +238,6 @@ function updateResponseView() {
   const writing = preferences.mode !== 'tap';
   writeResponse.hidden = !writing || performing;
   performance.section.hidden = preferences.mode === 'write';
-  performance.countInDisplay.hidden = preferences.mode === 'write';
   showCountsField.hidden = preferences.mode !== 'both';
   passage.querySelectorAll<HTMLElement>('.score-actions').forEach(row => { row.hidden = !writing || performing; });
   const hideCounts = !writing || (performing && !preferences.showCounts);
@@ -250,7 +249,6 @@ function updateResponseView() {
     else { glyph.setAttribute('aria-label', `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
   });
   passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing; });
-  passage.querySelectorAll<HTMLElement>('.passage-line-controls').forEach(control => { control.hidden = !writing || performing; });
   decoratePerformance(preferences.mode === 'tap' || (preferences.mode === 'both' && !performing) ? performance.record() : null);
   tieNotation?.refresh();
 }
