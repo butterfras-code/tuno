@@ -10,7 +10,7 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   const lifecycle = new AbortController();
   let spans: Span[] = [];
   let draft: (Span & { editing?: number; keyboard?: boolean }) | null = null;
-  const label = (position: number) => `measure ${Math.floor(position / 8) + 1}, ${grid.slots[position]!.label}`;
+  const label = (position: number) => `measure ${grid.slots[position]!.measure + 1}, ${grid.slots[position]!.label}`;
   const controls = el('section', 'passage-line-controls'); controls.setAttribute('aria-label', 'Passage duration line editor');
   const status = el('p', 'setting-hint'); status.setAttribute('role', 'status');
   const choices = grid.available.map(position => ({ value: String(position), label: label(position) }));
@@ -33,7 +33,7 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
     if (!card) return null;
     const tick = [...card.querySelectorAll('.duration-anchor')].indexOf(target);
     const count = [...card.querySelectorAll('.count-slot')].indexOf(target);
-    return (tick < 0 && count < 0) ? null : (Number(card.dataset.measure) - 1) * 8 + Math.max(tick, count);
+    return (tick < 0 && count < 0) ? null : grid.offsets[Number(card.dataset.measure) - 1]! + Math.max(tick, count);
   }
   function tap(position: number) {
     if (draft) { draft.end = position; commit(); }
@@ -59,7 +59,7 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   root.addEventListener('pointermove', event => {
     if (!draft || draft.keyboard || event.pointerType !== 'mouse' || !(event.target as Element).closest('.answer-area')) return;
     const nearest = grid.available.reduce((best, position) => {
-      const anchor = editors[Math.floor(position / 8)]!.card.querySelectorAll('.duration-anchor')[position % 8]!;
+      const anchor = editors[grid.slots[position]!.measure]!.card.querySelectorAll('.duration-anchor')[grid.slots[position]!.index]!;
       const bounds = anchor.getBoundingClientRect();
       const distance = Math.hypot(bounds.x + bounds.width / 2 - event.clientX, bounds.y + bounds.height / 2 - event.clientY);
       return distance < best.distance ? { position, distance } : best;
@@ -74,7 +74,8 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
     if (event.key === 'Escape' && draft) { event.preventDefault(); event.stopImmediatePropagation(); draft = null; render(); return; }
     if (draft?.keyboard && !['Shift', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) { draft = null; render(); }
     if (position === null || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.key === 'Shift' || (event.shiftKey && ['ArrowLeft', 'ArrowRight'].includes(event.key))) {
+    // Shift belongs to rest entry while a pair is open (including typing `)`).
+    if ((event.key === 'Shift' || (event.shiftKey && ['ArrowLeft', 'ArrowRight'].includes(event.key))) && !editors.some(editor => editor.editingRest())) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (!draft) {
         editors.forEach(e => e.suspend());
@@ -83,10 +84,17 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
       }
       if (event.key !== 'Shift') {
         draft.end = move(draft.end, event.key === 'ArrowLeft' ? -1 : 1, draft.start);
-        editors[Math.floor(draft.end / 8)]!.focusPosition(draft.end % 8);
+        editors[grid.slots[draft.end]!.measure]!.focusPosition(grid.slots[draft.end]!.index);
       }
       render();
     } else if (draft && event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); draft.end = position; commit(); }
+  }, { capture: true, signal: lifecycle.signal });
+  // Rendering an edited line replaces its focused button; Escape must still
+  // cancel when focus has consequently returned to the document body.
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && draft) {
+      event.preventDefault(); event.stopImmediatePropagation(); draft = null; render();
+    }
   }, { capture: true, signal: lifecycle.signal });
   document.addEventListener('keyup', event => {
     if (event.key === 'Shift' && draft?.keyboard) {
@@ -106,15 +114,15 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
       return lane;
     });
     editors.forEach((editor, measure) => {
-      const pieces = spans.flatMap(span => spanPieces(span, editors.length)).filter(p => p.measure === measure);
+      const pieces = spans.flatMap(span => spanPieces(span, grid.grids.map(g => g.slots.length))).filter(p => p.measure === measure);
       editor.projectLines(pieces.map(p => ({ start: p.incoming ? -1 : p.start, end: p.end })));
       const area = editor.card.querySelector<HTMLElement>('.answer-area')!;
       area.style.paddingBottom = `${Math.max(0, lanes.length - 1) * 44}px`;
       const layer = editor.card.querySelector('.lines')!; layer.replaceChildren();
-      all.forEach((span, index) => spanPieces(span, editors.length).filter(p => p.measure === measure).forEach(piece => {
+      all.forEach((span, index) => spanPieces(span, grid.grids.map(g => g.slots.length)).filter(p => p.measure === measure).forEach(piece => {
         const track = el('div', `duration-line passage-duration${span.draft ? ' draft-line' : ''}`);
         track.dataset.line = String(index); track.dataset.incoming = String(piece.incoming); track.dataset.outgoing = String(piece.outgoing);
-        const x1 = piece.incoming ? 0 : slotX(piece.start, 8), x2 = piece.outgoing ? 100 : slotX(piece.end, 8);
+        const x1 = piece.incoming ? 0 : slotX(piece.start, grid.grids[measure]!.slots.length), x2 = piece.outgoing ? 100 : slotX(piece.end, grid.grids[measure]!.slots.length);
         track.style.left = `${x1}%`; track.style.width = `${x2 - x1}%`; track.style.top = `calc(var(--anchor-y) + ${laneFor[index]! * 44}px)`;
         if (!span.draft) {
           const body = button('', () => { draft = { ...spans[index]!, end: lastAvailable(spans[index]!.end), editing: index }; render(); });

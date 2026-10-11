@@ -1,3 +1,5 @@
+import { meters } from './meter.ts';
+import type { CountMeter } from './meter.ts';
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { practiceFixtures } from './fixtures.ts';
 import type { DottedQuarterConvention } from './evaluation.ts';
@@ -80,7 +82,7 @@ export function createSettingsPage(callbacks: {
   const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
   offbeat.dataset.setting = 'count-system';
   const systemField = field('Counting system', offbeat);
-  systemField.append(el('p', 'setting-hint', 'Either + or & enters the chosen offbeat symbol. Changing it preserves your answer.'));
+  systemField.append(el('p', 'setting-hint', 'In simple meters, either + or & enters the chosen offbeat symbol. Changing it preserves your answer. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
   const fixture = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], callbacks.fixture);
   fixture.dataset.setting = 'review-exercise';
   const fixtureField = field('Practice exercise', fixture);
@@ -89,7 +91,7 @@ export function createSettingsPage(callbacks: {
   const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
   convention.dataset.setting = 'dotted-quarter-convention';
   const conventionField = field('Dotted-quarter internal &', convention);
-  const conventionHint = el('p', 'setting-hint', 'Applies when an exercise contains a dotted quarter. Your answer stays intact; check again after changing the rule.');
+  const conventionHint = el('p', 'setting-hint', 'Applies to dotted-quarter sounding durations in simple meters. In 6/8 all six numbers are required; this preference has no effect. Your answer stays intact; check again after changing the rule.');
   conventionHint.id = 'settings-convention-hint'; convention.setAttribute('aria-describedby', conventionHint.id); conventionField.append(conventionHint);
   const placement = select(linePlacementOptions, value => callbacks.placement(value as LinePlacement));
   placement.dataset.setting = 'line-anchor';
@@ -106,6 +108,10 @@ export function createSettingsPage(callbacks: {
   let generation = defaultGeneration();
   const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(); });
   length.value = '2'; length.dataset.setting = 'exercise-length';
+  const meter = select(meters.map(value => ({ value, label: value })), value => { generation = { ...generation, meter: value as CountMeter }; generationChanged(); });
+  meter.value = generation.meter!; meter.dataset.setting = 'meter';
+  const meterField = field('Exercise meter', meter);
+  meterField.append(el('p', 'setting-hint', 'Applies on Next/New Exercise; keeps the current exercise and answer. In 6/8, count numbered eighths 1–6, grouped 123 | 456; the performance pulse remains two dotted quarters. Half rests need unintuitive notation because they cross a group boundary.'));
   const lengthField = field('Exercise length', length);
   lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
   const vocabulary = el('fieldset', 'settings-options active-ingredients');
@@ -118,12 +124,12 @@ export function createSettingsPage(callbacks: {
   const notationOption = el('label', 'setting-option');
   const notationToggle = el('input'); notationToggle.type = 'checkbox'; notationToggle.dataset.setting = 'unintuitive-notation';
   notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
-  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in 4/4 require this option and their ingredient checkbox. Applies on Next exercise; keeps your answer.'));
+  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters require this option and their ingredient checkbox. Applies on Next exercise; keeps your answer.'));
   notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
   const patternFields = el('div');
   for (const [key, label, hint] of [
     ['ties', 'Ties', 'Permit one chain of 2–3 enabled written note segments, including across barlines. Continuations are not attacks.'],
-    ['syncopation', 'Syncopation', 'Permit at most one offbeat attack per measure sustained through the following beat. Offbeat eighths ending at the beat remain available when off.'],
+    ['syncopation', 'Syncopation', 'Permit at most one off-pulse attack per measure sustained across the next pulse: a quarter in simple meters, a dotted quarter in 6/8. Sounds ending at that pulse remain available when off.'],
   ] as const) {
     const option = el('label', 'setting-option'); const toggle = el('input'); toggle.type = 'checkbox'; toggle.dataset.setting = key;
     option.append(toggle, el('span', '', label));
@@ -137,8 +143,8 @@ export function createSettingsPage(callbacks: {
     generationStatus.textContent = issue ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
     callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
   }
-  generationStatus.textContent = 'Fixed 4/4. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
-  activeControls.append(lengthField, vocabulary, notationField, patternFields, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
+  generationStatus.textContent = '4/4 by default. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
+  activeControls.append(meterField, lengthField, vocabulary, notationField, patternFields, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
   restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
@@ -158,7 +164,7 @@ export function createSettingsPage(callbacks: {
   browse.append(expand);
   page.append(intro, savedNote, settingsActions, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
   for (const group of settingsGroups) {
-    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length'].includes(setting.id));
+    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
     section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
     const summary = el('summary');
@@ -171,5 +177,5 @@ export function createSettingsPage(callbacks: {
   }
   const back = el('a', 'control control--primary', 'Back to Count Writing'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
-  return { page, sync: (fixtureId: string, value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol) => { offbeat.value = symbol; fixture.value = fixtureId; convention.value = value; placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance; } };
+  return { page, sync: (fixtureId: string, value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false) => { offbeat.disabled = compound; convention.disabled = compound; offbeat.value = symbol; fixture.value = fixtureId; convention.value = value; placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance; } };
 }

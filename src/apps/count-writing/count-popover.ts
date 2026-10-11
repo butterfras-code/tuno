@@ -5,6 +5,7 @@ import type { CountSymbol } from './evaluation.ts';
 
 export function createCountPopover(actions: {
   id?: string;
+  symbols?: readonly CountSymbol[];
   display: (symbol: CountSymbol) => string;
   keydown: (event: KeyboardEvent) => boolean;
   select: (tick: number) => void;
@@ -26,7 +27,12 @@ export function createCountPopover(actions: {
   const header = el('div', 'count-popover-header'); header.append(heading, close);
   const beats = el('div', 'count-popover-row'); beats.setAttribute('role', 'group'); beats.setAttribute('aria-label', 'Beat counts');
   const subdivisions = el('div', 'count-popover-row'); subdivisions.setAttribute('role', 'group'); subdivisions.setAttribute('aria-label', 'Subdivision counts');
-  for (const symbol of alphabet) {
+  if (actions.symbols?.length === 6) {
+    beats.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    beats.setAttribute('aria-label', 'Numbered eighth counts');
+    subdivisions.hidden = true;
+  }
+  for (const symbol of actions.symbols ?? alphabet) {
     const choice = button(symbol, () => submit(symbol));
     choice.className = 'count-popover-symbol'; choice.dataset.symbol = symbol;
     choice.setAttribute('aria-label', `Enter count ${symbol}`);
@@ -100,7 +106,16 @@ export function createCountPopover(actions: {
   });
   listen(document, 'pointercancel', event => { if (gesture?.id === event.pointerId) dismiss(); });
   listen(document, 'pointerdown', event => {
+    ignoredClick = null; // A new gesture must remain usable after opening the popover.
     if (!popup.hidden && !popup.contains(event.target as Node)) dismiss();
+  }, true);
+  // Opening can scroll the page before touch release. Suppress the gesture's
+  // synthetic click even if scrolling moves a duration anchor under the finger.
+  listen(document, 'click', event => {
+    if (!ignoredClick || performance.now() > ignoredClick.until || event.detail === 0 ||
+        (event instanceof PointerEvent && event.pointerType === 'mouse')) return;
+    ignoredClick = null;
+    event.preventDefault(); event.stopImmediatePropagation();
   }, true);
   listen(document, 'keydown', event => {
     if (popup.hidden) return;

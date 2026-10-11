@@ -93,7 +93,7 @@ test('prototype guard separates domain support from rendering and counting suppo
   const sixteenths = bar(Array.from({ length:16 }, () => ['S'] as const));
   assert.doesNotThrow(() => deriveMeasure(sixteenths));
   assert.throws(() => countGrid(sixteenths), /currently supports/);
-  assert.throws(() => countGrid({ meter:[6,8], events:[['H',{dots:1}]] }), /currently supports/);
+  assert.throws(() => countGrid({ meter:[6,8], events:[['Q',{dots:2}], ['E',{dots:1}], ['E']] }), /currently supports/);
 });
 test('counting policy follows notation, not fixture IDs, including shifted dotted quarters', () => {
   const source = bar([['Q'], ['Q',{ dots:1 }], ['E'], ['Q']]);

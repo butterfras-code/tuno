@@ -59,7 +59,7 @@ test('feedback distinguishes missing attack, continuation count and extended lin
 });
 test('visual pieces and endpoint selection retain continuous duration at barlines and wraps', () => {
   const source = fixture('tie-wrap'), grid = passageGrid(source);
-  assert.deepEqual(spanPieces({ start: 6, end: 9 }, 2), [
+  assert.deepEqual(spanPieces({ start: 6, end: 9 }, [8, 8]), [
     { measure: 0, start: 6, end: 7, incoming: false, outgoing: true },
     { measure: 1, start: 0, end: 1, incoming: true, outgoing: false },
   ]);

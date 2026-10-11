@@ -2,7 +2,7 @@ import { countGrid } from './grid.ts';
 import { passageGrid } from './passage.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-export const alphabet = ['1', '2', '3', '4', '&', 'e', 'a'] as const;
+export const alphabet = ['1', '2', '3', '4', '5', '6', '&', 'e', 'a'] as const;
 export type CountSymbol = typeof alphabet[number] | '';
 export interface Span { start: number; end: number }
 export interface CountAnswer { symbols: CountSymbol[]; spans: Span[]; rests: Span[] }
@@ -30,16 +30,16 @@ function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConv
   for (let tick = 0; tick < grid.slots.length; tick++) {
     const slot = grid.slots[tick]!;
     const { dottedInternal } = slot;
-    const required = slot.onset || slot.onBeat || (dottedInternal && dottedConvention === 'required');
+    const required = slot.onset || slot.onCount || (dottedInternal && dottedConvention === 'required');
     const symbol = answer.symbols[tick];
     if ((required || symbol) && symbol !== slot.symbol) counts.issues.push(`Check the count at ${slot.label}.`);
     if (!required && symbol && !(dottedInternal && dottedConvention === 'optional')) countReview = true;
 
   }
-  const sustained = grid.events.filter(e => grid.slots.some(s => s.event === e && s.onBeat && !s.onset));
+  const sustained = grid.events.filter(e => grid.slots.some(s => s.event === e && s.onCount && !s.onset));
   const expectedRests = grid.events.filter(e => e.kind === 'rest').map(e => ({
     start: e.startSlot,
-    end: grid.slots.flatMap((slot, tick) => slot.event === e && (slot.onset || slot.onBeat || (slot.dottedInternal && dottedConvention === 'required') || Boolean(answer.symbols[tick])) ? [tick] : []).at(-1)!,
+    end: grid.slots.flatMap((slot, tick) => slot.event === e && (slot.onset || slot.onCount || (slot.dottedInternal && dottedConvention === 'required') || Boolean(answer.symbols[tick])) ? [tick] : []).at(-1)!,
   }));
   const groupedRestsMatch = expectedRests.length === answer.rests.length && expectedRests.every(expected =>
     answer.rests.some(group => group.start === expected.start && group.end === expected.end));
@@ -58,8 +58,8 @@ function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConv
   const wrongLineCount = answer.spans.length !== sustained.length || sustained.some(e => answer.spans.filter(s => s.start >= e.startSlot && s.end < e.endSlot).length !== 1);
   const wrongAnchor = answer.spans.some(s => sustained.some(e => s.start >= e.startSlot && s.end < e.endSlot && s.start !== e.startSlot));
   const invalidSpan = answer.spans.some(s => !Number.isInteger(s.start) || !Number.isInteger(s.end) || s.start < 0 || s.end >= grid.slots.length || s.start > s.end);
-  spans.verdict = exact ? 'correct' : invalidSpan || outsideSustain || wrongLineCount || wrongAnchor ? 'revise' : 'provisional';
-  if (spans.verdict === 'revise') spans.issues = ['Start each duration line at its note/rest onset and keep it within that note or rest. Use one line per sustained note or rest; ending positions remain provisional.'];
+  spans.verdict = exact ? 'correct' : grid.policy.compound || invalidSpan || outsideSustain || wrongLineCount || wrongAnchor ? 'revise' : 'provisional';
+  if (spans.verdict === 'revise') spans.issues = [grid.policy.compound ? 'Use one duration line per sustained note/rest from its onset through its last numbered count before release.' : 'Start each duration line at its note/rest onset and keep it within that note or rest. Use one line per sustained note or rest; ending positions remain provisional.'];
   if (!exact) {
     sustained.forEach(event => {
       if (!answer.spans.some(span => span.start === event.startSlot && span.end === event.endSlot - 1))
@@ -85,12 +85,12 @@ export function evaluatePassage(measures: readonly RhythmMeasure[], answers: rea
   const results = measures.map((measure, index) => evaluateMeasure(measure, answers[index]!, convention));
   if (measures.some(m => m.events.some(e => e[1]?.tieNext)) || passageSpans) {
     const grid = passageGrid(measures);
-    const lines = passageSpans ?? answers.flatMap((answer, measure) => answer.spans.map(span => ({ start: span.start + measure * 8, end: span.end + measure * 8 })));
+    const lines = passageSpans ?? answers.flatMap((answer, measure) => answer.spans.map(span => ({ start: span.start + grid.offsets[measure]!, end: span.end + grid.offsets[measure]! })));
     results.forEach(result => { result.counts = { verdict: 'correct', issues: [] }; result.spans = { verdict: 'correct', issues: [] }; });
     grid.slots.forEach(slot => {
       const counts = results[slot.measure]!.counts;
       const symbol = answers[slot.measure]!.symbols[slot.index];
-      const required = slot.attack || slot.onBeat || (slot.dottedInternal && convention === 'required');
+      const required = slot.attack || slot.onCount || (slot.dottedInternal && convention === 'required');
       if ((required || symbol) && symbol !== slot.symbol) {
         const reason = slot.attack && !slot.sound.rest ? 'attack count' : !slot.attack && !slot.sound.rest ? 'sustained continuation count' : 'rest count';
         counts.issues.push(`${symbol ? 'Incorrect' : 'Missing'} ${reason} at ${slot.label}${slot.sound.tied && !slot.attack ? '; this is a continuation, not a new attack' : ''}.`);
@@ -107,17 +107,20 @@ export function evaluatePassage(measures: readonly RhythmMeasure[], answers: rea
     };
     grid.sustained.forEach(sound => {
       const anchored = lines.filter(line => line.start === sound.start);
-      const measure = Math.floor(sound.start / 8);
+      const measure = grid.slots[sound.start]!.measure;
       const label = grid.slots[sound.start]!.label;
       if (anchored.length !== 1) issue(measure, `Use one continuous duration line at ${label}${sound.tied ? ' for the entire tied chain' : ''}.`);
-      else if (anchored[0]!.end !== sound.end && anchored[0]!.end >= sound.start && anchored[0]!.end < sound.end) issue(measure, `Review the duration endpoint at ${label}; the trial line continues through measure ${Math.floor(sound.end / 8) + 1}, ${grid.slots[sound.end]!.label}.`, 'provisional');
+      else if (anchored[0]!.end !== sound.end && anchored[0]!.end >= sound.start && anchored[0]!.end < sound.end) {
+        const compound = grid.grids[measure]!.policy.compound;
+        issue(measure, `${compound ? 'Complete' : 'Review'} the duration line at ${label}; ${compound ? 'it must continue' : 'the trial line continues'} through measure ${grid.slots[sound.end]!.measure + 1}, ${grid.slots[sound.end]!.label}.`, compound ? 'revise' : 'provisional');
+      }
     });
     lines.forEach(line => {
       const sound = grid.sustained.find(s => s.start === line.start);
-      const measure = Math.max(0, Math.min(measures.length - 1, Math.floor(line.start / 8) || 0));
+      const measure = Math.max(0, Math.min(measures.length - 1, grid.slots[line.start]?.measure ?? 0));
       if (!Number.isInteger(line.start) || !Number.isInteger(line.end) || line.start < 0 || line.end >= grid.slots.length || line.end < line.start) issue(measure, 'Duration line leaves the exercise or has invalid endpoints.');
       else if (!sound) issue(measure, grid.slots[line.start]!.attack ? `Remove the extra duration line at ${grid.slots[line.start]!.label}; this note/rest does not require a line.` : `Start the duration line at the sounding attack/rest onset, not a tied continuation (${grid.slots[line.start]!.label}).`);
-      else if (line.end > sound.end) issue(measure, `Incorrectly extended duration line at ${grid.slots[line.start]!.label}: stop before the next attack or rest, in measure ${Math.floor(sound.end / 8) + 1}.`);
+      else if (line.end > sound.end) issue(measure, `Incorrectly extended duration line at ${grid.slots[line.start]!.label}: stop before the next attack or rest, in measure ${grid.slots[sound.end]!.measure + 1}.`);
     });
   }
   results.forEach((result, index) => {

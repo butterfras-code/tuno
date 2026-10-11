@@ -117,6 +117,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   }
   const countPopover = createCountPopover({
     id: `count-popover-${number}`,
+    symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a'],
     select: tick => { selected = tick; refresh(); slots[tick]!.focus({ preventScroll: true }); },
     label: () => `Count for ${positionLabel(selected)}`,
     anchor: () => {
@@ -542,6 +543,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     mount: () => reset(false),
     getAnswer: () => answer,
     selected: () => selected,
+    editingRest: () => restStart !== null,
     focusPosition: (position: number) => focusSlot(position),
     showResult: (value: Evaluation) => { result = value; changed = false; refresh(); },
     projectLines: (spans: Span[]) => { answer.spans = spans; refresh(); },

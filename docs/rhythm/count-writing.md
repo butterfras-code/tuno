@@ -1,3 +1,5 @@
+Current implementation supports [2/4, 3/4, 4/4 and 6/8](meters.md), including fixed six-number 6/8 counting and separate dotted-quarter pulses. This supersedes earlier meter-support limitations in this planning record.
+
 # Count Writing: first-release plan
 
 Updated 2026-10-10. Status: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). The [ties and syncopation slice](ties-syncopation.md) adds separate default-off controls, sounding-chain grading and duration entry across barlines and visual systems. Grading endpoint conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.

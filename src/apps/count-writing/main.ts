@@ -37,7 +37,7 @@ const pageTitle = el('h1', '', 'Count Writing'); pageTitle.id = 'page-title'; pa
 const subtitle = el('p', 'subtitle', 'Read, write, check, and revise.');
 title.append(el('p', 'eyebrow', 'tUno · Count practice'), pageTitle, subtitle); header.append(title, mascot);
 const practiceView = el('section'); practiceView.id = 'practice-view';
-const banner = el('p', 'review-note', 'Open entry · 4/4. Counting conventions and duration-line endpoints retain their teacher-review options.');
+const banner = el('p', 'review-note', 'Open entry. Counting conventions and duration-line endpoints retain their teacher-review options.');
 const exerciseSummary = el('p'); exerciseSummary.setAttribute('role', 'status');
 const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId;
@@ -94,7 +94,7 @@ const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#setti
 main.append(header, nav, practiceView, settings.page); app.append(main);
 function chooseFixture(id: string) {
   if (id === fixtureId) return;
-  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(fixtureId, dottedConvention, presentation, offbeat); return; }
+  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(fixtureId, dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8); return; }
   fixtureId = id; picker.value = id;
   focusNewRhythm = Boolean(practiceView.hidden);
   loadExercise(id === 'generated' ? generateExercise(generation) : practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
@@ -120,15 +120,18 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean) {
   });
   tieNotation = renderPassageTies(measures, passageStrip);
   if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
-  exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · 4/4`;
+  exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
   summary.textContent = ''; retry.hidden = true;
+  const compound = measures[0]!.meter[1] === 8;
+  banner.textContent = compound ? '6/8 · Count every eighth 1 2 3 | 4 5 6. Two dotted-quarter pulses per bar. Every sustained note/rest requires a line.' : `${measures[0]!.meter.join('/')} · Count quarter beats and eighth offbeats. Counts restart at each barline.`;
+  convention.disabled = compound;
   updateEditors();
   if (focus) editors[0]?.focus();
 }
 function updateEditors() {
   lineEditor?.cancel();
   editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention));
-  settings.sync(fixtureId, dottedConvention, presentation, offbeat);
+  settings.sync(fixtureId, dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8);
 }
 function showPage(focus = true) {
   lineEditor?.cancel();

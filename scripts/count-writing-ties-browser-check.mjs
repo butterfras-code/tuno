@@ -62,6 +62,18 @@ try {
     }
   }
   report.checks.push('All focused tied fixtures graded correctly on desktop and 320px; wrapped arcs/lines and wrap-independent grading; Check/Retry preservation');
+  await goto('tie-rests');
+  await slots.nth(0).focus();
+  await page.keyboard.down('Shift'); await page.keyboard.press('('); await page.keyboard.up('Shift');
+  await page.keyboard.down('Shift'); await page.keyboard.press(')'); await page.keyboard.up('Shift');
+  assert.equal(await page.locator('.rest-group[data-start="0"][data-end="0"]').count(), 1, 'physical Shift used for closing parentheses preserves the open rest');
+  await page.getByRole('button', { name: 'Edit rest parentheses at measure 1, beat 1', exact: true }).click();
+  await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight'); await page.keyboard.up('Shift');
+  assert.equal(await page.locator('.draft-line').count(), 0, 'Shift+arrow continues editing the rest rather than starting a duration line');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.rest-group[data-start="0"][data-end="0"]').count(), 1, 'cancelling a shifted rest edit restores its saved pair');
+  assert.equal(await page.locator('.passage-duration').count(), 0, 'rest entry never commits a duration line');
+  report.checks.push('Physical Shift+parenthesis closes rests in tied exercises; shifted rest navigation and cancellation preserve saved groups');
   await goto('tie-wrap'); await setRule();
   // Two-touch placement crosses a wrapped barline, and endpoint cancellation retains the saved line.
   await anchors.nth(6).tap(); await anchors.nth(8).tap();
@@ -91,7 +103,7 @@ try {
   async function solveGenerated() {
     const source = await bars.evaluateAll(nodes => nodes.map(node => ({ meter: [4,4], events: [...node.querySelectorAll('g[data-start]')].map(mark => [mark.dataset.value, { ...(mark.dataset.kind === 'rest' ? { rest: true } : {}), ...(Number(mark.dataset.dots) ? { dots: Number(mark.dataset.dots) } : {}), ...(mark.dataset.tieNext === 'true' ? { tieNext: true } : {}) }]) })));
     const grid = passageGrid(source);
-    for (const [position, slot] of grid.slots.entries()) if (slot.attack || slot.onBeat || slot.dottedInternal) {
+    for (const [position, slot] of grid.slots.entries()) if (slot.attack || slot.onCount || slot.dottedInternal) {
       await slots.nth(position).focus(); await page.keyboard.press(slot.symbol);
     }
     const external = await page.getByLabel('Passage line start', { exact: true }).count();
@@ -101,7 +113,7 @@ try {
       else { await anchors.nth(sound.start).tap(); await anchors.nth(end).tap(); }
     }
     for (const sound of grid.sounding.filter(s => s.rest)) {
-      const required = grid.slots.flatMap((s, p) => p >= sound.start && p <= sound.end && (s.attack || s.onBeat || s.dottedInternal) ? [p] : []);
+      const required = grid.slots.flatMap((s, p) => p >= sound.start && p <= sound.end && (s.attack || s.onCount || s.dottedInternal) ? [p] : []);
       const end = required.at(-1);
       await slots.nth(sound.start).focus(); await page.keyboard.press('(');
       for (const _ of grid.available.filter(p => p > sound.start && p <= end)) await page.keyboard.press('ArrowRight');

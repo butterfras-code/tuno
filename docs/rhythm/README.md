@@ -1,6 +1,8 @@
 # Rhythm activities: current direction
 
-Updated 2026-10-10. Count Writing now has generated 4/4 practice with two measures by default and a configurable length of 1–4. Ties and offbeat sustained attacks are available as separate opt-in controls, both off by default; see [their counting rules, fixtures and settings](ties-syncopation.md). See [practice-loop behavior and validation](practice-loop.md), and the earlier [prototype review](prototype.md).
+Updated 2026-10-10. Count Writing now has generated 2/4, 3/4, 4/4 and 6/8 practice (4/4 default) with two measures by default and a configurable length of 1–4. Ties and offbeat sustained attacks are available as separate opt-in controls, both off by default; see [their counting rules, fixtures and settings](ties-syncopation.md). See [practice-loop behavior and validation](practice-loop.md), and the earlier [prototype review](prototype.md).
+
+See [meter counting, grouping, pulse, rest spelling and explicit answers](meters.md).
 
 ## Read this first
 
@@ -39,6 +41,8 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Show consecutive measures in one staff passage; default to readable rest placement. | Quarter/half rests start on whole beats, including half rests on beat 2; dotted-quarter rests in 4/4 and offbeat longer rests require an explicit unintuitive-notation opt-in. The canonical model remains unrestricted by this practice policy. |
 
 | 2026-10-10 | Add bounded, opt-in ties and syncopation in 4/4. | One sounding attack/line per tied chain; beat counts remain required, dotted-quarter policy follows total sounding duration, and system breaks do not affect grading. See [rules](ties-syncopation.md). |
+
+| 2026-10-10 | Add 2/4, 3/4, 4/4 and 6/8; retain 4/4 and two-bar defaults. | Six numbered eighths in 6/8 remain separate from its two dotted-quarter pulses; beams and readable rests expose 123 / 456. Exact numbered duration endpoints and pulse-relative syncopation are defined in [meter decisions](meters.md). |
 
 ## Shared foundation and future work
 

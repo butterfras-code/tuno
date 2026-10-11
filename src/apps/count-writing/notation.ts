@@ -9,14 +9,14 @@ function node(tag: string, attrs: Record<string, string | number>) {
 }
 export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage: { first: boolean; last: boolean } = { first: true, last: true }) {
   const grid = countGrid(measure);
-  const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${label}`, class: 'notation' });
+  const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `${measure.meter.join("/")} rhythm: ${label}`, class: 'notation' });
   const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
   svg.append(node('line', { x1: passage.first ? 80 : 0, x2: passage.last ? 798 : 800, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of passage.first ? [80, passage.last ? 798 : 800] : [passage.last ? 798 : 800]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': passage.last && bx !== 80 ? 4 : 2 }));
   if (passage.last) svg.append(node('line', { x1: 790, x2: 790, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
   if (passage.first) for (const y of [94, 122]) {
     const text = node('text', { x: 46, y, 'font-size': 34, 'font-family': 'serif', 'font-weight': 'bold', 'text-anchor': 'middle' });
-    text.textContent = '4'; svg.append(text);
+    text.textContent = String(measure.meter[y === 94 ? 0 : 1]); svg.append(text);
   }
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
@@ -34,9 +34,9 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
       group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
       if (event.written[0] === 'E') {
         const previous = grid.events[index - 1], next = grid.events[index + 1];
-        const pairedNext = next?.written[0] === 'E' && next.kind === 'note' && grid.slots[event.startSlot]!.onBeat && next.startSlot === event.startSlot + 1;
-        const pairedPrevious = previous?.written[0] === 'E' && previous.kind === 'note' && grid.slots[previous.startSlot]!.onBeat && event.startSlot === previous.startSlot + 1;
-        if (pairedNext) group.append(node('line', { x1: nx + 10, x2: x(next.startSlot) + 10, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7 }));
+        const pairedNext = next?.written[0] === 'E' && next.kind === 'note' && Math.floor(event.startSlot / grid.policy.groupSlots) === Math.floor(next.startSlot / grid.policy.groupSlots) && next.startSlot === event.startSlot + 1;
+        const pairedPrevious = previous?.written[0] === 'E' && previous.kind === 'note' && Math.floor(previous.startSlot / grid.policy.groupSlots) === Math.floor(event.startSlot / grid.policy.groupSlots) && event.startSlot === previous.startSlot + 1;
+        if (pairedNext) group.append(node('line', { x1: nx + 10, x2: x(next.startSlot) + 10, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7, 'data-beam': 'true' }));
         else if (!pairedPrevious) group.append(node('path', { d: `M ${nx + 10} 42 C ${nx + 12} 55 ${nx + 33} 56 ${nx + 23} 80 C ${nx + 25} 64 ${nx + 13} 64 ${nx + 10} 61 Z`, fill: 'currentColor' }));
       }
       if (event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));

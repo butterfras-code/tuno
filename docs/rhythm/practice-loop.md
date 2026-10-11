@@ -1,3 +1,5 @@
+Current meter extension: [2/4, 3/4, 4/4 and 6/8 rules, defaults and examples](meters.md). This supersedes the original 4/4-only scope below.
+
 # Count Writing generated practice loop
 
 Implemented 2026-10-10 on `feature/count-writing-practice`. This extends the reviewed editor, without publishing production or finalizing its provisional counting conventions.

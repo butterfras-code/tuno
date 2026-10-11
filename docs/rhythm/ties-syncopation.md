@@ -1,6 +1,8 @@
-# Count Writing: ties and syncopation in 4/4
+# Count Writing: ties and syncopation
 
-## Counting decision for this slice
+The original simple-meter rules below now apply in 2/4, 3/4 and 4/4. [Meter decisions](meters.md) define 6/8: six required numbers, exact duration endpoints and syncopation relative to two dotted-quarter pulses.
+
+## Simple-meter counting decision
 
 A tie chain is one sounding attack and one continuous duration, even though its written segments remain separate notes. Require the ordinary number or offbeat at the attack and every actual beat inside the sounding span. A tied continuation on a beat therefore requires that beat number as a sustained count, not a new attack. An offbeat continuation alone does not require a count. An entered offbeat must still have the correct symbol; extra subdivisions retain the existing teacher-review treatment.
 
@@ -9,6 +11,8 @@ Apply dotted-quarter internal-offbeat policy to the **total sounding duration**:
 Require one duration line for a tied chain (including two eighths tied within one beat), and for an untied note/rest that contains an internal beat. Start at its sounding attack/rest onset; the trial end is the final eighth-spaced position before its release. Other endpoints inside the same span retain provisional review. A line beginning at a continuation or extending beyond release needs correction. Rest parentheses remain one pair per written rest, confined to its measure.
 
 Duration answers use passage-wide presentation indices derived from the written score, not an authored music clock. A line crossing a barline is one answer, rendered as separate connected-to-edge pieces under each affected measure. At a system wrap the outgoing piece reaches the system edge and the incoming piece resumes at the next system edge. Layout does not change grading, attacks or duration. Tie arcs use one tapered curve between rendered noteheads on the same system, including across barlines. Only visual system breaks split the arc into outgoing/incoming hooks. Curvature uses rendered geometry with bounded depth and updates on resizing and wrapping.
+
+While rest parentheses are open for entry or editing, their keyboard interaction takes precedence over passage duration shortcuts. Shift used to type `)` preserves the pending pair; Shift+arrows continue choosing its closing count. Escape restores an existing saved pair. Browser regression coverage includes physical Shift keydown/keyup around these actions.
 
 ## Generation settings
 
@@ -23,7 +27,7 @@ Selections permit patterns rather than guaranteeing them in each draw. Generatio
 
 The focused fixture suite covers within-beat ties, beat-crossing ties, barline ties, a three-segment chain, offbeat sustained attacks, untied syncopation, notes adjacent to rests and a wrapped barline tie. These are deterministic development/review examples; implementation and automated review do not claim external teacher approval. The onset-anchored endpoint trial and optional-subdivision teacher-review conventions remain provisional.
 
-4/4 only, eighth/quarter/half/dotted-quarter written ingredients; the earlier dotted-half review fixture is retained. No ties on rests, tuplets, compound meter, smaller values, pitch matching, performance timing, scoring, saved accounts or production publication.
+2/4, 3/4, 4/4 and 6/8, eighth/quarter/half/dotted-quarter written ingredients; the earlier dotted-half review fixture is retained. No ties on rests, tuplets, alternative compound counting, smaller values, pitch matching, performance timing, scoring, saved accounts or production publication.
 
 ## Fixture review guide
 
