@@ -124,11 +124,11 @@ try {
   assert.match(await page.getByLabel('Rhythm settings').innerText(), /cannot fill/);
   await page.locator('.active-ingredients').getByLabel('Half notes', { exact: true }).check();
   assert.match(await page.getByLabel('Rhythm settings').innerText(), /cannot fit/);
-  await page.locator('.active-ingredients').getByLabel('Quarter notes', { exact: true }).check(); await practice();
+  await page.locator('.active-ingredients').getByLabel('Quarter notes', { exact: true }).check(); await page.locator('.active-ingredients').getByLabel('Eighth notes', { exact: true }).check(); await practice();
   assert.deepEqual(await snapshot(), unchanged); assert.equal(await control('Next exercise').isDisabled(), false);
   await control('Next exercise').tap();
   const generatedKinds = await bars.locator('g[data-start]').evaluateAll(nodes => nodes.map(n => [n.dataset.duration, n.dataset.kind]));
-  assert.ok(generatedKinds.every(([duration, kind]) => ['2', '3', '4'].includes(duration) && kind === 'note'));
+  assert.ok(generatedKinds.every(([duration, kind]) => ['1', '2', '3', '4'].includes(duration) && kind === 'note'));
   report.checks.push('Empty, impossible and unusable ingredient configurations explain and block Next; valid replacement applies selected ingredients only');
   await page.reload(); assert.equal(await bars.count(), 2);
   await settings(); await control('Expand all groups').click();

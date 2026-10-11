@@ -11,6 +11,7 @@ import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
   scroller: HTMLElement; lastMeasure: boolean;
+  grid?: ReturnType<typeof countGrid>; externalLines?: boolean;
   offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   hidden: () => boolean; edited: () => void; check: () => void; navigate: (delta: number, clear?: boolean) => boolean;
 }) {
@@ -21,7 +22,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   let offbeat = options.offbeat;
   let presentation = options.presentation;
   const fixture = source;
-  let grid = countGrid(fixture);
+  let grid = options.grid ?? countGrid(fixture);
   let answer = blankAnswer(fixture);
   const positionLabel = (slot: number) => `measure ${number}, ${grid.slots[slot]!.label}`;
   const tickX = (slot: number) => slotX(slot, grid.slots.length);
@@ -149,9 +150,9 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   function countNavigation(event: KeyboardEvent): boolean {
     if (event.ctrlKey || event.metaKey || event.altKey) { cancelKeyboardLine(); return false; }
     if (event.key === 'Enter' && keyboardLine) { event.preventDefault(); return true; }
-    if (event.key === 'Shift') { if (!event.repeat) startKeyboardLine(); return true; }
+    if (event.key === 'Shift' && !options.externalLines) { if (!event.repeat) startKeyboardLine(); return true; }
     const arrow = event.key === 'ArrowLeft' || event.key === 'ArrowRight';
-    if (arrow && event.shiftKey && restStart === null) {
+    if (arrow && event.shiftKey && restStart === null && !options.externalLines) {
       if (!keyboardLine) startKeyboardLine();
       if (keyboardLine) {
         event.preventDefault(); countPopover.dismiss(true);
@@ -323,7 +324,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   function reset(focus: boolean) {
     countPopover.dismiss();
     keyboardLine = null;
-    grid = countGrid(fixture); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
+    grid = options.grid ?? countGrid(fixture); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
     renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure }));
     notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
       const tick = Number(mark.dataset.start);
@@ -539,6 +540,12 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
 
   return {
     mount: () => reset(false),
+    getAnswer: () => answer,
+    selected: () => selected,
+    focusPosition: (position: number) => focusSlot(position),
+    showResult: (value: Evaluation) => { result = value; changed = false; refresh(); },
+    projectLines: (spans: Span[]) => { answer.spans = spans; refresh(); },
+    markEdited: () => { if (result) { changed = true; options.edited(); } refresh(); },
     backspace: () => { focusSlot(grid.availableSlots.at(-1)!); put(''); },
     card, feedback,
     check: () => { countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention); changed = false; refresh(); return result; },

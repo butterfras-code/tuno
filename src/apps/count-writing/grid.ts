@@ -8,7 +8,7 @@ import { compare, fraction, toNumber } from '../../music/fraction.ts';
 export function countGrid(source: RhythmMeasure) {
   const measure = deriveMeasure(source);
   if (source.meter[0] !== 4 || source.meter[1] !== 4 || measure.beats.some(b => compare(b.duration, fraction(1, 4))) ||
-      source.events.some(([value, m]) => !['H', 'Q', 'E'].includes(value) || m?.tuplet || m?.tieNext || (m?.dots ?? 0) > 1 || (value === 'E' && m?.dots) || (m?.rest && value === 'H' && m.dots))) {
+      source.events.some(([value, m]) => !['H', 'Q', 'E'].includes(value) || m?.tuplet || (m?.dots ?? 0) > 1 || (value === 'E' && m?.dots) || (m?.rest && value === 'H' && m.dots))) {
     throw new Error('Count Writing currently supports 4/4 half/quarter/eighth material, including dotted quarters and rests only.');
   }
   const step = fraction(1, 8);
