@@ -16,7 +16,7 @@
   const picker = document.querySelector('select');
   const tempo = document.querySelector('input[type=number]');
   const metro = document.querySelector('input[type=checkbox]');
-  const review = document.querySelector('section');
+  const review = document.querySelector('[aria-label="Attempt review"]');
   const choose = id => { picker.value = id; picker.dispatchEvent(new Event('change')); };
   const originalOscillator = AudioContext.prototype.createOscillator;
   let context, scheduled = [];

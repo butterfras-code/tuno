@@ -1,3 +1,4 @@
+import { createTimingPanel } from './calibration.ts';
 import '../../tokens.css';
 import './styles.css';
 import { el, button, field, select, numberInput } from '../../shared/ui/components.ts';
@@ -45,9 +46,14 @@ const download = button('Download timing evidence', () => {
 }); download.hidden = true;
 const actions = el('div', 'actions'); actions.append(start, retry, stop, download);
 const review = el('section'); review.setAttribute('aria-label', 'Attempt review');
-main.append(setup, description, attemptSummary, score, instructions, status, pulse, pad, actions, review, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without scores or automatic calibration.'));
+const timing = createTimingPanel({
+  audio: async () => { audio ??= new AudioContext(); await audio.resume(); return audio; },
+  busy: active => { main.classList.toggle('calibrating', active); lock(active); if (active) pad.disabled = true; },
+});
+main.append(setup, timing.panel, description, attemptSummary, score, instructions, status, pulse, pad, actions, review, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
 app.append(main);
 function lock(active: boolean) {
+  timing.setLocked(active);
   main.classList.toggle('active', active); attemptSummary.hidden = !active;
   picker.disabled = tempo.disabled = metronome.disabled = start.disabled = retry.disabled = active;
   stop.disabled = !active; pad.disabled = !active; download.disabled = active;
@@ -65,7 +71,7 @@ async function begin() {
   if (transport || starting) return;
   if (!tempo.reportValidity()) return;
   // Snapshot before awaiting audio activation, even though controls are locked.
-  const capture = new Capture(exercise, tempo.valueAsNumber, metronome.checked);
+  const capture = new Capture(exercise, tempo.valueAsNumber, metronome.checked, undefined, timing.current());
   attemptSummary.textContent = `${capture.exercise.label} · ${capture.bpm} quarter-note BPM · ${capture.metronome ? 'metronome on' : 'metronome off'}`;
   starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
   try {
@@ -83,6 +89,8 @@ async function begin() {
 }
 function offset(value: number | null) { return value === null ? 'no release observed' : Math.abs(value) < .0005 ? 'on time (0 ms)' : `${Math.round(Math.abs(value) * 1000)} ms ${value < 0 ? 'early' : 'late'}`; }
 function finish(record: AttemptRecord) {
+  const correction = record.timingOffset ?? timing.consider(record);
+  if (correction) record = { ...record, timingOffset: correction };
   result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
   retry.hidden = false; download.hidden = false;
   const evaluation = evaluateAttempt(record);
@@ -91,6 +99,7 @@ function finish(record: AttemptRecord) {
     status.textContent = 'Interrupted'; review.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
   }
   status.textContent = 'Reviewing';
+  if (record.timingOffset) review.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
   review.append(el('p', '', `${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. Review onset, release, and rest evidence below.`));
   const list = el('ol');
   record.plan.notes.forEach((note, i) => {
@@ -113,6 +122,15 @@ function finish(record: AttemptRecord) {
   });
   evaluation.extra.forEach(i => list.append(el('li', '', `Extra attack at ${evaluation.holds[i]!.down.toFixed(3)} s after exercise start.`)));
   review.append(list);
+  if (record.timingOffset) {
+    const raw = evaluateAttempt(record, null);
+    const details = el('details'); details.append(el('summary', '', 'Raw timing before correction'));
+    details.append(el('p', '', `${raw.matches.length} matched attacks · ${raw.missing.length} missing · ${raw.extra.length} extra (uncorrected).`));
+    const rawList = el('ul');
+    raw.matches.forEach(match => rawList.append(el('li', '', `Attack ${match.expected + 1}: ${offset(match.onsetOffset)}; release ${offset(match.releaseOffset)}.`)));
+    raw.extra.forEach(i => rawList.append(el('li', '', `Unmatched raw attack at ${raw.holds[i]!.down.toFixed(3)} s.`)));
+    details.append(rawList); review.append(details);
+  }
   if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) review.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
 }
 // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.

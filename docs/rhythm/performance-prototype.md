@@ -4,6 +4,10 @@ Implemented for the owner's first playable performance slice. This is a developm
 
 Run Node 24, `npm ci`, then `npm run dev:walk`. Open `http://127.0.0.1:5173/prototypes/rhythm-walk/`. A regular build also emits that review page under `dist/hosted/prototypes/rhythm-walk/`, following the existing Count Writing prototype convention. There is no new suite navigation, service worker, installation entry, portable distribution, generation, persistence, progression, score, or reward. Refresh resets the page. No branch was promoted to `main`.
 
+## Session timing correction
+
+Automatic offset estimation and manual tap-along calibration now extend this prototype. See [session timing rules and validation](timing-calibration.md); those rules supersede the initial no-calibration behavior and count-in/capture-end policies described below. Raw timestamps remain unchanged.
+
 ## Requirements and decisions
 
 The [original handoff](reference/RHYTHM_GAME_HANDOFF.md), especially sections 3–5 and 15, distinguishes confirmed principles from proposed architecture and open policies. The owner's implementation request now authorizes this specific slice, including holds, two measures, 4/4, quarter-note BPM, one measure of count-in, fixed fixtures, raw localized review, an exercise metronome toggle, and interrupted rather than graded cancellation. It does not approve the handoff's broader roadmap or numerical mastery policies. [Current direction](README.md) still governs Count Writing's first release; performance work is separate and may proceed in parallel with its meter work.
@@ -13,7 +17,7 @@ The [original handoff](reference/RHYTHM_GAME_HANDOFF.md), especially sections 3�
 | Confirmed for this slice | Conventional static notation; read through mistakes; press/hold/release; keyboard and pad; silence for rests; one attack for a tied chain; finite capture; separate raw onset/release/rest evidence; completed versus interrupted; deliberate Retry/exercise change |
 | Implemented engineering choices | Pure capture and evaluator; scheduled audio-clock transport; monophonic input ownership; ordered bounded attack matching; in-memory raw records and JSON download; compact active layout |
 | Provisional, replaceable | 40–180 quarter-note BPM controls, initial 80 BPM; 180 ms attack association window; 750 ms final-release tail; 120 ms scheduling lead; exact window/boundary and interruption policies below |
-| Unresolved / deferred | Approved teaching tolerances; latency calibration; articulation/legato conventions; absolute versus relational assessments; pulse/tempo mastery and evidence minimums; scores, recovery claims, progression; wider meters, generated content, long passages, final placement/navigation, persistence, physical-device support |
+| Unresolved / deferred | Approved teaching tolerances; hardware-specific latency validation; articulation/legato conventions; absolute versus relational assessments; pulse/tempo mastery and evidence minimums; scores, recovery claims, progression; wider meters, generated content, long passages, final placement/navigation, persistence, physical-device support |
 
 ## Reviewed fixed fixtures
 
@@ -64,13 +68,13 @@ Raw JSON includes schema version, source exercise, expected plan, BPM, metronome
 
 Pair accepted downs with their owner releases first; a still-held input retains a null release. Exclude count-in attacks from association, but include their audible-time interval in silence/rest intersections. Attack matching is ordered, one-to-one, maximizing the number of matches within an inclusive ±180 ms window, then minimizing total absolute onset offset. Stable ties prefer the matching candidate, then the missing-input branch. Gaps do not advance both sides, so a missing or extra attack cannot mechanically shift every later match. This bounded policy remains ambiguous if timing deviates far enough to resemble a neighboring note; results describe associations, not inferred intent.
 
-Release times never influence attack matching. Only after association, report `press - expected onset` and `release - expected end` (negative early, positive late). Missing attacks do not receive invented release offsets. Intersect each recorded hold with each written rest's half-open interval, clipping an unreleased hold to capture end and reporting positive overlap duration. An extra attack during a rest can therefore produce both an extra attack and rest overlap; those are separate evidence, not penalties summed into a score. Offsets are not automatically shifted to conceal a systematic lead or lag. Display rounds to milliseconds, with sub-half-millisecond values shown as 0; that is display precision, not an acceptance band.
+Release times never influence attack matching. Only after association, report `press - expected onset` and `release - expected end` (negative early, positive late). Missing attacks do not receive invented release offsets. Intersect each recorded hold with each written rest's half-open interval, clipping an unreleased hold to capture end and reporting positive overlap duration. An extra attack during a rest can therefore produce both an extra attack and rest overlap; those are separate evidence, not penalties summed into a score. When session timing correction is active, the explicit saved offset is applied equally to both edges; raw results remain available. Attempts are never independently recentered or stretched. Display rounds to milliseconds, with sub-half-millisecond values shown as 0; that is display precision, not an acceptance band.
 
 The prototype makes no rhythm/pulse/tempo mastery claim, percentage, pass/fail, or recovery diagnosis. Error feedback appears after completion, and mistakes do not stop an attempt.
 
 ## Latency and calibration boundary
 
-Audio buffering, output hardware (especially Bluetooth), input devices, browser event delivery, clock correspondence and scheduling delays can affect measured offsets. Browser latency reports do not establish end-to-end latency. No automatic calibration or global alignment shift is implemented. Future calibration must separately define output/input device context, explicit offset application, quality/evidence criteria, storage lifetime and changed-device behavior, while retaining uncorrected evidence and policy versions. These decisions need review before results become teaching thresholds or mastery claims.
+Audio buffering, output hardware (especially Bluetooth), input devices, browser event delivery, clock correspondence and scheduling delays can affect measured offsets. Browser latency reports do not establish end-to-end latency. Automatic session offset estimation and a tap-along fallback are now implemented under the [timing calibration policy](timing-calibration.md), including input context, explicit correction, confidence checks, session lifetime and manual reset/recalibration after setup changes. Separate hardware input/output latency measurement is not implemented. These decisions need review before results become teaching thresholds or mastery claims.
 
 ## Validation evidence and limitations
 

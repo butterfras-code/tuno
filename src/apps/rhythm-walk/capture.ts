@@ -1,3 +1,4 @@
+import type { TimingOffset } from './offset.ts';
 import { planPassage, prototypeTiming } from './timing.ts';
 import type { Plan, TimingPolicy } from './timing.ts';
 import type { Exercise } from './fixtures.ts';
@@ -12,6 +13,7 @@ export interface ClockEvidence {
   readonly sampleRate: number; readonly baseLatency: number; readonly outputLatency?: number;
 }
 export interface AttemptRecord {
+  readonly timingOffset?: TimingOffset;
   readonly version: 1; readonly clock?: ClockEvidence;
   readonly exercise: Exercise; readonly bpm: number; readonly metronome: boolean; readonly policy: TimingPolicy;
   readonly plan: Plan; readonly events: readonly InputEvent[]; readonly status: 'completed' | 'interrupted';
@@ -21,14 +23,17 @@ export interface AttemptRecord {
 export class Capture {
   readonly exercise: Exercise; readonly policy: TimingPolicy; readonly plan: Plan;
   readonly bpm: number; readonly metronome: boolean;
+  readonly timingOffset?: TimingOffset;
   private events: InputEvent[] = [];
   private clock: ClockEvidence | undefined;
   private owner: string | null = null;
   private result: AttemptRecord | null = null;
-  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming) {
+  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset) {
     this.exercise = structuredClone(exercise); this.policy = { ...policy };
+    this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
     this.plan = planPassage(this.exercise.measures, bpm, this.policy);
+    this.plan.captureEnd += Math.max(0, timingOffset?.seconds ?? 0);
   }
   setClockEvidence(clock: ClockEvidence) { this.clock = { ...clock }; }
   get heldBy() { return this.owner; }
@@ -51,6 +56,6 @@ export class Capture {
     return this.result!;
   }
   private end(status: AttemptRecord['status'], endedAt: number, reason?: string) {
-    this.result = structuredClone({ version: 1 as const, ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
+    this.result = structuredClone({ version: 1 as const, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
   }
 }

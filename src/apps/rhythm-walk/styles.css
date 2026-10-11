@@ -25,3 +25,9 @@ button { cursor: pointer; } button:disabled { cursor: default; opacity: .55; }
 .active .score { margin: 10px 0; }
 .active .status, .active .attempt-summary { margin: 8px 0; }
 .active .pulse { margin: 8px auto; }
+
+.calibration { border: 1px solid #aaa; border-radius: 12px; padding: 16px; margin: 18px 0; }
+.calibration h2 { font-size: 1.15rem; margin-top: 0; }
+.active:not(.calibrating) .calibration { display: none; }
+.calibrating > .score, .calibrating > .pad, .calibrating > .status, .calibrating > .pulse, .calibrating > .actions { display: none; }
+.calibration .pad { margin-top: 12px; }
