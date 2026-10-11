@@ -20,10 +20,15 @@ select { max-width: 100%; }
 .score-scroll { overflow-x: auto; scroll-padding-inline: 8px; padding-bottom: 8px; margin: 12px -8px 0; }
 .measure { min-width: 480px; position: relative; }
 .notation { display: block; width: 100%; height: auto; }
-.counts { height: 62px; position: relative; }
-.count-slot { position: absolute; transform: translateX(-50%); width: 44px; height: 48px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); font: 800 25px var(--font-heading); color: var(--color-ink); cursor: pointer; top: 8px; }
+.answer-area { position: relative; --anchor-x: 0px; --anchor-y: 112px; }
+.answer-area[data-placement="above"] { --anchor-y: 20px; }
+.answer-area[data-placement="beside"] { --anchor-x: 28px; --anchor-y: 66px; }
+.counts { height: 140px; position: relative; }
+.duration-anchor { position: absolute; top: var(--anchor-y); margin-left: var(--anchor-x); transform: translate(-50%, -50%); width: 7px; height: 7px; border-radius: 50%; background: var(--color-muted); pointer-events: none; }
+.count-slot { position: absolute; transform: translateX(-50%); width: 44px; height: 48px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); font: 800 25px var(--font-heading); color: var(--color-ink); cursor: pointer; top: 42px; }
 .count-slot[aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
-.count-slot.sustained { font-size: 19px; top: 0; }
+.answer-area[data-appearance="raised"] .count-slot.sustained { font-size: 19px; top: 24px; }
+.answer-area[data-appearance="lowered"] .count-slot.sustained { font-size: 19px; top: 60px; }
 .count-slot.line-pending { border: 3px dashed var(--color-teal); }
 :focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
 .selection { margin: 8px 0; font-weight: 700; color: var(--color-accent); }
@@ -31,10 +36,10 @@ select { max-width: 100%; }
 .keypad, .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .keypad .control { min-width: 48px; }
 .keypad [aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
-.lines { position: relative; }
-.duration-line { position: absolute; height: 3px; background: var(--color-accent); margin-top: 0; min-width: 2px; }
-.line-handle { position: absolute; top: -22px; width: 44px; height: 44px; border: 0; background: transparent; padding: 0; cursor: ew-resize; touch-action: none; }
-.line-handle::after { content: ''; display: block; margin: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
+.lines { position: absolute; inset: 0; pointer-events: none; }
+.duration-line { position: absolute; height: 3px; background: var(--color-accent); margin-top: -1.5px; margin-left: var(--anchor-x); min-width: 2px; }
+.line-handle { position: absolute; top: -22px; width: 44px; height: 44px; border: 0; background: transparent; padding: 0; cursor: ew-resize; touch-action: none; pointer-events: auto; }
+.line-handle::after { content: ''; display: block; margin: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
 .line-handle.start { left: -22px; }
 .line-handle.end { right: -22px; }
 .line-edit { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; padding: 12px 0; border-top: 1px solid var(--color-line); }
@@ -85,7 +90,7 @@ select { max-width: 100%; }
 .settings-options { margin: 12px 0 0; padding: 0; border: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; min-width: 0; }
 .setting-option { display: flex; align-items: start; gap: 10px; font-size: 15px; padding: 4px 0; }
 .setting-option input { flex-shrink: 0; margin: 3px 0 0; }
-.rhythm-settings input[type="checkbox"], .rhythm-settings input[type="radio"] { width: 18px; height: 18px; accent-color: var(--color-accent); }
+.rhythm-settings input[type="checkbox"], .rhythm-settings input[type="radio"] { width: 12px; height: 12px; accent-color: var(--color-accent); }
 .rhythm-settings :disabled { opacity: 1; cursor: not-allowed; }
 .rhythm-settings .control:disabled { background: var(--color-canvas); color: var(--color-muted); }
 .settings-footer { padding: 24px 0 8px; }

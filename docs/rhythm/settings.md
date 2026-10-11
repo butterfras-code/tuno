@@ -6,6 +6,8 @@ Implemented 2026-10-10 after the owner requested the handoff's configurable opti
 
 - **Practice exercise:** selects one of the same four reviewed fixtures. Changing exercise clears the answer; the page states this before the control is used.
 - **Dotted-quarter internal &:** teacher review, required, or optional. This shares state with the existing editor control, preserves the answer, and marks existing feedback stale until Check runs again.
+- **Duration-line placement:** below, above, or beside counts, with a visible anchor at every input position. Existing lines move with their anchors.
+- **Sustained-count appearance:** raised and smaller, lowered and smaller, or unchanged. Switching to beside counts selects raised and smaller; an explicit override remains until placement switches to beside again. Onset counts stay full-size. These display settings preserve answers and feedback.
 - Count Writing / Settings navigation, keyboard focus on the page heading, browser back/forward, direct settings links and expandable groups.
 
 Navigation alone preserves the current exercise, symbols, markings and feedback. Active choices last in the current page instance only; reload restores the prototype defaults. There is no new persistence, save/cancel draft, generator or performance behavior. The initial editor controls remain available during this settings review.

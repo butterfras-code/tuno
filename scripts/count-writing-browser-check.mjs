@@ -147,6 +147,71 @@ try {
     await page.screenshot({ path: `${output}/width-${width}.png`, fullPage: true });
     report.checks.push(`${width}px: aligned scroll region, no page overflow, keyboard focus visible`);
   }
+  // Presentation preferences share geometry without changing the student's answer or feedback.
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await fixture.selectOption('half');
+  await enter(0, '1'); await enter(2, '2'); await addLine(0, 3);
+  await check();
+  const preservedFeedback = await page.locator('.feedback').innerText();
+  const preservedSymbols = await slots.allTextContents();
+  const navigate = async name => {
+    await page.getByRole('navigation', { name: 'Rhythm pages' }).getByRole('link', { name, exact: true }).click();
+    await page.locator(name === 'Settings' ? '#settings-view' : '#practice-view').waitFor({ state: 'visible' });
+  };
+  for (const placement of ['above', 'below', 'beside']) {
+    await navigate('Settings');
+    await page.getByLabel('Duration-line placement', { exact: true }).selectOption(placement);
+    if (placement === 'beside') assert.equal(await page.getByLabel('Sustained-count appearance', { exact: true }).inputValue(), 'raised');
+    for (const appearance of ['raised', 'lowered', 'unchanged']) {
+      await page.getByLabel('Sustained-count appearance', { exact: true }).selectOption(appearance);
+      await navigate('Count Writing');
+      assert.deepEqual(await slots.allTextContents(), preservedSymbols);
+      assert.equal(await page.locator('.feedback').innerText(), preservedFeedback);
+      const geometry = await page.evaluate(() => {
+        const rect = selector => document.querySelector(selector).getBoundingClientRect();
+        const anchor = rect('.duration-anchor'), line = rect('.duration-line'), onset = rect('.count-slot'), internal = document.querySelectorAll('.count-slot')[2];
+        return { anchors: document.querySelectorAll('.duration-anchor').length,
+          dx: Math.abs(anchor.x + anchor.width / 2 - line.x), dy: Math.abs(anchor.y + anchor.height / 2 - line.y - line.height / 2),
+          onsetY: onset.y, internalY: internal.getBoundingClientRect().y,
+          onsetSize: parseFloat(getComputedStyle(document.querySelector('.count-slot')).fontSize), internalSize: parseFloat(getComputedStyle(internal).fontSize),
+          anchorY: anchor.y + anchor.height / 2, onsetBottom: onset.bottom, anchorX: anchor.x + anchor.width / 2, onsetRight: onset.right };
+      });
+      assert.equal(geometry.anchors, 8);
+      assert.ok(geometry.dx < 1 && geometry.dy < 1, 'line must meet its anchor');
+      if (placement === 'above') assert.ok(geometry.anchorY < geometry.onsetY);
+      if (placement === 'below') assert.ok(geometry.anchorY > geometry.onsetBottom);
+      if (placement === 'beside') assert.ok(geometry.anchorX > geometry.onsetRight);
+      assert.equal(Math.sign(geometry.internalY - geometry.onsetY), appearance === 'raised' ? -1 : appearance === 'lowered' ? 1 : 0);
+      assert.equal(geometry.internalSize < geometry.onsetSize, appearance !== 'unchanged');
+      await slots.nth(2).click();
+      await page.screenshot({ path: `${output}/${placement}-${appearance}.png`, fullPage: true });
+      await navigate('Settings');
+    }
+  }
+  await navigate('Count Writing');
+  await navigate('Settings');
+  assert.equal(await page.getByLabel('Sustained-count appearance', { exact: true }).inputValue(), 'unchanged', 'navigation preserves an explicit beside-count override');
+  await page.getByLabel('Duration-line placement', { exact: true }).selectOption('above');
+  await page.getByLabel('Duration-line placement', { exact: true }).selectOption('beside');
+  assert.equal(await page.getByLabel('Sustained-count appearance', { exact: true }).inputValue(), 'raised', 'switching to beside restores its default');
+  await navigate('Count Writing');
+  const besideEnd = page.getByRole('slider', { name: 'Line 1 end', exact: true });
+  const besideBox = await besideEnd.boundingBox();
+  const besideAnchor = await page.locator('.duration-anchor').nth(4).boundingBox();
+  await page.mouse.move(besideBox.x + besideBox.width / 2, besideBox.y + besideBox.height / 2);
+  await page.mouse.down(); await page.mouse.move(besideAnchor.x + besideAnchor.width / 2, besideAnchor.y + besideAnchor.height / 2, { steps: 8 }); await page.mouse.up();
+  assert.equal(await besideEnd.getAttribute('aria-valuenow'), '4', 'beside drag snaps to the offset anchors');
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    await slots.nth(2).tap(); await control('2').tap();
+    await control('Shorten line 1').tap(); await control('Lengthen line 1').tap();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: `${output}/beside-mobile-${width}.png`, fullPage: true });
+  }
+  await navigate('Settings');
+  await page.getByLabel('Duration-line placement', { exact: true }).selectOption('below');
+  await navigate('Count Writing');
+  report.checks.push('All nine placement/appearance combinations: shared anchors, unchanged answers/feedback, full-size onsets, beside default and override, offset drag and mobile touch');
   // Settings must preserve work, apply supported choices, and keep future controls inert.
   await page.setViewportSize({ width: 1280, height: 1000 });
   await fixture.selectOption('dotted-quarter');

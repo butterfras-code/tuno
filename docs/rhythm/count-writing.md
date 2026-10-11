@@ -14,7 +14,7 @@ The requirements below are carried forward from section 12 of the [supplied hand
 - Support physical keyboard entry and a touch symbol keypad. Do not automatically fill in the student's counts.
 - The default counting requirement is a count at every note onset and each internal actual beat of a sustained note. Additional subdivision positions can be supported without requiring every possible subdivision.
 - The owner's school convention uses ordinary count symbols for rests, enclosed in parentheses. Sustained internal counts can be raised/smaller with duration lines; exact appearance and line spans need visual review.
-- A student can drag or tap a duration-line endpoint to cover count positions. Line placement can depend on the convention; above/side/below anchor behavior is unresolved.
+- A student can drag or tap a duration-line endpoint to cover count positions. Line placement is configurable above, beside, or below counts, with an anchor at every input position.
 - Evaluate count symbols, duration-line spans, and rest markings separately.
 - The intended activity supports open and guided symbol entry. Open entry offers the selected counting system's alphabet. Guided entry filters symbol choices according to context and prior entries, including keyboard input; it does not filter duration-line or parentheses actions. Record assistance separately from correctness.
 - Counting systems may differ. Do not silently equate or mix `+`, `&`, or spoken syllables without an explicit convention.
@@ -50,7 +50,7 @@ The prototype should make entry, deletion, replacement, focus movement, and line
 
 - Initial meter/rhythm set and counting convention; treatment of compound beats, ties, and tuplets when introduced.
 - Required versus optional count positions, especially dotted rhythms and rests; whether optional valid counts are accepted.
-- Exact raised-count appearance, line anchors, span endpoints, snapping, and parentheses grouping.
+- Span endpoints, snapping, and parentheses grouping. Raised/smaller, lowered/smaller and unchanged internal counts are now selectable; beside placement defaults to raised/smaller.
 - Keyboard navigation/editing and a tap alternative for every drag interaction.
 - Whether open and guided entry both ship initially; precise filtering rules and how to handle an earlier incorrect count without trapping later entry.
 - Check/retry behavior: when answers are revealed, how partial correctness appears, and how corrections are recorded.

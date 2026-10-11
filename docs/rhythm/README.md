@@ -26,9 +26,11 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Focus the first release on functional Count Writing. | Pin down notation and correctness before real-time performance. |
 | 2026-10-10 | Resolve remaining performance questions as that work approaches. | Timing tolerances, latency calibration, performance scores, and interruption policy do not block Count Writing. |
 | 2026-10-10 | Dotted-quarter internal `&` is teacher-dependent. | The prototype offers required, optional, and provisional review of both variants. |
-| 2026-10-10 | Duration lines begin at the note onset. | Keep the onset count full-size; raise internal counts. Ending positions remain provisional. |
+| 2026-10-10 | Duration lines begin at the note onset. | Keep the onset count full-size; internal count appearance is configurable. Ending positions remain provisional. |
 | 2026-10-10 | Adopt compact written event sequences with derived time, beat grouping and ties as the shared model. | See the [canonical contract](music-model.md); do not build new work on the original fixed eighth-note clock. |
 | 2026-10-10 | Build a basic settings page before further prototype UI refinement. | Include the handoff’s configurable areas, with unavailable and undecided controls clearly marked; see [settings](settings.md). |
+
+| 2026-10-10 | Activate above/beside/below duration-line anchors and sustained-count appearance. | Beside defaults to raised and smaller; lowered and smaller and unchanged remain available, including a strikethrough effect. Display changes preserve answers and grading. |
 
 ## Shared foundation and future work
 

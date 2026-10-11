@@ -10,7 +10,9 @@ import { alphabet, blankAnswer, evaluate } from './evaluation.ts';
 import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './evaluation.ts';
 import { renderMeasure } from './notation.ts';
 import { createSettingsPage, dottedConventionOptions } from './settings.ts';
+import { defaultPresentation, withLinePlacement } from './presentation.ts';
 
+let presentation = { ...defaultPresentation };
 let fixture = countWritingFixtures[0]!;
 let grid = countGrid(fixture);
 let answer = blankAnswer(fixture);
@@ -47,6 +49,7 @@ const score = el('div', 'score-scroll');
 const measure = el('div', 'measure');
 const notation = el('div');
 const counts = el('div', 'counts'); counts.setAttribute('role', 'group'); counts.setAttribute('aria-label', 'Count positions');
+const answerArea = el('div', 'answer-area');
 const lines = el('div', 'lines'); lines.setAttribute('aria-label', 'Duration lines');
 const slots: HTMLButtonElement[] = [];
 const live = el('p', 'selection'); live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
@@ -86,10 +89,13 @@ function renderSlots() {
       else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); focusSlot(event.key === 'Home' ? 0 : grid.slots.length - 1); }
       else if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
     });
-    slots.push(slot); counts.append(slot);
+    const anchor = el('span', 'duration-anchor');
+    anchor.style.left = `${tickX(tick)}%`;
+    anchor.setAttribute('aria-hidden', 'true');
+    slots.push(slot); counts.append(slot, anchor);
   }
 }
-measure.append(notation, counts, lines); score.append(measure);
+answerArea.append(counts, lines); measure.append(notation, answerArea); score.append(measure);
 const keypad = el('div', 'keypad'); keypad.setAttribute('role', 'group'); keypad.setAttribute('aria-label', 'Symbol keypad');
 for (const symbol of alphabet) keypad.append(button(symbol, () => put(symbol)));
 keypad.append(button('Erase', () => put('')));
@@ -111,6 +117,8 @@ card.append(field('Review fixture', picker), conventionField, score, instruction
 const practiceView = el('section'); practiceView.id = 'practice-view';
 practiceView.append(banner, card, el('p', 'footer-note', 'Review entry point only. No saved progress. Fixture switching starts a blank answer.'));
 const settings = createSettingsPage({
+  placement: value => { presentation = withLinePlacement(presentation, value); refresh(); },
+  appearance: value => { presentation = { ...presentation, sustainAppearance: value }; refresh(); },
   fixture: chooseFixture,
   convention: value => { dottedConvention = value; convention.value = value; edit(); },
 });
@@ -127,7 +135,7 @@ function showPage(focus = true) {
   pageTitle.textContent = isSettings ? 'Rhythm settings' : 'Count Writing';
   subtitle.textContent = isSettings ? 'Counting, content, and what comes next.' : 'One measure. Read, write, and revise.';
   document.title = `${isSettings ? 'Rhythm settings' : 'Count Writing'} — tUno prototype`;
-  settings.sync(fixture.id, dottedConvention);
+  settings.sync(fixture.id, dottedConvention, presentation);
   if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
 }
 window.addEventListener('hashchange', () => {
@@ -140,7 +148,9 @@ function reset(focus: boolean) {
   if (focus) focusSlot(0);
 }
 function refresh() {
-  settings.sync(fixture.id, dottedConvention);
+  answerArea.dataset.placement = presentation.linePlacement;
+  answerArea.dataset.appearance = presentation.sustainAppearance;
+  settings.sync(fixture.id, dottedConvention, presentation);
   conventionField.hidden = !grid.slots.some(s => s.dottedInternal);
   slots.forEach((slot, tick) => {
     const symbol = answer.symbols[tick]!;
@@ -178,7 +188,7 @@ function renderLines() {
     const track = el('div', 'duration-line');
     track.style.left = `${tickX(span.start)}%`;
     track.style.width = `${tickX(span.end) - tickX(span.start)}%`;
-    track.style.top = `${lane * 44 + 2}px`;
+    track.style.top = `calc(var(--anchor-y) + ${lane * 44}px)`;
     for (const endpoint of ['start', 'end'] as const) {
       const handle = el('button', `line-handle ${endpoint}`); handle.type = 'button';
       handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `Line ${index + 1} ${endpoint}`);
@@ -212,7 +222,8 @@ function renderLines() {
       handle.addEventListener('pointermove', event => {
         if (!dragging) return;
         const rect = measure.getBoundingClientRect();
-        const tick = Math.round(((event.clientX - rect.left) / rect.width * 100 - 16) / (88 / grid.slots.length));
+        const anchorOffset = parseFloat(getComputedStyle(answerArea).getPropertyValue('--anchor-x'));
+        const tick = Math.round(((event.clientX - rect.left - anchorOffset) / rect.width * 100 - 16) / (88 / grid.slots.length));
         span[endpoint] = Math.max(endpoint === 'start' ? 0 : span.start, Math.min(endpoint === 'start' ? span.end : grid.slots.length - 1, tick));
         update();
       });
@@ -259,7 +270,7 @@ function renderLines() {
     control.append(button(`Remove line ${index + 1}`, () => { answer.spans.splice(index, 1); lineEnd = null; edit(); renderLines(); lineButton.focus(); }));
     lineControls.append(control);
   });
-  lines.style.height = `${Math.max(1, lanes.length) * 44}px`;
+  answerArea.style.paddingBottom = `${Math.max(0, lanes.length - 1) * 44}px`;
 }
 reset(false);
 showPage(false);

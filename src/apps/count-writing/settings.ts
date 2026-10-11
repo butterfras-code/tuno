@@ -1,6 +1,8 @@
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { countWritingFixtures } from './fixtures.ts';
 import type { DottedQuarterConvention } from './evaluation.ts';
+import { linePlacementOptions, sustainAppearanceOptions } from './presentation.ts';
+import type { CountPresentation, LinePlacement, SustainAppearance } from './presentation.ts';
 import { settingsGroups } from './settings-catalog.ts';
 import type { Setting } from './settings-catalog.ts';
 
@@ -54,6 +56,8 @@ function placeholder(setting: Setting): HTMLElement {
 }
 
 export function createSettingsPage(callbacks: {
+  placement: (value: LinePlacement) => void;
+  appearance: (value: SustainAppearance) => void;
   fixture: (id: string) => void;
   convention: (value: DottedQuarterConvention) => void;
 }) {
@@ -74,7 +78,19 @@ export function createSettingsPage(callbacks: {
   const conventionField = field('Dotted-quarter internal &', convention);
   const conventionHint = el('p', 'setting-hint', 'Applies when an exercise contains a dotted quarter. Your answer stays intact; check again after changing the rule.');
   conventionHint.id = 'settings-convention-hint'; convention.setAttribute('aria-describedby', conventionHint.id); conventionField.append(conventionHint);
-  activeControls.append(fixtureField, conventionField);
+  const placement = select(linePlacementOptions, value => callbacks.placement(value as LinePlacement));
+  placement.dataset.setting = 'line-anchor';
+  const placementField = field('Duration-line placement', placement);
+  const placementHint = el('p', 'setting-hint', 'Switching to beside counts defaults sustained counts to raised and smaller. You can then choose any appearance.');
+  placementHint.id = 'settings-placement-hint';
+  placement.setAttribute('aria-describedby', placementHint.id); placementField.append(placementHint);
+  const appearance = select(sustainAppearanceOptions, value => callbacks.appearance(value as SustainAppearance));
+  appearance.dataset.setting = 'sustain-style';
+  const appearanceField = field('Sustained-count appearance', appearance);
+  const appearanceHint = el('p', 'setting-hint', 'Applies to counts inside your duration lines; the onset stays full-size. Unchanged allows lines beside counts to cross through them.');
+  appearanceHint.id = 'settings-appearance-hint';
+  appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
+  activeControls.append(fixtureField, conventionField, placementField, appearanceField);
   available.append(activeHeader, activeControls, el('p', 'setting-hint', 'Changes last in this tab only. Reloading resets settings and answers.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
@@ -99,5 +115,5 @@ export function createSettingsPage(callbacks: {
   }
   const back = el('a', 'control control--primary', 'Back to Count Writing'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
-  return { page, sync: (fixtureId: string, value: DottedQuarterConvention) => { fixture.value = fixtureId; convention.value = value; } };
+  return { page, sync: (fixtureId: string, value: DottedQuarterConvention, presentation: CountPresentation) => { fixture.value = fixtureId; convention.value = value; placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance; } };
 }
