@@ -18,7 +18,8 @@
     "release:check": "node scripts/release-check.mjs",
     "test:counts:browser": "node scripts/count-writing-browser-check.mjs && node scripts/count-writing-practice-browser-check.mjs && node scripts/count-writing-ties-browser-check.mjs && node scripts/count-writing-meters-browser-check.mjs",
     "dev:counts": "node scripts/build.mjs --dev --counts",
-    "dev:notes": "node scripts/build.mjs --dev --notes"
+    "dev:notes": "node scripts/build.mjs --dev --notes",
+    "dev:walk": "node scripts/build.mjs --dev --walk"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

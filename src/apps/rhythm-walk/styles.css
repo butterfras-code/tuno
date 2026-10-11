@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--color-surface); color: var(--color-ink); font-family: system-ui, sans-serif; }
+main { max-width: 960px; margin: auto; padding: 24px; }
+h1 { margin: 8px 0; } p { line-height: 1.5; } .eyebrow, .note { font-size: .9rem; }
+.setup, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; } .field-label { font-weight: 600; }
+.control, input, select { font: inherit; padding: 10px; border: 1px solid currentColor; border-radius: 8px; color: inherit; background: var(--color-surface); }
+input[type=number] { width: 140px; } input[type=checkbox] { width: 24px; height: 24px; }
+button { cursor: pointer; } button:disabled { cursor: default; opacity: .55; }
+:focus-visible { outline: 3px solid #8056b3; outline-offset: 4px; }
+.score { display: grid; grid-template-columns: 1fr 1fr; margin: 20px 0; gap: 10px; }
+.score svg { width: 100%; overflow: visible; border: 1px solid #aaa; border-radius: 8px; }
+[data-feedback=missing], [data-feedback=overlap] { color: #8056b3; }
+[data-feedback=matched], [data-feedback=silent] { color: #216b7a; }
+.pad { width: 100%; min-height: 120px; border: 3px solid #216b7a; border-radius: 18px; font: bold 1.4rem system-ui; background: #e2eef0; color: #173c44; touch-action: none; user-select: none; }
+.pad[aria-pressed=true] { background: #c3dce1; }
+.status { font-weight: bold; } .pulse { width: 18px; height: 18px; background: #aaa; border-radius: 50%; margin: 12px auto; }
+.pulse.lit { background: #216b7a; box-shadow: 0 0 0 5px #c3dce1; }
+.actions { margin-top: 18px; } li { margin-bottom: 10px; line-height: 1.5; } [hidden] { display: none !important; }
+@media (max-width: 640px) { main { padding: 16px; } .score { grid-template-columns: 1fr; gap: 4px; } .score svg { max-height: 130px; } }
+
+/* Keep the complete short score and pad together during capture on small screens. */
+.active .setup, .active > p:not(.status):not(.attempt-summary) { display: none; }
+.active h1 { font-size: 1.5rem; margin: 0; }
+.active .score { margin: 10px 0; }
+.active .status, .active .attempt-summary { margin: 8px 0; }
+.active .pulse { margin: 8px auto; }

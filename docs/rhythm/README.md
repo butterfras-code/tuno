@@ -39,10 +39,12 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Place duration lines and rest endpoints with the keyboard. | Hold Shift and use arrows to choose an available duration count; release Shift to commit its implied endpoint, including trailing hidden subdivisions. Type `(`, choose a closing count with arrows, and press Enter to close the pair. |
 | 2026-10-10 | Add generated Count Writing practice: 2 measures by default, configurable 1–4, with independent note/rest ingredient checkboxes. | Next applies pending generation settings; Check and Retry preserve answers. Reject empty, unfillable or ineffective ingredient pools explicitly. See [practice loop](practice-loop.md). |
 | 2026-10-10 | Show consecutive measures in one staff passage; default to readable rest placement. | Quarter/half rests start on whole beats, including half rests on beat 2; dotted-quarter rests in 4/4 and offbeat longer rests require an explicit unintuitive-notation opt-in. The canonical model remains unrestricted by this practice policy. |
-
 | 2026-10-10 | Add bounded, opt-in ties and syncopation in 4/4. | One sounding attack/line per tied chain; beat counts remain required, dotted-quarter policy follows total sounding duration, and system breaks do not affect grading. See [rules](ties-syncopation.md). |
-
 | 2026-10-10 | Add 2/4, 3/4, 4/4 and 6/8; retain 4/4 and two-bar defaults. | Six numbered eighths in 6/8 remain separate from its two dotted-quarter pulses; beams and readable rests expose 123 / 456. Exact numbered duration endpoints and pulse-relative syncopation are defined in [meter decisions](meters.md). |
+
+## Rhythm Walk development slice
+
+The owner has now authorized a separate first playable performance prototype in parallel with Count Writing's meter expansion. See [the prototype architecture, provisional policies, fixtures and validation](performance-prototype.md). It uses fixed two-measure 4/4 notation, quarter-note BPM, audible count-in, press/hold/release, a metronome toggle, and localized completed-attempt review. It does not establish mastery thresholds, scores, generation, progression, or final suite navigation. The earlier Count Writing first-release decision remains in effect; this prototype does not authorize production publication.
 
 ## Shared foundation and future work
 
