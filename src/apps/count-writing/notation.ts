@@ -1,4 +1,4 @@
-import type { CountFixture } from './fixtures.ts';
+import type { RhythmMeasure } from '../../music/measure.ts';
 import { countGrid, slotX } from './grid.ts';
 const ns = 'http://www.w3.org/2000/svg';
 function node(tag: string, attrs: Record<string, string | number>) {
@@ -6,9 +6,9 @@ function node(tag: string, attrs: Record<string, string | number>) {
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
   return element;
 }
-export function renderMeasure(measure: CountFixture) {
+export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm') {
   const grid = countGrid(measure);
-  const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${measure.label}`, class: 'notation' });
+  const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${label}`, class: 'notation' });
   const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
   svg.append(node('line', { x1: 80, x2: 788, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of [80, 788]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
@@ -22,6 +22,8 @@ export function renderMeasure(measure: CountFixture) {
     if (event.kind === 'rest') {
       if (event.written[0] === 'H') {
         group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
+      } else if (event.written[0] === 'E') {
+        group.append(node('path', { d: 'M -6 20 L 8 -18 M 6 -12 C -8 -2 -14 -18 -3 -18 C 5 -18 7 -12 6 -12 Z', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'eighth' }));
       } else
       group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
     } else {
@@ -37,6 +39,7 @@ export function renderMeasure(measure: CountFixture) {
       }
       if (event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     }
+    if (event.kind === 'rest' && event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     svg.append(group);
   });
   return svg;

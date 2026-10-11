@@ -1,6 +1,6 @@
 # Count Writing: first-release plan
 
-Updated 2026-10-10. Status: first editable-measure prototype implemented for teacher review; grading conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
+Updated 2026-10-10. Status: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). Grading conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
 
 ## Purpose and confirmed direction
 
@@ -84,7 +84,7 @@ Finalize this against the agreed first-release content before declaring the rele
 - Editing works at narrow widths and zoom, with visible focus, understandable labels, and no drag-only essential action.
 - Relevant unit and browser checks pass. Run `npm run check` for application changes and follow the full [release instructions](../releasing.md) for candidate verification and required physical-device checks.
 
-The editable-measure prototype and application checks are complete; see [implementation and validation evidence](prototype.md). Physical-device validation and full release-candidate verification remain pending.
+The editable-measure prototype and generated practice slice are complete; see [implementation and validation evidence](prototype.md). Physical-device validation and full release-candidate verification remain pending.
 
 Keyboard count entry advances through available positions. Tab/Shift+Tab and left/right arrows move between them; Tab exits the row at its ends. Delete clears the current position. Backspace clears a filled position, or returns to and clears the previous available position when the current one is empty. The popover follows keyboard navigation below the active box. The active counting-system setting chooses `&` or `+`; either key enters that selected symbol. Input aliases and displayed symbols are separate from canonical answer tokens and musical time, allowing later subdivision systems to define their own mappings.
 

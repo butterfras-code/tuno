@@ -1,6 +1,6 @@
 # Rhythm activities: current direction
 
-Updated 2026-10-10. An editable one-measure Count Writing prototype is implemented for teacher review; see [implementation and validation](prototype.md).
+Updated 2026-10-10. Count Writing now has generated 4/4 practice with two measures by default and a configurable length of 1–4. See [practice-loop behavior and validation](practice-loop.md), and the earlier [prototype review](prototype.md).
 
 ## Read this first
 
@@ -29,18 +29,13 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Duration lines begin at the note onset. | Keep the onset count full-size; internal count appearance is configurable. Ending positions remain provisional. |
 | 2026-10-10 | Adopt compact written event sequences with derived time, beat grouping and ties as the shared model. | See the [canonical contract](music-model.md); do not build new work on the original fixed eighth-note clock. |
 | 2026-10-10 | Build a basic settings page before further prototype UI refinement. | Include the handoff’s configurable areas, with unavailable and undecided controls clearly marked; see [settings](settings.md). |
-
 | 2026-10-10 | Activate above/beside/below duration-line anchors and sustained-count appearance. | Beside defaults to raised and smaller; lowered and smaller and unchanged remain available, including a strikethrough effect. Display changes preserve answers and grading. |
-
 | 2026-10-10 | Show every beat and written onset; activate internal subdivisions only on affected beats. | Longer undotted figures expose one level below their written value (half → quarter); dotted and tuplet figures use their exact finer components. Availability remains separate from required counts. |
-
 | 2026-10-10 | Require one complete parenthesis pair around each written rest’s counts. | Half rests enclose both beats and the duration line; two quarter rests require separate pairs. Hover/touch ghost openings and teal closing targets support grouped entry. Existing right parentheses open for endpoint editing; left openings remove the group; no nesting. |
-
 | 2026-10-10 | Use contextual count popovers with next-position activation. | Beat numbers sit above subdivisions; mouse/touch glyph and box entry, touch-slide selection, dismissal, and viewport-bounded movement follow the active box. |
-
 | 2026-10-10 | Support keyboard correction/navigation and selectable `&`/`+` offbeats. | Backspace returns from empty boxes; Tab/Shift+Tab and arrows follow available positions. Both offbeat keys use the selected display convention without changing musical time or grading. |
-
 | 2026-10-10 | Place duration lines and rest endpoints with the keyboard. | Hold Shift and use arrows to choose an available duration count; release Shift to commit its implied endpoint, including trailing hidden subdivisions. Type `(`, choose a closing count with arrows, and press Enter to close the pair. |
+| 2026-10-10 | Add generated Count Writing practice: 2 measures by default, configurable 1–4, with independent note/rest ingredient checkboxes. | Next applies pending generation settings; Check and Retry preserve answers. Reject empty, unfillable or ineffective ingredient pools explicitly. See [practice loop](practice-loop.md). |
 
 ## Shared foundation and future work
 

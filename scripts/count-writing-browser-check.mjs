@@ -13,7 +13,7 @@ const errors = [];
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, hasTouch: true });
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
-  await page.goto(url); await page.evaluate(() => document.fonts.ready);
+  await page.goto(`${url}${url.includes('?') ? '&' : '?'}fixture=half`); await page.evaluate(() => document.fonts.ready);
   const slots = page.locator('.count-slot');
   const control = name => page.getByRole('button', { name, exact: true });
   const fixture = page.getByLabel('Review fixture', { exact: true });
@@ -155,11 +155,17 @@ try {
   }
   await fixture.selectOption('half-rest'); await control('Reset answer').click();
   await slots.nth(0).click(); await page.keyboard.press('('); await page.keyboard.press('ArrowRight');
-  assert.equal(await control('Close rest parentheses at beat 2').evaluate(n=>n.classList.contains('keyboard-target')),true);
+  assert.equal(await control('Close rest parentheses at measure 1, beat 2').evaluate(n=>n.classList.contains('keyboard-target')),true);
   await page.keyboard.press('Enter'); assert.equal(await page.locator('.rest-group').getAttribute('data-end'),'2');
-  await control('Edit rest parentheses at beat 1').tap(); assert.equal(await page.locator('.rest-open-group').count(),1);
+  await control('Edit rest parentheses at measure 1, beat 1').tap(); assert.equal(await page.locator('.rest-open-group').count(),1);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.rest-group').getAttribute('data-end'), '2', 'Escape restores the saved rest group');
+  await control('Edit rest parentheses at measure 1, beat 1').tap();
+  await settings(); await practice();
+  assert.equal(await page.locator('.rest-group').getAttribute('data-end'), '2', 'view navigation cancels editing without deleting the saved pair');
+  await control('Edit rest parentheses at measure 1, beat 1').tap();
   await slots.nth(0).focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter');
-  await control('Remove rest parentheses at beat 1').tap(); assert.equal(await page.locator('.rest-group').count(),0);
+  await control('Remove rest parentheses at measure 1, beat 1').tap(); assert.equal(await page.locator('.rest-group').count(),0);
   await slots.nth(2).focus(); await page.keyboard.press('('); await page.keyboard.press('Enter');
   await slots.nth(0).focus(); await page.keyboard.press('('); await page.keyboard.press('ArrowRight');
   assert.equal(await slots.nth(0).getAttribute('aria-pressed'),'true','closing cannot overlap next pair');
@@ -181,7 +187,7 @@ try {
     const height = width < 400 ? 667 : 1000;
     await page.setViewportSize({width,height});
     await fixture.selectOption('half'); await control('Reset answer').click();
-    await page.getByRole('button',{name:'Enter count at beat 1',exact:true}).click();
+    await page.getByRole('button',{name:'Enter count at measure 1, beat 1',exact:true}).click();
     const pop=await choices.boundingBox(), box=await slots.nth(0).boundingBox();
     assert.ok(pop.x>=7&&pop.x+pop.width<=width-7&&pop.y>box.y+box.height&&pop.y+pop.height<=height-7);
     await control('Dismiss count choices').tap();

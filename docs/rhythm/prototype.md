@@ -2,6 +2,8 @@
 
 Implemented 2026-10-10 for teacher review; this is not a full release or finalized grading contract.
 
+The [generated practice slice](practice-loop.md) now extends this prototype with 1–4 measures (default 2), active ingredients, targeted feedback and Check / Retry / Next. The remaining sections record earlier review stages.
+
 Current interaction update: available count positions are adaptive, while duration lines can extend through hidden subdivisions. Rest parentheses now use one complete group per written rest, entered with a ghost opening and teal closing targets. Half-rest and adjacent-quarter-rest fixtures are included; long rests require a duration line. These behaviors supersede the original uniform-grid and individual-parentheses descriptions below.
 
 ## Review entry point

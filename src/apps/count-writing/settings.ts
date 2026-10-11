@@ -5,6 +5,8 @@ import { linePlacementOptions, sustainAppearanceOptions } from './presentation.t
 import type { CountPresentation, LinePlacement, SustainAppearance } from './presentation.ts';
 import type { OffbeatSymbol } from './input.ts';
 import { settingsGroups } from './settings-catalog.ts';
+import { defaultGeneration, generationIssue, ingredients } from './generation.ts';
+import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
 
 export const dottedConventionOptions = [
@@ -57,6 +59,7 @@ function placeholder(setting: Setting): HTMLElement {
 }
 
 export function createSettingsPage(callbacks: {
+  generation: (value: GenerationSettings) => void;
   offbeat: (value: OffbeatSymbol) => void;
   placement: (value: LinePlacement) => void;
   appearance: (value: SustainAppearance) => void;
@@ -67,14 +70,14 @@ export function createSettingsPage(callbacks: {
   const intro = el('p', 'settings-intro', 'Set up Count Writing now, and explore the settings planned for the rhythm activities. Unavailable controls are shown for review and do not change your exercises.');
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
   const heading = el('h2', '', 'Available now'); heading.id = 'available-settings';
-  const activeBadge = el('span', 'availability availability--active', 'Applies immediately');
+  const activeBadge = el('span', 'availability availability--active', 'Working controls');
   const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
   const activeControls = el('div', 'settings-live-controls');
   const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
   offbeat.dataset.setting = 'count-system';
   const systemField = field('Counting system', offbeat);
   systemField.append(el('p', 'setting-hint', 'Either + or & enters the chosen offbeat symbol. Changing it preserves your answer.'));
-  const fixture = select(countWritingFixtures.map(f => ({ value: f.id, label: f.label })), callbacks.fixture);
+  const fixture = select([{ value: 'generated', label: 'Generated practice' }, ...countWritingFixtures.map(f => ({ value: f.id, label: f.label }))], callbacks.fixture);
   fixture.dataset.setting = 'review-exercise';
   const fixtureField = field('Practice exercise', fixture);
   const fixtureHint = el('p', 'setting-hint', 'Changing exercise clears the current answer.'); fixtureHint.id = 'settings-fixture-hint';
@@ -96,7 +99,25 @@ export function createSettingsPage(callbacks: {
   const appearanceHint = el('p', 'setting-hint', 'Applies to counts inside your duration lines; the onset stays full-size. Unchanged allows lines beside counts to cross through them.');
   appearanceHint.id = 'settings-appearance-hint';
   appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
-  activeControls.append(systemField, fixtureField, conventionField, placementField, appearanceField);
+  let generation = defaultGeneration();
+  const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(); });
+  length.value = '2'; length.dataset.setting = 'exercise-length';
+  const lengthField = field('Exercise length', length);
+  lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
+  const vocabulary = el('fieldset', 'settings-options active-ingredients');
+  vocabulary.append(el('legend', '', 'Allowed rhythm ingredients · next exercise'));
+  for (const ingredient of ingredients) {
+    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = true; input.dataset.ingredient = ingredient.id;
+    input.addEventListener('change', () => { generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) }; generationChanged(); });
+    label.append(input, el('span', '', ingredient.label)); vocabulary.append(label);
+  }
+  const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
+  function generationChanged() {
+    generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
+    callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
+  }
+  generationStatus.textContent = 'Fixed 4/4. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
+  activeControls.append(lengthField, vocabulary, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
   restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
@@ -116,7 +137,7 @@ export function createSettingsPage(callbacks: {
   browse.append(expand);
   page.append(intro, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
   for (const group of settingsGroups) {
-    const plannedSettings = group.settings.filter(setting => setting.id !== 'count-system');
+    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
     section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
     const summary = el('summary');

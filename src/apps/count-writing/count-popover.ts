@@ -4,6 +4,7 @@ import { alphabet } from './evaluation.ts';
 import type { CountSymbol } from './evaluation.ts';
 
 export function createCountPopover(actions: {
+  id?: string;
   display: (symbol: CountSymbol) => string;
   keydown: (event: KeyboardEvent) => boolean;
   select: (tick: number) => void;
@@ -12,8 +13,12 @@ export function createCountPopover(actions: {
   anchor: () => { x: number; y: number };
   focus: () => void;
 }) {
+  const lifecycle = new AbortController();
+  function listen<K extends keyof WindowEventMap>(target: Document | Window | VisualViewport, name: K, handler: (event: WindowEventMap[K]) => void, capture = false) {
+    target.addEventListener(name, handler as EventListener, { capture, signal: lifecycle.signal });
+  }
   const popup = el('div', 'count-popover');
-  popup.id = 'count-popover'; popup.hidden = true;
+  popup.id = actions.id ?? 'count-popover'; popup.hidden = true;
   popup.setAttribute('role', 'dialog'); popup.setAttribute('aria-label', 'Enter a count');
   const heading = el('span', 'count-popover-heading');
   const close = button('×', () => dismiss(true)); close.className = 'count-popover-dismiss';
@@ -81,23 +86,23 @@ export function createCountPopover(actions: {
     if (!ignoredClick || performance.now() > ignoredClick.until || !ignoredClick.target.contains(event.target as Node)) return false;
     ignoredClick = null; return true;
   }
-  document.addEventListener('pointermove', event => {
-    if (gesture?.id !== event.pointerId) return;
+  listen(document, 'pointermove', event => {
+    if (!gesture || gesture.id !== event.pointerId) return;
     const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLButtonElement>('.count-popover-symbol') ?? null;
     gesture.choice?.classList.remove('slide-selected'); gesture.choice = hit;
     hit?.classList.add('slide-selected');
   });
-  document.addEventListener('pointerup', event => {
-    if (gesture?.id !== event.pointerId) return;
+  listen(document, 'pointerup', event => {
+    if (!gesture || gesture.id !== event.pointerId) return;
     const choice = gesture.choice;
     gesture = null; choice?.classList.remove('slide-selected');
     if (choice) submit(choice.dataset.symbol as CountSymbol);
   });
-  document.addEventListener('pointercancel', event => { if (gesture?.id === event.pointerId) dismiss(); });
-  document.addEventListener('pointerdown', event => {
+  listen(document, 'pointercancel', event => { if (gesture?.id === event.pointerId) dismiss(); });
+  listen(document, 'pointerdown', event => {
     if (!popup.hidden && !popup.contains(event.target as Node)) dismiss();
   }, true);
-  document.addEventListener('keydown', event => {
+  listen(document, 'keydown', event => {
     if (popup.hidden) return;
     if (event.key === 'Escape') { event.preventDefault(); dismiss(true); }
     else if (popup.contains(event.target as Node) && !event.ctrlKey && !event.metaKey && !event.altKey) {
@@ -107,9 +112,9 @@ export function createCountPopover(actions: {
 
     }
   });
-  window.addEventListener('resize', position);
-  document.addEventListener('scroll', position, true);
-  window.visualViewport?.addEventListener('resize', position);
-  window.visualViewport?.addEventListener('scroll', position);
-  return { open, dismiss, update, submit, startPointer, consumeClick };
+  listen(window, 'resize', position);
+  listen(document, 'scroll', position, true);
+  if (window.visualViewport) listen(window.visualViewport, 'resize', position);
+  if (window.visualViewport) listen(window.visualViewport, 'scroll', position);
+  return { destroy: () => { lifecycle.abort(); popup.remove(); }, open, dismiss, update, submit, startPointer, consumeClick };
 }

@@ -50,7 +50,7 @@ export const settingsGroups: readonly SettingsGroup[] = [
   },
   {
     id: 'vocabulary', title: 'Rhythm vocabulary', source: '4, 6, 7',
-    description: 'Two ordinary checklists: the starting vocabulary and an optional progression goal. Exercise generation is not available yet, so these lists have no selections.',
+    description: 'Two ordinary checklists: the starting vocabulary and an optional progression goal. Generated practice uses the active ingredients above. These broader progression lists remain unavailable and have no selections.',
     settings: [
       { id: 'starting-vocabulary', label: 'Starting vocabulary', kind: 'checklist', options: vocabulary },
       { id: 'goal-enabled', label: 'Enable a progression goal', kind: 'check', checked: false, hint: 'A goal is an upper bound. It must include every starting item and does not promise an unlock order.' },

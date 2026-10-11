@@ -1,4 +1,5 @@
 import { countGrid } from './grid.ts';
+import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 export const alphabet = ['1', '2', '3', '4', '&', 'e', 'a'] as const;
 export type CountSymbol = typeof alphabet[number] | '';
@@ -37,11 +38,18 @@ export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConv
   const sustained = grid.events.filter(e => grid.slots.some(s => s.event === e && s.onBeat && !s.onset));
   const expectedRests = grid.events.filter(e => e.kind === 'rest').map(e => ({
     start: e.startSlot,
-    end: grid.slots.flatMap((slot, tick) => slot.event === e && (slot.onset || slot.onBeat || Boolean(answer.symbols[tick])) ? [tick] : []).at(-1)!,
+    end: grid.slots.flatMap((slot, tick) => slot.event === e && (slot.onset || slot.onBeat || (slot.dottedInternal && dottedConvention === 'required') || Boolean(answer.symbols[tick])) ? [tick] : []).at(-1)!,
   }));
   const groupedRestsMatch = expectedRests.length === answer.rests.length && expectedRests.every(expected =>
     answer.rests.some(group => group.start === expected.start && group.end === expected.end));
-  if (!groupedRestsMatch) rests.issues.push('Enclose each written rest in one pair of parentheses. Keep separate rests in separate pairs.');
+  if (!groupedRestsMatch) {
+    expectedRests.forEach(expected => {
+      if (answer.rests.filter(group => group.start === expected.start && group.end === expected.end).length !== 1)
+        rests.issues.push(`Enclose the written rest at ${grid.slots[expected.start]!.label} in one complete pair through ${grid.slots[expected.end]!.label}. Keep adjacent rests in separate pairs.`);
+    });
+    if (answer.rests.some(group => !expectedRests.some(expected => group.start === expected.start && group.end === expected.end)))
+      rests.issues.push('Remove extra or misplaced rest pairs. Each pair must enclose exactly one written rest within this measure.');
+  }
   const expected = sustained.map(e => ({ start: e.startSlot, end: e.endSlot - 1 }));
   const exact = expected.length === answer.spans.length && expected.every(span => answer.spans.some(s => s.start === span.start && s.end === span.end));
   if (!exact) spans.issues.push('Review duration lines: start the line at the note/rest onset. Its ending position is still provisional.');
@@ -51,8 +59,25 @@ export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConv
   const invalidSpan = answer.spans.some(s => !Number.isInteger(s.start) || !Number.isInteger(s.end) || s.start < 0 || s.end >= grid.slots.length || s.start > s.end);
   spans.verdict = exact ? 'correct' : invalidSpan || outsideSustain || wrongLineCount || wrongAnchor ? 'revise' : 'provisional';
   if (spans.verdict === 'revise') spans.issues = ['Start each duration line at its note/rest onset and keep it within that note or rest. Use one line per sustained note or rest; ending positions remain provisional.'];
+  if (!exact) {
+    sustained.forEach(event => {
+      if (!answer.spans.some(span => span.start === event.startSlot && span.end === event.endSlot - 1))
+        spans.issues.push(`Check the duration line at ${grid.slots[event.startSlot]!.label}: cover this note/rest from its onset through its final position before the next event or barline.`);
+    });
+  }
   counts.verdict = counts.issues.length ? 'revise' : countReview ? 'provisional' : 'correct';
   if (countReview && !counts.issues.length) counts.issues.push(hasDottedQuarter ? 'The dotted-quarter internal & is teacher-dependent. Select a convention, or review both variants provisionally.' : 'Extra valid subdivisions are accepted provisionally pending teacher review.');
   rests.verdict = rests.issues.length ? 'revise' : 'correct';
   return { counts, spans, rests };
+}
+
+/** Answers are measure-local; no answer range can connect two bars. */
+export function evaluatePassage(measures: readonly RhythmMeasure[], answers: readonly CountAnswer[], convention: DottedQuarterConvention = 'review'): Evaluation[] {
+  derivePassage(measures);
+  if (answers.length !== measures.length) throw new Error('Provide one answer per measure.');
+  return measures.map((measure, index) => {
+    const result = evaluate(measure, answers[index]!, convention);
+    for (const dimension of Object.values(result)) dimension.issues = dimension.issues.map((issue: string) => `Measure ${index + 1}: ${issue}`);
+    return result;
+  });
 }

@@ -60,7 +60,7 @@ Supported tuplets are flat 3:2 triplets and 2:3 duplets. Each member carries the
 
 ## Count Writing integration
 
-The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to the currently reviewed 4/4, quarter-beat, half/quarter/eighth material. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
+The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to the currently reviewed 4/4, quarter-beat, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests. Generated practice uses 1–4 independently edited measures; see [practice loop](practice-loop.md). Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
 
 Its eighth-spaced answer storage is a **counting/presentation policy**, not the music clock. Slot indices in student symbols, rest markings and duration spans refer to this generated grid. Do not pass them to performance timing as musical coordinates. The renderer and editor use the same slot geometry; answer size and navigation limits come from the grid. Dotted-quarter policy is identified from written events and positions, not fixture IDs.
 
@@ -76,4 +76,4 @@ To expose new material: extend the counting convention, input positions, engravi
 
 [Domain tests](../../tests/rhythm-model.test.ts) cover exact durations, dots, sixteenths, tuplets, compound/additive grouping, fractional beat coordinates, rests, exact bar totals, tie chains across changing meters, invalid cases and the UI support boundary. [Count Writing tests](../../tests/count-writing.test.ts) preserve the four existing answers and independent feedback dimensions.
 
-Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. No notation library, audio scheduler, generator, persistence schema or production route is selected by this change. Follow normal feature-to-dev staging and explicit production-publication rules.
+Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/count-writing/generation.ts) now uses this model and validates complete passages. No notation library, audio scheduler, persistence schema or production route is selected by this change. Follow normal feature-to-dev staging and explicit production-publication rules.
