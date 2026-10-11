@@ -28,7 +28,7 @@ export async function buildRhythmWalk(dev = false) {
   const context = await esbuild.context(options);
   await context.watch();
   const { port } = await context.serve({ servedir: path.join(root, 'dist/hosted'), host: '127.0.0.1', port: 5173 });
-  console.log(`Rhythm Walk prototype: http://127.0.0.1:${port}/prototypes/rhythm-walk/`);
+  console.log(`Uno234 prototype: http://127.0.0.1:${port}/prototypes/rhythm-walk/`);
   process.on('SIGINT', async () => { await context.dispose(); process.exit(0); });
   process.on('SIGTERM', async () => { await context.dispose(); process.exit(0); });
 }

@@ -46,25 +46,32 @@ const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
 const header = el('header', 'app-header');
 const brand = el('div', 'brand');
-brand.append(el('h1', 'wordmark', 'Rhythm Walk'), el('p', 'tagline', 'Practice rhythm with a friend.'));
+brand.append(el('h1', 'wordmark', 'Uno234'), el('p', 'tagline', 'Practice rhythm with a friend.'));
 header.append(brand);
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const mode = select(modeOptions, value => switchMode(value as Mode)); mode.value = preferences.mode;
 const modeField = field('Mode', mode);
 const practiceView = el('section'); practiceView.id = 'practice-view';
-const banner = el('p', 'review-note', 'Open entry. Counting conventions and duration-line endpoints retain their teacher-review options.');
-const exerciseSummary = el('p'); exerciseSummary.setAttribute('role', 'status');
+const banner = el('p', 'counting-hint');
+const exerciseSummary = el('p', 'exercise-summary'); exerciseSummary.setAttribute('role', 'status');
 const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId; picker.dataset.preset = '';
-const setup = el('div', 'card setup'); setup.append(modeField, field('Exercise preset', picker));
-const passage = el('section', 'card passage'); passage.setAttribute('aria-label', 'Exercise passage');
+const setup = el('div', 'setup exercise-toolbar'); setup.append(modeField, field('Exercise preset', picker));
+const activitySurface = el('section', 'card activity-surface'); activitySurface.setAttribute('aria-label', 'Uno234 activity');
+const passage = el('section', 'passage'); passage.setAttribute('aria-label', 'Exercise passage');
 const passageScroll = el('div', 'score-scroll passage-scroll');
 const passageStrip = el('div', 'passage-strip');
 passageScroll.append(passageStrip);
 const wrap = button('Wrap notation into systems', () => { passageStrip.classList.toggle('wrapped'); preferences.wrapped = passageStrip.classList.contains('wrapped'); persist(); wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped'))); tieNotation?.refresh(); });
 wrap.setAttribute('aria-pressed', 'false');
 const passageHint = el('p', 'setting-hint', 'Measures fit the available width and stack on smaller screens. Counts restart at each barline.');
-passage.append(passageScroll, wrap, passageHint);
+passage.append(passageScroll, wrap);
+const help = el('details', 'practice-help');
+help.append(el('summary', '', 'Practice help'),
+  el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. Your responses and feedback are kept. Next exercise starts a new score and clears both responses.'),
+  passageHint,
+  el('p', '', 'Use one pair of parentheses per written rest. Sustained notes and rests need duration lines. In 6/8, write every eighth count: 1 2 3 | 4 5 6; performance follows two dotted-quarter pulses.'),
+  el('p', '', 'Preferences are saved in this browser. Exercise settings apply on Next exercise; your current score and answers are kept until then. Reloading starts with blank responses.'));
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
@@ -111,11 +118,12 @@ function newExercise(returnToPractice = false) {
 const next = button('Next exercise', () => newExercise(Boolean(practiceView.hidden)));
 const reset = button('Reset answer', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
 actions.append(check, retry, reset, performAfterWriting);
-const sharedActions = el('div', 'actions'); sharedActions.append(next);
+const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
+setup.append(sharedActions);
 writeResponse.append(actions, summary, passageFeedback);
 passageScroll.before(performance.countInDisplay);
 passageScroll.after(performance.section);
-practiceView.append(banner, showCountsField, passage, writeResponse, el('p', 'footer-note', 'Exercise settings apply on Next exercise. Modes keep the same score and responses. Preferences are saved across reloads.'));
+practiceView.append(banner, showCountsField, passage, writeResponse, help);
 const settings = createSettingsPage({
   initialGeneration: generation,
   newExercise: () => newExercise(true),
@@ -129,12 +137,13 @@ const settings = createSettingsPage({
     exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; Next exercise uses these settings.';
   },
 });
-const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, sharedActions, exerciseSummary);
+const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(nav);
-main.append(header, pageTitle, sharedControls, practiceView, settings.page); app.append(main);
+activitySurface.append(pageTitle, sharedControls, practiceView, settings.page);
+main.append(header, activitySurface); app.append(main);
 function chooseFixture(id: string) {
   if (id === fixtureId) return;
   if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8); return; }
@@ -173,7 +182,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
   summary.textContent = ''; retry.hidden = true;
   const compound = measures[0]!.meter[1] === 8;
-  banner.textContent = compound ? '6/8 · Count every eighth 1 2 3 | 4 5 6. Two dotted-quarter pulses per bar. Every sustained note/rest requires a line.' : `${measures[0]!.meter.join('/')} · Count quarter beats and eighth offbeats. Counts restart at each barline.`;
+  banner.textContent = compound ? 'Count 1 2 3 | 4 5 6 · Two dotted-quarter pulses per bar.' : 'Count quarter beats and eighth offbeats · Restart at each barline.';
   updateEditors(); updateResponseView();
   if (focus && preferences.mode !== 'tap') editors[0]?.focus();
 }
@@ -193,7 +202,7 @@ function showPage(focus = true) {
   practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
   (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
   pageTitle.textContent = isSettings ? 'Settings' : 'Practice';
-  document.title = `${pageTitle.textContent} — Rhythm Walk`;
+  document.title = `${pageTitle.textContent} — Uno234`;
   updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
   if (!isSettings && focusNewRhythm && preferences.mode !== 'tap') { focusNewRhythm = false; editors[0]?.focus(); }
   else if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }

@@ -1,8 +1,8 @@
-# One Rhythm Walk activity
+# One Uno234 activity
 
 ## Interface and response modes
 
-Rhythm Walk owns shared exercise controls above the response area: Mode, Exercise preset, Next exercise, passage summary, and a single rendered score. Exercise settings appear only on the Settings page, alongside writing presentation/counting preferences and the future-settings inventory. Its New Exercise action uses the same lifecycle as Next exercise. Common controls remain accessible on either page.
+Uno234 uses one activity surface with a compact shared toolbar: Mode, Exercise preset, Next exercise, and passage summary. The toolbar remains accessible on Practice and Settings. Practice keeps a short counting hint near the score; longer explanations are under Practice help. Exercise settings appear only on the Settings page, alongside writing presentation/counting preferences. The future-settings inventory is collapsed under Future options. Its New Exercise action uses the same lifecycle as Next exercise.
 
 Write Counts uses the existing keyboard/touch count editor and independent count, duration-line and rest-parenthesis feedback. Tap Rhythms uses press/hold/release with Space or the performance pad, audible one-bar count-in, exercise metronome, tempo and localized onset/release/rest review. Both offers either response with no prerequisite; Perform this exercise is an optional transition from writing to capture. It uses the ordinary Start flow without requiring Check or a correct answer.
 

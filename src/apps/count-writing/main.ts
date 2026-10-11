@@ -1,2 +1,2 @@
-// Legacy entry point: the same Rhythm Walk activity and preference store.
+// Legacy entry point: the same Uno234 activity and preference store.
 import '../rhythm-walk/main.ts';

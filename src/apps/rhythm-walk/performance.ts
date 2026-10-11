@@ -69,7 +69,9 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) { timing.cancel(); dialog.close(); } } });
   const calibrate = button('Calibrate', () => dialog.showModal());
   actions.append(calibrate);
-  main.append(pad, actions, el('h2', '', 'Tap Rhythms'), setup, attemptSummary, instructions, status, pulse, review, dialog, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
+  const help = el('details', 'performance-help');
+  help.append(el('summary', '', 'About timing feedback'), el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
+  main.append(pad, actions, el('h2', '', 'Tap Rhythms'), setup, attemptSummary, instructions, status, pulse, review, dialog, help);
 
   function lock(active: boolean) {
     timing.setLocked(active);

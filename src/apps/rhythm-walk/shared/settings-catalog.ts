@@ -39,7 +39,7 @@ export const settingsGroups: readonly SettingsGroup[] = [
     description: 'Choose an activity, a session format and the source of its exercises.',
     settings: [
       choice('activity-mode', 'Activity', ['Write Counts', 'Tap Rhythms', 'Both'], 'Write Counts', 'Choose a response mode above the shared score.'),
-      choice('session-format', 'Rhythm Walk session format', ['Short challenges', 'Continuous performance', 'Progressive journey'], undefined, 'All three formats are planned. No default format has been selected.'),
+      choice('session-format', 'Uno234 session format', ['Short challenges', 'Rhythm Walk (continuous gameplay)', 'Progressive journey'], undefined, 'Rhythm Walk is reserved for an eventual continuous gameplay mode. All three formats are planned. No default format has been selected.'),
       number('passage-length', 'Passage length (measures)', 'Short and longer passages will be configurable. Suggested lengths in the handoff were examples, not defaults.'),
       choice('exercise-source', 'Exercise source', ['Curated passages', 'External authored content'], undefined, 'Generated practice and built-in review fixtures work in the active exercise selector above. A curated/imported-content workflow remains future work.'),
       choice('preset', 'Starting preset', ['Beginning Band Midyear', 'Beginning Band End of Year', 'Non-Varsity', 'Varsity', 'UIL I', 'UIL II', 'UIL III', 'UIL IV', 'UIL V', 'UIL VI'], undefined, 'Presets will be editable. Their contents need review; UIL presets will not lock meter choices.'),

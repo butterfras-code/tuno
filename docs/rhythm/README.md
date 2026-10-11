@@ -1,6 +1,6 @@
-# Rhythm Walk: current direction
+# Uno234: current direction
 
-Updated 2026-10-11. **Rhythm Walk is one activity with three freely interchangeable response modes: Write Counts, Tap Rhythms, and Both.** Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes descriptions of separate activities and the earlier Count Writing-first sequencing. It does not authorize production publication.
+Updated 2026-10-11. **Uno234 is one activity with three freely interchangeable response modes: Write Counts, Tap Rhythms, and Both.** The current activity is named **Uno234**. **Rhythm Walk** is reserved for an eventual continuous gameplay mode; it is not a current response mode. Existing prototype URLs, source directories, and preference keys retain their historical names for compatibility. Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes descriptions of separate activities and the earlier Count Writing-first sequencing. It does not authorize production publication.
 
 Configure one exercise, then choose how to respond without changing its identity, notation or configuration. Both exposes writing and tapping independently, with an optional Perform this exercise action; completing or checking the writing is never required. Each response and its evaluation survives mode switching within the exercise. Switching during count-in, capture or calibration cancels safely and stops scheduled audio. A canceled performance is interrupted, never completed or graded.
 

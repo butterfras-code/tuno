@@ -68,8 +68,8 @@ export function createSettingsPage(callbacks: {
   convention: (value: DottedQuarterConvention) => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
-  const intro = el('p', 'settings-intro', 'Configure Rhythm Walk once for Write Counts, Tap Rhythms, or Both. Unavailable controls are shown for review and do not change your exercises.');
-  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply to your next exercise. New Exercise uses these settings, clears both responses, and returns to practice. Preferences persist across reloads; responses belong to the current exercise.');
+  const intro = el('p', 'settings-intro', 'Choose exercise ingredients and writing preferences for Uno234.');
+  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on Next exercise. New Exercise clears both responses and returns to practice.');
   const newExercise = button('New Exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
@@ -169,7 +169,9 @@ export function createSettingsPage(callbacks: {
     expand.textContent = open ? 'Collapse all groups' : 'Expand all groups';
   });
   browse.append(expand);
-  page.append(intro, savedNote, settingsActions, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
+  const planned = el('details', 'planned-settings');
+  planned.append(el('summary', '', 'Future options'), browse, el('p', 'setting-hint', 'These options are planned or still being decided. They do not change your exercises.'));
+  page.append(intro, savedNote, settingsActions, available, planned);
   for (const group of settingsGroups) {
     const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping', 'activity-mode'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
@@ -180,9 +182,9 @@ export function createSettingsPage(callbacks: {
     const content = el('div', 'settings-group-body');
     content.append(el('p', 'group-description', group.description));
     plannedSettings.forEach(setting => content.append(placeholder(setting)));
-    section.append(summary, content); page.append(section); sections.push(section);
+    section.append(summary, content); planned.append(section); sections.push(section);
   }
-  const back = el('a', 'control control--primary', 'Back to Rhythm Walk'); back.href = '#practice';
+  const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
   generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise.'; newExercise.disabled = Boolean(generationIssue(generation));
   let locked = false;

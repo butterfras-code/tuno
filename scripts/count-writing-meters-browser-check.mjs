@@ -17,7 +17,7 @@ try {
   const bars = page.locator('.passage-measure'), slots = page.locator('.count-slot'), anchors = page.locator('.duration-anchor');
   const button = name => page.getByRole('button', { name, exact: true });
   const settings = async () => { await page.getByRole('link', { name: 'Settings', exact: true }).click(); await page.locator('#settings-view').waitFor({ state: 'visible' }); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Uno234', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ score: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), lines: [...node.querySelectorAll('.duration-line:not(.draft-line)')].map(n => [n.style.cssText, n.dataset.incoming, n.dataset.outgoing]), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
   async function solve(source) {
     const grid = passageGrid(source);

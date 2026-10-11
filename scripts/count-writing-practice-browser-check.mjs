@@ -18,7 +18,7 @@ try {
   const bars = page.locator('.passage-strip > section');
   const feedback = () => page.locator('.passage-feedback > .feedback');
   const settings = async () => { await page.getByRole('link', { name: 'Settings', exact: true }).click(); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Uno234', exact: true }).click(); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ notation: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), spans: [...node.querySelectorAll('.duration-line')].map(n => n.style.cssText), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
   assert.equal(await page.locator('.passage .score-scroll').count(), 1, 'one scroller for the whole passage');
   assert.equal(await bars.locator('.notation text').count(), 2, 'time signature appears once at passage start');
@@ -136,7 +136,7 @@ try {
   assert.ok(generatedKinds.every(([duration, kind]) => ['1', '2', '3', '4'].includes(duration) && kind === 'note'));
   report.checks.push('Empty and impossible configurations explain and block Next; unavailable selected ingredients are skipped');
   await page.evaluate(() => localStorage.removeItem('tuno.rhythm-walk.preferences.v1')); await page.reload(); assert.equal(await bars.count(), 2);
-  await settings(); await control('Expand all groups').click();
+  await settings(); await page.locator('.planned-settings > summary').click(); await control('Expand all groups').click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: `${output}/settings-320.png`, fullPage: true });
   assert.deepEqual(errors, []); report.passed = true;

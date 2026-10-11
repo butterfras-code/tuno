@@ -34,7 +34,7 @@ try {
   assert.equal(await slots.nth(0).innerText(),'·','new rhythm resets the answer');
   const nav = page.getByRole('navigation', { name: 'Rhythm pages' });
   const settings = async () => { await nav.getByRole('link', { name: 'Settings', exact: true }).click(); await page.getByLabel('Rhythm settings',{exact:true}).waitFor({state:'visible'}); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); await page.getByLabel('Editable measure',{exact:true}).waitFor({state:'visible'}); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Uno234', exact: true }).click(); await page.getByLabel('Editable measure',{exact:true}).waitFor({state:'visible'}); };
   assert.equal(await page.getByRole('group', { name: 'Symbol keypad', exact: true }).count(), 0);
   assert.equal(await page.locator('.instructions,.line-controls,.line-edit').count(), 0);
   assert.equal(await control('Start duration line').count(), 0);
