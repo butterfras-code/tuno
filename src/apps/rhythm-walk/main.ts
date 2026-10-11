@@ -129,10 +129,12 @@ const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 setup.append(sharedActions);
 writeResponse.append(retry, summary, passageFeedback);
 help.append(performance.help);
+passage.prepend(performance.tempoField);
 passageScroll.after(performance.section);
 practiceView.append(banner, showCountsField, passage, writeResponse);
 const settings = createSettingsPage({
   initialGeneration: generation,
+  metronomeField: performance.metronomeField,
   newExercise: () => newExercise(true),
   offbeat: value => { offbeat = value; updateEditors(); },
   placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },

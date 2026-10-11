@@ -28,6 +28,14 @@ try {
   const initialSlot = bars.nth(0).locator('.count-slot').nth(0);
   await initialSlot.press('1');
   const before = await snapshot();
+  assert.equal(await page.locator('.passage > .score-tempo input').count(), 1, 'tempo belongs to score');
+  assert.equal(await page.locator('.tap-response input[type=number]').count(), 0);
+  await settings();
+  const metronome = page.getByLabel('Metronome during exercise', { exact: true });
+  await metronome.uncheck(); await practice();
+  assert.equal(await metronome.isVisible(), false, 'exercise metronome belongs to settings');
+  assert.deepEqual(await snapshot(), before, 'performance preference preserves exercise and answer');
+  await settings(); assert.equal(await metronome.isChecked(), false); await metronome.check(); await practice();
   await settings(); await page.getByLabel('Exercise length', { exact: true }).selectOption('4'); await practice();
   assert.deepEqual(await snapshot(), before, 'length setting preserves exercise and entered answer');
   await control('Check').click(); assert.deepEqual(await snapshot(), before, 'Check preserves answer');

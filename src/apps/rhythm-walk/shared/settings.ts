@@ -60,6 +60,7 @@ function placeholder(setting: Setting): HTMLElement {
 
 export function createSettingsPage(callbacks: {
   initialGeneration: GenerationSettings;
+  metronomeField: HTMLElement;
   newExercise: () => void;
   generation: (value: GenerationSettings) => void;
   offbeat: (value: OffbeatSymbol) => void;
@@ -68,7 +69,7 @@ export function createSettingsPage(callbacks: {
   convention: (value: DottedQuarterConvention) => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
-  const intro = el('p', 'settings-intro', 'Choose exercise ingredients and writing preferences for Uno234.');
+  const intro = el('p', 'settings-intro', 'Choose exercise ingredients, performance settings and writing preferences for Uno234.');
   const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on Next exercise. New Exercise clears both responses and returns to practice.');
   const newExercise = button('New Exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
@@ -159,7 +160,9 @@ export function createSettingsPage(callbacks: {
   const restTitle = el('h3', '', 'Rest parentheses'); restTitle.id = 'setting-rest-grouping';
   restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
   restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
-  available.append(activeHeader, el('h3', '', 'Exercise settings'), exerciseControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
+  const performanceControls = el('div', 'settings-live-controls performance-settings');
+  performanceControls.append(callbacks.metronomeField);
+  available.append(activeHeader, el('h3', '', 'Exercise settings'), exerciseControls, el('h3', '', 'Performance'), performanceControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];

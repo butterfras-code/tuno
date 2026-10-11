@@ -15,7 +15,7 @@
   const pad = document.querySelector('.tap-response .pad');
   const picker = document.querySelector('.shared-controls select[data-preset]');
   const tempo = document.querySelector('input[type=number]');
-  const metro = document.querySelector('.tap-response .setup input[type=checkbox]');
+  const metro = document.querySelector('.performance-settings input[type=checkbox]');
   const review = document.querySelector('[aria-label="Attempt review"]');
   const choose = id => { picker.value = id; picker.dispatchEvent(new Event('change')); };
   const originalOscillator = AudioContext.prototype.createOscillator;

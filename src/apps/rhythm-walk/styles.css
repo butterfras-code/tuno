@@ -40,9 +40,12 @@ main.rhythm-app {
 }
 
 .tap-response { margin-top: 20px; }
-.tap-response .setup { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
-.tap-response input[type=number] { width: 140px; font: inherit; padding: 10px; }
-.tap-response input[type=checkbox], .calibration input[type=checkbox] { width: 22px; height: 22px; }
+.score-tempo { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0 0 4px; }
+.score-tempo svg { width: 24px; height: 24px; color: var(--color-teal); flex: none; }
+.rhythm-app .score-tempo input { width: 72px; min-height: 44px; padding: 8px; font-size: 15px; }
+.tempo-unit { font-size: 18px; }
+.tempo-bpm { font-size: 11px; color: var(--color-muted); }
+.performance-settings input[type=checkbox], .calibration input[type=checkbox] { width: 22px; height: 22px; }
 .pad { width: 100%; min-height: 120px; border: 3px solid var(--color-teal); border-radius: 18px; font: 800 1.3rem var(--font-heading); background: var(--color-tint); color: var(--color-ink); touch-action: none; user-select: none; }
 .pad[aria-pressed=true] { background: #c3dce1; }
 .pad:disabled { opacity: .55; }
@@ -163,8 +166,6 @@ main.rhythm-app {
   .performance-surface > .pad { padding-right: 94px; }
   .rhythm-app .pad-tools .control { padding: 8px; font-size: 12px; }
 }
-.tap-response > .setup { gap: 8px 16px; }
-.tap-response > .setup .field { margin-bottom: 0; }
 @media (max-width: 540px) {
   .rhythm-app .score-actions .control { padding: 8px; font-size: 13px; }
 }

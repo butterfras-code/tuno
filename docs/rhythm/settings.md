@@ -26,7 +26,7 @@ Shared and mode-specific preferences are saved automatically in this browser thr
 
 Navigation and mode switches preserve the current exercise, saved symbols/markings, and both evaluations. Shared Mode, Exercise preset, Exercise settings and Next exercise controls appear above the response section and remain available on the Settings page. Write Counts owns count presentation and conventions; Tap Rhythms owns tempo, metronome and timing calibration. Both exposes either response without prerequisites, with optional Perform this exercise and Show written counts during performance controls. See [shared ownership and persistence](unified-activity.md).
 
-Tap Rhythms supports 40–180 pulse BPM (default 80), an exercise-metronome toggle, a one-bar audible count-in and Calibrate opening a timing dialog. Tempo means quarter notes in simple meters and dotted quarters in 6/8. The session offset, automatic estimation and manual fallback follow [timing calibration](timing-calibration.md). Broader inactive inventory controls do not disable these implemented behaviors.
+Tap Rhythms supports 40–180 pulse BPM (default 80), an exercise-metronome toggle, a one-bar audible count-in and Calibrate opening a timing dialog. Tempo appears in the score’s top left, with quarter-note pulses in simple meters and dotted-quarter pulses in 6/8. Metronome during exercise lives under Performance on Settings. The session offset, automatic estimation and manual fallback follow [timing calibration](timing-calibration.md). Broader inactive inventory controls do not disable these implemented behaviors.
 
 ## Availability and scope
 

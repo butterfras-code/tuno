@@ -23,7 +23,14 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   const tempo = numberInput(40, 180, options.preferences.bpm);
   const metronome = el('input'); metronome.type = 'checkbox'; metronome.checked = options.preferences.metronome;
   const metronomeLabel = field('Metronome during exercise', metronome);
-  const setup = el('div', 'setup'); const tempoField = field('Tempo (quarter-note BPM)', tempo); setup.append(tempoField, metronomeLabel);
+  const tempoField = field('Tempo (quarter-note BPM)', tempo); tempoField.className = 'score-tempo';
+  tempoField.querySelector('.field-label')!.className = 'field-label sr-only';
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = '<path d="M9 3h6l5 18H4L9 3Z M8 17h8 M12 17l5-11 M14 9l4 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  const tempoUnit = el('span', 'tempo-unit', '♩ ='); tempoUnit.setAttribute('aria-hidden', 'true');
+  const bpm = el('span', 'tempo-bpm', 'BPM'); bpm.setAttribute('aria-hidden', 'true');
+  tempoField.prepend(icon, tempoUnit); tempoField.append(bpm);
   function persist() { if (tempo.checkValidity()) options.preferences.bpm = tempo.valueAsNumber; options.preferences.metronome = metronome.checked; options.changed(); }
   tempo.addEventListener('change', persist); metronome.addEventListener('change', persist);
   const status = el('span', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -70,7 +77,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   const help = el('div', 'performance-help');
   help.append(instructions, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
   const surface = el('div', 'performance-surface'); surface.append(pad, actions);
-  main.append(surface, setup, review, dialog);
+  main.append(surface, review, dialog);
 
   function lock(active: boolean) {
     timing.setLocked(active);
@@ -212,6 +219,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function pulseLabel() { return sourcePolicy(options.exercise().measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
   function refreshExercise() {
     tempoField.querySelector('.field-label')!.textContent = `Tempo (${pulseLabel()} BPM)`;
+    tempo.setAttribute('aria-label', `Tempo (${pulseLabel()} BPM)`);
+    tempoUnit.textContent = pulseLabel() === 'dotted-quarter' ? '♩. =' : '♩ =';
     const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
@@ -229,6 +238,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   refreshExercise();
   return {
     section: main,
+    tempoField,
+    metronomeField: metronomeLabel,
     help,
     cancel,
     start: begin,
