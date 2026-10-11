@@ -40,6 +40,10 @@ Where these documents differ, this current direction and the Count Writing plan 
 
 | 2026-10-10 | Add bounded, opt-in ties and syncopation in 4/4. | One sounding attack/line per tied chain; beat counts remain required, dotted-quarter policy follows total sounding duration, and system breaks do not affect grading. See [rules](ties-syncopation.md). |
 
+## Rhythm Walk development slice
+
+The owner has now authorized a separate first playable performance prototype in parallel with Count Writing's meter expansion. See [the prototype architecture, provisional policies, fixtures and validation](performance-prototype.md). It uses fixed two-measure 4/4 notation, quarter-note BPM, audible count-in, press/hold/release, a metronome toggle, and localized completed-attempt review. It does not establish mastery thresholds, scores, generation, progression, or final suite navigation. The earlier Count Writing first-release decision remains in effect; this prototype does not authorize production publication.
+
 ## Shared foundation and future work
 
 Both activities use the [canonical music model](music-model.md) for written events and derived positions, durations, rests, ties, and meters. Count Writing evaluates entered counts and markings; Rhythm Walk evaluates timed input. Keep those answer and evaluation models separate. Audit existing code before choosing interfaces, dependencies, or notation rendering technology.

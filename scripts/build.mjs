@@ -1,3 +1,4 @@
+import { buildRhythmWalk } from './rhythm-walk-build.mjs';
 import { buildCountWriting } from './count-writing-build.mjs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -139,6 +140,7 @@ async function buildApp(app) {
     await esbuild.build(options);
   }
 }
-for (const app of apps.filter(app => !process.argv.includes('--counts') && (!dev || app.id === (process.argv.includes('--notes') ? 'tunotes' : 'tuno')))) await buildApp(app);
+for (const app of apps.filter(app => !process.argv.includes('--walk') && !process.argv.includes('--counts') && (!dev || app.id === (process.argv.includes('--notes') ? 'tunotes' : 'tuno')))) await buildApp(app);
+if (!dev || process.argv.includes('--walk')) await buildRhythmWalk(dev);
 if (!dev || process.argv.includes('--counts')) await buildCountWriting(dev);
 console.log('App builds and portable resource checks passed.');
