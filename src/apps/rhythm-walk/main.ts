@@ -3,7 +3,6 @@ import '../../tokens.css';
 import '../../shared/ui/fonts.css';
 import '../count-writing/styles.css';
 import './styles.css';
-import uno from '../../assets/uno-happy.svg';
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { Activity, presets as practiceFixtures, modeOptions, readPreferences, preferenceKey } from './activity.ts';
 import type { Mode } from './activity.ts';
@@ -44,13 +43,12 @@ let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
 let currentMeasures: RhythmMeasure[] = [];
 let lineEditor: ReturnType<typeof createPassageLines> | null = null;
 const app = document.querySelector<HTMLElement>('#app')!;
-const main = el('main'); main.id = 'editor';
-const header = el('header');
-const mascot = el('img', 'mascot'); mascot.src = uno; mascot.alt = '';
-const title = el('div');
-const pageTitle = el('h1', '', 'Rhythm Walk'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
-const subtitle = el('p', 'subtitle', 'One score. Write counts, tap rhythms, or try both.');
-title.append(el('p', 'eyebrow', 'tUno · Rhythm practice'), pageTitle, subtitle); header.append(title, mascot);
+const main = el('main', 'rhythm-app'); main.id = 'editor';
+const header = el('header', 'app-header');
+const brand = el('div', 'brand');
+brand.append(el('h1', 'wordmark', 'Rhythm Walk'), el('p', 'tagline', 'Practice rhythm with a friend.'));
+header.append(brand);
+const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const mode = select(modeOptions, value => switchMode(value as Mode)); mode.value = preferences.mode;
 const modeField = field('Mode', mode);
 const practiceView = el('section'); practiceView.id = 'practice-view';
@@ -133,9 +131,10 @@ const settings = createSettingsPage({
 });
 const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, sharedActions, exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
-const practiceLink = el('a', 'control', 'Rhythm Walk'); practiceLink.href = '#practice';
+const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
-main.append(header, nav, sharedControls, practiceView, settings.page); app.append(main);
+header.append(nav);
+main.append(header, pageTitle, sharedControls, practiceView, settings.page); app.append(main);
 function chooseFixture(id: string) {
   if (id === fixtureId) return;
   if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8); return; }
@@ -193,9 +192,8 @@ function showPage(focus = true) {
   practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
   practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
   (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
-  pageTitle.textContent = isSettings ? 'Rhythm settings' : 'Rhythm Walk';
-  subtitle.textContent = isSettings ? 'Shared exercise settings and writing preferences.' : 'One score. Write counts, tap rhythms, or try both.';
-  document.title = `${pageTitle.textContent} — tUno prototype`;
+  pageTitle.textContent = isSettings ? 'Settings' : 'Practice';
+  document.title = `${pageTitle.textContent} — Rhythm Walk`;
   updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
   if (!isSettings && focusNewRhythm && preferences.mode !== 'tap') { focusNewRhythm = false; editors[0]?.focus(); }
   else if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }

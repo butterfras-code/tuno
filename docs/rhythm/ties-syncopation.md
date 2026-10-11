@@ -1,6 +1,6 @@
-Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+# Rhythm Walk: ties and syncopation
 
-# Count Writing: ties and syncopation
+Current behavior, reconciled 2026-10-11 with `99046ee`. Read alongside the [unified Rhythm Walk contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
 The original simple-meter rules below now apply in 2/4, 3/4 and 4/4. [Meter decisions](meters.md) define 6/8: six required numbers, exact duration endpoints and syncopation relative to two dotted-quarter pulses.
 
@@ -29,11 +29,11 @@ Selections permit patterns rather than guaranteeing them in each draw. Generatio
 
 The focused fixture suite covers within-beat ties, beat-crossing ties, barline ties, a three-segment chain, offbeat sustained attacks, untied syncopation, notes adjacent to rests and a wrapped barline tie. These are deterministic development/review examples; implementation and automated review do not claim external teacher approval. The onset-anchored endpoint trial and optional-subdivision teacher-review conventions remain provisional.
 
-2/4, 3/4, 4/4 and 6/8, eighth/quarter/half/dotted-quarter written ingredients; the earlier dotted-half review fixture is retained. No ties on rests, tuplets, alternative compound counting, smaller values, pitch matching, performance timing, scoring, saved accounts or production publication.
+2/4, 3/4, 4/4 and 6/8, eighth/quarter/half/dotted-quarter written ingredients; the earlier dotted-half review fixture is retained. Ties on rests, tuplets in the UI, alternative compound counting, smaller UI values, pitch matching, mastery scoring and saved accounts remain unsupported. Tap Rhythms evaluates these same passages, with one attack and uninterrupted hold per tie chain. Feature work does not authorize production publication.
 
 ## Fixture review guide
 
-Choose these IDs in **Review fixture**, or open `?fixture=<id>`. `~` below joins written notes; `/` is a barline. The count examples use the **required** dotted-quarter convention. Counts inside a duration line use the selected sustained appearance.
+Choose these IDs in **Exercise preset**, or open `?fixture=<id>`. `~` below joins written notes; `/` is a barline. The count examples use the **required** dotted-quarter convention. Counts inside a duration line use the selected sustained appearance.
 
 | Fixture | Written example | Required counts / line decision |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ Choose these IDs in **Review fixture**, or open `?fixture=<id>`. `~` below joins
 
 The enabled-pattern controls permit, rather than force, a pattern. Among eligible candidates, ties use a 65% bounded draw. All-rest bars and repeated exercises remain possible. Syncopation off can make an individual ingredient unreachable; it is skipped while other compatible ingredients fill the bar. Only a configuration with no complete-bar solution blocks Next. Optional ties and syncopations that cannot occur are omitted. Pending changes retain the current answer.
 
-## Implementation and validation
+## Original slice implementation and validation
 
 Built on the previous slice at `d99685c` from `t3code/rhythm-game-handoff`, carried into `feature/count-writing-ties` from `dev`. Before work, `dev` included `origin/main`; the working tree was clean. The previous slice's automated checks and documentation were inspected; no PR review or physical-device sign-off was recorded. Neither integration nor production branches are advanced by this slice.
 

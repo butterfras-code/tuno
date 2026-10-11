@@ -1,6 +1,6 @@
 Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
 
-# Count Writing editable-measure prototype
+# Historical Count Writing editable-measure prototype
 
 Implemented 2026-10-10 for teacher review; this is not a full release or finalized grading contract.
 
@@ -46,7 +46,7 @@ The owner selected **teacher-dependent** for the dotted-quarter internal `&` on 
 
 Teacher review confirmed that duration lines start at the note onset, including `1` for a note beginning on beat 1. The current trial ending position remains the last subdivision before the next event (half note: positions 0–3; dotted quarter: 0–2; final half: 4–7; dotted half: 0–5; positions are zero-based). Matching these endpoints means “Matches trial convention,” not final musical approval. Other ending positions within the same sustained note receive teacher-review status; a line starting after the onset needs correction. Missing/extra lines, multiple lines assigned to one note, lines on unsustained notes, and lines crossing the next onset need correction. Teacher review still needs to settle the ending position and exact visual appearance.
 
-Rest parentheses enclose individual positions. The required rest position is assessed independently of its count symbol, so a missing count does not silently erase a missing-parentheses error. The quarter-rest fixture tests only one required count; grouped parentheses for longer rests remain undecided and outside this chunk.
+The initial quarter-rest fixture assessed individual positions. This has been superseded: one complete pair is required per written rest, enclosing all required or entered counts and any duration line. A half rest uses `(1 2)`; adjacent quarter rests use `(1) (2)`. See [current rest rules](settings.md).
 
 ## Validation evidence
 
@@ -58,6 +58,6 @@ The T3 collaborative browser was tried first. HTTPS page navigation/evaluation w
 
 This prototype is not a distributable release candidate: full `npm run verify` and physical-device acceptance have not been performed. Physical phone/tablet touch, managed Chromebook keyboard, Safari and classroom projection remain untested. Automated viewport/pointer checks cannot establish physical-device behavior.
 
-## Next bounded chunk
+## Historical next-chunk proposal (implemented and superseded)
 
 Teacher-review these four measures first. Choose the teacher convention and agree on other valid optional counts, duration-line endpoints/raised appearance and parentheses grouping; turn the agreed variants into policy tests. Then implement a bounded generator for these reviewed 4/4 values with setup and check/correct/next flow. Keep guided filtering, adaptive progression, UIL presets, saved progress, journey mechanics and Rhythm Walk timed input outside that chunk until explicitly scoped.

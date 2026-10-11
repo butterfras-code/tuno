@@ -2,7 +2,7 @@
 
 Current integration: [one Rhythm Walk activity](unified-activity.md) shares written events and exact derived time across Write Counts and Tap Rhythms. Their answer and performance evaluations remain separate.
 
-Implemented 2026-10-10 at the owner's request. This is the shared source contract for Count Writing and future Rhythm Walk work. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
+Implemented 2026-10-10 at the owner's request. This is the shared source contract for both Rhythm Walk response modes. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
 
 ## Compact source
 
@@ -25,13 +25,13 @@ Each event is `[value, modifiers?]`. Values are `W` whole, `H` half, `Q` quarter
 ['Q', { tieNext: true }]      // ties to the next written event
 ```
 
-Rests stay in chronological order with notes and advance time. Do not encode rests as negative positions. UI labels, preset IDs, assistance and student answers do not belong in the shared musical event. Prototype fixture metadata lives in [fixtures.ts](../../src/apps/count-writing/fixtures.ts).
+Rests stay in chronological order with notes and advance time. Do not encode rests as negative positions. UI labels, preset IDs, assistance and student answers do not belong in the shared musical event. Prototype fixture metadata lives in [fixtures.ts](../../src/apps/rhythm-walk/shared/fixtures.ts).
 
 ## Derived time and coordinates
 
 `duration(event)` returns an exact fraction of a whole note. Single dots multiply by 3/2, double dots by 7/4, and a tuplet ratio `[actual, normal]` multiplies by `normal/actual`. `deriveMeasure` accumulates positions and validates that events fill the bar exactly. Its richer output is computed data, not additional authored source.
 
-[Fraction arithmetic](../../src/music/fraction.ts) uses normalized integer pairs `[numerator, denominator]`. This keeps triplets and comparisons exact and JSON-safe. Arithmetic rejects unsafe integer overflow. Convert to decimal only for layout or eventual audio scheduling; do not round source time to a fixed grid. Audio scheduling and tempo mapping are not implemented by this model.
+[Fraction arithmetic](../../src/music/fraction.ts) uses normalized integer pairs `[numerator, denominator]`. This keeps triplets and comparisons exact and JSON-safe. Arithmetic rejects unsafe integer overflow. Convert to decimal only for layout or eventual audio scheduling; do not round source time to a fixed grid. Audio scheduling and tempo mapping live outside this model, in the [performance timing adapter](../../src/apps/rhythm-walk/timing.ts).
 
 `beatCoordinate(derivedMeasure, position)` gives **zero-based coordinates with 12 subdivisions per grouped beat**. For `H Q E E` in 4/4, the starts are decimal coordinates `0, 24, 36, 42`. These correspond to the owner's one-based base-twelve shorthand `10, 30, 40, 46`. That shorthand is for explanation; source files do not contain base-twelve numeric literals.
 
@@ -64,7 +64,7 @@ Supported tuplets are flat 3:2 triplets and 2:3 duplets. Each member carries the
 
 ## Count Writing integration
 
-The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to 2/4, 3/4, 4/4 and 6/8, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests. Tied notes are now supported in this repertoire; [passageGrid](../../src/apps/count-writing/passage.ts) derives sounding attacks, chain durations and answer coordinates from `derivePassage`. Generated practice uses 1–4 consecutive measures in one staff passage; rest pairs stay measure-local while tied duration lines use passage-wide derived answer positions; see [practice loop](practice-loop.md). Beginner rest-placement policy lives in the generator’s [notation policy](../../src/apps/count-writing/notation-policy.ts), keeping uncommon but valid written music available through an explicit practice opt-in. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
+The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to 2/4, 3/4, 4/4 and 6/8, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests. Tied notes are now supported in this repertoire; [passageGrid](../../src/apps/count-writing/passage.ts) derives sounding attacks, chain durations and answer coordinates from `derivePassage`. Generated practice uses 1–4 consecutive measures in one staff passage; rest pairs stay measure-local while tied duration lines use passage-wide derived answer positions; see [practice loop](practice-loop.md). Beginner rest-placement policy lives in the generator’s [notation policy](../../src/apps/rhythm-walk/shared/notation-policy.ts), keeping uncommon but valid written music available through an explicit practice opt-in. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
 
 Its eighth-spaced answer storage is a **counting/presentation policy**, not the music clock. Slot indices in student symbols, rest markings and duration spans refer to this generated grid. Do not pass them to performance timing as musical coordinates. The renderer and editor use the same slot geometry; answer size and navigation limits come from the grid. Dotted-quarter policy is identified from total sounding durations and positions for notes, and written durations for rests, not fixture IDs. See the [ties and syncopation rules](ties-syncopation.md).
 
@@ -80,4 +80,4 @@ To expose new material: extend the counting convention, input positions, engravi
 
 [Domain tests](../../tests/rhythm-model.test.ts) cover exact durations, dots, sixteenths, tuplets, compound/additive grouping, fractional beat coordinates, rests, exact bar totals, tie chains across changing meters, invalid cases and the UI support boundary. [Count Writing tests](../../tests/count-writing.test.ts) preserve the four existing answers and independent feedback dimensions.
 
-Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/count-writing/generation.ts) now uses this model and validates complete passages. No notation library, audio scheduler, persistence schema or production route is selected by this change. Follow normal feature-to-dev staging and explicit production-publication rules.
+Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/rhythm-walk/shared/generation.ts) now uses this model and validates complete passages. This model does not own notation UI, audio scheduling or preference persistence; their current implementation is documented in the [unified activity contract](unified-activity.md). Follow normal feature-to-dev staging and explicit production-publication rules.

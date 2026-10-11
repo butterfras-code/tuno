@@ -1,12 +1,12 @@
-Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+# Rhythm Walk meters
 
-# Count Writing meters
+Current behavior, reconciled 2026-10-11 with `99046ee`. Read alongside the [unified Rhythm Walk contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
-Implemented slice: 2/4, 3/4, 4/4 and 6/8, one meter drawn from the checked time signatures throughout each exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Reload restores the shared saved settings.
+Implemented slice: 2/4, 3/4, 4/4 and 6/8, one meter drawn from the checked time signatures throughout each exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Preferences survive reloads; responses/results do not. Both response modes use the same exercise and meter policy.
 
 ## Four separate concepts
 
-Written values and their exact fractions remain in the [canonical model](music-model.md). Count Writing's [meter policy](../../src/apps/count-writing/meter.ts) distinguishes counting unit, notation grouping and future performance pulse:
+Written values and their exact fractions remain in the [canonical model](music-model.md). The [shared meter policy](../../src/apps/rhythm-walk/shared/meter.ts) distinguishes counting unit, notation grouping and performance pulse:
 
 | Meter | Counting | Notation groups | Performance pulse | Answer storage positions per bar |
 | --- | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ Written values and their exact fractions remain in the [canonical model](music-m
 
 Numbers reset each measure. In 6/8 **every position requires its number**, even inside a note, tie or rest. No alternative compound syllables or internal offbeats apply. The &/+ and dotted-quarter teacher preference remain saved for simple meters and are disabled while reviewing a 6/8 exercise. Changing pending meter settings does not alter the current exercise's convention.
 
-6/8 keeps canonical default groups `[3, 3]`. Choosing six numbers does not change the performance pulse to six eighths. Derived `onCount` and `onPulse` flags make this distinction explicit. Answer indices, rest pairs and duration lines are presentation coordinates derived from exact score positions, never authored time or future playback ticks. Passage offsets accumulate actual per-measure grid sizes; visual wraps do not change offsets or grading.
+6/8 keeps canonical default groups `[3, 3]`. Choosing six numbers does not change the performance pulse to six eighths. Derived `onCount` and `onPulse` flags make this distinction explicit. Answer indices, rest pairs and duration lines are presentation coordinates derived from exact score positions, never authored time or playback ticks. Passage offsets accumulate actual per-measure grid sizes; visual wraps do not change offsets or grading.
 
 ## Duration lines and rests
 

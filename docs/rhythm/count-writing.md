@@ -2,13 +2,13 @@ Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms an
 
 Current implementation supports [2/4, 3/4, 4/4 and 6/8](meters.md), including fixed six-number 6/8 counting and separate dotted-quarter pulses. This supersedes earlier meter-support limitations in this planning record.
 
-# Count Writing: first-release plan
+# Write Counts: original first-release plan
 
-Updated 2026-10-10. Status: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). The [ties and syncopation slice](ties-syncopation.md) adds separate default-off controls, sounding-chain grading and duration entry across barlines and visual systems. Grading endpoint conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
+Historical planning baseline, 2026-10-10. Current activity naming, free mode switching, persistence and performance scope are defined in [the unified contract](unified-activity.md). Status at this planning stage: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). The [ties and syncopation slice](ties-syncopation.md) adds separate default-off controls, sounding-chain grading and duration entry across barlines and visual systems. Grading endpoint conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
 
 ## Purpose and confirmed direction
 
-Build a functional activity in which students read conventional rhythm notation and enter counts, sustain markings, and rest parentheses. Use this release to establish notation and answer correctness before adding real-time rhythm performance.
+Build a functional activity in which students read conventional rhythm notation and enter counts, sustain markings, and rest parentheses. The original sequencing prioritized notation and answer correctness before performance. Both response modes are now implemented and freely interchangeable; writing is never a prerequisite for tapping.
 
 The requirements below are carried forward from section 12 of the [supplied handoff](reference/RHYTHM_GAME_HANDOFF.md). They describe the intended activity; the exact set of meters, rhythms, counting systems, and assistance options shipped in the first release still needs to be bounded.
 
@@ -35,7 +35,7 @@ This workflow was recommended after the owner selected Count Writing first. It i
 4. Check the answer, with separate feedback for the three answer dimensions.
 5. Correct the answer, retry, or move to another exercise.
 
-Prioritize readable phone layouts and predictable keyboard editing. Proposed deferrals include adaptive progression, journey mechanics, and a complete reference-preset catalogue. Rhythm Walk's timed input and scoring are outside the Count Writing release focus. Route, activity name, persistence, and exact initial content are still open.
+Prioritize readable phone layouts and predictable keyboard editing. Proposed deferrals include adaptive progression, journey mechanics, and a complete reference-preset catalogue. Timed input was outside this initial slice and is now implemented as Tap Rhythms. Rhythm Walk is the whole activity; compatible prototype routes and preference persistence are implemented. Mastery scoring and production release acceptance remain open.
 
 ## First prototype: one editable measure
 
