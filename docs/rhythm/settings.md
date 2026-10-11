@@ -4,6 +4,8 @@ Implemented 2026-10-10 after the owner requested the handoff's configurable opti
 
 ## What works now
 
+The page states that settings are saved automatically **for the current tab**. Reloading still restores defaults. **New Exercise** uses the same generation action as practice’s Next exercise, applies the current settings, replaces the answer, returns to practice and focuses the first count. Invalid configurations disable both buttons and keep the current answer. The action and automatic-save explanation appear above the active controls.
+
 - **Counting system:** numbers with `&` or `+`. Both keys enter the chosen offbeat; changing the display preserves answers and grading. Other subdivision systems remain future work.
 
 - **Exercise length and allowed ingredients:** generated 4/4 practice defaults to 2 measures (configurable 1–4) with quarter/eighth/half/dotted-quarter notes and quarter/eighth/half rests enabled. Dotted-quarter rests are unchecked by default. Changes preserve the current answer and apply on Next exercise. Invalid selections explain why and disable Next; see [generation decisions](practice-loop.md).

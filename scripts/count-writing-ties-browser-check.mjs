@@ -46,11 +46,14 @@ try {
       if (id === 'tie-wrap') {
         const geometry = await bars.evaluateAll(nodes => nodes.map(n => { const b = n.getBoundingClientRect(); return { y: b.y, x: b.x }; }));
         assert.ok(geometry[1].y > geometry[0].y, 'fixture explicitly wraps systems');
-        assert.equal(await bars.nth(0).locator('[data-tie="outgoing"]').count(), 1);
-        assert.equal(await bars.nth(1).locator('[data-tie="incoming"]').count(), 1);
+        assert.equal(await page.locator('.passage-ties [data-tie="outgoing"][data-measure="1"]').count(), 1);
+        assert.equal(await page.locator('.passage-ties [data-tie="incoming"][data-measure="2"]').count(), 1);
         assert.equal(await bars.nth(0).locator('.passage-duration[data-outgoing="true"]').count(), 1);
         assert.equal(await bars.nth(1).locator('.passage-duration[data-incoming="true"]').count(), 1);
-        await button('Wrap notation into systems').tap(); await button('Check').tap();
+        await button('Wrap notation into systems').tap();
+        assert.equal(await page.locator('.passage-ties [data-tie="across-bar"]').count(), 1, 'one continuous tie across adjacent bars');
+        assert.equal(await page.locator('.passage-ties [data-tie="incoming"], .passage-ties [data-tie="outgoing"]').count(), 0, 'no artificial join at a barline');
+        await button('Check').tap();
         assert.ok((await page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className))).every(name => name === 'dimension correct'), 'changing visual systems does not change grading');
         await button('Wrap notation into systems').tap();
       }
@@ -126,6 +129,29 @@ try {
   }
   }
   report.checks.push('Independent ties/syncopation controls, lengths 1–4, pending settings preserve answers; Next/Check/Retry continue working');
+  for (const width of [1280,320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await settings();
+    assert.match(await page.locator('#settings-view').innerText(), /Settings are saved automatically for this tab/);
+    const previous = await snapshot();
+    await page.getByLabel('Exercise length', { exact: true }).selectOption('3');
+    await page.locator('[data-setting="ties"]').uncheck(); await page.locator('[data-setting="syncopation"]').uncheck();
+    for (const ingredient of await page.locator('[data-ingredient]').all()) await ingredient.uncheck();
+    assert.equal(await button('New Exercise').isDisabled(), true);
+    assert.deepEqual(await snapshot(), previous, 'invalid pending settings keep the current exercise');
+    await page.locator('[data-ingredient="quarter"]').check();
+    assert.equal(await button('New Exercise').isDisabled(), false);
+    await button('New Exercise').tap(); await page.locator('#practice-view').waitFor({ state: 'visible' });
+    assert.equal(new URL(page.url()).hash, '#practice');
+    assert.equal(await bars.count(), 3);
+    assert.ok((await slots.allTextContents()).every(s => s === '·'));
+    assert.deepEqual(await bars.locator('g[data-start]').evaluateAll(nodes => [...new Set(nodes.map(n => n.dataset.value))]), ['Q']);
+    assert.equal(await slots.nth(0).evaluate(n => n === document.activeElement), true);
+    await page.screenshot({ path: `${output}/settings-new-exercise-${width}.png`, fullPage: true });
+    await settings(); await page.screenshot({ path: `${output}/settings-action-${width}.png`, fullPage: true });
+    await practice();
+  }
+  report.checks.push('Settings autosave note and New Exercise action: invalid settings preserve the answer; valid settings generate the selected ingredients/length, return to practice and focus the first count at desktop and mobile widths');
   await page.reload(); await settings();
   assert.equal(await page.locator('[data-setting="ties"]').isChecked(), false);
   assert.equal(await page.locator('[data-setting="syncopation"]').isChecked(), false);

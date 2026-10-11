@@ -10,7 +10,7 @@ import { createCountPopover } from './count-popover.ts';
 import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
-  scroller: HTMLElement; lastMeasure: boolean; incomingTie?: boolean;
+  scroller: HTMLElement; lastMeasure: boolean;
   grid?: ReturnType<typeof countGrid>; externalLines?: boolean;
   offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   hidden: () => boolean; edited: () => void; check: () => void; navigate: (delta: number, clear?: boolean) => boolean;
@@ -325,7 +325,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     countPopover.dismiss();
     keyboardLine = null;
     grid = options.grid ?? countGrid(fixture); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
-    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure, incomingTie: options.incomingTie }));
+    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure }));
     notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
       const tick = Number(mark.dataset.start);
       const bounds = mark.getBBox();

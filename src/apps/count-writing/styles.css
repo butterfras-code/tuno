@@ -164,3 +164,5 @@ main[data-view="practice"] { max-width: 1240px; }
 .passage-line-controls .field { flex: 1 1 240px; min-width: 0; }
 .passage-line-controls select { max-width: 100%; }
 .draft-line { background: var(--color-teal); opacity: .6; pointer-events: none; }
+.passage-strip { position: relative; }
+.passage-ties { position: absolute; top: 0; left: 0; pointer-events: none; }

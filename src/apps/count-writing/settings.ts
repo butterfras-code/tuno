@@ -59,6 +59,7 @@ function placeholder(setting: Setting): HTMLElement {
 }
 
 export function createSettingsPage(callbacks: {
+  newExercise: () => void;
   generation: (value: GenerationSettings) => void;
   offbeat: (value: OffbeatSymbol) => void;
   placement: (value: LinePlacement) => void;
@@ -68,6 +69,9 @@ export function createSettingsPage(callbacks: {
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
   const intro = el('p', 'settings-intro', 'Set up Count Writing now, and explore the settings planned for the rhythm activities. Unavailable controls are shown for review and do not change your exercises.');
+  const savedNote = el('p', 'setting-hint', 'Settings are saved automatically for this tab. Exercise settings apply to your next exercise. New Exercise uses these settings, replaces the current answer, and returns to practice. Reloading resets settings and answers.');
+  const newExercise = button('New Exercise', callbacks.newExercise, true);
+  const settingsActions = el('div', 'actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
   const heading = el('h2', '', 'Available now'); heading.id = 'available-settings';
   const activeBadge = el('span', 'availability availability--active', 'Working controls');
@@ -128,7 +132,9 @@ export function createSettingsPage(callbacks: {
   }
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
   function generationChanged() {
-    generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
+    const issue = generationIssue(generation);
+    newExercise.disabled = Boolean(issue);
+    generationStatus.textContent = issue ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
     callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
   }
   generationStatus.textContent = 'Fixed 4/4. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
@@ -150,7 +156,7 @@ export function createSettingsPage(callbacks: {
     expand.textContent = open ? 'Collapse all groups' : 'Expand all groups';
   });
   browse.append(expand);
-  page.append(intro, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
+  page.append(intro, savedNote, settingsActions, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
   for (const group of settingsGroups) {
     const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
