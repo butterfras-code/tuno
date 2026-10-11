@@ -97,7 +97,14 @@ export function createSettingsPage(callbacks: {
   appearanceHint.id = 'settings-appearance-hint';
   appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
   activeControls.append(systemField, fixtureField, conventionField, placementField, appearanceField);
-  available.append(activeHeader, activeControls, el('p', 'setting-hint', 'Changes last in this tab only. Reloading resets settings and answers.'));
+  const restRule = el('section', 'setting-row');
+  restRule.dataset.setting = 'rest-grouping';
+  restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
+  const restHeading = el('div', 'setting-heading');
+  const restTitle = el('h3', '', 'Rest parentheses'); restTitle.id = 'setting-rest-grouping';
+  restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
+  restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
+  available.append(activeHeader, activeControls, restRule, el('p', 'setting-hint', 'Changes last in this tab only. Reloading resets settings and answers.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];
@@ -109,14 +116,15 @@ export function createSettingsPage(callbacks: {
   browse.append(expand);
   page.append(intro, available, browse, el('p', 'setting-hint', '“Not available yet” marks planned controls. “To be decided” marks open choices. Unselected future options are not exercise defaults.'));
   for (const group of settingsGroups) {
+    const plannedSettings = group.settings.filter(setting => setting.id !== 'count-system');
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
     section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
     const summary = el('summary');
     const title = el('h2', '', group.title);
-    summary.append(title, el('span', 'group-count', `${group.settings.length} settings`));
+    summary.append(title, el('span', 'group-count', `${plannedSettings.length} settings`));
     const content = el('div', 'settings-group-body');
     content.append(el('p', 'group-description', group.description));
-    group.settings.filter(setting => setting.id !== 'count-system').forEach(setting => content.append(placeholder(setting)));
+    plannedSettings.forEach(setting => content.append(placeholder(setting)));
     section.append(summary, content); page.append(section); sections.push(section);
   }
   const back = el('a', 'control control--primary', 'Back to Count Writing'); back.href = '#practice';

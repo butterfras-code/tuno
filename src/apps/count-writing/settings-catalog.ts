@@ -32,7 +32,6 @@ export const settingsGroups: readonly SettingsGroup[] = [
       choice('count-positions', 'Required count positions', ['Note onsets and internal beats', 'Additional subdivisions — to define'], 'Note onsets and internal beats', 'Valid extra subdivisions remain subject to teacher review.'),
       choice('count-input', 'Answer input', ['Keyboard and touch keypad'], 'Keyboard and touch keypad', 'Both already work; there is no input restriction setting yet.'),
       undecided('line-endpoints', 'Duration-line endings and snapping', 'Choose how endings relate to the last entered count or the note boundary. Current endings remain provisional.'),
-      choice('rest-grouping', 'Rest parentheses', ['Individual count positions', 'Grouped expressions — to define'], 'Individual count positions'),
       undecided('count-hints', 'Hints and answer visibility', 'Decide when hints, answer reveal and optional input positions are shown, and how corrections are recorded.'),
     ],
   },

@@ -10,6 +10,7 @@ Implemented 2026-10-10 after the owner requested the handoff's configurable opti
 - **Dotted-quarter internal &:** teacher review, required, or optional. This shares state with the existing editor control, preserves the answer, and marks existing feedback stale until Check runs again.
 - **Duration-line placement:** below, above, or beside counts, with a visible anchor at every input position. Click or tap one anchor to start a line and another to finish it; Escape cancels. While active, a preview follows the mouse cursor; touch shows a short line to the right, stopping just before the next anchor (or the measure edge at the last anchor). Existing lines move with their anchors.
 - **Sustained-count appearance:** raised and smaller, lowered and smaller, or unchanged. Switching to beside counts selects raised and smaller; an explicit override remains until placement switches to beside again. Onset counts stay full-size. These display settings preserve answers and feedback.
+- **Rest parentheses (current fixed rule):** one complete pair per written rest, enclosing all required or entered counts and any duration line. A half rest groups both beats, `(1 2)`; two quarter rests require `(1) (2)`. Groups cannot overlap or nest. This appears as an explanation under Available now, rather than an unavailable choice between individual and grouped counts.
 - Count Writing / Settings navigation, keyboard focus on the page heading, browser back/forward, direct settings links and expandable groups.
 
 Navigation alone preserves the current exercise, symbols, markings and feedback. Active choices last in the current page instance only; reload restores the prototype defaults. There is no new persistence, save/cancel draft, generator or performance behavior. The initial editor controls remain available during this settings review.
@@ -28,8 +29,8 @@ This table maps the [original handoff](reference/RHYTHM_GAME_HANDOFF.md) to the 
 
 | Settings group | Options represented | Handoff sections |
 | --- | --- | --- |
-| Available now | Counting system, review exercise, teacher-dependent dotted-quarter rule, duration-line placement and sustained-count appearance | 4, 12; subsequent teacher decisions |
-| Count Writing | Counting system / offbeat symbols, open vs guided symbol entry, required counts / extra subdivisions, keyboard and touch, line placement and endpoints, raised counts, parentheses grouping, hints / answer visibility | 12 |
+| Available now | Counting system, review exercise, teacher-dependent dotted-quarter rule, duration-line placement, sustained-count appearance and the fixed rest-parentheses rule | 4, 12; subsequent teacher decisions |
+| Count Writing | Open vs guided symbol entry, required counts / extra subdivisions, keyboard and touch, line endpoints, hints / answer visibility | 12 |
 | Activity & exercises | Count Writing / Rhythm Walk, all three performance formats, passage length, fixed / generated / curated content, developmental presets and UIL I–VI, custom preset saving/sharing, quick-start defaults and instructions | 1, 3, 6, 7 |
 | Rhythm vocabulary | Starting and optional goal checklists: whole, half, quarter, single/paired/triplet eighths, sixteenths, dotted half/quarter, whole/half/quarter/eighth rests, ties; pattern/syncopation restrictions, dotted-eighth figures, ties across beats/bars, rest placement, sixteenth rests, double dots, duplets; undecided accents, articulation, swing, pickups and multiple parts | 4, 6, 7, 15 |
 | Meter & beat grouping | Meter pool, counting beat / custom grouping, separate meter-change permission and limit, change placement, denominator changes and adaptation | 4, 6, 15 |
@@ -45,7 +46,7 @@ Account dashboards, multiplayer, leaderboards, assignment reporting, and externa
 
 - [settings-catalog.ts](../../src/apps/count-writing/settings-catalog.ts) is the review inventory with stable identifiers, grouping and source sections. It is not a settings persistence schema or a music model.
 - [settings.ts](../../src/apps/count-writing/settings.ts) renders available controls and inactive options with shared UI primitives.
-- [main.ts](../../src/apps/count-writing/main.ts) connects only the two supported preferences to the existing editor. Future controls have no callbacks that can change its state.
+- [main.ts](../../src/apps/count-writing/main.ts) connects supported preferences to the existing editor. The rest-parentheses explanation documents existing behavior without adding state or an alternate grading convention. Future controls have no callbacks that can change its state.
 - Musical source and checking still use the [canonical model](music-model.md). Do not infer that disabling a UI placeholder means the underlying model cannot represent that rhythm, or that model support means an exercise can be rendered/graded.
 
 When implementing a setting, replace its placeholder with a real state contract, connect it to the appropriate activity, and add behavior tests. Resolve open defaults before enabling them. Enforce starting⊆goal and valid generation only when that functionality exists; do not simulate a working generator by storing ineffective selections.
