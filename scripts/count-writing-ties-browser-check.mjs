@@ -50,13 +50,13 @@ try {
         assert.equal(await page.locator('.passage-ties [data-tie="incoming"][data-measure="2"]').count(), 1);
         assert.equal(await bars.nth(0).locator('.passage-duration[data-outgoing="true"]').count(), 1);
         assert.equal(await bars.nth(1).locator('.passage-duration[data-incoming="true"]').count(), 1);
-        await button('Wrap notation into systems').tap();
-        const stacked = width < 680;
+        await page.setViewportSize({ width: 320, height: 1000 });
+        const stacked = true;
         assert.equal(await page.locator('.passage-ties [data-tie="across-bar"]').count(), stacked ? 0 : 1, 'automatic systems preserve the correct tie join');
         assert.equal(await page.locator('.passage-ties [data-tie="incoming"], .passage-ties [data-tie="outgoing"]').count(), stacked ? 2 : 0, 'narrow systems retain broken tie hooks');
         await button('Check').tap();
         assert.ok((await page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className))).every(name => name === 'dimension correct'), 'changing visual systems does not change grading');
-        await button('Wrap notation into systems').tap();
+        await page.setViewportSize({ width, height: 1000 });
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${id}: no page overflow at ${width}`);
       await page.screenshot({ path: `${output}/${id}-${width}.png`, fullPage: true });
@@ -84,7 +84,7 @@ try {
   await page.keyboard.press('Escape'); assert.deepEqual(await snapshot(), saved);
   await button('Edit passage line 1: measure 1, beat 4 to measure 2, beat 1 offbeat').first().tap();
   await settings(); await practice(); assert.deepEqual(await snapshot(), saved, 'view change cancels draft');
-  await button('Reset answer').tap();
+  await button('Clear').tap();
   await slots.nth(6).focus(); await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight');
   assert.equal(await slots.nth(8).evaluate(n => n === document.activeElement), true);
   await page.keyboard.up('Shift');

@@ -104,7 +104,7 @@ try {
         await page.keyboard.press('Tab'); assert.equal(await second.first().evaluate(n => n === document.activeElement), true);
         await page.keyboard.press('Backspace'); assert.equal(await first.last().evaluate(n => n === document.activeElement), true);
         await first.last().press('&'); assert.equal(await second.first().evaluate(n => n === document.activeElement), true, 'symbol entry advances across barline');
-        await control('Reset answer').click();
+        await control('Clear').click();
       }
       await solve(); const solved = await snapshot(); await control('Check').tap();
       assert.deepEqual(await snapshot(), solved);
@@ -139,6 +139,54 @@ try {
   await settings(); await page.locator('.planned-settings > summary').click(); await control('Expand all groups').click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: `${output}/settings-320.png`, fullPage: true });
+  // The idle pad starts the count-in; that first press/release is not an answer.
+  await page.goto(new URL('/prototypes/rhythm-walk/?fixture=quarters', host.url).href);
+  await page.getByLabel('Mode', { exact: true }).selectOption('tap');
+  await page.setViewportSize({ width: 1366, height: 650 });
+  const pad = control('Performance pad'), status = page.locator('.tap-response .status');
+  const record = async () => {
+    const download = page.waitForEvent('download'); await control('Download timing evidence').click();
+    const { readFile } = await import('node:fs/promises'); return JSON.parse(await readFile(await (await download).path(), 'utf8'));
+  };
+  assert.equal(await control('Start count-in').count(), 0);
+  assert.equal(await control('Retry same exercise').count(), 0);
+  assert.equal(await control('Wrap notation into systems').count(), 0);
+  await pad.focus(); await page.keyboard.down('Space');
+  await status.filter({ hasText: 'Count-in' }).waitFor(); await page.keyboard.up('Space');
+  await control('Stop / Cancel').click();
+  assert.equal((await record()).events.length, 0, 'starting Space and its release never enter rhythm capture');
+  assert.match(await pad.innerText(), /Try again/);
+  await pad.tap(); await status.filter({ hasText: 'Count-in' }).waitFor();
+  await control('Stop / Cancel').click();
+  assert.equal((await record()).events.length, 0, 'starting touch and its release never enter rhythm capture');
+  // A new press during count-in is retained separately, then the pad retries.
+  await pad.focus(); await page.keyboard.press('Space'); await status.filter({ hasText: 'Count-in' }).waitFor();
+  await page.locator('.count-in-beat[aria-current="true"]').first().waitFor();
+  await page.keyboard.press('Space'); await control('Stop / Cancel').click();
+  const attempt = await record(); assert.equal(attempt.events.filter(e => e.accepted).length, 2);
+  assert.ok(attempt.events.every(e => e.region === 'count-in'));
+  await page.getByLabel('Tempo (quarter-note BPM)', { exact: true }).fill('180');
+  await pad.tap(); await status.filter({ hasText: 'Count-in' }).waitFor();
+  await status.filter({ hasText: 'Reviewing' }).waitFor({ timeout: 10000 });
+  assert.match(await pad.innerText(), /Try again/);
+  assert.equal((await record()).status, 'completed', 'pad-started attempt completes and offers retry');
+  await page.getByLabel('Mode', { exact: true }).selectOption('write');
+  await control('Practice help').click();
+  assert.equal(await page.locator('#practice-help').evaluate(n => n.matches(':popover-open')), true);
+  assert.match(await page.locator('#practice-help').innerText(), /Space/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#practice-help').evaluate(n => n.matches(':popover-open')), false);
+  assert.equal(await control('Clear').evaluate(n => n.closest('[data-measure]').dataset.measure), '1');
+  assert.equal(await control('Check').evaluate(n => n.closest('[data-measure]').dataset.measure), '2');
+  report.checks.push('Idle pad starts/retries with keyboard and touch; starting gestures excluded from evidence; new count-in presses captured; consolidated help and first/last measure action placement');
+  await page.getByLabel('Exercise preset', { exact: true }).selectOption('generated');
+  for (const [width, height] of [[1366,650],[1280,600],[390,844],[320,667]]) {
+    await page.setViewportSize({ width, height });
+    for (const mode of ['write','tap','both']) {
+      await page.getByLabel('Mode', { exact: true }).selectOption(mode); await page.evaluate(() => scrollTo(0,0));
+      await page.screenshot({ path: `${output}/refinement-${width}-${mode}.png`, fullPage: true });
+    }
+  }
   assert.deepEqual(errors, []); report.passed = true;
   console.log(`${engine}: generated Count Writing practice checks passed.`);
 } finally {

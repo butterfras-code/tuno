@@ -12,7 +12,7 @@
   };
   const status = () => document.querySelector('.tap-response .status').textContent;
   const button = name => [...document.querySelectorAll('button')].find(b => b.textContent === name);
-  const pad = button('Performance pad');
+  const pad = document.querySelector('.tap-response .pad');
   const picker = document.querySelector('.shared-controls select[data-preset]');
   const tempo = document.querySelector('input[type=number]');
   const metro = document.querySelector('.tap-response .setup input[type=checkbox]');
@@ -38,7 +38,7 @@
   };
   const begin = async () => {
     scheduled = [];
-    button('Start count-in').click(); await wait(() => status().startsWith('Count-in'));
+    document.querySelector('.tap-response .pad').click(); await wait(() => status().startsWith('Count-in'));
     assert(picker.disabled && tempo.disabled && metro.disabled, 'settings locked');
     assert(document.activeElement === pad, 'pad focused');
     assert(document.querySelectorAll('.passage .notation').length === 2, 'notation remains visible');
@@ -68,7 +68,7 @@
     checks.push('keyboard loop, count-in, scheduled clicks, repeat suppression, linked review, raw evidence');
     const saved = review.innerText; tempo.value = '120'; metro.checked = false;
     assert(review.innerText === saved, 'settings editing preserves review');
-    button('Retry same exercise').click(); await wait(() => status().startsWith('Count-in'));
+    document.querySelector('.tap-response .pad').click(); await wait(() => status().startsWith('Count-in'));
     button('Stop / Cancel').click(); await wait(() => status() === 'Interrupted');
     assert(review.innerText.includes('Stopped by learner') && !review.innerText.includes('matched attacks'), 'cancel not graded');
     checks.push('preserved result and explicit retry/cancel');

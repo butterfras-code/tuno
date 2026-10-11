@@ -26,8 +26,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   const setup = el('div', 'setup'); const tempoField = field('Tempo (quarter-note BPM)', tempo); setup.append(tempoField, metronomeLabel);
   function persist() { if (tempo.checkValidity()) options.preferences.bpm = tempo.valueAsNumber; options.preferences.metronome = metronome.checked; options.changed(); }
   tempo.addEventListener('change', persist); metronome.addEventListener('change', persist);
-  const attemptSummary = el('p', 'attempt-summary'); attemptSummary.hidden = true;
-  const status = el('p', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const status = el('span', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const countInDisplay = el('div', 'count-in-display'); countInDisplay.setAttribute('role', 'group');
   let countInDots: HTMLElement[] = [];
   function renderCountIn(plan: Plan) {
@@ -46,16 +45,15 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function clearCountIn() { countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
   const pulse = el('div', 'pulse'); pulse.setAttribute('aria-hidden', 'true');
   const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
-  const pad = button('Performance pad'); pad.className = 'pad'; pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = true;
-  const start = button('Start count-in', () => { void begin(); });
-  const retry = button('Retry same exercise', () => { void begin(); }); retry.hidden = true;
+  const pad = button(''); pad.className = 'pad'; pad.setAttribute('aria-label', 'Performance pad');
+  const padAction = el('span', 'pad-action', 'Start'); pad.append(padAction, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
   const stop = button('Stop / Cancel', () => cancel('Stopped by learner')); stop.disabled = true;
   const download = button('Download timing evidence', () => {
     if (!result) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
     const link = el('a'); link.href = url; link.download = `rhythm-walk-${result.exercise.id}.json`; link.click(); URL.revokeObjectURL(url);
   }); download.hidden = true;
-  const actions = el('div', 'actions'); actions.append(start, retry, stop, download);
+  const actions = el('div', 'actions'); actions.append(stop, download);
   const review = el('section'); review.setAttribute('aria-label', 'Attempt review');
   const timing = createTimingPanel({
     audio: async () => { audio ??= new AudioContext(); await audio.resume(); return audio; },
@@ -69,15 +67,15 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) { timing.cancel(); dialog.close(); } } });
   const calibrate = button('Calibrate', () => dialog.showModal());
   actions.append(calibrate);
-  const help = el('details', 'performance-help');
-  help.append(el('summary', '', 'About timing feedback'), el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
-  main.append(pad, actions, el('h2', '', 'Tap Rhythms'), setup, attemptSummary, instructions, status, pulse, review, dialog, help);
+  const help = el('div', 'performance-help');
+  help.append(instructions, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
+  main.append(pad, actions, setup, review, dialog);
 
   function lock(active: boolean) {
     timing.setLocked(active);
-    main.classList.toggle('active', active); attemptSummary.hidden = !active; options.busy(active);
-    tempo.disabled = metronome.disabled = start.disabled = retry.disabled = active;
-    stop.disabled = !active; pad.disabled = !active; download.disabled = calibrate.disabled = active;
+    main.classList.toggle('active', active); options.busy(active);
+    tempo.disabled = metronome.disabled = active;
+    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Tap / hold' : result ? 'Try again' : 'Start'; download.disabled = calibrate.disabled = active;
   }
   function tick(time: number) {
     if (!transport) return;
@@ -100,7 +98,6 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (!tempo.reportValidity()) return;
     // Snapshot before awaiting audio activation, even though controls are locked.
     const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current());
-    attemptSummary.textContent = `${capture.exercise.label} · ${capture.bpm} ${pulseLabel()} BPM · ${capture.metronome ? 'metronome on' : 'metronome off'}`;
     renderCountIn(capture.plan);
     const token = ++generation; pending = capture;
     starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
@@ -111,7 +108,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
         finish(capture.interrupt('Start cancelled or focus lost', -capture.plan.countIn)); return;
       }
       if (audio.state !== 'running') throw new Error('Audio could not start');
-      result = null; review.replaceChildren(); retry.hidden = true; download.hidden = true;
+      result = null; review.replaceChildren(); download.hidden = true;
       options.decorate(null);
       transport = new Transport(audio, capture, tick, finish); pad.focus({ preventScroll: true }); tick(transport.time());
     } catch {
@@ -125,7 +122,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (correction) record = { ...record, timingOffset: correction };
     clearCountIn();
     result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
-    retry.hidden = false; download.hidden = false;
+    download.hidden = false;
     const evaluation = evaluateAttempt(record);
     review.replaceChildren(el('h2', '', record.status === 'completed' ? 'Completed attempt' : 'Interrupted attempt'));
     if (evaluation.status === 'interrupted') {
@@ -161,16 +158,43 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     }
     if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) review.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
   }
+  // Starting is a separate gesture: its release must never enter the capture.
+  let startingKey = false;
+  let startingPointer: number | null = null;
+  pad.addEventListener('click', event => { if (event.detail === 0 && !transport && !starting) void begin(); });
   // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
-  pad.addEventListener('keydown', e => { if (e.code === 'Space' && transport) { e.preventDefault(); transport.input('down', 'keyboard', e.timeStamp, e.repeat); pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null)); } });
-  pad.addEventListener('keyup', e => { if (e.code === 'Space' && transport) { e.preventDefault(); transport.input('up', 'keyboard', e.timeStamp); pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null)); } });
+  pad.addEventListener('keydown', event => {
+    if (event.code !== 'Space') return;
+    event.preventDefault();
+    if (!transport) {
+      if (!event.repeat && !starting) { startingKey = true; void begin(); }
+      return;
+    }
+    if (startingKey) return;
+    transport.input('down', 'keyboard', event.timeStamp, event.repeat);
+    pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null));
+  });
+  pad.addEventListener('keyup', event => {
+    if (event.code !== 'Space') return;
+    event.preventDefault();
+    if (startingKey) { startingKey = false; return; }
+    if (!transport) return;
+    transport.input('up', 'keyboard', event.timeStamp);
+    pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null));
+  });
   let pointer: number | null = null;
   pad.addEventListener('pointerdown', e => {
-    if (!transport || e.button !== 0) return; e.preventDefault(); pad.focus();
+    if (e.button !== 0) return;
+    e.preventDefault(); pad.focus();
+    if (!transport) {
+      if (!starting) { startingPointer = e.pointerId; pad.setPointerCapture(e.pointerId); void begin(); }
+      return;
+    }
     transport.input('down', `pointer:${e.pointerId}`, e.timeStamp);
     if (transport.capture.heldBy === `pointer:${e.pointerId}` && pointer === null) { pointer = e.pointerId; pad.setPointerCapture(e.pointerId); pad.setAttribute('aria-pressed', 'true'); }
   });
   pad.addEventListener('pointerup', e => {
+    if (startingPointer === e.pointerId) { startingPointer = null; return; }
     transport?.input('up', `pointer:${e.pointerId}`, e.timeStamp);
     if (pointer === e.pointerId) { pointer = null; pad.setAttribute('aria-pressed', 'false'); }
   });
@@ -187,7 +211,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
-    instructions.textContent = `Start gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.`;
+    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.`;
   }
   function cancel(reason: string) {
     timing.cancel();
@@ -202,10 +226,11 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   return {
     section: main,
     countInDisplay,
+    help,
     cancel,
     start: begin,
     record: () => result,
-    reset: () => { cancel('Exercise changed'); result = null; review.replaceChildren(); retry.hidden = download.hidden = true; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
+    reset: () => { cancel('Exercise changed'); result = null; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 
 }

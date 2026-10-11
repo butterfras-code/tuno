@@ -34,8 +34,8 @@ window.__offsetCheck = (async () => {
       const before = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));
       const picker = document.querySelector('.shared-controls select[data-preset]'); picker.value = 'quarters'; picker.dispatchEvent(new Event('change'));
       document.querySelector('input[type=number]').value = '80';
-      button('Start count-in').click(); await wait(() => status().startsWith('Count-in'));
-      const start = scheduled[0] + 3, pad = button('Performance pad');
+      document.querySelector('.tap-response .pad').click(); await wait(() => status().startsWith('Count-in'));
+      const start = scheduled[0] + 3, pad = document.querySelector('.tap-response .pad');
       const delay = scenario === 'automatic' ? .25 : .32;
       for (let i = 0; i < 8; i++) {
         await wait(() => context.currentTime >= start + i * .75 + delay); key(pad, 'keydown');
@@ -63,7 +63,7 @@ window.__offsetCheck = (async () => {
       await wait(() => pad.hidden);
       const saved = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));
       assert(saved.input === input.value && saved.method === 'tap' && Math.abs(saved.seconds - .2) < .025, 'manual result saved');
-      assert(!button('Start count-in').disabled, 'practice unlocked');
+      assert(!document.querySelector('.tap-response .pad').disabled, 'practice unlocked');
       button('Close timing setup').click();
       return { passed: scenario, correction: saved };
     }
@@ -73,7 +73,7 @@ window.__offsetCheck = (async () => {
       button('Tap-along calibration').click(); await wait(() => scheduled.length === 16);
       button('Cancel calibration').click();
       assert(sessionStorage.getItem('tuno.rhythm-walk.timing.v1') === before, 'cancel preserves saved correction');
-      assert(button('Calibration pad').hidden && !button('Start count-in').disabled, 'cancel restores controls');
+      assert(button('Calibration pad').hidden && !document.querySelector('.tap-response .pad').disabled, 'cancel restores controls');
       button('Close timing setup').click();
       return { passed: scenario };
     }

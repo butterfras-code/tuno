@@ -58,11 +58,13 @@ export function createCountPopover(actions: {
     popup.style.maxHeight = `${Math.max(48, bottom - top - 80)}px`;
     const { width, height } = popup.getBoundingClientRect();
     let anchor = actions.anchor();
-    // Make room below the active box rather than flipping over the notation.
+    // Prefer space below the active box; a compact page may have no scroll room.
     const overflow = anchor.y + 12 + height - (bottom - 8);
     if (overflow > 0) { window.scrollBy(0, overflow); anchor = actions.anchor(); }
     popup.style.left = `${Math.max(left + 8, Math.min(right - width - 8, anchor.x + offsetX - width / 2))}px`;
-    popup.style.top = `${Math.max(top + 8, anchor.y + 12)}px`;
+    const below = anchor.y + 12;
+    const above = anchor.y - 48 - 12 - height;
+    popup.style.top = `${Math.max(top + 8, Math.min(bottom - height - 8, below + height <= bottom - 8 ? below : above))}px`;
   }
 
   function open(tick: number, location: { x: number; y: number }) {

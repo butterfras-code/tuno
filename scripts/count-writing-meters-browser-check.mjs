@@ -53,7 +53,7 @@ try {
         const beams = await bars.locator('[data-beam]').evaluateAll(nodes => nodes.map(n => Number(n.parentElement.dataset.start)));
         assert.deepEqual(beams, [0,1,3,4], 'two three-eighth beams, no beam crosses counts 3/4');
         await slots.nth(4).tap(); assert.equal(await page.locator('.draft-line').count(), 0, 'touch popover scrolling must not start a duration line'); await button('Enter count 5').tap(); await button('Enter count 6').tap();
-        assert.deepEqual((await slots.allTextContents()).slice(4), ['5','6']); await button('Reset answer').tap();
+        assert.deepEqual((await slots.allTextContents()).slice(4), ['5','6']); await button('Clear').tap();
       }
       await solve(f.measures); const saved = await snapshot(); await check(); await button('Retry').tap(); assert.deepEqual(await snapshot(), saved);
       if (f.id === 'six-wrap' || f.id === 'six-bar-tie') {
@@ -64,10 +64,11 @@ try {
         await page.getByLabel('Passage line end', { exact: true }).selectOption('9');
         await page.keyboard.press('Escape'); assert.equal(await page.locator('.draft-line').count(), 0); assert.deepEqual(await snapshot(), lineAnswer, 'cancellation restores a cross-bar 6/8 line');
         await page.screenshot({ path: `${output}/${f.id}-original-${width}.png`, fullPage: true });
-        await button('Wrap notation into systems').tap(); await check();
+        await page.setViewportSize({ width: 320, height: 1000 }); await check();
         await slots.nth(5).focus(); await page.keyboard.press('ArrowRight');
         assert.equal(await slots.nth(6).evaluate(n => n === document.activeElement), true);
         await page.keyboard.press('Shift+Tab'); assert.equal(await slots.nth(5).evaluate(n => n === document.activeElement), true);
+        await page.setViewportSize({ width, height: 1000 });
       }
       if (f.id === 'six-rest-first') {
         await button('Edit rest parentheses at measure 1, count 1').tap();

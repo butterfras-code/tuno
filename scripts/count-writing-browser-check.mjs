@@ -55,7 +55,7 @@ try {
   await slots.nth(0).click(); await page.keyboard.press('Enter');
   assert.equal((await dimensions())[0], 'revise', 'Enter on count evaluates instead of reopening popover');
   assert.equal(await choices.isVisible(), false);
-  await control('Reset answer').click();
+  await control('Clear').click();
   await slots.nth(0).click(); await control('Enter count 1').focus(); await page.keyboard.press('Enter');
   assert.equal(await slots.nth(0).innerText(), '1', 'Enter on popover choice submits the symbol');
   assert.equal(await page.locator('.dimension').count(), 0, 'popover Enter does not evaluate');
@@ -64,7 +64,7 @@ try {
   assert.equal(await page.locator('.dimension').count(), 3, 'Enter without an editing context evaluates');
   report.checks.push('Removed instruction/status/keypad/duration panel; Enter evaluates by default and preserves native popover actions');
 
-  await control('Reset answer').click(); await slots.nth(0).focus();
+  await control('Clear').click(); await slots.nth(0).focus();
   for (const [symbol,next] of [['1',2],['2',4],['3',6],['4',7],['&',7]]) {
     await page.keyboard.press(symbol); assert.equal(await slots.nth(next).evaluate(n => n === document.activeElement), true);
   }
@@ -80,7 +80,7 @@ try {
   await page.keyboard.press('End'); await page.keyboard.press('Tab');
   assert.equal(await slots.nth(7).evaluate(n => n === document.activeElement), false);
   await settings(); await page.getByLabel('Counting system', { exact:true }).selectOption('+'); await practice();
-  await control('Reset answer').click(); await slots.nth(0).focus();
+  await control('Clear').click(); await slots.nth(0).focus();
   for (const symbol of ['1','2','3','4','&']) await page.keyboard.press(symbol);
   assert.equal(await slots.nth(7).innerText(), '+'); assert.equal((await check())[0], 'correct');
   await enter(7,'+'); assert.equal(await slots.nth(7).innerText(), '+');
@@ -88,7 +88,7 @@ try {
   assert.equal(await slots.nth(7).innerText(), '&');
   report.checks.push('Keyboard auto-advance, correction, repeats, Tab/Shift+Tab/arrows and selectable offbeat aliases');
 
-  await control('Reset answer').click(); await slots.nth(0).click();
+  await control('Clear').click(); await slots.nth(0).click();
   await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight');
   assert.equal(await page.getByRole('slider').count(), 0);
   assert.equal(await slots.nth(3).isVisible(), false);
@@ -128,7 +128,7 @@ try {
   assert.equal(await page.getByRole('slider',{name:'Line 2 end',exact:true}).getAttribute('aria-valuenow'),'3','new line stops before an existing line');
   await slots.nth(4).focus(); await page.keyboard.down('Shift'); await page.keyboard.press('ArrowLeft'); await page.keyboard.up('Shift');
   assert.equal(await page.locator('.duration-line').count(),2,'keyboard activation on the start edits the existing line');
-  await control('Reset answer').click();
+  await control('Clear').click();
   report.checks.push('One duration line per covered position; interior/body/end activation edits endpoint; start click/touch removes; Shift edits existing lines; overlapping placement is bounded');
   const solutions = [
     { id:'half', available:[0,2,4,6,7], symbols:['1','','2','','3','','4','&'], spans:[[0,2]], rests:[] },
@@ -139,7 +139,7 @@ try {
     { id:'two-rests', available:[0,2,4,6,7], symbols:['1','','2','','3','','4','&'], spans:[], rests:[[0,0],[2,2]] },
   ];
   for (const solution of solutions) {
-    await fixture.selectOption(solution.id); await control('Reset answer').click();
+    await fixture.selectOption(solution.id); await control('Clear').click();
     assert.deepEqual(await slots.evaluateAll(nodes => nodes.flatMap((n,i)=>n.hidden?[]:[i])),solution.available);
     assert.equal(await page.locator('.duration-anchor:visible').count(),solution.available.length);
     for (let i=0;i<8;i++) if(solution.symbols[i]) await enter(i,solution.symbols[i]);
@@ -153,7 +153,7 @@ try {
     assert.deepEqual(await check(),[solution.id==='dotted-quarter'?'provisional':'correct','correct','correct']);
     await page.screenshot({path:`${output}/${solution.id}.png`,fullPage:true});
   }
-  await fixture.selectOption('half-rest'); await control('Reset answer').click();
+  await fixture.selectOption('half-rest'); await control('Clear').click();
   await slots.nth(0).click(); await page.keyboard.press('('); await page.keyboard.press('ArrowRight');
   assert.equal(await control('Close rest parentheses at measure 1, beat 2').evaluate(n=>n.classList.contains('keyboard-target')),true);
   await page.keyboard.press('Enter'); assert.equal(await page.locator('.rest-group').getAttribute('data-end'),'2');
@@ -186,10 +186,10 @@ try {
   for(const width of [320,375,1280]) {
     const height = width < 400 ? 667 : 1000;
     await page.setViewportSize({width,height});
-    await fixture.selectOption('half'); await control('Reset answer').click();
+    await fixture.selectOption('half'); await control('Clear').click();
     await page.getByRole('button',{name:'Enter count at measure 1, beat 1',exact:true}).click();
     const pop=await choices.boundingBox(), box=await slots.nth(0).boundingBox();
-    assert.ok(pop.x>=7&&pop.x+pop.width<=width-7&&pop.y>box.y+box.height&&pop.y+pop.height<=height-7);
+    assert.ok(pop.x>=7&&pop.x+pop.width<=width-7&&(pop.y>box.y+box.height||pop.y+pop.height<box.y)&&pop.y>=7&&pop.y+pop.height<=height-7);
     await control('Dismiss count choices').tap();
     await slots.nth(0).tap(); assert.equal(await choices.isVisible(),true);
     await page.keyboard.press('Escape');
@@ -200,7 +200,7 @@ try {
     await page.screenshot({path:`${output}/minimal-${width}.png`,fullPage:true});
   }
   if(engine==='chromium') {
-    await control('Reset answer').click(); await slots.nth(0).scrollIntoViewIfNeeded();
+    await control('Clear').click(); await slots.nth(0).scrollIntoViewIfNeeded();
     const cdp=await context.newCDPSession(page), box=await slots.nth(0).boundingBox();
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2,id:1}]});
     const target=await control('Enter count 1').boundingBox();

@@ -127,3 +127,28 @@ main.rhythm-app {
 .count-in-beat.lit .count-in-dot { background: var(--color-teal); color: white; animation: count-in-pulse 180ms ease-out; }
 @keyframes count-in-pulse { from { box-shadow: 0 0 0 4px var(--color-tint); transform: scale(1.12); } to { box-shadow: 0 0 0 0 var(--color-tint); transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .count-in-beat.lit .count-in-dot { animation: none; } }
+
+/* Controls belong to the score; every measure reserves the same action row. */
+.rhythm-app .score-actions { min-height: 44px; display: flex; justify-content: space-between; align-items: end; gap: 8px; }
+.rhythm-app .score-actions .write-actions { margin: 0 0 0 auto; flex-wrap: nowrap; }
+.rhythm-app .score-actions .control { min-height: 44px; padding: 8px 12px; font-size: 14px; }
+.rhythm-app .setup-actions { display: flex; align-items: center; gap: 8px; }
+.rhythm-app .setup-actions .practice-help-trigger { width: 44px; flex: 0 0 44px; padding: 8px; }
+.rhythm-app .practice-help-popover { position: fixed; inset: auto; margin: 0; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #302a292e; }
+.practice-help-popover h2 { margin: 0; font: 700 20px var(--font-heading); }
+.practice-help-popover p { margin: 12px 0 0; font-size: 14px; }
+.practice-help-popover .performance-help { margin: 12px 0 0; padding-top: 0; border: 0; }
+.tap-response > .pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; }
+.pad-action { font: 800 22px var(--font-heading); }
+.pad .status { font: 500 14px var(--font-body); }
+.pad .pulse { width: 10px; height: 10px; margin: 0; }
+.tap-response > .actions { margin: 8px 0; }
+.tap-response > .setup { gap: 8px 16px; }
+.tap-response > .setup .field { margin-bottom: 0; }
+@media (max-width: 540px) {
+  .rhythm-app .score-actions .control { padding: 8px; font-size: 13px; }
+}
+.exercise-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.exercise-meta .exercise-summary { flex: 1; }
+.rhythm-app .exercise-meta .practice-help-trigger { width: 44px; flex: 0 0 44px; min-height: 44px; padding: 8px; margin-top: 4px; }
+.practice-status:empty { display: none; }
