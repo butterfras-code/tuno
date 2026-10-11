@@ -15,10 +15,15 @@ try {
   const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
   await page.goto(new URL('/prototypes/count-writing/', host.url).href);
   const control = name => page.getByRole('button', { name, exact: true });
-  const bars = page.locator('.passage > section');
+  const bars = page.locator('.passage-strip > section');
+  const feedback = () => page.locator('.passage-feedback > .feedback');
   const settings = async () => { await page.getByRole('link', { name: 'Settings', exact: true }).click(); };
   const practice = async () => { await page.getByRole('link', { name: 'Back to Count Writing', exact: true }).click(); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ notation: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), spans: [...node.querySelectorAll('.duration-line')].map(n => n.style.cssText), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
+  assert.equal(await page.locator('.passage .score-scroll').count(), 1, 'one scroller for the whole passage');
+  assert.equal(await bars.locator('.notation text').count(), 2, 'time signature appears once at passage start');
+  assert.equal(await page.locator('[data-ingredient="dotted-quarter-rest"]').isChecked(), false);
+  assert.equal(await page.getByLabel('Allow unintuitive notation', { exact: true }).isChecked(), false);
   assert.equal(await bars.count(), 2, 'new session defaults to two measures');
   const initialSlot = bars.nth(0).locator('.count-slot').nth(0);
   await initialSlot.press('1');
@@ -26,10 +31,26 @@ try {
   await settings(); await page.getByLabel('Exercise length', { exact: true }).selectOption('4'); await practice();
   assert.deepEqual(await snapshot(), before, 'length setting preserves exercise and entered answer');
   await control('Check').click(); assert.deepEqual(await snapshot(), before, 'Check preserves answer');
-  assert.match(await bars.nth(1).locator('.feedback').innerText(), /Measure 2.*Count symbols/s);
+  assert.match(await feedback().nth(1).innerText(), /Measure 2.*Count symbols/s);
   await control('Retry').click(); assert.deepEqual(await snapshot(), before, 'Retry preserves answer');
-  await initialSlot.press('4'); await control('Check').click(); assert.match(await bars.nth(0).locator('.feedback').innerText(), /beat 1/);
+  await initialSlot.press('4'); await control('Check').click(); assert.match(await feedback().nth(0).innerText(), /beat 1/);
   report.checks.push('Default two bars; settings, Check and Retry preserve music and answer; feedback locates measure and beat');
+
+  const beforePolicy = await snapshot();
+  await settings();
+  await page.getByLabel('Allow unintuitive notation', { exact: true }).check();
+  await page.locator('[data-ingredient="dotted-quarter-rest"]').check();
+  await practice(); assert.deepEqual(await snapshot(), beforePolicy, 'notation policy changes keep the current exercise and answer');
+  await page.evaluate(() => { Math.random = () => .99; });
+  await control('Next exercise').click();
+  await page.evaluate(() => { let seed = 53; Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; });
+  assert.ok(await bars.locator('g[data-kind="rest"] circle').count() > 0, 'explicit opt-in includes dotted quarter rests');
+  await settings(); await page.getByLabel('Allow unintuitive notation', { exact: true }).uncheck();
+  assert.match(await page.getByLabel('Rhythm settings').innerText(), /require Allow unintuitive notation/);
+  await practice(); assert.equal(await control('Next exercise').isDisabled(), true, 'selected dotted rests are never silently ignored');
+  await settings(); await page.locator('[data-ingredient="dotted-quarter-rest"]').uncheck(); await practice();
+  assert.equal(await control('Next exercise').isDisabled(), false);
+  report.checks.push('Continuous staff and shared scrolling; beginner rest spelling; explicit advanced opt-in preserves current answers and validates dotted-rest choices');
 
   async function solve() {
     for (let index = 0; index < await bars.count(); index++) {
@@ -61,9 +82,19 @@ try {
       await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice();
       await control('Next exercise').tap(); assert.equal(await bars.count(), length);
       assert.ok((await bars.locator('.count-slot').allTextContents()).every(text => text === '·'));
+      const barBounds = await bars.evaluateAll(nodes => nodes.map(n => { const b = n.getBoundingClientRect(); return { x: b.x, y: b.y, right: b.right }; }));
+      for (let index = 1; index < barBounds.length; index++) {
+        assert.ok(Math.abs(barBounds[index].y - barBounds[0].y) < 1, 'consecutive measures share one staff row');
+        assert.ok(Math.abs(barBounds[index].x - barBounds[index - 1].right) < 1, 'bars are adjacent, without independent card gaps');
+      }
+      assert.equal(await bars.locator('.notation text').count(), 2);
+      const rests = await bars.locator('g[data-kind="rest"]').evaluateAll(nodes => nodes.map(n => ({ start: Number(n.dataset.start), duration: Number(n.dataset.duration), dotted: !!n.querySelector('circle') })));
+      assert.ok(rests.every(rest => !rest.dotted && (rest.duration < 2 || rest.start % 2 === 0)), 'beginner notation keeps longer rests on beats and omits dotted rests');
       if (length > 1) {
         const first = bars.nth(0).locator('.count-slot:visible'), second = bars.nth(1).locator('.count-slot:visible');
         await first.last().focus(); await page.keyboard.press('ArrowRight'); assert.equal(await second.first().evaluate(n => n === document.activeElement), true);
+        const nextBox = await second.first().boundingBox(), scoreBox = await page.locator('.passage-scroll').boundingBox();
+        assert.ok(nextBox.x >= scoreBox.x - 1 && nextBox.x + nextBox.width <= scoreBox.x + scoreBox.width + 1, 'shared passage scrolling keeps the next measure count visible');
         await page.keyboard.press('Shift+Tab'); assert.equal(await first.last().evaluate(n => n === document.activeElement), true);
         await page.keyboard.press('Tab'); assert.equal(await second.first().evaluate(n => n === document.activeElement), true);
         await page.keyboard.press('Backspace'); assert.equal(await first.last().evaluate(n => n === document.activeElement), true);
@@ -75,7 +106,8 @@ try {
       assert.ok((await page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className))).every(name => name === 'dimension correct'), await page.locator('.feedback').allTextContents());
       await control('Retry').tap(); assert.deepEqual(await snapshot(), solved);
       await control('Check').tap();
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `no page overflow at ${width}`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `no page overflow at ${width}, length ${length}: ${await page.evaluate(() => JSON.stringify([...document.querySelectorAll('body *')].filter(n => n.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(n).position === 'absolute').map(n => ({ tag: n.tagName, class: n.className, x: n.getBoundingClientRect().x }))))}`);
+      await page.locator('.passage-scroll').evaluate(n => { n.scrollLeft = 0; });
       await page.screenshot({ path: `${output}/${width}-${length}.png`, fullPage: true });
       await control('Next exercise').tap(); assert.equal(await bars.count(), length);
       assert.equal(await page.locator('.dimension').count(), 0);

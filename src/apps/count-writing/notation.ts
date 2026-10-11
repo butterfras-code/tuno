@@ -6,13 +6,14 @@ function node(tag: string, attrs: Record<string, string | number>) {
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
   return element;
 }
-export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm') {
+export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage = { first: true, last: true }) {
   const grid = countGrid(measure);
   const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${label}`, class: 'notation' });
   const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
-  svg.append(node('line', { x1: 80, x2: 788, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
-  for (const bx of [80, 788]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
-  for (const y of [94, 122]) {
+  svg.append(node('line', { x1: passage.first ? 80 : 0, x2: passage.last ? 798 : 800, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
+  for (const bx of passage.first ? [80, passage.last ? 798 : 800] : [passage.last ? 798 : 800]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': passage.last && bx !== 80 ? 4 : 2 }));
+  if (passage.last) svg.append(node('line', { x1: 790, x2: 790, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
+  if (passage.first) for (const y of [94, 122]) {
     const text = node('text', { x: 46, y, 'font-size': 34, 'font-family': 'serif', 'font-weight': 'bold', 'text-anchor': 'middle' });
     text.textContent = '4'; svg.append(text);
   }

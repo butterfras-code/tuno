@@ -36,6 +36,7 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Support keyboard correction/navigation and selectable `&`/`+` offbeats. | Backspace returns from empty boxes; Tab/Shift+Tab and arrows follow available positions. Both offbeat keys use the selected display convention without changing musical time or grading. |
 | 2026-10-10 | Place duration lines and rest endpoints with the keyboard. | Hold Shift and use arrows to choose an available duration count; release Shift to commit its implied endpoint, including trailing hidden subdivisions. Type `(`, choose a closing count with arrows, and press Enter to close the pair. |
 | 2026-10-10 | Add generated Count Writing practice: 2 measures by default, configurable 1–4, with independent note/rest ingredient checkboxes. | Next applies pending generation settings; Check and Retry preserve answers. Reject empty, unfillable or ineffective ingredient pools explicitly. See [practice loop](practice-loop.md). |
+| 2026-10-10 | Show consecutive measures in one staff passage; default to readable rest placement. | Quarter/half rests start on whole beats, including half rests on beat 2; dotted-quarter rests in 4/4 and offbeat longer rests require an explicit unintuitive-notation opt-in. The canonical model remains unrestricted by this practice policy. |
 
 ## Shared foundation and future work
 

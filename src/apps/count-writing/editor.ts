@@ -10,6 +10,7 @@ import { createCountPopover } from './count-popover.ts';
 import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
+  scroller: HTMLElement; lastMeasure: boolean;
   offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   hidden: () => boolean; edited: () => void; check: () => void; navigate: (delta: number, clear?: boolean) => boolean;
 }) {
@@ -36,8 +37,8 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   let result: Evaluation | null = null;
   let changed = false;
   let dottedConvention = options.convention;
-  const card = el('section', 'card'); card.setAttribute('aria-label', number === 1 ? 'Editable measure' : `Editable measure ${number}`); card.dataset.measure = String(number);
-  const score = el('div', 'score-scroll');
+  const card = el('section', 'passage-measure'); card.setAttribute('aria-label', number === 1 ? 'Editable measure' : `Editable measure ${number}`); card.dataset.measure = String(number);
+  const score = el('div', 'measure-editor');
   const measure = el('div', 'measure');
   const notation = el('div');
   const counts = el('div', 'counts'); counts.setAttribute('role', 'group'); counts.setAttribute('aria-label', 'Count positions');
@@ -105,7 +106,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     const next = candidates.indexOf(index) + delta;
     return candidates[Math.max(0, Math.min(candidates.length - 1, next))]!;
   }
-  function focusSlot(index: number) { selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0) score.scrollLeft = 0; }
+  function focusSlot(index: number) { selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0 && number === 1) options.scroller.scrollLeft = 0; }
   function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
   function submitCount(symbol: CountSymbol): boolean {
     put(symbol);
@@ -317,12 +318,13 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   });
   answerArea.append(counts, lines, restMarks, restTargets, preview); measure.append(notation, answerArea); score.append(measure);
   const feedback = el('section', 'feedback'); feedback.setAttribute('aria-label', `Answer feedback measure ${number}`); feedback.setAttribute('aria-live', 'polite');
-  card.append(el('h2', 'measure-heading', `Measure ${number}`), score, live, feedback);
+  const measureNumber = el('h2', 'measure-heading', String(number)); measureNumber.setAttribute('aria-label', `Measure ${number}`);
+  card.append(measureNumber, score, live);
   function reset(focus: boolean) {
     countPopover.dismiss();
     keyboardLine = null;
     grid = countGrid(fixture); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
-    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`));
+    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure }));
     notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
       const tick = Number(mark.dataset.start);
       const bounds = mark.getBBox();
@@ -538,7 +540,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   return {
     mount: () => reset(false),
     backspace: () => { focusSlot(grid.availableSlots.at(-1)!); put(''); },
-    card,
+    card, feedback,
     check: () => { countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention); changed = false; refresh(); return result; },
     retry: () => { result = null; changed = false; refresh(); },
     reset: () => reset(false),
@@ -549,6 +551,6 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     },
     suspend: () => { countPopover.dismiss(); cancelKeyboardLine(); lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); },
     resume: () => { if (options.hidden()) return; positionNotationTargets(); renderRestMarks(); renderLinePreview(); },
-    destroy: () => { lifecycle.abort(); observer.disconnect(); countPopover.destroy(); card.remove(); },
+    destroy: () => { lifecycle.abort(); observer.disconnect(); countPopover.destroy(); card.remove(); feedback.remove(); },
   };
 }

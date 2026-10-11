@@ -144,10 +144,15 @@ select { max-width: 100%; }
 .duration-body { position: absolute; left: 0; top: -20px; width: 100%; height: 44px; border: 0; padding: 0; background: transparent; pointer-events: auto; cursor: pointer; }
 .line-handle { z-index: 1; }
 
-.passage { display: grid; gap: 16px; margin-top: 16px; }
-.measure-heading { font: 800 20px var(--font-heading); margin: 0; }
+main[data-view="practice"] { max-width: 1240px; }
+.passage { min-width: 0; margin-top: 16px; }
+.passage-scroll { margin: 0; padding: 0 0 8px; }
+.passage-strip { display: flex; align-items: start; }
+.passage-measure { position: relative; flex: 1 0 480px; min-width: 480px; }
+.passage-feedback { margin-top: 16px; }
+.passage-feedback .feedback:not(:empty) { margin-top: 20px; }
+.measure-heading { font: 700 14px var(--font-body); color: var(--color-muted); margin: 0 0 4px 16%; }
 .active-ingredients { border: 1px solid var(--color-line); border-radius: 10px; padding: 12px; }
 .active-ingredients legend { font-weight: 700; font-size: 14px; }
-.rhythm-settings .active-ingredients input { width: 20px; height: 20px; }
-.active-ingredients .setting-option { min-height: 44px; align-items: center; }
-.passage > .card { min-width: 0; }
+.rhythm-settings .settings-live input[type="checkbox"] { width: 20px; height: 20px; }
+.settings-live .setting-option { min-height: 44px; align-items: center; }

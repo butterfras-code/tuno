@@ -1,22 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultGeneration, generateExercise, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
-import { derivePassage } from '../src/music/measure.ts';
+import { deriveMeasure, derivePassage } from '../src/music/measure.ts';
 import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
 import type { CountAnswer } from '../src/apps/count-writing/evaluation.ts';
 import type { RhythmMeasure } from '../src/music/measure.ts';
+import { readableRestPlacement } from '../src/apps/count-writing/notation-policy.ts';
+import { fraction } from '../src/music/fraction.ts';
 
 function seeded(seed: number) {
   return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
 }
 test('defaults are two measures; deterministic generation validates every subset at every supported length', () => {
   assert.equal(defaultGeneration().measures, 2);
-  for (let mask = 0; mask < 256; mask++) {
+  assert.equal(defaultGeneration().allowUnintuitiveNotation, false);
+  assert.ok(!defaultGeneration().ingredients.includes('dotted-quarter-rest'));
+  for (const allowUnintuitiveNotation of [false, true]) for (let mask = 0; mask < 256; mask++) {
     const allowed = ingredients.filter((_, i) => mask & (1 << i));
     for (let measures = 1; measures <= 4; measures++) {
-      const settings = { measures, ingredients: allowed.map(i => i.id) };
+      const settings = { measures, ingredients: allowed.map(i => i.id), allowUnintuitiveNotation };
       if (generationIssue(settings)) {
-        assert.throws(() => generateExercise(settings, seeded(mask)), /ingredient|fill|fit|Select/);
+        assert.throws(() => generateExercise(settings, seeded(mask)), /ingredient|fill|fit|Select|notation/);
         continue;
       }
       for (const seed of [1, 53, 879]) {
@@ -29,6 +33,7 @@ test('defaults are two measures; deterministic generation validates every subset
           assert.deepEqual(bar.meter, [4, 4]);
           assert.ok(bar.events.length <= 8);
           bar.events.forEach(event => assert.ok(allowed.some(i => JSON.stringify(event) === JSON.stringify(i.event)), JSON.stringify(event)));
+          if (!allowUnintuitiveNotation) deriveMeasure(bar).events.forEach(event => assert.ok(readableRestPlacement(event.written, event.start)));
         });
       }
     }
@@ -36,12 +41,12 @@ test('defaults are two measures; deterministic generation validates every subset
 });
 test('impossible or unusable selections fail explicitly; finite pools terminate, with no settings mutation', () => {
   for (const settings of [
-    { measures: 2, ingredients: [] },
-    { measures: 2, ingredients: ['dotted-quarter' as const] },
-    { measures: 2, ingredients: ['dotted-quarter' as const, 'half' as const] },
+    { ...defaultGeneration(), measures: 2, ingredients: [] },
+    { ...defaultGeneration(), measures: 2, ingredients: ['dotted-quarter' as const] },
+    { ...defaultGeneration(), measures: 2, ingredients: ['dotted-quarter' as const, 'half' as const] },
   ]) assert.ok(generationIssue(settings));
   for (const id of ['quarter', 'eighth-rest', 'half-rest'] as const) {
-    const settings = { measures: 4, ingredients: [id] }; const before = structuredClone(settings);
+    const settings = { ...defaultGeneration(), measures: 4, ingredients: [id] }; const before = structuredClone(settings);
     assert.equal(generateExercise(settings, () => 0).length, 4);
     assert.deepEqual(settings, before);
   }
@@ -93,4 +98,35 @@ test('offbeat dotted rests apply the internal offbeat convention and enclose its
   const required = evaluatePassage([source], [answer], 'required')[0]!;
   assert.equal(required.counts.verdict, 'revise'); assert.equal(required.rests.verdict, 'revise');
   assert.ok(Object.values(evaluatePassage([source], [answer], 'optional')[0]!).every(d => d.verdict === 'correct'));
+});
+
+test('beginner rest placement forbids offbeat starts at beat length or longer, but permits half rests on any whole beat', () => {
+  assert.equal(readableRestPlacement(['H', { rest: true }], fraction(1, 8)), false);
+  assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(1, 8)), false);
+  assert.equal(readableRestPlacement(['E', { rest: true }], fraction(1, 8)), true);
+  for (const beat of [0, 1, 2]) assert.equal(readableRestPlacement(['H', { rest: true }], fraction(beat, 4)), true);
+  assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(0)), false);
+  assert.equal(readableRestPlacement(['H'], fraction(1, 8)), true, 'note syncopation remains available');
+  const draws = [0, .99, 0];
+  const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['quarter', 'half-rest'] }, () => draws.shift()!);
+  assert.deepEqual(passage[0]!.events, [['Q'], ['H', { rest: true }], ['Q']], 'a half rest starting on beat 2 is allowed');
+});
+test('the screenshot silence can be written as eighth, quarter, eighth rests; opt-in still generates less usual spellings', () => {
+  const draws = [0, .99, .5, .99, .99, 0, 0];
+  const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['eighth', 'quarter-rest', 'eighth-rest'] }, () => draws.shift()!);
+  assert.deepEqual(passage[0]!.events, [['E'], ['E', { rest: true }], ['Q', { rest: true }], ['E', { rest: true }], ['E', { rest: true }], ['E'], ['E']]);
+  const readableAnswer: CountAnswer = { symbols: ['1', '&', '2', '', '3', '&', '4', '&'], spans: [], rests: [{ start: 1, end: 1 }, { start: 2, end: 2 }, { start: 4, end: 4 }, { start: 5, end: 5 }] };
+  assert.ok(Object.values(evaluatePassage(passage, [readableAnswer], 'required')[0]!).every(d => d.verdict === 'correct'), 'grading follows the separate written rests');
+  readableAnswer.rests = [{ start: 1, end: 4 }, { start: 5, end: 5 }];
+  assert.equal(evaluatePassage(passage, [readableAnswer], 'required')[0]!.rests.verdict, 'revise');
+  const advanced = { ...defaultGeneration(), allowUnintuitiveNotation: true, ingredients: ingredients.map(i => i.id) };
+  let offbeatHalf = false, dottedRest = false;
+  for (let seed = 0; seed < 100; seed++) generateExercise(advanced, seeded(seed)).forEach(bar => {
+    deriveMeasure(bar).events.forEach(event => {
+      if (event.written[0] === 'H' && event.kind === 'rest' && !readableRestPlacement(event.written, event.start)) offbeatHalf = true;
+      if (event.kind === 'rest' && event.written[1]?.dots) dottedRest = true;
+    });
+  });
+  assert.equal(offbeatHalf, true); assert.equal(dottedRest, true);
+  assert.match(generationIssue({ ...advanced, allowUnintuitiveNotation: false })!, /require Allow unintuitive notation/);
 });

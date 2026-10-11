@@ -37,13 +37,19 @@ picker.value = fixtureId;
 const convention = select(dottedConventionOptions, value => { dottedConvention = value as DottedQuarterConvention; updateEditors(); });
 const conventionField = field('Dotted-quarter counting convention', convention);
 const setup = el('div', 'card'); setup.append(field('Review fixture', picker), conventionField);
-const passage = el('div', 'passage');
+const passage = el('section', 'card passage'); passage.setAttribute('aria-label', 'Exercise passage');
+const passageScroll = el('div', 'score-scroll passage-scroll');
+const passageStrip = el('div', 'passage-strip');
+passageScroll.append(passageStrip);
+const passageHint = el('p', 'setting-hint', 'Scroll or swipe along the passage. Counts restart at each barline.');
+passage.append(passageScroll, passageHint);
+const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions');
 function evaluateAnswer() {
   const results = editors.map(editor => editor.check());
   const dimensions = results.flatMap(result => Object.values(result));
-  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the feedback under each measure, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
+  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
   retry.hidden = false;
 }
 const check = button('Check', evaluateAnswer, true);
@@ -55,7 +61,7 @@ const next = button('Next exercise', () => {
 });
 const reset = button('Reset answer', () => { editors.forEach(editor => editor.reset()); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
 actions.append(check, retry, next, reset);
-practiceView.append(banner, setup, exerciseSummary, passage, actions, summary, el('p', 'footer-note', 'Settings for length and ingredients apply on Next exercise. Answers and preferences last in this tab only. Review fixtures are available for regression checks.'));
+practiceView.append(banner, setup, exerciseSummary, passage, actions, summary, passageFeedback, el('p', 'footer-note', 'Settings for length and ingredients apply on Next exercise. Answers and preferences last in this tab only. Review fixtures are available for regression checks.'));
 const settings = createSettingsPage({
   offbeat: value => { offbeat = value; updateEditors(); },
   placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },
@@ -80,15 +86,16 @@ function chooseFixture(id: string) {
   loadExercise(id === 'generated' ? generateExercise(generation) : [countWritingFixtures.find(f => f.id === id)!], !practiceView.hidden);
 }
 function loadExercise(measures: RhythmMeasure[], focus: boolean) {
-  editors.forEach(editor => editor.destroy()); editors = []; passage.replaceChildren();
+  editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
   measures.forEach((measure, index) => {
     const editor = createMeasureEditor(measure, index + 1, {
+      scroller: passageScroll, lastMeasure: index === measures.length - 1,
       offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden),
       edited: () => { summary.textContent = 'Answer or counting rule changed. Check again for updated feedback.'; },
       check: evaluateAnswer,
       navigate: (delta, clear) => { const target = editors[index + delta]; if (!target) return false; if (clear) target.backspace(); else target.focus(delta < 0); return true; },
     });
-    editors.push(editor); passage.append(editor.card); editor.mount();
+    editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback); editor.mount();
   });
   exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · 4/4`;
   summary.textContent = ''; retry.hidden = true;
@@ -102,6 +109,7 @@ function updateEditors() {
 function showPage(focus = true) {
   editors.forEach(editor => editor.suspend());
   const isSettings = location.hash === '#settings';
+  main.dataset.view = isSettings ? 'settings' : 'practice';
   practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
   practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
   (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');

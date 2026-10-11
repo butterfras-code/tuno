@@ -107,17 +107,22 @@ export function createSettingsPage(callbacks: {
   const vocabulary = el('fieldset', 'settings-options active-ingredients');
   vocabulary.append(el('legend', '', 'Allowed rhythm ingredients · next exercise'));
   for (const ingredient of ingredients) {
-    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = true; input.dataset.ingredient = ingredient.id;
+    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = generation.ingredients.includes(ingredient.id); input.dataset.ingredient = ingredient.id;
     input.addEventListener('change', () => { generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) }; generationChanged(); });
     label.append(input, el('span', '', ingredient.label)); vocabulary.append(label);
   }
+  const notationOption = el('label', 'setting-option');
+  const notationToggle = el('input'); notationToggle.type = 'checkbox'; notationToggle.dataset.setting = 'unintuitive-notation';
+  notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
+  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in 4/4 require this option and their ingredient checkbox. Applies on Next exercise; keeps your answer.'));
+  notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
   function generationChanged() {
     generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
     callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
   }
   generationStatus.textContent = 'Fixed 4/4. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
-  activeControls.append(lengthField, vocabulary, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
+  activeControls.append(lengthField, vocabulary, notationField, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
   restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
