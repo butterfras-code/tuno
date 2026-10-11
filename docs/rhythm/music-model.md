@@ -1,5 +1,7 @@
 # Canonical rhythm music model
 
+Current integration: [one Rhythm Walk activity](unified-activity.md) shares written events and exact derived time across Write Counts and Tap Rhythms. Their answer and performance evaluations remain separate.
+
 Implemented 2026-10-10 at the owner's request. This is the shared source contract for Count Writing and future Rhythm Walk work. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
 
 ## Compact source

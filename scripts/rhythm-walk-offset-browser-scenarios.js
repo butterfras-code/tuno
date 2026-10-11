@@ -6,9 +6,9 @@ window.__offsetCheck = (async () => {
   const scenario = window.__offsetScenario ?? 'automatic';
   const assert = (value, message) => { if (!value) throw new Error(message); };
   const button = name => [...document.querySelectorAll('button')].find(b => b.textContent === name);
-  const panel = document.querySelector('[aria-label="Timing setup"]');
+  const panel = document.querySelector('.calibration');
   const review = document.querySelector('[aria-label="Attempt review"]');
-  const status = () => document.querySelector('[role="status"]').textContent;
+  const status = () => document.querySelector('.tap-response .status').textContent;
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const wait = async predicate => { const until = performance.now() + 15000; while (!predicate()) { if (performance.now() > until) throw new Error('Timed out: ' + scenario); await sleep(5); } };
   const original = AudioContext.prototype.createOscillator;
@@ -28,10 +28,11 @@ window.__offsetCheck = (async () => {
     return pad.dispatchEvent(new KeyboardEvent(action, { key: ' ', code: 'Space', bubbles: true, cancelable: true }));
   };
   try {
+    const mode = document.querySelector('.shared-controls select'); mode.value = 'tap'; mode.dispatchEvent(new Event('change'));
     if (scenario === 'automatic' || scenario === 'reuse') {
-      if (scenario === 'automatic') button('Reset timing').click();
+      if (scenario === 'automatic') { button('Reset timing').click(); panel.querySelector('input[type=checkbox]').checked = true; }
       const before = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));
-      const picker = document.querySelector('.setup select'); picker.value = 'quarters'; picker.dispatchEvent(new Event('change'));
+      const picker = document.querySelector('.shared-controls select[data-preset]'); picker.value = 'quarters'; picker.dispatchEvent(new Event('change'));
       document.querySelector('input[type=number]').value = '80';
       button('Start count-in').click(); await wait(() => status().startsWith('Count-in'));
       const start = scheduled[0] + 3, pad = button('Performance pad');
@@ -46,15 +47,16 @@ window.__offsetCheck = (async () => {
       assert(review.innerText.includes('Raw timing before correction'), 'raw review remains available');
       assert(record.events.find(e => e.action === 'down' && e.accepted).time > .2, 'raw timestamps retained');
       assert(Math.abs(record.timingOffset.seconds - .25) < .025, 'estimated session correction');
-      assert(panel.innerText.includes('Saved for this session'), 'session status');
+      assert(panel.textContent.includes('Saved for this session'), 'session status');
       if (scenario === 'reuse') assert(record.timingOffset.seconds === before.seconds, 'later performance never recenters saved correction');
       return { passed: scenario, correction: record.timingOffset };
     }
     if (scenario === 'manual' || scenario === 'manual-pointer') {
+      button('Calibrate').click();
       const input = panel.querySelector('select'); input.value = scenario === 'manual-pointer' ? 'pointer' : 'keyboard';
       button('Tap-along calibration').click(); await wait(() => scheduled.length === 16);
       const pad = button('Calibration pad');
-      assert(document.querySelector('.setup select').disabled, 'practice is locked during calibration');
+      assert(document.querySelector('.shared-controls select[data-preset]').disabled, 'practice is locked during calibration');
       for (let i = 4; i < 16; i++) {
         await wait(() => context.currentTime >= scheduled[i] + .2); key(pad, 'keydown'); await sleep(30); key(pad, 'keyup');
       }
@@ -62,14 +64,17 @@ window.__offsetCheck = (async () => {
       const saved = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));
       assert(saved.input === input.value && saved.method === 'tap' && Math.abs(saved.seconds - .2) < .025, 'manual result saved');
       assert(!button('Start count-in').disabled, 'practice unlocked');
+      button('Close timing setup').click();
       return { passed: scenario, correction: saved };
     }
     if (scenario === 'cancel') {
+      button('Calibrate').click();
       const before = sessionStorage.getItem('tuno.rhythm-walk.timing.v1');
       button('Tap-along calibration').click(); await wait(() => scheduled.length === 16);
       button('Cancel calibration').click();
       assert(sessionStorage.getItem('tuno.rhythm-walk.timing.v1') === before, 'cancel preserves saved correction');
       assert(button('Calibration pad').hidden && !button('Start count-in').disabled, 'cancel restores controls');
+      button('Close timing setup').click();
       return { passed: scenario };
     }
     throw new Error('Unknown scenario');

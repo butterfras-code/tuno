@@ -1,5 +1,7 @@
 # Rhythm Walk session timing correction
 
+This policy belongs to Tap Rhythms within the [unified Rhythm Walk activity](unified-activity.md). Mode switches preserve the saved offset; active calibration/capture is canceled safely. Shared preferences use a separate store.
+
 The owner requested automatic normalization of a consistent timing offset, with tap-along calibration as a fallback, measured once per session. This extends the first performance prototype; it does not introduce mastery scores or stretch a performance to match the score.
 
 ## Learner behavior

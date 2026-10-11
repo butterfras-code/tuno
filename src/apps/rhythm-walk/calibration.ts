@@ -92,6 +92,7 @@ export function createTimingPanel(options: { audio: () => Promise<AudioContext>;
   describe();
   return {
     panel, setLocked,
+    cancel: () => stop('Calibration cancelled. Previous timing kept.'),
     current: () => offset ? { ...offset } : undefined,
     consider: (record: AttemptRecord): TimingOffset | undefined => {
       if (offset || !automatic.checked || record.status !== 'completed') return offset;

@@ -17,7 +17,7 @@ try {
   const bars = page.locator('.passage-measure'), slots = page.locator('.count-slot'), anchors = page.locator('.duration-anchor');
   const button = name => page.getByRole('button', { name, exact: true });
   const settings = async () => { await page.getByRole('link', { name: 'Settings', exact: true }).click(); await page.locator('#settings-view').waitFor({ state: 'visible' }); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Count Writing', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ score: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), lines: [...node.querySelectorAll('.duration-line:not(.draft-line)')].map(n => [n.style.cssText, n.dataset.incoming, n.dataset.outgoing]), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
   async function solve(source) {
     const grid = passageGrid(source);
@@ -48,7 +48,7 @@ try {
     for (const f of meterFixtures) {
       await page.goto(new URL(`/prototypes/count-writing/?fixture=${f.id}`, host.url).href);
       const compound = f.measures[0].meter[1] === 8;
-      assert.equal(await page.getByLabel('Dotted-quarter counting convention', { exact: true }).isDisabled(), compound);
+      assert.equal(await page.getByLabel('Dotted-quarter internal &', { exact: true }).isDisabled(), compound);
       if (f.id === 'six-eighths') {
         const beams = await bars.locator('[data-beam]').evaluateAll(nodes => nodes.map(n => Number(n.parentElement.dataset.start)));
         assert.deepEqual(beams, [0,1,3,4], 'two three-eighth beams, no beam crosses counts 3/4');
@@ -75,6 +75,22 @@ try {
         await settings(); await page.getByLabel('Duration-line placement', { exact: true }).selectOption('above'); await practice();
         assert.deepEqual(await slots.allTextContents(), ['1','2','3','4','5','6']); await check();
       }
+      const response = (await snapshot()).map(({ score, ...answer }) => answer), writtenFeedback = await page.locator('.write-response').innerText();
+      const exerciseId = await page.locator('.passage').getAttribute('data-exercise-id');
+      const music = () => bars.locator('g[data-event]').evaluateAll(nodes => nodes.map(n => [n.dataset.value, n.dataset.start, n.dataset.duration, n.dataset.kind, n.dataset.dots, n.dataset.tieNext]));
+      const score = await music();
+      for (const mode of ['tap', 'both', 'write']) {
+        await page.getByLabel('Mode', { exact: true }).selectOption(mode);
+        assert.equal(await page.locator('.passage').getAttribute('data-exercise-id'), exerciseId);
+        assert.deepEqual(await music(), score, 'all modes retain the same musical notation');
+        assert.deepEqual((await snapshot()).map(({ score, ...answer }) => answer), response, 'all modes retain the saved response');
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        if (mode === 'tap') {
+          assert.equal(await page.locator('.write-response').isVisible(), false);
+          assert.equal(await page.locator('.answer-area').first().isVisible(), false);
+        }
+      }
+      assert.equal(await page.locator('.write-response').innerText(), writtenFeedback, 'return restores count feedback');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       await page.screenshot({ path: `${output}/${f.id}-${width}.png`, fullPage: true });
     }

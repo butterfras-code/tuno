@@ -1,3 +1,5 @@
+Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+
 # Rhythm settings inventory and prototype page
 
 Implemented 2026-10-10 after the owner requested the handoff's configurable options be made visible before further editor refinement. Open **Settings** in the Count Writing prototype, or navigate directly to `/prototypes/count-writing/#settings`. The hash identifies a view in the existing prototype; it does not establish the final app route or a separate installation.

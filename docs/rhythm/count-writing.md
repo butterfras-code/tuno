@@ -1,3 +1,5 @@
+Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+
 Current implementation supports [2/4, 3/4, 4/4 and 6/8](meters.md), including fixed six-number 6/8 counting and separate dotted-quarter pulses. This supersedes earlier meter-support limitations in this planning record.
 
 # Count Writing: first-release plan

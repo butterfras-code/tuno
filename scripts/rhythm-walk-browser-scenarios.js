@@ -10,12 +10,12 @@
     const end = performance.now() + 12000;
     while (!predicate()) { if (performance.now() > end) throw new Error('Browser check timeout'); await sleep(10); }
   };
-  const status = () => document.querySelector('[role=status]').textContent;
+  const status = () => document.querySelector('.tap-response .status').textContent;
   const button = name => [...document.querySelectorAll('button')].find(b => b.textContent === name);
   const pad = button('Performance pad');
-  const picker = document.querySelector('select');
+  const picker = document.querySelector('.shared-controls select[data-preset]');
   const tempo = document.querySelector('input[type=number]');
-  const metro = document.querySelector('input[type=checkbox]');
+  const metro = document.querySelector('.tap-response .setup input[type=checkbox]');
   const review = document.querySelector('[aria-label="Attempt review"]');
   const choose = id => { picker.value = id; picker.dispatchEvent(new Event('change')); };
   const originalOscillator = AudioContext.prototype.createOscillator;
@@ -41,7 +41,7 @@
     button('Start count-in').click(); await wait(() => status().startsWith('Count-in'));
     assert(picker.disabled && tempo.disabled && metro.disabled, 'settings locked');
     assert(document.activeElement === pad, 'pad focused');
-    assert(document.querySelectorAll('.score svg').length === 2, 'notation remains visible');
+    assert(document.querySelectorAll('.passage .notation').length === 2, 'notation remains visible');
     await wait(() => context.currentTime >= scheduled[0] + .01);
     return scheduled[0] + 4 * 60 / Number(tempo.value);
   };
@@ -75,7 +75,7 @@
     }
     if (scenario === 'tie') {
     choose('tie'); assert(!review.innerText && status() === 'Ready', 'deliberate exercise change clears review');
-    assert(document.querySelectorAll('[data-tie]').length === 2, 'tie across barline visible');
+    assert(document.querySelectorAll('[data-tie]').length === 1, 'tie across barline visible');
     tempo.value = '180'; metro.checked = false;
     const tieStart = await begin(); assert(scheduled.length === 4, 'count-in audible with exercise metronome off');
     for (const [start, end] of [[0, 2 / 3], [1, 5 / 3], [2, 8 / 3]]) {
@@ -95,10 +95,10 @@
     checks.push('held count-in boundary and bounded unreleased final input');
     }
     if (scenario === 'interruptions') {
-    tempo.value = '180';
+    choose('quarters'); tempo.value = '180';
     await begin(); window.dispatchEvent(new Event('blur')); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Window lost focus', 'window blur interrupted');
-    await begin(); document.querySelector('[data-source]').focus(); await wait(() => status() === 'Interrupted');
+    await begin(); document.querySelector('.shared-controls select').focus(); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Performance pad lost focus', 'pad focus loss interrupted');
     await begin(); await context.suspend(); await wait(() => status() === 'Interrupted'); await context.resume();
     assert((await raw()).reason === 'Audio clock interrupted', 'audio suspension interrupted');

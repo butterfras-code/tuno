@@ -17,7 +17,7 @@ try {
   const bars = page.locator('.passage-measure'), slots = page.locator('.count-slot'), anchors = page.locator('.duration-anchor');
   const button = name => page.getByRole('button', { name, exact: true });
   const settings = async () => { await page.getByRole('link', { name: 'Settings', exact: true }).click(); await page.locator('#settings-view').waitFor({ state: 'visible' }); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Count Writing', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); await page.locator('#practice-view').waitFor({ state: 'visible' }); };
   const snapshot = () => bars.evaluateAll(nodes => nodes.map(node => ({ notation: node.querySelector('.notation').outerHTML, symbols: [...node.querySelectorAll('.count-slot')].map(n => n.textContent), lines: [...node.querySelectorAll('.duration-line:not(.draft-line)')].map(n => [n.style.cssText, n.dataset.incoming, n.dataset.outgoing]), rests: [...node.querySelectorAll('.rest-group')].map(n => [n.dataset.start, n.dataset.end]) })));
   const setRule = async () => { await settings(); await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice(); };
   const add = async (start, end) => { await page.getByLabel('Passage line start', { exact: true }).selectOption(String(start)); await page.getByLabel('Passage line end', { exact: true }).selectOption(String(end)); await button('Save duration line').tap(); };
@@ -144,7 +144,7 @@ try {
   for (const width of [1280,320]) {
     await page.setViewportSize({ width, height: 1000 });
     await settings();
-    assert.match(await page.locator('#settings-view').innerText(), /Settings are saved automatically for this tab/);
+    assert.match(await page.locator('#settings-view').innerText(), /Preferences are saved automatically in this browser/);
     const previous = await snapshot();
     await page.getByLabel('Exercise length', { exact: true }).selectOption('3');
     await page.locator('[data-setting="ties"]').uncheck(); await page.locator('[data-setting="syncopation"]').uncheck();
@@ -164,7 +164,7 @@ try {
     await practice();
   }
   report.checks.push('Settings autosave note and New Exercise action: invalid settings preserve the answer; valid settings generate the selected ingredients/length, return to practice and focus the first count at desktop and mobile widths');
-  await page.reload(); await settings();
+  await page.evaluate(() => localStorage.removeItem('tuno.rhythm-walk.preferences.v1')); await page.reload(); await settings();
   assert.equal(await page.locator('[data-setting="ties"]').isChecked(), false);
   assert.equal(await page.locator('[data-setting="syncopation"]').isChecked(), false);
   assert.equal(await page.getByLabel('Exercise length', { exact: true }).inputValue(), '2');

@@ -1,3 +1,5 @@
+Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+
 # Rhythm Walk performance prototype
 
 Implemented for the owner's first playable performance slice. This is a development review surface, not a production release or an approved teaching/scoring policy.

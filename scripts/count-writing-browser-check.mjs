@@ -16,7 +16,7 @@ try {
   await page.goto(`${url}${url.includes('?') ? '&' : '?'}fixture=half`); await page.evaluate(() => document.fonts.ready);
   const slots = page.locator('.count-slot');
   const control = name => page.getByRole('button', { name, exact: true });
-  const fixture = page.getByLabel('Review fixture', { exact: true });
+  const fixture = page.getByLabel('Exercise preset', { exact: true });
   const choices = page.getByRole('dialog', { name: 'Enter a count', exact: true });
   const dimensions = () => page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className.split(' ').at(-1)));
   const enter = async (tick, symbol) => { await slots.nth(tick).focus(); await page.keyboard.press(symbol); };
@@ -34,7 +34,7 @@ try {
   assert.equal(await slots.nth(0).innerText(),'·','new rhythm resets the answer');
   const nav = page.getByRole('navigation', { name: 'Rhythm pages' });
   const settings = async () => { await nav.getByRole('link', { name: 'Settings', exact: true }).click(); await page.getByLabel('Rhythm settings',{exact:true}).waitFor({state:'visible'}); };
-  const practice = async () => { await page.getByRole('link', { name: 'Back to Count Writing', exact: true }).click(); await page.getByLabel('Editable measure',{exact:true}).waitFor({state:'visible'}); };
+  const practice = async () => { await page.getByRole('link', { name: 'Back to Rhythm Walk', exact: true }).click(); await page.getByLabel('Editable measure',{exact:true}).waitFor({state:'visible'}); };
   assert.equal(await page.getByRole('group', { name: 'Symbol keypad', exact: true }).count(), 0);
   assert.equal(await page.locator('.instructions,.line-controls,.line-edit').count(), 0);
   assert.equal(await control('Start duration line').count(), 0);
@@ -174,7 +174,7 @@ try {
 
   await settings(); assert.equal(await page.locator('.dimension').isVisible().catch(()=>false),false);
   await page.keyboard.press('Enter'); assert.equal(await page.getByLabel('Rhythm settings',{exact:true}).isVisible(),true);
-  await page.getByLabel('Practice exercise',{exact:true}).selectOption('dotted-quarter');
+  await page.getByLabel('Exercise preset',{exact:true}).selectOption('dotted-quarter');
   await page.getByLabel('Dotted-quarter internal &',{exact:true}).selectOption('required'); await practice();
   assert.equal(await slots.nth(0).evaluate(n=>n===document.activeElement),true,'rhythm selected in Settings activates first input on return');
   for(const [i,symbol] of ['1','','2','&','3','','4',''].entries()) if(symbol) await enter(i,symbol);

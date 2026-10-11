@@ -18,6 +18,9 @@ export async function buildRhythmWalk(dev = false) {
           .replace('<!-- styles -->', '<link rel="stylesheet" href="./app.css">')
           .replace('<!-- scripts -->', '<script defer src="./app.js"></script>');
         await writeFile(path.join(out, 'index.html'), html);
+        const legacy = path.join(root, 'dist/hosted/prototypes/count-writing');
+        await mkdir(legacy, { recursive: true });
+        await writeFile(path.join(legacy, 'index.html'), html.replaceAll('./app.', '../rhythm-walk/app.'));
       });
     } }],
   };

@@ -1,3 +1,4 @@
+import { sourcePolicy } from './shared/meter.ts';
 import type { TimingOffset } from './offset.ts';
 import { planPassage, prototypeTiming } from './timing.ts';
 import type { Plan, TimingPolicy } from './timing.ts';
@@ -32,7 +33,7 @@ export class Capture {
     this.exercise = structuredClone(exercise); this.policy = { ...policy };
     this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
-    this.plan = planPassage(this.exercise.measures, bpm, this.policy);
+    this.plan = planPassage(this.exercise.measures, bpm, this.policy, sourcePolicy(this.exercise.measures[0]!).pulse);
     this.plan.captureEnd += Math.max(0, timingOffset?.seconds ?? 0);
   }
   setClockEvidence(clock: ClockEvidence) { this.clock = { ...clock }; }
@@ -51,7 +52,6 @@ export class Capture {
   }
   interrupt(reason: string, time: number): AttemptRecord {
     // A completed capture remains completed even if focus is lost during review.
-    this.advance(time);
     if (!this.result) this.end('interrupted', time, reason);
     return this.result!;
   }

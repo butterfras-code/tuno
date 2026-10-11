@@ -281,7 +281,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       const slot = button('');
       slot.addEventListener('click', event => activateCount(tick, event));
       slot.addEventListener('pointerdown', event => {
-        if (lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
+        if (!options.hidden() && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
       });
       slot.setAttribute('aria-haspopup', 'dialog'); slot.setAttribute('aria-controls', `count-popover-${number}`);
       slot.hidden = !grid.slots[tick]!.available;
@@ -337,11 +337,11 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       hit.setAttribute('fill', 'transparent'); hit.setAttribute('pointer-events', 'all');
       mark.prepend(hit);
       mark.setAttribute('role', 'button'); mark.setAttribute('tabindex', '0');
-      mark.setAttribute('aria-label', `Enter count at ${positionLabel(tick)}`);
+      mark.dataset.entryLabel = `Enter count at ${positionLabel(tick)}`; mark.setAttribute('aria-label', mark.dataset.entryLabel);
       mark.setAttribute('aria-haspopup', 'dialog'); mark.setAttribute('aria-controls', `count-popover-${number}`);
-      mark.addEventListener('click', event => activateCount(tick, event));
+      mark.addEventListener('click', event => { if (!options.hidden()) activateCount(tick, event); });
       mark.addEventListener('pointerdown', event => {
-        if (lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
+        if (!options.hidden() && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
       });
       mark.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); mark.dispatchEvent(new MouseEvent('click', { bubbles: true })); }

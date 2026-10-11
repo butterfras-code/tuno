@@ -1,154 +1,255 @@
-import { createTimingPanel } from './calibration.ts';
+// Copyright (C) 2026 tUno contributors. SPDX-License-Identifier: GPL-3.0-only
 import '../../tokens.css';
+import '../../shared/ui/fonts.css';
+import '../count-writing/styles.css';
 import './styles.css';
-import { el, button, field, select, numberInput } from '../../shared/ui/components.ts';
-import { exercises } from './fixtures.ts';
-import { notation } from './notation.ts';
-import { Capture } from './capture.ts';
+import uno from '../../assets/uno-happy.svg';
+import { button, el, field, select } from '../../shared/ui/components.ts';
+import { Activity, presets as practiceFixtures, modeOptions, readPreferences, preferenceKey } from './activity.ts';
+import type { Mode } from './activity.ts';
+import { createPerformance } from './performance.ts';
 import type { AttemptRecord } from './capture.ts';
+import { timingTimelines, renderTimingTimeline } from './timeline.ts';
 import { evaluateAttempt } from './evaluation.ts';
-import { Transport } from './transport.ts';
+import { createMeasureEditor } from '../count-writing/editor.ts';
+import { createSettingsPage } from './shared/settings.ts';
+import { withLinePlacement } from '../count-writing/presentation.ts';
+import { defaultGeneration, generateExercise, generationIssue } from './shared/generation.ts';
+import type { RhythmMeasure } from '../../music/measure.ts';
+import { evaluatePassage } from '../count-writing/evaluation.ts';
+import { passageGrid } from '../count-writing/passage.ts';
+import { renderPassageTies } from './shared/notation.ts';
+import { createPassageLines } from '../count-writing/passage-lines.ts';
+import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
+import type { OffbeatSymbol } from '../count-writing/input.ts';
+
+let saved: string | null = null;
+try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
+const preferences = readPreferences(saved);
+const requestedFixture = new URLSearchParams(location.search).get('fixture');
+if (requestedFixture && practiceFixtures.some(f => f.id === requestedFixture)) preferences.preset = requestedFixture;
+let offbeat: OffbeatSymbol = preferences.offbeat;
+let presentation = preferences.presentation;
+let dottedConvention: DottedQuarterConvention = preferences.convention;
+let generation = preferences.generation;
+let fixtureId = preferences.preset;
+const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
+function persist() {
+  Object.assign(preferences, { offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
+  try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Memory fallback. */ }
+}
+let editors: ReturnType<typeof createMeasureEditor>[] = [];
+let focusNewRhythm = false;
+let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
+let currentMeasures: RhythmMeasure[] = [];
+let lineEditor: ReturnType<typeof createPassageLines> | null = null;
 const app = document.querySelector<HTMLElement>('#app')!;
-const main = el('main');
-main.append(el('p', 'eyebrow', 'tUno · Development prototype'), el('h1', '', 'Rhythm Walk'), el('p', '', 'Read the rhythm. Press, hold, release. Stay silent for rests.'));
-let exercise = exercises[0]!;
-let audio: AudioContext | undefined;
-let transport: Transport | null = null;
-let starting = false;
-let startCancelled = false;
-let result: AttemptRecord | null = null;
-let score = notation(exercise.measures);
-const picker = select(exercises.map(e => ({ value: e.id, label: e.label })), id => {
-  exercise = exercises.find(e => e.id === id)!; result = null;
-  const next = notation(exercise.measures); score.replaceWith(next); score = next;
-  description.textContent = exercise.description; review.replaceChildren(); retry.hidden = true; download.hidden = true; status.textContent = 'Ready';
+const main = el('main'); main.id = 'editor';
+const header = el('header');
+const mascot = el('img', 'mascot'); mascot.src = uno; mascot.alt = '';
+const title = el('div');
+const pageTitle = el('h1', '', 'Rhythm Walk'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
+const subtitle = el('p', 'subtitle', 'One score. Write counts, tap rhythms, or try both.');
+title.append(el('p', 'eyebrow', 'tUno · Rhythm practice'), pageTitle, subtitle); header.append(title, mascot);
+const mode = select(modeOptions, value => switchMode(value as Mode)); mode.value = preferences.mode;
+const modeField = field('Mode', mode);
+const practiceView = el('section'); practiceView.id = 'practice-view';
+const banner = el('p', 'review-note', 'Open entry. Counting conventions and duration-line endpoints retain their teacher-review options.');
+const exerciseSummary = el('p'); exerciseSummary.setAttribute('role', 'status');
+const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
+picker.value = fixtureId; picker.dataset.preset = '';
+const setup = el('div', 'card setup'); setup.append(modeField, field('Exercise preset', picker));
+const passage = el('section', 'card passage'); passage.setAttribute('aria-label', 'Exercise passage');
+const passageScroll = el('div', 'score-scroll passage-scroll');
+const passageStrip = el('div', 'passage-strip');
+passageScroll.append(passageStrip);
+const wrap = button('Wrap notation into systems', () => { passageStrip.classList.toggle('wrapped'); preferences.wrapped = passageStrip.classList.contains('wrapped'); persist(); wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped'))); tieNotation?.refresh(); });
+wrap.setAttribute('aria-pressed', 'false');
+const passageHint = el('p', 'setting-hint', 'Scroll or swipe along the passage. Counts restart at each barline.');
+passage.append(passageScroll, wrap, passageHint);
+const passageFeedback = el('div', 'passage-feedback');
+const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
+const actions = el('div', 'actions write-actions');
+const writeResponse = el('section', 'write-response'); writeResponse.setAttribute('aria-label', 'Write Counts');
+writeResponse.append(el('h2', '', 'Write Counts'));
+const showCounts = el('input'); showCounts.type = 'checkbox'; showCounts.checked = preferences.showCounts;
+showCounts.addEventListener('change', () => { preferences.showCounts = showCounts.checked; persist(); updateResponseView(); });
+const showCountsField = field('Show written counts during performance', showCounts);
+const performAfterWriting = button('Perform this exercise', () => { void performance.start(); });
+let performing = false;
+const performance = createPerformance({ exercise: () => activity.exercise, preferences, changed: persist,
+  busy: active => {
+    performing = active; picker.disabled = next.disabled = active;
+    settings.setLocked(active);
+    settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8);
+    if (!active) next.disabled = Boolean(generationIssue(generation));
+    if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
+    updateResponseView();
+  },
+  decorate: decoratePerformance,
 });
-const tempo = numberInput(40, 180, 80);
-const metronome = el('input'); metronome.type = 'checkbox'; metronome.checked = true;
-const metronomeLabel = field('Metronome during exercise', metronome);
-const setup = el('div', 'setup'); setup.append(field('Exercise', picker), field('Tempo (quarter-note BPM)', tempo), metronomeLabel);
-const description = el('p', '', exercise.description);
-const attemptSummary = el('p', 'attempt-summary'); attemptSummary.hidden = true;
-const status = el('p', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-const pulse = el('div', 'pulse'); pulse.setAttribute('aria-hidden', 'true');
-const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
-const pad = button('Performance pad'); pad.className = 'pad'; pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = true;
-const start = button('Start count-in', () => { void begin(); });
-const retry = button('Retry same exercise', () => { void begin(); }); retry.hidden = true;
-const stop = button('Stop / Cancel', () => {
-  if (starting) { startCancelled = true; return; }
-  transport?.interrupt('Stopped by learner');
-}); stop.disabled = true;
-const download = button('Download timing evidence', () => {
-  if (!result) return;
-  const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
-  const link = el('a'); link.href = url; link.download = `rhythm-walk-${result.exercise.id}.json`; link.click(); URL.revokeObjectURL(url);
-}); download.hidden = true;
-const actions = el('div', 'actions'); actions.append(start, retry, stop, download);
-const review = el('section'); review.setAttribute('aria-label', 'Attempt review');
-const timing = createTimingPanel({
-  audio: async () => { audio ??= new AudioContext(); await audio.resume(); return audio; },
-  busy: active => { main.classList.toggle('calibrating', active); lock(active); if (active) pad.disabled = true; },
+function evaluateAnswer() {
+  lineEditor?.cancel(); editors.forEach(e => e.suspend());
+  const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans());
+  editors.forEach((editor, index) => editor.showResult(results[index]!));
+  const dimensions = results.flatMap(result => Object.values(result));
+  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
+  retry.hidden = false;
+}
+const check = button('Check', evaluateAnswer, true);
+const retry = button('Retry', () => { lineEditor?.cancel(); editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
+function newExercise(returnToPractice = false) {
+  const issue = generationIssue(generation);
+  if (issue) { summary.textContent = issue; return; }
+  performance.cancel('New exercise');
+  activity.preferences.generation = generation; activity.next();
+  fixtureId = 'generated'; picker.value = fixtureId; loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
+  if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
+}
+const next = button('Next exercise', () => newExercise(Boolean(practiceView.hidden)));
+const reset = button('Reset answer', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
+actions.append(check, retry, reset, performAfterWriting);
+const sharedActions = el('div', 'actions'); sharedActions.append(next);
+writeResponse.append(actions, summary, passageFeedback);
+passageScroll.after(performance.section);
+practiceView.append(banner, showCountsField, passage, writeResponse, el('p', 'footer-note', 'Exercise settings apply on Next exercise. Modes keep the same score and responses. Preferences are saved across reloads.'));
+const settings = createSettingsPage({
+  initialGeneration: generation,
+  newExercise: () => newExercise(true),
+  offbeat: value => { offbeat = value; updateEditors(); },
+  placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },
+  appearance: value => { presentation = { ...presentation, sustainAppearance: value }; updateEditors(); },
+  convention: value => { dottedConvention = value; updateEditors(); },
+  generation: value => {
+    generation = value; persist();
+    const issue = generationIssue(generation); next.disabled = Boolean(issue);
+    exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; Next exercise uses these settings.';
+  },
 });
-main.append(setup, timing.panel, description, attemptSummary, score, instructions, status, pulse, pad, actions, review, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
-app.append(main);
-function lock(active: boolean) {
-  timing.setLocked(active);
-  main.classList.toggle('active', active); attemptSummary.hidden = !active;
-  picker.disabled = tempo.disabled = metronome.disabled = start.disabled = retry.disabled = active;
-  stop.disabled = !active; pad.disabled = !active; download.disabled = active;
+const exerciseSettings = el('details', 'card exercise-settings');
+exerciseSettings.append(el('summary', '', 'Exercise settings'), settings.exerciseControls);
+const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, exerciseSettings, sharedActions, exerciseSummary);
+const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
+const practiceLink = el('a', 'control', 'Rhythm Walk'); practiceLink.href = '#practice';
+const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
+main.append(header, nav, sharedControls, practiceView, settings.page); app.append(main);
+function chooseFixture(id: string) {
+  if (id === fixtureId) return;
+  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8); return; }
+  performance.cancel('Exercise changed');
+  fixtureId = id; picker.value = id;
+  focusNewRhythm = Boolean(practiceView.hidden);
+  loadExercise(id === 'generated' ? generateExercise(generation) : practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
 }
-function tick(time: number) {
-  if (!transport) return;
-  const phase = transport.capture.phase(time);
-  const next = phase === 'count-in' ? 'Count-in — release before the start' : time >= transport.capture.plan.duration ? 'Performing — capturing final release' : 'Performing';
-  if (status.textContent !== next) status.textContent = next;
-  const pulses = transport.capture.plan.pulses;
-  const latest = [...pulses].reverse().find(p => p.time <= time);
-  pulse.classList.toggle('lit', !!latest && time - latest.time < Math.min(.12, transport.capture.plan.pulseSeconds / 3));
-}
-async function begin() {
-  if (transport || starting) return;
-  if (!tempo.reportValidity()) return;
-  // Snapshot before awaiting audio activation, even though controls are locked.
-  const capture = new Capture(exercise, tempo.valueAsNumber, metronome.checked, undefined, timing.current());
-  attemptSummary.textContent = `${capture.exercise.label} · ${capture.bpm} quarter-note BPM · ${capture.metronome ? 'metronome on' : 'metronome off'}`;
-  starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
-  try {
-    audio ??= new AudioContext(); await audio.resume();
-    if (startCancelled || document.hidden || !document.hasFocus()) {
-      finish(capture.interrupt('Start cancelled or focus lost', -capture.plan.countIn)); return;
-    }
-    if (audio.state !== 'running') throw new Error('Audio could not start');
-    result = null; review.replaceChildren(); retry.hidden = true; download.hidden = true;
-    score.replaceWith(score = notation(exercise.measures));
-    transport = new Transport(audio, capture, tick, finish); pad.focus(); tick(transport.time());
-  } catch {
-    finish(capture.interrupt('Audio could not start. Check browser audio permissions and retry.', -capture.plan.countIn));
-  } finally { starting = false; }
-}
-function offset(value: number | null) { return value === null ? 'no release observed' : Math.abs(value) < .0005 ? 'on time (0 ms)' : `${Math.round(Math.abs(value) * 1000)} ms ${value < 0 ? 'early' : 'late'}`; }
-function finish(record: AttemptRecord) {
-  const correction = record.timingOffset ?? timing.consider(record);
-  if (correction) record = { ...record, timingOffset: correction };
-  result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
-  retry.hidden = false; download.hidden = false;
-  const evaluation = evaluateAttempt(record);
-  review.replaceChildren(el('h2', '', record.status === 'completed' ? 'Completed attempt' : 'Interrupted attempt'));
-  if (evaluation.status === 'interrupted') {
-    status.textContent = 'Interrupted'; review.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
-  }
-  status.textContent = 'Reviewing';
-  if (record.timingOffset) review.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
-  review.append(el('p', '', `${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. Review onset, release, and rest evidence below.`));
-  const list = el('ol');
-  record.plan.notes.forEach((note, i) => {
-    const match = evaluation.matches.find(m => m.expected === i);
-    const refs = note.sources.map(s => `measure ${s.measure + 1}, note ${s.event + 1}`).join(' → ');
-    const text = `${refs}${note.sources.length > 1 ? ' (tied chain)' : ''}: ${match ? `attack ${offset(match.onsetOffset)}; release ${offset(match.releaseOffset)}` : 'missing attack'}.`;
-    const item = el('li', '', text); item.id = `feedback-note-${i}`; list.append(item);
-    note.sources.forEach(s => {
-      const glyph = document.getElementById(`written-${s.measure}-${s.event}`)!;
-      glyph.setAttribute('aria-describedby', item.id); glyph.setAttribute('data-feedback', match ? 'matched' : 'missing');
-      glyph.querySelector('title')!.textContent = text;
+function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true) {
+  performance.cancel('Exercise changed');
+  if (replace) { activity.preferences.preset = fixtureId; activity.replace(measures); }
+  performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
+  passage.dataset.exerciseId = activity.exercise.id;
+  tieNotation?.destroy(); tieNotation = null;
+  lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
+  measures = currentMeasures;
+  const grid = passageGrid(measures);
+  const tied = measures.some(m => m.events.some(e => e[1]?.tieNext));
+  passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap || preferences.wrapped));
+  wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped')));
+  editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
+  measures.forEach((measure, index) => {
+    const editor = createMeasureEditor(measure, index + 1, {
+      scroller: passageScroll, lastMeasure: index === measures.length - 1,
+      grid: grid.grids[index], externalLines: tied,
+      offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
+      edited: () => { summary.textContent = 'Answer or counting rule changed. Check again for updated feedback.'; },
+      check: evaluateAnswer,
+      navigate: (delta, clear) => { const target = editors[index + delta]; if (!target) return false; if (clear) target.backspace(); else target.focus(delta < 0); return true; },
     });
+    editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback); editor.mount();
   });
-  record.plan.rests.forEach((rest, i) => {
-    const overlaps = evaluation.restOverlaps.filter(o => o.rest === i);
-    const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${overlaps.length ? overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ') : 'silent'}.`;
-    const item = el('li', '', text); item.id = `feedback-rest-${i}`; list.append(item);
-    const glyph = document.getElementById(`written-${rest.source.measure}-${rest.source.event}`)!;
-    glyph.setAttribute('aria-describedby', item.id); glyph.setAttribute('data-feedback', overlaps.length ? 'overlap' : 'silent'); glyph.querySelector('title')!.textContent = text;
-  });
-  evaluation.extra.forEach(i => list.append(el('li', '', `Extra attack at ${evaluation.holds[i]!.down.toFixed(3)} s after exercise start.`)));
-  review.append(list);
-  if (record.timingOffset) {
-    const raw = evaluateAttempt(record, null);
-    const details = el('details'); details.append(el('summary', '', 'Raw timing before correction'));
-    details.append(el('p', '', `${raw.matches.length} matched attacks · ${raw.missing.length} missing · ${raw.extra.length} extra (uncorrected).`));
-    const rawList = el('ul');
-    raw.matches.forEach(match => rawList.append(el('li', '', `Attack ${match.expected + 1}: ${offset(match.onsetOffset)}; release ${offset(match.releaseOffset)}.`)));
-    raw.extra.forEach(i => rawList.append(el('li', '', `Unmatched raw attack at ${raw.holds[i]!.down.toFixed(3)} s.`)));
-    details.append(rawList); review.append(details);
-  }
-  if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) review.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
+  tieNotation = renderPassageTies(measures, passageStrip);
+  if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
+  exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
+  summary.textContent = ''; retry.hidden = true;
+  const compound = measures[0]!.meter[1] === 8;
+  banner.textContent = compound ? '6/8 · Count every eighth 1 2 3 | 4 5 6. Two dotted-quarter pulses per bar. Every sustained note/rest requires a line.' : `${measures[0]!.meter.join('/')} · Count quarter beats and eighth offbeats. Counts restart at each barline.`;
+  updateEditors(); updateResponseView();
+  if (focus && preferences.mode !== 'tap') editors[0]?.focus();
 }
-// Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
-pad.addEventListener('keydown', e => { if (e.code === 'Space' && transport) { e.preventDefault(); transport.input('down', 'keyboard', e.timeStamp, e.repeat); pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null)); } });
-pad.addEventListener('keyup', e => { if (e.code === 'Space' && transport) { e.preventDefault(); transport.input('up', 'keyboard', e.timeStamp); pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null)); } });
-let pointer: number | null = null;
-pad.addEventListener('pointerdown', e => {
-  if (!transport || e.button !== 0) return; e.preventDefault(); pad.focus();
-  transport.input('down', `pointer:${e.pointerId}`, e.timeStamp);
-  if (transport.capture.heldBy === `pointer:${e.pointerId}` && pointer === null) { pointer = e.pointerId; pad.setPointerCapture(e.pointerId); pad.setAttribute('aria-pressed', 'true'); }
+function updateEditors() {
+  persist();
+  lineEditor?.cancel();
+  editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention));
+  settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8);
+}
+function showPage(focus = true) {
+  lineEditor?.cancel();
+  editors.forEach(editor => editor.suspend());
+  performance.cancel('Page changed');
+  const isSettings = location.hash === '#settings';
+  if (isSettings) exerciseSettings.open = true;
+  main.dataset.view = isSettings ? 'settings' : 'practice';
+  practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
+  practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
+  (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
+  pageTitle.textContent = isSettings ? 'Rhythm settings' : 'Rhythm Walk';
+  subtitle.textContent = isSettings ? 'Shared exercise settings and writing preferences.' : 'One score. Write counts, tap rhythms, or try both.';
+  document.title = `${pageTitle.textContent} — tUno prototype`;
+  updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
+  if (!isSettings && focusNewRhythm && preferences.mode !== 'tap') { focusNewRhythm = false; editors[0]?.focus(); }
+  else if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
+}
+window.addEventListener('hashchange', () => { if (['', '#settings', '#practice'].includes(location.hash)) showPage(); });
+document.addEventListener('keydown', event => {
+  if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || preferences.mode === 'tap' || performing) return;
+  if ((event.target as Element).closest('button, a, input, select, textarea, [role="button"], [contenteditable], .count-popover')) return;
+  event.preventDefault(); evaluateAnswer();
 });
-pad.addEventListener('pointerup', e => {
-  transport?.input('up', `pointer:${e.pointerId}`, e.timeStamp);
-  if (pointer === e.pointerId) { pointer = null; pad.setAttribute('aria-pressed', 'false'); }
-});
-pad.addEventListener('pointercancel', e => { if (pointer === e.pointerId) { pointer = null; transport?.interrupt('Pointer cancelled'); } });
-pad.addEventListener('lostpointercapture', e => { if (pointer === e.pointerId) { pointer = null; transport?.interrupt('Pointer capture lost'); } });
-pad.addEventListener('blur', e => { if (e.relatedTarget === stop) return; if (starting) startCancelled = true; transport?.interrupt('Performance pad lost focus'); });
-window.addEventListener('blur', () => { if (starting) startCancelled = true; transport?.interrupt('Window lost focus'); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { startCancelled = true; transport?.interrupt('Page backgrounded'); } });
-window.addEventListener('pagehide', () => transport?.interrupt('Page left'));
+
+function switchMode(value: Mode) {
+  performance.cancel('Mode changed');
+  lineEditor?.cancel(); editors.forEach(e => e.suspend());
+  activity.setMode(value); persist(); updateResponseView();
+  editors.forEach(e => e.resume()); tieNotation?.refresh();
+}
+function updateResponseView() {
+  const writing = preferences.mode !== 'tap';
+  writeResponse.hidden = !writing || performing;
+  performance.section.hidden = preferences.mode === 'write';
+  showCountsField.hidden = preferences.mode !== 'both';
+  performAfterWriting.hidden = preferences.mode !== 'both';
+  const hideCounts = !writing || (performing && !preferences.showCounts);
+  passage.classList.toggle('counts-hidden', hideCounts);
+  passage.classList.toggle('counts-readonly', performing);
+  passageStrip.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
+    glyph.setAttribute('role', writing && !performing ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing ? '0' : '-1');
+    if (writing && !performing) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.setAttribute('aria-haspopup', 'dialog'); }
+    else { glyph.setAttribute('aria-label', `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
+  });
+  passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing; });
+  passage.querySelectorAll<HTMLElement>('.passage-line-controls').forEach(control => { control.hidden = !writing || performing; });
+  decoratePerformance(preferences.mode === 'tap' || (preferences.mode === 'both' && !performing) ? performance.record() : null);
+  tieNotation?.refresh();
+}
+function decoratePerformance(record: AttemptRecord | null) {
+  passage.querySelectorAll('.timing-timeline').forEach(node => node.remove());
+  if (record && record.status === 'completed' && preferences.mode !== 'write') {
+    timingTimelines(record).forEach((data, index) => editors[index]?.card.append(renderTimingTimeline(data, Boolean(record.timingOffset), index === 0)));
+  }
+  passageStrip.querySelectorAll<SVGElement>('g[data-event]').forEach(glyph => { glyph.removeAttribute('data-feedback'); glyph.removeAttribute('aria-describedby'); glyph.querySelector('title')!.textContent = `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`; });
+  if (!record || record.status !== 'completed' || preferences.mode === 'write') return;
+  const evaluation = evaluateAttempt(record);
+  function annotate(measure: number, event: number, feedback: string, text: string, description: string) {
+    const glyph = editors[measure]?.card.querySelector<SVGElement>(`g[data-event="${event}"]`);
+    if (glyph) { glyph.dataset.feedback = feedback; glyph.setAttribute('aria-describedby', description); glyph.querySelector('title')!.textContent = text; }
+  }
+  record.plan.notes.forEach((note, index) => {
+    const match = evaluation.matches.find(m => m.expected === index);
+    note.sources.forEach(source => annotate(source.measure, source.event, match ? 'matched' : 'missing', match ? `Attack ${Math.round(match.onsetOffset * 1000)} ms; release ${match.releaseOffset === null ? 'not observed' : Math.round(match.releaseOffset * 1000) + ' ms'}` : 'Missing attack', `feedback-note-${index}`));
+  });
+  record.plan.rests.forEach((rest, index) => {
+    const overlaps = evaluation.restOverlaps.filter(o => o.rest === index);
+    annotate(rest.source.measure, rest.source.event, overlaps.length ? 'overlap' : 'silent', overlaps.length ? 'Input overlaps this rest' : 'Silent', `feedback-rest-${index}`);
+  });
+}
+loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);
+showPage(false);
+if (!practiceView.hidden && preferences.mode !== 'tap') editors[0]?.focus();

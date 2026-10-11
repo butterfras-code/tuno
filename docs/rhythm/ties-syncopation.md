@@ -1,3 +1,5 @@
+Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
+
 # Count Writing: ties and syncopation
 
 The original simple-meter rules below now apply in 2/4, 3/4 and 4/4. [Meter decisions](meters.md) define 6/8: six required numbers, exact duration endpoints and syncopation relative to two dotted-quarter pulses.

@@ -12,7 +12,7 @@ export function countGrid(source: RhythmMeasure) {
   const measure = deriveMeasure(source);
   if (measure.beats.some(b => compare(b.duration, policy.pulse)) ||
       source.events.some(([value, m]) => !['H', 'Q', 'E'].includes(value) || m?.tuplet || (m?.dots ?? 0) > 1 || (value === 'E' && m?.dots) || (m?.rest && value === 'H' && m.dots))) {
-    throw new Error('Count Writing currently supports 2/4, 3/4, 4/4 and 6/8 half/quarter/eighth material, including dotted quarters and rests only.');
+    throw new Error('Rhythm Walk currently supports 2/4, 3/4, 4/4 and 6/8 half/quarter/eighth material, including dotted quarters and rests only.');
   }
   const step = fraction(1, 8);
   const positions: Fraction[] = [];
