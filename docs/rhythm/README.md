@@ -1,6 +1,6 @@
 # Rhythm activities: current direction
 
-Updated 2026-10-10. Count Writing now has generated 4/4 practice with two measures by default and a configurable length of 1–4. See [practice-loop behavior and validation](practice-loop.md), and the earlier [prototype review](prototype.md).
+Updated 2026-10-10. Count Writing now has generated 4/4 practice with two measures by default and a configurable length of 1–4. Ties and offbeat sustained attacks are available as separate opt-in controls, both off by default; see [their counting rules, fixtures and settings](ties-syncopation.md). See [practice-loop behavior and validation](practice-loop.md), and the earlier [prototype review](prototype.md).
 
 ## Read this first
 
@@ -37,6 +37,8 @@ Where these documents differ, this current direction and the Count Writing plan 
 | 2026-10-10 | Place duration lines and rest endpoints with the keyboard. | Hold Shift and use arrows to choose an available duration count; release Shift to commit its implied endpoint, including trailing hidden subdivisions. Type `(`, choose a closing count with arrows, and press Enter to close the pair. |
 | 2026-10-10 | Add generated Count Writing practice: 2 measures by default, configurable 1–4, with independent note/rest ingredient checkboxes. | Next applies pending generation settings; Check and Retry preserve answers. Reject empty, unfillable or ineffective ingredient pools explicitly. See [practice loop](practice-loop.md). |
 | 2026-10-10 | Show consecutive measures in one staff passage; default to readable rest placement. | Quarter/half rests start on whole beats, including half rests on beat 2; dotted-quarter rests in 4/4 and offbeat longer rests require an explicit unintuitive-notation opt-in. The canonical model remains unrestricted by this practice policy. |
+
+| 2026-10-10 | Add bounded, opt-in ties and syncopation in 4/4. | One sounding attack/line per tied chain; beat counts remain required, dotted-quarter policy follows total sounding duration, and system breaks do not affect grading. See [rules](ties-syncopation.md). |
 
 ## Shared foundation and future work
 

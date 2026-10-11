@@ -1,4 +1,5 @@
 import { countGrid } from './grid.ts';
+import { passageGrid } from './passage.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 export const alphabet = ['1', '2', '3', '4', '&', 'e', 'a'] as const;
@@ -18,7 +19,7 @@ export const blankAnswer = (measure: RhythmMeasure): CountAnswer => {
  * Dotted-quarter internal & is accepted both present and absent pending review.
  */
 export type DottedQuarterConvention = 'review' | 'required' | 'optional';
-export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConvention: DottedQuarterConvention = 'review'): Evaluation {
+function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConvention: DottedQuarterConvention = 'review'): Evaluation {
   const counts: Dimension = { verdict: 'correct', issues: [] };
   const spans: Dimension = { verdict: 'correct', issues: [] };
   const rests: Dimension = { verdict: 'correct', issues: [] };
@@ -71,13 +72,56 @@ export function evaluate(measure: RhythmMeasure, answer: CountAnswer, dottedConv
   return { counts, spans, rests };
 }
 
-/** Answers are measure-local; no answer range can connect two bars. */
-export function evaluatePassage(measures: readonly RhythmMeasure[], answers: readonly CountAnswer[], convention: DottedQuarterConvention = 'review'): Evaluation[] {
+/** Single-bar entry validates complete tie chains, too. */
+export function evaluate(measure: RhythmMeasure, answer: CountAnswer, convention: DottedQuarterConvention = 'review'): Evaluation {
+  if (measure.events.some(e => e[1]?.tieNext)) return evaluatePassage([measure], [answer], convention)[0]!;
+  return evaluateMeasure(measure, answer, convention);
+}
+
+/** Rest pairs stay measure-local. Duration spans may use passage-wide derived positions. */
+export function evaluatePassage(measures: readonly RhythmMeasure[], answers: readonly CountAnswer[], convention: DottedQuarterConvention = 'review', passageSpans?: readonly Span[]): Evaluation[] {
   derivePassage(measures);
   if (answers.length !== measures.length) throw new Error('Provide one answer per measure.');
-  return measures.map((measure, index) => {
-    const result = evaluate(measure, answers[index]!, convention);
+  const results = measures.map((measure, index) => evaluateMeasure(measure, answers[index]!, convention));
+  if (measures.some(m => m.events.some(e => e[1]?.tieNext)) || passageSpans) {
+    const grid = passageGrid(measures);
+    const lines = passageSpans ?? answers.flatMap((answer, measure) => answer.spans.map(span => ({ start: span.start + measure * 8, end: span.end + measure * 8 })));
+    results.forEach(result => { result.counts = { verdict: 'correct', issues: [] }; result.spans = { verdict: 'correct', issues: [] }; });
+    grid.slots.forEach(slot => {
+      const counts = results[slot.measure]!.counts;
+      const symbol = answers[slot.measure]!.symbols[slot.index];
+      const required = slot.attack || slot.onBeat || (slot.dottedInternal && convention === 'required');
+      if ((required || symbol) && symbol !== slot.symbol) {
+        const reason = slot.attack && !slot.sound.rest ? 'attack count' : !slot.attack && !slot.sound.rest ? 'sustained continuation count' : 'rest count';
+        counts.issues.push(`${symbol ? 'Incorrect' : 'Missing'} ${reason} at ${slot.label}${slot.sound.tied && !slot.attack ? '; this is a continuation, not a new attack' : ''}.`);
+        counts.verdict = 'revise';
+      } else if ((slot.dottedInternal && convention === 'review') || (!required && symbol && !(slot.dottedInternal && convention === 'optional'))) {
+        if (counts.verdict !== 'revise') counts.verdict = 'provisional';
+        if (!counts.issues.includes('Internal offbeat counts retain the selected dotted-quarter or optional-subdivision teacher-review convention.')) counts.issues.push('Internal offbeat counts retain the selected dotted-quarter or optional-subdivision teacher-review convention.');
+      }
+    });
+    const issue = (measure: number, message: string, verdict: Verdict = 'revise') => {
+      const dimension = results[measure]!.spans;
+      dimension.issues.push(message);
+      if (dimension.verdict !== 'revise') dimension.verdict = verdict;
+    };
+    grid.sustained.forEach(sound => {
+      const anchored = lines.filter(line => line.start === sound.start);
+      const measure = Math.floor(sound.start / 8);
+      const label = grid.slots[sound.start]!.label;
+      if (anchored.length !== 1) issue(measure, `Use one continuous duration line at ${label}${sound.tied ? ' for the entire tied chain' : ''}.`);
+      else if (anchored[0]!.end !== sound.end && anchored[0]!.end >= sound.start && anchored[0]!.end < sound.end) issue(measure, `Review the duration endpoint at ${label}; the trial line continues through measure ${Math.floor(sound.end / 8) + 1}, ${grid.slots[sound.end]!.label}.`, 'provisional');
+    });
+    lines.forEach(line => {
+      const sound = grid.sustained.find(s => s.start === line.start);
+      const measure = Math.max(0, Math.min(measures.length - 1, Math.floor(line.start / 8) || 0));
+      if (!Number.isInteger(line.start) || !Number.isInteger(line.end) || line.start < 0 || line.end >= grid.slots.length || line.end < line.start) issue(measure, 'Duration line leaves the exercise or has invalid endpoints.');
+      else if (!sound) issue(measure, grid.slots[line.start]!.attack ? `Remove the extra duration line at ${grid.slots[line.start]!.label}; this note/rest does not require a line.` : `Start the duration line at the sounding attack/rest onset, not a tied continuation (${grid.slots[line.start]!.label}).`);
+      else if (line.end > sound.end) issue(measure, `Incorrectly extended duration line at ${grid.slots[line.start]!.label}: stop before the next attack or rest, in measure ${Math.floor(sound.end / 8) + 1}.`);
+    });
+  }
+  results.forEach((result, index) => {
     for (const dimension of Object.values(result)) dimension.issues = dimension.issues.map((issue: string) => `Measure ${index + 1}: ${issue}`);
-    return result;
   });
+  return results;
 }

@@ -6,7 +6,7 @@ function node(tag: string, attrs: Record<string, string | number>) {
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
   return element;
 }
-export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage = { first: true, last: true }) {
+export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage: { first: boolean; last: boolean; incomingTie?: boolean } = { first: true, last: true }) {
   const grid = countGrid(measure);
   const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `4/4 rhythm: ${label}`, class: 'notation' });
   const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
@@ -17,9 +17,11 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
     const text = node('text', { x: 46, y, 'font-size': 34, 'font-family': 'serif', 'font-weight': 'bold', 'text-anchor': 'middle' });
     text.textContent = '4'; svg.append(text);
   }
+  const tie = (from: number, to: number, kind: string) => svg.append(node('path', { d: kind === 'outgoing' ? `M ${from} 112 Q ${(from + to) / 2} 130 ${to} 130` : kind === 'incoming' ? `M ${from} 130 Q ${(from + to) / 2} 130 ${to} 112` : `M ${from} 112 Q ${(from + to) / 2} 148 ${to} 112`, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.5, 'data-tie': kind }));
+  if (passage.incomingTie) tie(0, x(0) - 12, 'incoming');
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
-    const group = node('g', { 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind });
+    const group = node('g', { 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
     if (event.kind === 'rest') {
       if (event.written[0] === 'H') {
         group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
@@ -42,6 +44,10 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
     }
     if (event.kind === 'rest' && event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     svg.append(group);
+    if (event.written[1]?.tieNext) {
+      const next = grid.events[index + 1];
+      tie(nx + 12, next ? x(next.startSlot) - 12 : 800, next ? 'within' : 'outgoing');
+    }
   });
   return svg;
 }

@@ -1,6 +1,6 @@
 # Count Writing: first-release plan
 
-Updated 2026-10-10. Status: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). Grading conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
+Updated 2026-10-10. Status: generated practice loop implemented with 2 measures by default and configurable lengths 1–4; see [behavior, generation decisions and validation](practice-loop.md). The [ties and syncopation slice](ties-syncopation.md) adds separate default-off controls, sounding-chain grading and duration entry across barlines and visual systems. Grading endpoint conventions and the full release boundary remain provisional. See [prototype review notes](prototype.md). See [current direction](README.md) for document precedence.
 
 ## Purpose and confirmed direction
 
@@ -13,7 +13,7 @@ The requirements below are carried forward from section 12 of the [supplied hand
 - Use fixed semantic count-entry positions beneath the notation, rather than handwriting recognition or a general equation editor.
 - Selecting a note/rest glyph or available count box opens a contextual popover with beat numbers above subdivision symbols and an upper-right dismiss button. Popover selection and keyboard symbol entry activate the next available box and an open popover moves below it, bounded by the viewport. The page scrolls to make room below the box instead of covering the notation. Touch users can slide from the indicator to a symbol and release to submit.
 - Support physical keyboard entry and a touch symbol keypad. Do not automatically fill in the student's counts.
-- The default counting requirement is a count at every note onset and each internal actual beat of a sustained note. Additional subdivision positions can be supported without requiring every possible subdivision.
+- The default counting requirement is a count at every sounding attack and each internal actual beat of a sustained note/chain. Tied continuations are not new attacks; see the [explicit chain convention](ties-syncopation.md). Additional subdivision positions can be supported without requiring every possible subdivision.
 - The owner's school convention uses ordinary count symbols for rests, with one complete pair of parentheses per written rest. A half rest groups both beats and its duration line; two quarter rests use separate pairs. Sustained internal counts can be raised/smaller with duration lines; exact appearance and line spans need visual review.
 - Parenthesis openings follow mouse hover or the selected touch position. Clicking a completed pair’s right parenthesis opens it for endpoint editing; clicking any left opening removes it and its pair, if complete. Nested and overlapping groups are unavailable.
 - A student can drag or tap a duration-line endpoint to cover count positions. Line placement is configurable above, beside, or below counts, with an anchor at every input position.
@@ -50,7 +50,7 @@ The prototype should make entry, deletion, replacement, focus movement, and line
 
 ## Decisions to resolve during prototyping
 
-- Initial meter/rhythm set and counting convention; treatment of compound beats, ties, and tuplets when introduced.
+- Initial meter/rhythm set and counting convention; treatment of compound beats and tuplets when introduced. Ties in the current 4/4 vocabulary now follow the [implemented chain rules](ties-syncopation.md).
 - Required versus optional count positions, especially dotted rhythms and rests; whether optional valid counts are accepted.
 - Span endpoints and snapping. Parentheses grouping is now one complete pair per written rest. Raised/smaller, lowered/smaller and unchanged internal counts are now selectable; beside placement defaults to raised/smaller.
 - Keyboard navigation/editing and a tap alternative for every drag interaction.

@@ -156,3 +156,11 @@ main[data-view="practice"] { max-width: 1240px; }
 .active-ingredients legend { font-weight: 700; font-size: 14px; }
 .rhythm-settings .settings-live input[type="checkbox"] { width: 20px; height: 20px; }
 .settings-live .setting-option { min-height: 44px; align-items: center; }
+/* Optional system breaks preserve measure-local notation and passage-wide answers. */
+.passage-strip.wrapped { flex-wrap: wrap; }
+.passage-strip.wrapped .passage-measure { flex: 1 0 100%; }
+.passage-line-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.passage-line-controls > p { flex-basis: 100%; }
+.passage-line-controls .field { flex: 1 1 240px; min-width: 0; }
+.passage-line-controls select { max-width: 100%; }
+.draft-line { background: var(--color-teal); opacity: .6; pointer-events: none; }

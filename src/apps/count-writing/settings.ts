@@ -1,5 +1,5 @@
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { countWritingFixtures } from './fixtures.ts';
+import { practiceFixtures } from './fixtures.ts';
 import type { DottedQuarterConvention } from './evaluation.ts';
 import { linePlacementOptions, sustainAppearanceOptions } from './presentation.ts';
 import type { CountPresentation, LinePlacement, SustainAppearance } from './presentation.ts';
@@ -77,7 +77,7 @@ export function createSettingsPage(callbacks: {
   offbeat.dataset.setting = 'count-system';
   const systemField = field('Counting system', offbeat);
   systemField.append(el('p', 'setting-hint', 'Either + or & enters the chosen offbeat symbol. Changing it preserves your answer.'));
-  const fixture = select([{ value: 'generated', label: 'Generated practice' }, ...countWritingFixtures.map(f => ({ value: f.id, label: f.label }))], callbacks.fixture);
+  const fixture = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], callbacks.fixture);
   fixture.dataset.setting = 'review-exercise';
   const fixtureField = field('Practice exercise', fixture);
   const fixtureHint = el('p', 'setting-hint', 'Changing exercise clears the current answer.'); fixtureHint.id = 'settings-fixture-hint';
@@ -116,13 +116,23 @@ export function createSettingsPage(callbacks: {
   notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
   const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in 4/4 require this option and their ingredient checkbox. Applies on Next exercise; keeps your answer.'));
   notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
+  const patternFields = el('div');
+  for (const [key, label, hint] of [
+    ['ties', 'Ties', 'Permit one chain of 2–3 enabled written note segments, including across barlines. Continuations are not attacks.'],
+    ['syncopation', 'Syncopation', 'Permit at most one offbeat attack per measure sustained through the following beat. Offbeat eighths ending at the beat remain available when off.'],
+  ] as const) {
+    const option = el('label', 'setting-option'); const toggle = el('input'); toggle.type = 'checkbox'; toggle.dataset.setting = key;
+    option.append(toggle, el('span', '', label));
+    patternFields.append(option, el('p', 'setting-hint', `${hint} Off by default; applies on Next and keeps the current answer.`));
+    toggle.addEventListener('change', () => { generation = { ...generation, [key]: toggle.checked }; generationChanged(); });
+  }
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
   function generationChanged() {
     generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
     callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
   }
   generationStatus.textContent = 'Fixed 4/4. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
-  activeControls.append(lengthField, vocabulary, notationField, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
+  activeControls.append(lengthField, vocabulary, notationField, patternFields, generationStatus, systemField, fixtureField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
   restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');

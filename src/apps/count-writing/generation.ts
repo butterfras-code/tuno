@@ -1,6 +1,6 @@
-import { derivePassage, duration } from '../../music/measure.ts';
+import { derivePassage, deriveMeasure, duration } from '../../music/measure.ts';
 import type { RhythmEvent, RhythmMeasure } from '../../music/measure.ts';
-import { add, compare, fraction } from '../../music/fraction.ts';
+import { add, compare, divide, fraction } from '../../music/fraction.ts';
 import type { Fraction } from '../../music/fraction.ts';
 import { readableRestPlacement } from './notation-policy.ts';
 
@@ -15,8 +15,8 @@ export const ingredients = [
   { id: 'dotted-quarter-rest', label: 'Dotted quarter rests', event: ['Q', { dots: 1, rest: true }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
-export interface GenerationSettings { measures: number; ingredients: IngredientId[]; allowUnintuitiveNotation: boolean }
-export const defaultGeneration = (): GenerationSettings => ({ measures: 2, ingredients: ingredients.filter(i => i.id !== 'dotted-quarter-rest').map(i => i.id), allowUnintuitiveNotation: false });
+export interface GenerationSettings { measures: number; ingredients: IngredientId[]; allowUnintuitiveNotation: boolean; ties?: boolean; syncopation?: boolean }
+export const defaultGeneration = (): GenerationSettings => ({ measures: 2, ingredients: ingredients.filter(i => i.id !== 'dotted-quarter-rest').map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
 
 function plan(settings: GenerationSettings) {
   if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
@@ -26,53 +26,95 @@ function plan(settings: GenerationSettings) {
   if (!pool.length) throw new Error('Select at least one rhythm ingredient.');
   const memo = new Map<string, boolean>();
   const barEnd = fraction(1);
-  const allowedAt = (ingredient: typeof pool[number], position: Fraction) =>
-    compare(add(position, duration(ingredient.event)), barEnd) <= 0 &&
+  const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && divide(position, fraction(1, 4))[1] !== 1 && compare(duration(ingredient.event), fraction(1, 8)) > 0;
+  const allowedAt = (ingredient: typeof pool[number], position: Fraction, used = 0) =>
+    (!syncAt(ingredient, position) || (settings.syncopation && used === 0)) && compare(add(position, duration(ingredient.event)), barEnd) <= 0 &&
     (settings.allowUnintuitiveNotation || readableRestPlacement(ingredient.event, position));
-  function fills(position: Fraction): boolean {
+  function fills(position: Fraction, used = 0): boolean {
     if (compare(position, barEnd) === 0) return true;
-    const key = position.join('/');
-    if (!memo.has(key)) memo.set(key, pool.some(i => allowedAt(i, position) && fills(add(position, duration(i.event)))));
+    const key = position.join('/') + ':' + used;
+    if (!memo.has(key)) memo.set(key, pool.some(i => allowedAt(i, position, used) && fills(add(position, duration(i.event)), used + Number(syncAt(i, position)))));
     return memo.get(key)!;
   }
-  const choicesAt = (position: Fraction) => pool.filter(i => allowedAt(i, position) && fills(add(position, duration(i.event))));
+  const choicesAt = (position: Fraction, used = 0) => pool.filter(i => allowedAt(i, position, used) && fills(add(position, duration(i.event)), used + Number(syncAt(i, position))));
   if (!fills(fraction(0))) throw new Error('These ingredients cannot fill 4/4 with the current notation policy. Add quarters, eighths, or halves. Dotted quarters alone cannot complete a bar.');
   // Check that each selection can actually occur in a complete bar under the position policy.
   const usable = new Set<IngredientId>();
   const visited = new Set<string>();
-  function visit(position: Fraction) {
-    const key = position.join('/');
+  let canSync = false, canTie = false, canTiedSync = false;
+  function visit(position: Fraction, used = 0) {
+    const key = position.join('/') + ':' + used;
     if (visited.has(key)) return;
     visited.add(key);
-    for (const ingredient of choicesAt(position)) {
+    for (const ingredient of choicesAt(position, used)) {
       usable.add(ingredient.id);
-      visit(add(position, duration(ingredient.event)));
+      const note = !(ingredient.event as RhythmEvent)[1]?.rest;
+      const end = add(position, duration(ingredient.event));
+      const nextUsed = used + Number(syncAt(ingredient, position));
+      const offbeat = divide(position, fraction(1, 4))[1] !== 1;
+      if (note && (!offbeat || settings.syncopation)) {
+        const nextNotes = (compare(end, barEnd) === 0 && settings.measures > 1 ? choicesAt(fraction(0)) : choicesAt(end, nextUsed)).filter(i => !(i.event as RhythmEvent)[1]?.rest);
+        if (nextNotes.length && (!offbeat || used === 0)) {
+          canTie = true;
+          canTiedSync ||= offbeat;
+        }
+      }
+      canSync ||= syncAt(ingredient, position);
+      visit(add(position, duration(ingredient.event)), used + Number(syncAt(ingredient, position)));
     }
   }
   visit(fraction(0));
   const unusable = pool.filter(i => !usable.has(i.id));
   if (unusable.length) throw new Error(`${unusable.map(i => i.label).join(', ')} cannot fit a complete bar with this selection and notation policy. Add quarters or eighths, or remove those ingredients.`);
-  return { choicesAt };
+  if (settings.ties && !canTie) throw new Error('Ties require adjacent enabled note segments in a complete exercise under these settings. Add quarter/eighth notes, enable syncopation, or disable ties.');
+  if (settings.syncopation && !canSync && !(settings.ties && canTiedSync)) throw new Error('Syncopation needs a reachable offbeat sustained note: enable eighth notes and a longer note, or eighth notes with ties.');
+  return { choicesAt, syncAt };
 }
 export function generationIssue(settings: GenerationSettings): string | null {
   try { plan(settings); return null; } catch (error) { return (error as Error).message; }
 }
 /** Randomness is injected for reproducible tests; source time always comes from written events. */
 export function generateExercise(settings: GenerationSettings, random = Math.random): RhythmMeasure[] {
-  const { choicesAt } = plan(settings);
+  const { choicesAt, syncAt } = plan(settings);
   const passage = Array.from({ length: settings.measures }, (): RhythmMeasure => {
     const events: RhythmEvent[] = [];
-    let position = fraction(0);
+    let position = fraction(0), used = 0;
     while (compare(position, fraction(1)) < 0) {
-      const choices = choicesAt(position);
+      const choices = choicesAt(position, used);
       const draw = random();
       if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');
       const choice = choices[Math.floor(draw * choices.length)]!;
       events.push(structuredClone(choice.event));
+      used += Number(syncAt(choice, position));
       position = add(position, duration(choice.event));
     }
     return { meter: [4, 4], events };
   });
+  if (settings.ties) {
+    const refs = passage.flatMap((bar, measure) => deriveMeasure(bar).events.map(event => ({ measure, event: event.index })));
+    const candidates: RhythmMeasure[][] = [];
+    for (let start = 0; start < refs.length - 1; start++) for (const size of [2, 3]) {
+      const chain = refs.slice(start, start + size);
+      if (chain.length !== size || chain.some(r => passage[r.measure]!.events[r.event]![1]?.rest)) continue;
+      const candidate = structuredClone(passage);
+      chain.slice(0, -1).forEach(r => {
+        const bar = candidate[r.measure]!;
+        const event = bar.events[r.event]!;
+        (bar.events as RhythmEvent[])[r.event] = [event[0], { ...event[1], tieNext: true }];
+      });
+      const attacks = derivePassage(candidate).attacks;
+      const syncs = Array<number>(passage.length).fill(0);
+      for (const attack of attacks) {
+        if (divide(attack.start, fraction(1, 4))[1] !== 1 && compare(attack.duration, fraction(1, 8)) > 0) syncs[attack.sources[0]!.measure]!++;
+      }
+      if ((!settings.syncopation && syncs.some(Boolean)) || syncs.some(n => n > 1)) continue;
+      candidates.push(candidate);
+    }
+    // Bounded draw: at most one chain, never retry until success.
+    const draw = random();
+    if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');
+    if (candidates.length && draw < .65) return candidates[Math.floor(draw / .65 * candidates.length)]!;
+  }
   derivePassage(passage);
   return passage;
 }

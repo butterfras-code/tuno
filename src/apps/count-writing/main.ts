@@ -4,12 +4,15 @@ import '../../shared/ui/fonts.css';
 import './styles.css';
 import uno from '../../assets/uno-happy.svg';
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { countWritingFixtures } from './fixtures.ts';
+import { practiceFixtures } from './fixtures.ts';
 import { createMeasureEditor } from './editor.ts';
 import { createSettingsPage, dottedConventionOptions } from './settings.ts';
 import { defaultPresentation, withLinePlacement } from './presentation.ts';
 import { defaultGeneration, generateExercise, generationIssue } from './generation.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
+import { evaluatePassage } from './evaluation.ts';
+import { passageGrid } from './passage.ts';
+import { createPassageLines } from './passage-lines.ts';
 import type { DottedQuarterConvention } from './evaluation.ts';
 import type { OffbeatSymbol } from './input.ts';
 
@@ -18,9 +21,11 @@ let presentation = { ...defaultPresentation };
 let dottedConvention: DottedQuarterConvention = 'review';
 let generation = defaultGeneration();
 let fixtureId = new URLSearchParams(location.search).get('fixture') ?? 'generated';
-if (!countWritingFixtures.some(f => f.id === fixtureId)) fixtureId = 'generated';
+if (!practiceFixtures.some(f => f.id === fixtureId)) fixtureId = 'generated';
 let editors: ReturnType<typeof createMeasureEditor>[] = [];
 let focusNewRhythm = false;
+let currentMeasures: RhythmMeasure[] = [];
+let lineEditor: ReturnType<typeof createPassageLines> | null = null;
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main'); main.id = 'editor';
 const header = el('header');
@@ -32,7 +37,7 @@ title.append(el('p', 'eyebrow', 'tUno · Count practice'), pageTitle, subtitle);
 const practiceView = el('section'); practiceView.id = 'practice-view';
 const banner = el('p', 'review-note', 'Open entry · 4/4. Counting conventions and duration-line endpoints retain their teacher-review options.');
 const exerciseSummary = el('p'); exerciseSummary.setAttribute('role', 'status');
-const picker = select([{ value: 'generated', label: 'Generated practice' }, ...countWritingFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
+const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId;
 const convention = select(dottedConventionOptions, value => { dottedConvention = value as DottedQuarterConvention; updateEditors(); });
 const conventionField = field('Dotted-quarter counting convention', convention);
@@ -41,25 +46,29 @@ const passage = el('section', 'card passage'); passage.setAttribute('aria-label'
 const passageScroll = el('div', 'score-scroll passage-scroll');
 const passageStrip = el('div', 'passage-strip');
 passageScroll.append(passageStrip);
+const wrap = button('Wrap notation into systems', () => { passageStrip.classList.toggle('wrapped'); wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped'))); });
+wrap.setAttribute('aria-pressed', 'false');
 const passageHint = el('p', 'setting-hint', 'Scroll or swipe along the passage. Counts restart at each barline.');
-passage.append(passageScroll, passageHint);
+passage.append(passageScroll, wrap, passageHint);
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions');
 function evaluateAnswer() {
-  const results = editors.map(editor => editor.check());
+  lineEditor?.cancel(); editors.forEach(e => e.suspend());
+  const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans());
+  editors.forEach((editor, index) => editor.showResult(results[index]!));
   const dimensions = results.flatMap(result => Object.values(result));
   summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
   retry.hidden = false;
 }
 const check = button('Check', evaluateAnswer, true);
-const retry = button('Retry', () => { editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
+const retry = button('Retry', () => { lineEditor?.cancel(); editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
 const next = button('Next exercise', () => {
   const issue = generationIssue(generation);
   if (issue) { summary.textContent = issue; return; }
   fixtureId = 'generated'; picker.value = fixtureId; loadExercise(generateExercise(generation), true);
 });
-const reset = button('Reset answer', () => { editors.forEach(editor => editor.reset()); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
+const reset = button('Reset answer', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
 actions.append(check, retry, next, reset);
 practiceView.append(banner, setup, exerciseSummary, passage, actions, summary, passageFeedback, el('p', 'footer-note', 'Settings for length and ingredients apply on Next exercise. Answers and preferences last in this tab only. Review fixtures are available for regression checks.'));
 const settings = createSettingsPage({
@@ -83,13 +92,20 @@ function chooseFixture(id: string) {
   if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(fixtureId, dottedConvention, presentation, offbeat); return; }
   fixtureId = id; picker.value = id;
   focusNewRhythm = Boolean(practiceView.hidden);
-  loadExercise(id === 'generated' ? generateExercise(generation) : [countWritingFixtures.find(f => f.id === id)!], !practiceView.hidden);
+  loadExercise(id === 'generated' ? generateExercise(generation) : practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
 }
 function loadExercise(measures: RhythmMeasure[], focus: boolean) {
+  lineEditor?.destroy(); lineEditor = null; currentMeasures = measures;
+  const grid = passageGrid(measures);
+  const tied = measures.some(m => m.events.some(e => e[1]?.tieNext));
+  passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
+  wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped')));
   editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
   measures.forEach((measure, index) => {
     const editor = createMeasureEditor(measure, index + 1, {
       scroller: passageScroll, lastMeasure: index === measures.length - 1,
+      grid: grid.grids[index], externalLines: tied,
+      incomingTie: index > 0 && Boolean(measures[index - 1]!.events.at(-1)?.[1]?.tieNext),
       offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden),
       edited: () => { summary.textContent = 'Answer or counting rule changed. Check again for updated feedback.'; },
       check: evaluateAnswer,
@@ -97,16 +113,19 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean) {
     });
     editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback); editor.mount();
   });
+  if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
   exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · 4/4`;
   summary.textContent = ''; retry.hidden = true;
   updateEditors();
   if (focus) editors[0]?.focus();
 }
 function updateEditors() {
+  lineEditor?.cancel();
   editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention));
   settings.sync(fixtureId, dottedConvention, presentation, offbeat);
 }
 function showPage(focus = true) {
+  lineEditor?.cancel();
   editors.forEach(editor => editor.suspend());
   const isSettings = location.hash === '#settings';
   main.dataset.view = isSettings ? 'settings' : 'practice';
@@ -126,6 +145,6 @@ document.addEventListener('keydown', event => {
   if ((event.target as Element).closest('button, a, input, select, textarea, [role="button"], [contenteditable], .count-popover')) return;
   event.preventDefault(); evaluateAnswer();
 });
-loadExercise(fixtureId === 'generated' ? generateExercise(generation) : [countWritingFixtures.find(f => f.id === fixtureId)!], false);
+loadExercise(fixtureId === 'generated' ? generateExercise(generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures, false);
 showPage(false);
 if (!practiceView.hidden) editors[0]?.focus();
