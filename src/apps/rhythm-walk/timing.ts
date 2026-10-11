@@ -1,4 +1,4 @@
-import { add, fraction, toNumber, divide, compare } from '../../music/fraction.ts';
+import { add, fraction, toNumber, divide, compare, multiply } from '../../music/fraction.ts';
 import type { Fraction } from '../../music/fraction.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
@@ -21,14 +21,17 @@ export function planPassage(measures: readonly RhythmMeasure[], bpm: number, pol
   const notes: ExpectedNote[] = passage.attacks.map(a => ({ start: seconds(a.start), end: seconds(add(a.start, a.duration)), sources: a.sources }));
   let offset = fraction(0);
   const rests: ExpectedRest[] = [];
-  const pulses: { time: number; downbeat: boolean; countIn: boolean }[] = [];
-  const countIn = seconds(passage.measures[0]!.length);
+  const pulses: { time: number; downbeat: boolean; countIn: boolean; beat: number }[] = [];
+  const firstLength = passage.measures[0]!.length;
+  // Whole count-in bars, with at least four performance pulses.
+  const countInMeasures = Math.ceil(4 / toNumber(divide(firstLength, pulse)));
+  const countIn = seconds(multiply(firstLength, fraction(countInMeasures)));
   function addPulses(start: Fraction, length: Fraction, count: boolean) {
-    for (let p = fraction(0); compare(p, length) < 0; p = add(p, pulse)) {
-      pulses.push({ time: seconds(add(start, p)) - (count ? countIn : 0), downbeat: compare(p, fraction(0)) === 0, countIn: count });
+    for (let p = fraction(0), beat = 1; compare(p, length) < 0; p = add(p, pulse), beat++) {
+      pulses.push({ time: seconds(add(start, p)) - (count ? countIn : 0), downbeat: compare(p, fraction(0)) === 0, countIn: count, beat });
     }
   }
-  addPulses(fraction(0), passage.measures[0]!.length, true);
+  for (let bar = 0; bar < countInMeasures; bar++) addPulses(multiply(firstLength, fraction(bar)), firstLength, true);
   passage.measures.forEach((measure, m) => {
     addPulses(offset, measure.length, false);
     measure.events.filter(e => e.kind === 'rest').forEach(e => rests.push({ start: seconds(add(offset, e.start)), end: seconds(add(offset, e.end)), source: { measure: m, event: e.index } }));

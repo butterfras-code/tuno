@@ -23,7 +23,7 @@ Both controls default off and apply only on Next; changing either preserves the 
 - **Ties:** permits connections between adjacent written notes, within a beat, across beats and across barlines. At most one chain per exercise, with two or three written segments. Segments always come from enabled ingredients. No rest can start/receive a tie and no tie leaves the exercise. With syncopation off, a resulting offbeat sounding attack may not sustain across the following beat.
 - **Syncopation:** permits an offbeat sounding attack to sustain through the following whole beat. With it off, offbeat eighth attacks ending at the next beat remain permitted, but offbeat longer notes and tied offbeat chains crossing that beat do not. On-beat dotted rhythms remain permitted. This is a precise offbeat-sustain restriction, not a general claim to exclude every musicological use of “syncopation.”
 
-Selections permit patterns rather than guaranteeing them in each draw. Generation limits syncopated attacks to at most one per measure and ties to one chain of at most three segments per exercise. A setting with no attainable pattern reports an explicit configuration error instead of silently having no effect. Rest-placement opt-in is separate.
+Selections permit patterns rather than guaranteeing them in each draw. Generation limits syncopated attacks to at most one per measure and ties to one chain of at most three segments per exercise. An optional pattern with no eligible candidate is skipped without blocking a fillable exercise. Rest-placement opt-in is separate.
 
 ## Review examples and limitations
 
@@ -47,7 +47,7 @@ Choose these IDs in **Review fixture**, or open `?fixture=<id>`. `~` below joins
 | `tie-rests` | Q-rest E~E Q-rest Q | `(1) 2 (3) 4`; the line belongs only to the tied pair; each rest has its own pair. |
 | `tie-wrap` | Same as barline fixture | Identical grading with one measure per visual system; outgoing/incoming tie and duration pieces retain one logical span. |
 
-The enabled-pattern controls permit, rather than force, a pattern. Among eligible candidates, ties use a 65% bounded draw. All-rest bars and repeated exercises remain possible. Syncopation off may make a previously fillable ingredient combination unusable (for example, dotted-quarter notes plus quarters/halves without eighths); the configuration error is explicit and retains the current answer. Add eighths, enable syncopation, or remove the incompatible selection.
+The enabled-pattern controls permit, rather than force, a pattern. Among eligible candidates, ties use a 65% bounded draw. All-rest bars and repeated exercises remain possible. Syncopation off can make an individual ingredient unreachable; it is skipped while other compatible ingredients fill the bar. Only a configuration with no complete-bar solution blocks Next. Optional ties and syncopations that cannot occur are omitted. Pending changes retain the current answer.
 
 ## Implementation and validation
 

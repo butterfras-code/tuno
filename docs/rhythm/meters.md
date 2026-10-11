@@ -2,7 +2,7 @@ Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms an
 
 # Count Writing meters
 
-Implemented slice: 2/4, 3/4, 4/4 and 6/8, one selected meter throughout an exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Reload restores defaults.
+Implemented slice: 2/4, 3/4, 4/4 and 6/8, one meter drawn from the checked time signatures throughout each exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Reload restores the shared saved settings.
 
 ## Four separate concepts
 
@@ -25,7 +25,7 @@ Simple meters retain the existing required onset/quarter counts and dotted-quart
 
 In 6/8, an untied note or written rest lasting **more than one eighth** requires one line from its onset number through the final numbered position before release. A quarter covers two numbers; a dotted quarter covers three; a half covers four. Endpoints in 6/8 are exact required positions, not the simple-meter provisional endpoint trial. A tied equivalent uses the same counts and one line for the complete sounding chain, regardless of written segments, barlines or wraps. A continuation is never a new attack. Each written rest has its own parenthesis pair, enclosing all of its numbers and its line where required; neighboring rests never share a pair.
 
-Default simple-meter rest policy permits eighth rests anywhere and quarter/half rests only on quarter starts where they fit. Dotted-quarter rests and offbeat longer rests require Allow unintuitive notation. In 6/8, individual rests must fit wholly inside their three-eighth group. Quarter rests can occupy counts 1–2, 2–3, 4–5 or 5–6; dotted-quarter rests normally occupy 1–3 or 4–6, requiring no opt-in. Eighth rests can occupy any count. Half rests cannot fit a group: uncheck them or explicitly permit unintuitive notation. Ingredient selection is preserved on meter changes, so incompatible selections report an error rather than being silently removed.
+Default simple-meter rest policy permits eighth rests anywhere and quarter/half rests only on quarter starts where they fit. Dotted-quarter rests and offbeat longer rests require Allow unintuitive notation. In 6/8, individual rests must fit wholly inside their three-eighth group. Quarter rests can occupy counts 1–2, 2–3, 4–5 or 5–6; dotted-quarter rests normally occupy 1–3 or 4–6, requiring no opt-in. Eighth rests can occupy any count. Half notes and half rests remain selectable for simple meters but are omitted from generated 6/8 exercises. Ingredient selections are preserved across the meter pool; unavailable spellings are skipped without blocking a fillable exercise.
 
 Silence crossing 3/4 is spelled with separate enabled rests on either side. For example, silence on counts 2–4 uses a quarter rest on 2–3 and an eighth rest on 4, each with its own pair. The generator builds this spelling from selected written values; it does not insert unselected fallback rests. If enabled rests cannot fill groups or a selected value cannot occur in any complete bar, reject the configuration. The opt-in permits longer/off-group rest spellings, retaining the same exact counts and grading.
 

@@ -28,7 +28,7 @@ window.__rhythmActivityCheck = (async () => {
   const preventDownload = e => { if (e.target instanceof HTMLAnchorElement && e.target.download) e.preventDefault(); };
   document.addEventListener('click', preventDownload, true);
   const raw = async () => { button('Download timing evidence').click(); return evidence; };
-  const begin = async () => { scheduled = []; button('Start count-in').click(); await wait(() => status().startsWith('Count-in')); return scheduled[0] + 2 / 3; };
+  const begin = async () => { scheduled = []; button('Start count-in').click(); await wait(() => status().startsWith('Count-in')); return scheduled[0] + document.querySelectorAll('.count-in-dot').length / 3; };
   try {
     if (!button('Start count-in').disabled) { /* ready */ } else button('Stop / Cancel').click();
     mode('write'); choose('Exercise preset', 'six-eighths');
@@ -105,7 +105,7 @@ window.__rhythmActivityCheck = (async () => {
     await begin();
     const performanceScroll = scrollY, systems = [...document.querySelectorAll('.passage-measure')].map(n => bounds(n).top);
     if (innerWidth <= 540) assert(bounds(pad).bottom <= innerHeight && bounds(document.querySelector('.passage-scroll')).top >= 0, 'all four measures and pad visible during mobile count-in');
-    await sleep(1500);
+    await sleep(document.querySelectorAll('.count-in-dot').length * 1000 / 3 + 100);
     assert(scrollY === performanceScroll && systems.every((top, index) => Math.abs(top - bounds(document.querySelectorAll('.passage-measure')[index]).top) < 1), 'systems and viewport stay still through count-in into recording');
     button('Stop / Cancel').click();
     checks.push('four-measure performance keeps score/pad in view without playback jumps');

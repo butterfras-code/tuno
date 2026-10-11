@@ -6,6 +6,8 @@ import { sourcePolicy } from './shared/meter.ts';
 import { Capture } from './capture.ts';
 import type { AttemptRecord } from './capture.ts';
 import { evaluateAttempt } from './evaluation.ts';
+import { planPassage } from './timing.ts';
+import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
 export function createPerformance(options: { exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void }) {
@@ -26,6 +28,22 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   tempo.addEventListener('change', persist); metronome.addEventListener('change', persist);
   const attemptSummary = el('p', 'attempt-summary'); attemptSummary.hidden = true;
   const status = el('p', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const countInDisplay = el('div', 'count-in-display'); countInDisplay.setAttribute('role', 'group');
+  let countInDots: HTMLElement[] = [];
+  function renderCountIn(plan: Plan) {
+    const clicks = plan.pulses.filter(p => p.countIn);
+    countInDisplay.setAttribute('aria-label', `Count-in: ${clicks.length} ${pulseLabel()} beats; Ready, Go on the final two`);
+    countInDots = clicks.map((click, index) => {
+      const item = el('div', 'count-in-beat');
+      item.append(el('span', 'count-in-dot', String(click.beat)));
+      const cue = index === clicks.length - 2 ? 'Ready' : index === clicks.length - 1 ? 'Go' : '';
+      item.append(el('span', 'count-in-cue', cue));
+      item.setAttribute('aria-label', `Beat ${click.beat}${cue ? `, ${cue}` : ''}`);
+      return item;
+    });
+    countInDisplay.replaceChildren(...countInDots);
+  }
+  function clearCountIn() { countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
   const pulse = el('div', 'pulse'); pulse.setAttribute('aria-hidden', 'true');
   const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
   const pad = button('Performance pad'); pad.className = 'pad'; pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = true;
@@ -66,6 +84,13 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (status.textContent !== next) status.textContent = next;
     const pulses = transport.capture.plan.pulses;
     const latest = [...pulses].reverse().find(p => p.time <= time);
+    const countClicks = pulses.filter(p => p.countIn);
+    countInDots.forEach((dot, index) => {
+      const click = countClicks[index]!;
+      const active = time >= click.time && time < click.time + transport!.capture.plan.pulseSeconds && time < 0;
+      dot.classList.toggle('lit', active);
+      if (active) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
+    });
     pulse.classList.toggle('lit', !!latest && time - latest.time < Math.min(.12, transport.capture.plan.pulseSeconds / 3));
   }
   async function begin() {
@@ -74,6 +99,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     // Snapshot before awaiting audio activation, even though controls are locked.
     const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current());
     attemptSummary.textContent = `${capture.exercise.label} · ${capture.bpm} ${pulseLabel()} BPM · ${capture.metronome ? 'metronome on' : 'metronome off'}`;
+    renderCountIn(capture.plan);
     const token = ++generation; pending = capture;
     starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
     try {
@@ -95,6 +121,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function finish(record: AttemptRecord) {
     const correction = record.timingOffset ?? timing.consider(record);
     if (correction) record = { ...record, timingOffset: correction };
+    clearCountIn();
     result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
     retry.hidden = false; download.hidden = false;
     const evaluation = evaluateAttempt(record);
@@ -155,7 +182,9 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function pulseLabel() { return sourcePolicy(options.exercise().measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
   function refreshExercise() {
     tempoField.querySelector('.field-label')!.textContent = `Tempo (${pulseLabel()} BPM)`;
-    const count = sourcePolicy(options.exercise().measures[0]!).meter[0] / (sourcePolicy(options.exercise().measures[0]!).compound ? 3 : 1);
+    const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
+    renderCountIn(plan);
+    const count = plan.pulses.filter(p => p.countIn).length;
     instructions.textContent = `Start gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.`;
   }
   function cancel(reason: string) {
@@ -170,6 +199,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   refreshExercise();
   return {
     section: main,
+    countInDisplay,
     cancel,
     start: begin,
     record: () => result,

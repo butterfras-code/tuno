@@ -105,9 +105,9 @@ test('bounded seeded generation respects independent pattern controls, written i
     observedSync ||= offbeats.some(Boolean);
   }
   assert.ok(observedTie && observedTriple && observedBarTie && observedSync);
-  assert.match(generationIssue({ ...defaultGeneration(), ingredients: ['half-rest'], ties: true })!, /Ties require/);
-  assert.match(generationIssue({ ...defaultGeneration(), ingredients: ['quarter'], syncopation: true })!, /Syncopation needs/);
+  assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['half-rest'], ties: true }), null);
+  assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['quarter'], syncopation: true }), null);
   assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['eighth'], ties: true, syncopation: true }), null);
-  assert.match(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: true })!, /Ties require adjacent/);
+  assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: true }), null);
   assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: false }), null);
 });

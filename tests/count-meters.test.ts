@@ -63,10 +63,10 @@ test('readable silence exposes the middle boundary and respects enabled spelling
   assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(0), '6/8'), true);
   assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(3, 8), '6/8'), true);
   assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(1, 8), '6/8'), false);
-  assert.equal(generationIssue({ ...defaultGeneration(), meter: '6/8', ingredients: ['dotted-quarter-rest'] }), null);
-  assert.match(generationIssue({ ...defaultGeneration(), meter: '6/8', ingredients: ['quarter-rest'] })!, /cannot fill/);
-  assert.match(generationIssue({ ...defaultGeneration(), meter: '6/8', ingredients: ['half-rest', 'eighth-rest'] })!, /cannot fit/);
-  const bar = generateExercise({ ...defaultGeneration(), meter: '6/8', ingredients: ['quarter-rest', 'eighth-rest'] }, () => 0)[0]!;
+  assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['dotted-quarter-rest'] }), null);
+  assert.match(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest'] })!, /cannot fill/);
+  assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['half-rest', 'eighth-rest'] }), null);
+  const bar = generateExercise({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest', 'eighth-rest'] }, () => 0)[0]!;
   assert.deepEqual(bar.events, [['Q', { rest: true }], ['E', { rest: true }], ['Q', { rest: true }], ['E', { rest: true }]]);
   for (const meter of ['2/4', '3/4', '4/4'] as const) {
     assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(1, 8), meter), false);
@@ -77,7 +77,7 @@ test('syncopation uses the dotted-quarter pulse, not each numbered eighth', () =
   assert.equal(syncopated(fraction(1, 8), fraction(1, 4), fraction(3, 8)), false); // 2 through 3, ends at 4
   assert.equal(syncopated(fraction(2, 8), fraction(1, 4), fraction(3, 8)), true); // 3 through 4
   assert.equal(syncopated(fraction(3, 8), fraction(1, 4), fraction(3, 8)), false);
-  const settings = { ...defaultGeneration(), meter: '6/8' as const, ingredients: ['quarter'] as const };
+  const settings = { ...defaultGeneration(), meters: ['6/8' as const], ingredients: ['quarter'] as const };
   assert.match(generationIssue({ ...settings, ingredients: [...settings.ingredients] })!, /cannot fill/);
   const allowed = { ...settings, ingredients: [...settings.ingredients], syncopation: true };
   assert.equal(generationIssue(allowed), null);
@@ -85,10 +85,10 @@ test('syncopation uses the dotted-quarter pulse, not each numbered eighth', () =
 });
 function seeded(seed: number) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; }
 test('all meters, lengths, ingredient subsets and pattern modes are bounded and exact', () => {
-  assert.equal(defaultGeneration().meter, '4/4'); assert.equal(defaultGeneration().measures, 2);
+  assert.deepEqual(defaultGeneration().meters, ['4/4']); assert.equal(defaultGeneration().measures, 2);
   for (const allowUnintuitiveNotation of [false, true]) for (const meter of meters) for (const measures of [1, 2, 3, 4]) for (let mask = 0; mask < 256; mask++) for (const mode of [0, 1, 2, 3]) {
     const selected = ingredients.filter((_, i) => mask & (1 << i));
-    const settings = { meter, measures, ingredients: selected.map(i => i.id), ties: !!(mode & 1), syncopation: !!(mode & 2), allowUnintuitiveNotation };
+    const settings = { meters: [meter], measures, ingredients: selected.map(i => i.id), ties: !!(mode & 1), syncopation: !!(mode & 2), allowUnintuitiveNotation };
     if (generationIssue(settings)) { assert.throws(() => generateExercise(settings, seeded(mask))); continue; }
     const source = generateExercise(settings, seeded(mask + measures));
     assert.deepEqual(source, generateExercise(settings, seeded(mask + measures)));

@@ -115,6 +115,7 @@ const reset = button('Reset answer', () => { editors.forEach(editor => editor.re
 actions.append(check, retry, reset, performAfterWriting);
 const sharedActions = el('div', 'actions'); sharedActions.append(next);
 writeResponse.append(actions, summary, passageFeedback);
+passageScroll.before(performance.countInDisplay);
 passageScroll.after(performance.section);
 practiceView.append(banner, showCountsField, passage, writeResponse, el('p', 'footer-note', 'Exercise settings apply on Next exercise. Modes keep the same score and responses. Preferences are saved across reloads.'));
 const settings = createSettingsPage({
@@ -130,9 +131,7 @@ const settings = createSettingsPage({
     exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; Next exercise uses these settings.';
   },
 });
-const exerciseSettings = el('details', 'card exercise-settings');
-exerciseSettings.append(el('summary', '', 'Exercise settings'), settings.exerciseControls);
-const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, exerciseSettings, sharedActions, exerciseSummary);
+const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, sharedActions, exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Rhythm Walk'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
@@ -190,7 +189,6 @@ function showPage(focus = true) {
   editors.forEach(editor => editor.suspend());
   performance.cancel('Page changed');
   const isSettings = location.hash === '#settings';
-  if (isSettings) exerciseSettings.open = true;
   main.dataset.view = isSettings ? 'settings' : 'practice';
   practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
   practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
@@ -219,6 +217,7 @@ function updateResponseView() {
   const writing = preferences.mode !== 'tap';
   writeResponse.hidden = !writing || performing;
   performance.section.hidden = preferences.mode === 'write';
+  performance.countInDisplay.hidden = preferences.mode === 'write';
   showCountsField.hidden = preferences.mode !== 'both';
   performAfterWriting.hidden = preferences.mode !== 'both';
   const hideCounts = !writing || (performing && !preferences.showCounts);

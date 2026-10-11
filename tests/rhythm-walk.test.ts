@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exercises } from '../src/apps/rhythm-walk/fixtures.ts';
 import { musicalSeconds, planPassage, inputAudioTime } from '../src/apps/rhythm-walk/timing.ts';
+import type { RhythmMeasure } from '../src/music/measure.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
 function capture(id = 'mixed', bpm = 80) { return new Capture(exercises.find(e => e.id === id)!, bpm, true); }
@@ -103,4 +104,24 @@ test('a press within a written rest is extra and overlaps silence; count-in hold
   input(initialRest, 'down', -.2); input(initialRest, 'up', .3);
   const held = evaluateAttempt(finish(initialRest)); assert.equal(held.matches.length, 0); assert.equal(held.extra.length, 0);
   assert.equal(held.restOverlaps[0]!.start, 0); assert.equal(held.restOverlaps[0]!.end, .3);
+});
+
+test('count-in uses complete bars with at least four performance beats, preserving exercise timing', () => {
+  const cases: { measure: RhythmMeasure; pulse: [number, number]; beats: number[]; seconds: number; accents: number[] }[] = [
+    { measure: { meter: [2, 4], events: [['H']] }, pulse: [1, 4], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
+    { measure: { meter: [3, 4], events: [['H', { dots: 1 }]] }, pulse: [1, 4], beats: [1, 2, 3, 1, 2, 3], seconds: 3, accents: [0, 3] },
+    { measure: { meter: [4, 4], events: [['W']] }, pulse: [1, 4], beats: [1, 2, 3, 4], seconds: 2, accents: [0] },
+    { measure: { meter: [6, 8], events: [['H', { dots: 1 }]] }, pulse: [3, 8], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
+  ];
+  for (const { measure, pulse, beats, seconds, accents } of cases) {
+    const plan = planPassage([measure], 120, undefined, pulse);
+    const clicks = plan.pulses.filter(p => p.countIn);
+    assert.equal(plan.countIn, seconds);
+    assert.deepEqual(clicks.map(p => p.beat), beats);
+    assert.deepEqual(clicks.map(p => p.time), beats.map((_, i) => -seconds + i * .5));
+    assert.deepEqual(clicks.flatMap((p, i) => p.downbeat ? [i] : []), accents);
+    assert.equal(plan.notes[0]!.start, 0);
+    assert.equal(plan.notes[0]!.end, plan.duration);
+    assert.equal(plan.pulses.find(p => !p.countIn)!.time, 0);
+  }
 });

@@ -41,7 +41,8 @@ export function readPreferences(raw: string | null): Preferences {
     if (Number.isFinite(p.bpm) && p.bpm! >= 40 && p.bpm! <= 180) defaults.bpm = p.bpm!;
     for (const key of ['metronome', 'showCounts', 'wrapped'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]!;
     const g = p.generation;
-    if (g && meters.includes(g.meter!) && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) defaults.generation = structuredClone(g);
+    const selected = g?.meters ?? (g?.meter ? [g.meter] : undefined);
+    if (g && Array.isArray(selected) && selected.every(meter => meters.includes(meter)) && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) { const { meter: _legacy, ...current } = g; defaults.generation = { ...structuredClone(current), meters: [...new Set(selected)] }; }
   } catch { /* Missing, malformed or unavailable storage uses defaults. */ }
   return defaults;
 }

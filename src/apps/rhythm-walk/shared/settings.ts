@@ -1,12 +1,11 @@
 import { meters } from './meter.ts';
-import type { CountMeter } from './meter.ts';
 import { button, el, field, select } from '../../../shared/ui/components.ts';
 import type { DottedQuarterConvention } from '../../count-writing/evaluation.ts';
 import { linePlacementOptions, sustainAppearanceOptions } from '../../count-writing/presentation.ts';
 import type { CountPresentation, LinePlacement, SustainAppearance } from '../../count-writing/presentation.ts';
 import type { OffbeatSymbol } from '../../count-writing/input.ts';
 import { settingsGroups } from './settings-catalog.ts';
-import { generationIssue, ingredients } from './generation.ts';
+import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
 
@@ -102,10 +101,22 @@ export function createSettingsPage(callbacks: {
   let generation = structuredClone(callbacks.initialGeneration);
   const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(); });
   length.value = String(generation.measures); length.dataset.setting = 'exercise-length';
-  const meter = select(meters.map(value => ({ value, label: value })), value => { generation = { ...generation, meter: value as CountMeter }; generationChanged(); });
-  meter.value = generation.meter!; meter.dataset.setting = 'meter';
-  const meterField = field('Exercise meter', meter);
-  meterField.append(el('p', 'setting-hint', 'Applies on Next/New Exercise; keeps the current exercise and answer. In 6/8, count numbered eighths 1–6, grouped 123 | 456; the performance pulse remains two dotted quarters. Half rests need unintuitive notation because they cross a group boundary.'));
+  const meterField = el('fieldset', 'settings-options active-meters');
+  meterField.append(el('legend', '', 'Time signatures · next exercise'));
+  for (const meter of meters) {
+    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = (generation.meters ?? [generation.meter ?? '4/4']).includes(meter); input.dataset.meter = meter;
+    input.addEventListener('change', () => {
+      if (input.checked) generation = enableMeter(generation, meter);
+      else {
+        const { meter: _legacy, ...current } = generation;
+        generation = { ...current, meters: (generation.meters ?? [generation.meter ?? '4/4']).filter(value => value !== meter) };
+      }
+      vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(control => { control.checked = generation.ingredients.includes(control.dataset.ingredient as typeof generation.ingredients[number]); });
+      generationChanged();
+    });
+    label.append(input, el('span', '', meter)); meterField.append(label);
+  }
+  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
   const lengthField = field('Exercise length', length);
   lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
   const vocabulary = el('fieldset', 'settings-options active-ingredients');
@@ -118,7 +129,7 @@ export function createSettingsPage(callbacks: {
   const notationOption = el('label', 'setting-option');
   const notationToggle = el('input'); notationToggle.type = 'checkbox'; notationToggle.checked = generation.allowUnintuitiveNotation; notationToggle.dataset.setting = 'unintuitive-notation';
   notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
-  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters require this option and their ingredient checkbox. Applies on Next exercise; keeps your answer.'));
+  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters are used only when this option and their ingredient checkbox are enabled. Applies on Next exercise; keeps your answer.'));
   notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
   const patternFields = el('div');
   for (const [key, label, hint] of [
@@ -134,10 +145,10 @@ export function createSettingsPage(callbacks: {
   function generationChanged() {
     const issue = generationIssue(generation);
     newExercise.disabled = Boolean(issue);
-    generationStatus.textContent = issue ?? 'Ready for Next exercise. Only checked ingredients are allowed; a bar may use a subset.';
-    callbacks.generation({ ...generation, ingredients: [...generation.ingredients] });
+    generationStatus.textContent = issue ?? 'Ready for Next exercise. Only compatible checked ingredients are used; each exercise uses one selected time signature.';
+    callbacks.generation(structuredClone(generation));
   }
-  generationStatus.textContent = '4/4 by default. Only checked ingredients are allowed; a bar may use a subset. Changes apply on Next exercise.';
+  generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on Next exercise.';
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
   exerciseControls.append(meterField, lengthField, vocabulary, notationField, patternFields, generationStatus);
   activeControls.append(systemField, conventionField, placementField, appearanceField);
@@ -148,7 +159,7 @@ export function createSettingsPage(callbacks: {
   const restTitle = el('h3', '', 'Rest parentheses'); restTitle.id = 'setting-rest-grouping';
   restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
   restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
-  available.append(activeHeader, activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
+  available.append(activeHeader, el('h3', '', 'Exercise settings'), exerciseControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];
@@ -176,10 +187,10 @@ export function createSettingsPage(callbacks: {
   generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise.'; newExercise.disabled = Boolean(generationIssue(generation));
   let locked = false;
   return {
-    page, exerciseControls,
+    page,
     setLocked: (active: boolean) => {
       locked = active;
-      [...page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button'), ...exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')].forEach(control => { control.disabled = active; });
+      page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
       if (!active) newExercise.disabled = Boolean(generationIssue(generation));
     },
     sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false) => {

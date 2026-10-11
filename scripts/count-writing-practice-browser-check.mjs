@@ -46,8 +46,9 @@ try {
   await page.evaluate(() => { let seed = 53; Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; });
   assert.ok(await bars.locator('g[data-kind="rest"] circle').count() > 0, 'explicit opt-in includes dotted quarter rests');
   await settings(); await page.getByLabel('Allow unintuitive notation', { exact: true }).uncheck();
-  assert.match(await page.locator('main').innerText(), /require Allow unintuitive notation/);
-  await practice(); assert.equal(await control('Next exercise').isDisabled(), true, 'selected dotted rests are never silently ignored');
+  await practice(); assert.equal(await control('Next exercise').isDisabled(), false, 'incompatible dotted rests do not block generation');
+  await control('Next exercise').click();
+  assert.equal(await bars.locator('g[data-kind="rest"] circle').count(), 0, 'simple-meter dotted rests skipped without advanced notation');
   await settings(); await page.locator('[data-ingredient="dotted-quarter-rest"]').uncheck(); await practice();
   assert.equal(await control('Next exercise').isDisabled(), false);
   report.checks.push('Continuous staff and shared scrolling; beginner rest spelling; explicit advanced opt-in preserves current answers and validates dotted-rest choices');
@@ -127,13 +128,13 @@ try {
   await settings(); await page.locator('.active-ingredients').getByLabel('Dotted quarter notes', { exact: true }).check();
   assert.match(await page.locator('main').innerText(), /cannot fill/);
   await page.locator('.active-ingredients').getByLabel('Half notes', { exact: true }).check();
-  assert.match(await page.locator('main').innerText(), /cannot fit/);
+  assert.equal(await control('New Exercise').isDisabled(), false, 'half notes fill bars while unavailable dotted quarters are skipped');
   await page.locator('.active-ingredients').getByLabel('Quarter notes', { exact: true }).check(); await page.locator('.active-ingredients').getByLabel('Eighth notes', { exact: true }).check(); await practice();
   assert.deepEqual(await snapshot(), unchanged); assert.equal(await control('Next exercise').isDisabled(), false);
   await control('Next exercise').tap();
   const generatedKinds = await bars.locator('g[data-start]').evaluateAll(nodes => nodes.map(n => [n.dataset.duration, n.dataset.kind]));
   assert.ok(generatedKinds.every(([duration, kind]) => ['1', '2', '3', '4'].includes(duration) && kind === 'note'));
-  report.checks.push('Empty, impossible and unusable ingredient configurations explain and block Next; valid replacement applies selected ingredients only');
+  report.checks.push('Empty and impossible configurations explain and block Next; unavailable selected ingredients are skipped');
   await page.evaluate(() => localStorage.removeItem('tuno.rhythm-walk.preferences.v1')); await page.reload(); assert.equal(await bars.count(), 2);
   await settings(); await control('Expand all groups').click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);

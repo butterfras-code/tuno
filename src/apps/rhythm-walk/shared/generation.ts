@@ -1,8 +1,8 @@
-import { meterPolicy, syncopated } from './meter.ts';
+import { meters, meterPolicy, syncopated } from './meter.ts';
 import type { CountMeter } from './meter.ts';
 import { derivePassage, deriveMeasure, duration } from '../../../music/measure.ts';
 import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
-import { add, compare, divide, fraction } from '../../../music/fraction.ts';
+import { add, compare, fraction } from '../../../music/fraction.ts';
 import type { Fraction } from '../../../music/fraction.ts';
 import { readableRestPlacement } from './notation-policy.ts';
 
@@ -17,16 +17,39 @@ export const ingredients = [
   { id: 'dotted-quarter-rest', label: 'Dotted quarter rests', event: ['Q', { dots: 1, rest: true }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
-export interface GenerationSettings { meter?: CountMeter; measures: number; ingredients: IngredientId[]; allowUnintuitiveNotation: boolean; ties?: boolean; syncopation?: boolean }
-export const defaultGeneration = (): GenerationSettings => ({ meter: '4/4', measures: 2, ingredients: ingredients.filter(i => i.id !== 'dotted-quarter-rest').map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+export interface GenerationSettings {
+  meters?: CountMeter[];
+  /** Legacy single-meter input; shared preferences migrate it to meters. */
+  meter?: CountMeter;
+  measures: number;
+  ingredients: IngredientId[];
+  allowUnintuitiveNotation: boolean;
+  ties?: boolean;
+  syncopation?: boolean;
+}
+export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => i.id !== 'dotted-quarter-rest').map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
 
-function plan(settings: GenerationSettings) {
-  const policy = meterPolicy(settings.meter);
+/** The pool chooses one meter for the whole exercise, never one per measure. */
+export function selectedMeters(settings: GenerationSettings): CountMeter[] {
+  const pool = settings.meters ?? [settings.meter ?? '4/4'];
+  if (!pool.length) throw new Error('Select at least one time signature.');
+  if (pool.some(meter => !meters.includes(meter))) throw new Error('Choose supported time signatures: 2/4, 3/4, 4/4 or 6/8.');
+  return [...new Set(pool)];
+}
+/** Enabling a meter also enables its basic fill ingredient, without removing others. */
+export function enableMeter(settings: GenerationSettings, meter: CountMeter): GenerationSettings {
+  const { meter: _legacy, ...current } = settings;
+  return { ...current, meters: [...new Set([...(settings.meters ?? [settings.meter ?? '4/4']), meter])], ingredients: [...new Set<IngredientId>([...settings.ingredients, meter === '6/8' ? 'eighth' : 'quarter'])] };
+}
+function plan(settings: GenerationSettings, meter: CountMeter) {
+  const policy = meterPolicy(meter);
   if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
   if (settings.ingredients.some(id => !ingredients.some(i => i.id === id))) throw new Error('Unknown rhythm ingredient.');
-  if (!policy.compound && !settings.allowUnintuitiveNotation && settings.ingredients.includes('dotted-quarter-rest')) throw new Error('Dotted quarter rests in simple meters require Allow unintuitive notation. Enable it or uncheck dotted quarter rests.');
-  const pool = ingredients.filter(i => settings.ingredients.includes(i.id));
-  if (!pool.length) throw new Error('Select at least one rhythm ingredient.');
+  if (!settings.ingredients.length) throw new Error('Select at least one rhythm ingredient.');
+  // Retain selections across meters; only generate the supported, readable subset.
+  const pool = ingredients.filter(i => settings.ingredients.includes(i.id) &&
+    !(policy.compound && i.event[0] === 'H') &&
+    !(!policy.compound && !settings.allowUnintuitiveNotation && i.id === 'dotted-quarter-rest'));
   const memo = new Map<string, boolean>();
   const barEnd = policy.length;
   const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && syncopated(position, duration(ingredient.event), policy.pulse);
@@ -41,44 +64,19 @@ function plan(settings: GenerationSettings) {
   }
   const choicesAt = (position: Fraction, used = 0) => pool.filter(i => allowedAt(i, position, used) && fills(add(position, duration(i.event)), used + Number(syncAt(i, position))));
   if (!fills(fraction(0))) throw new Error(`These ingredients cannot fill ${policy.id} with the current notation and pulse policy. Add compatible quarters/eighths, enable syncopation, or remove incompatible ingredients.`);
-  // Check that each selection can actually occur in a complete bar under the position policy.
-  const usable = new Set<IngredientId>();
-  const visited = new Set<string>();
-  let canSync = false, canTie = false, canTiedSync = false;
-  function visit(position: Fraction, used = 0) {
-    const key = position.join('/') + ':' + used;
-    if (visited.has(key)) return;
-    visited.add(key);
-    for (const ingredient of choicesAt(position, used)) {
-      usable.add(ingredient.id);
-      const note = !(ingredient.event as RhythmEvent)[1]?.rest;
-      const end = add(position, duration(ingredient.event));
-      const nextUsed = used + Number(syncAt(ingredient, position));
-      const offbeat = divide(position, policy.pulse)[1] !== 1;
-      if (note && (!offbeat || settings.syncopation)) {
-        const nextNotes = (compare(end, barEnd) === 0 && settings.measures > 1 ? choicesAt(fraction(0)) : choicesAt(end, nextUsed)).filter(i => !(i.event as RhythmEvent)[1]?.rest);
-        if (nextNotes.length && (!offbeat || used === 0)) {
-          canTie = true;
-          canTiedSync ||= nextNotes.some(next => syncopated(position, add(duration(ingredient.event), duration(next.event)), policy.pulse));
-        }
-      }
-      canSync ||= syncAt(ingredient, position);
-      visit(add(position, duration(ingredient.event)), used + Number(syncAt(ingredient, position)));
-    }
-  }
-  visit(fraction(0));
-  const unusable = pool.filter(i => !usable.has(i.id));
-  if (unusable.length) throw new Error(`${unusable.map(i => i.label).join(', ')} cannot fit a complete bar with this selection and notation policy. Add quarters or eighths, or remove those ingredients.`);
-  if (settings.ties && !canTie) throw new Error('Ties require adjacent enabled note segments in a complete exercise under these settings. Add quarter/eighth notes, enable syncopation, or disable ties.');
-  if (settings.syncopation && !canSync && !(settings.ties && canTiedSync)) throw new Error('Syncopation needs a reachable off-pulse sustained note crossing the next pulse: enable eighth notes and a longer note, or eighth notes with ties.');
   return { choicesAt, syncAt, policy };
 }
 export function generationIssue(settings: GenerationSettings): string | null {
-  try { plan(settings); return null; } catch (error) { return (error as Error).message; }
+  try { for (const meter of selectedMeters(settings)) plan(settings, meter); return null; } catch (error) { return (error as Error).message; }
 }
 /** Randomness is injected for reproducible tests; source time always comes from written events. */
 export function generateExercise(settings: GenerationSettings, random = Math.random): RhythmMeasure[] {
-  const { choicesAt, syncAt, policy } = plan(settings);
+  const pool = selectedMeters(settings);
+  // Validate every selected meter before drawing; none are silently omitted.
+  for (const meter of pool) plan(settings, meter);
+  const draw = pool.length > 1 ? random() : 0;
+  if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');
+  const { choicesAt, syncAt, policy } = plan(settings, pool[Math.floor(draw * pool.length)]!);
   const passage = Array.from({ length: settings.measures }, (): RhythmMeasure => {
     const events: RhythmEvent[] = [];
     let position = fraction(0), used = 0;

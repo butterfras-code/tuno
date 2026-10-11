@@ -21,8 +21,6 @@
 .shared-controls > .setup { display: flex; flex-wrap: wrap; gap: 16px; }
 .shared-controls > .setup .field { flex: 1 1 200px; }
 @media (max-width: 540px) { .calibration { padding: 12px; } .tap-response .field { max-width: 100%; } }
-.exercise-settings { margin-top: 12px; }
-.exercise-settings summary { min-height: 44px; cursor: pointer; font-weight: 700; }
 .shared-exercise-settings input[type=checkbox] { width: 20px; height: 20px; }
 .shared-exercise-settings .setting-option { min-height: 44px; align-items: center; }
 @media (min-width: 760px) { .shared-exercise-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -64,3 +62,13 @@ main[data-view="practice"] { max-width: 1920px; }
   .tap-response { margin-top: 12px; }
   .tap-response > .pad { min-height: 80px; border-radius: 12px; }
 }
+
+/* Reserve the count-in row throughout performance so the score never jumps. */
+.count-in-display { display: flex; gap: 8px; align-items: start; margin-bottom: 8px; }
+.count-in-display[hidden] { display: none; }
+.count-in-beat { display: grid; justify-items: center; gap: 2px; min-width: 32px; }
+.count-in-dot { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--color-teal); border-radius: 50%; font-weight: 700; color: var(--color-teal); }
+.count-in-cue { font-size: 11px; line-height: 14px; min-height: 14px; }
+.count-in-beat.lit .count-in-dot { background: var(--color-teal); color: white; animation: count-in-pulse 180ms ease-out; }
+@keyframes count-in-pulse { from { box-shadow: 0 0 0 4px var(--color-tint); transform: scale(1.12); } to { box-shadow: 0 0 0 0 var(--color-tint); transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .count-in-beat.lit .count-in-dot { animation: none; } }

@@ -39,12 +39,14 @@ test('defaults are two measures; deterministic generation validates every subset
     }
   }
 });
-test('impossible or unusable selections fail explicitly; finite pools terminate, with no settings mutation', () => {
+test('impossible selections fail; unavailable ingredients are skipped without mutating settings', () => {
   for (const settings of [
     { ...defaultGeneration(), measures: 2, ingredients: [] },
     { ...defaultGeneration(), measures: 2, ingredients: ['dotted-quarter' as const] },
-    { ...defaultGeneration(), measures: 2, ingredients: ['dotted-quarter' as const, 'half' as const] },
   ]) assert.ok(generationIssue(settings));
+  const subset = { ...defaultGeneration(), ingredients: ['dotted-quarter' as const, 'half' as const] };
+  assert.equal(generationIssue(subset), null);
+  assert.ok(generateExercise(subset, () => 0).every(bar => bar.events.every(event => event[0] === 'H')));
   for (const id of ['quarter', 'eighth-rest', 'half-rest'] as const) {
     const settings = { ...defaultGeneration(), measures: 4, ingredients: [id] }; const before = structuredClone(settings);
     assert.equal(generateExercise(settings, () => 0).length, 4);
@@ -128,5 +130,6 @@ test('the screenshot silence can be written as eighth, quarter, eighth rests; op
     });
   });
   assert.equal(offbeatHalf, true); assert.equal(dottedRest, true);
-  assert.match(generationIssue({ ...advanced, allowUnintuitiveNotation: false })!, /require Allow unintuitive notation/);
+  assert.equal(generationIssue({ ...advanced, allowUnintuitiveNotation: false }), null);
+  for (let seed = 0; seed < 30; seed++) assert.ok(generateExercise({ ...advanced, allowUnintuitiveNotation: false }, seeded(seed)).every(bar => bar.events.every(event => !(event[1]?.rest && event[1]?.dots))));
 });
