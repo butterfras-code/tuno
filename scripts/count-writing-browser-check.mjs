@@ -214,21 +214,43 @@ try {
   report.checks.push('All nine placement/appearance combinations: shared anchors, unchanged answers/feedback, full-size onsets, beside default and override, offset drag and mobile touch');
   // Dots support two-step mouse, touch and keyboard entry in every placement.
   const anchors = page.locator('.duration-anchor');
+  const preview = page.locator('.duration-preview');
+  const previewGeometry = () => page.locator('.duration-preview line').evaluate(line =>
+    Object.fromEntries(['x1', 'y1', 'x2', 'y2'].map(key => [key, Number(line.getAttribute(key))])));
+
   for (const placement of ['above', 'below', 'beside']) {
     await navigate('Settings');
     await page.getByLabel('Duration-line placement', { exact: true }).selectOption(placement);
     await navigate('Count Writing');
     await control('Reset answer').click();
     await anchors.nth(0).click();
+    assert.equal(await preview.isVisible(), true);
+    const targetAnchor = await anchors.nth(2).boundingBox();
+    const cursor = { x: targetAnchor.x + targetAnchor.width / 2, y: targetAnchor.y + targetAnchor.height / 2 + 14 };
+    await page.mouse.move(cursor.x, cursor.y);
+    const mousePreview = await previewGeometry();
+    const area = await page.locator('.answer-area').boundingBox();
+    assert.ok(Math.abs(mousePreview.x2 + area.x - cursor.x) < 1);
+    assert.ok(Math.abs(mousePreview.y2 + area.y - cursor.y) < 1, 'mouse preview follows both cursor coordinates');
+    assert.equal(await page.locator('.duration-line').count(), 0, 'preview must not commit an answer');
     assert.equal(await anchors.nth(0).getAttribute('aria-pressed'), 'true');
     await anchors.nth(0).click();
     assert.equal(await page.locator('.duration-line').count(), 0, 'same anchor must not finish a line');
     await anchors.nth(3).click();
+    assert.equal(await preview.isVisible(), false, 'completion removes preview');
     assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '3');
     assert.equal(await control('Start duration line').count(), 1);
     await control('Reset answer').click();
     await page.setViewportSize({ width: 375, height: 900 });
-    await anchors.nth(3).tap(); await anchors.nth(0).tap();
+    await anchors.nth(3).tap();
+    const touchPreview = await previewGeometry();
+    const touchStart = await anchors.nth(3).boundingBox(), touchNext = await anchors.nth(4).boundingBox();
+    assert.equal(await preview.isVisible(), true);
+    assert.equal(touchPreview.y2, touchPreview.y1, 'touch preview is horizontal');
+    const fraction = (touchPreview.x2 - touchPreview.x1) / (touchNext.x - touchStart.x);
+    assert.ok(fraction > .8 && fraction < .95, 'touch preview stops just before the next anchor');
+    await page.screenshot({ path: `${output}/preview-touch-${placement}.png`, fullPage: true });
+    await anchors.nth(0).tap();
     assert.equal(await page.getByRole('slider', { name: 'Line 1 start', exact: true }).getAttribute('aria-valuenow'), '0');
     assert.equal(await page.getByRole('slider', { name: 'Line 1 end', exact: true }).getAttribute('aria-valuenow'), '3');
     await control('Set line 1 end').tap(); await anchors.nth(2).tap();
@@ -240,6 +262,7 @@ try {
     await control('Reset answer').click();
     await anchors.nth(0).focus(); await page.keyboard.press('Enter');
     await page.keyboard.press('Escape');
+    assert.equal(await preview.isVisible(), false, 'cancellation removes preview');
     assert.equal(await control('Start duration line').count(), 1);
     await page.keyboard.press('Space');
     await anchors.nth(3).focus(); await page.keyboard.press('Enter');
@@ -249,7 +272,7 @@ try {
   await navigate('Settings');
   await page.getByLabel('Duration-line placement', { exact: true }).selectOption('below');
   await navigate('Count Writing');
-  report.checks.push('Anchor mouse/touch/keyboard entry in all placements, reverse endpoints, same-dot guard, Escape, existing dots and Set end');
+  report.checks.push('Mouse cursor/touch stub previews, cancellation and completion; anchor mouse/touch/keyboard entry in all placements, reverse endpoints, same-dot guard, Escape, existing dots and Set end');
   // Settings must preserve work, apply supported choices, and keep future controls inert.
   await page.setViewportSize({ width: 1280, height: 1000 });
   await fixture.selectOption('dotted-quarter');

@@ -51,6 +51,39 @@ const notation = el('div');
 const counts = el('div', 'counts'); counts.setAttribute('role', 'group'); counts.setAttribute('aria-label', 'Count positions');
 const answerArea = el('div', 'answer-area');
 const lines = el('div', 'lines'); lines.setAttribute('aria-label', 'Duration lines');
+const preview = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+preview.classList.add('duration-preview'); preview.setAttribute('aria-hidden', 'true');
+const previewLine = document.createElementNS(preview.namespaceURI, 'line');
+preview.append(previewLine);
+let previewCursor: { x: number; y: number } | null = null;
+
+function renderLinePreview() {
+  const start = lineStart ?? (lineEnd === null ? null : answer.spans[lineEnd]?.start ?? null);
+  const visible = start !== null && !practiceView.hidden;
+  preview.style.display = visible ? '' : 'none';
+  if (!visible) return;
+  const area = answerArea.getBoundingClientRect();
+  const anchor = anchors[start]!.getBoundingClientRect();
+  const x = anchor.x + anchor.width / 2 - area.x;
+  const y = anchor.y + anchor.height / 2 - area.y;
+  // Reuse the rendered anchor spacing, including placement offsets and responsive widths.
+  const spacing = (tickX(1) - tickX(0)) / 100 * area.width;
+  const endX = previewCursor ? previewCursor.x - area.x : Math.min(x + spacing * .85, area.width - 4);
+  const endY = previewCursor ? previewCursor.y - area.y : y;
+  for (const [name, value] of Object.entries({ x1: x, y1: y, x2: endX, y2: endY })) {
+    previewLine.setAttribute(name, String(value));
+  }
+}
+function trackPreviewPointer(event: PointerEvent) {
+  previewCursor = event.pointerType === 'mouse' ? { x: event.clientX, y: event.clientY } : null;
+  renderLinePreview();
+}
+document.addEventListener('pointerdown', trackPreviewPointer, true);
+document.addEventListener('pointermove', trackPreviewPointer);
+document.addEventListener('keydown', () => { previewCursor = null; renderLinePreview(); });
+document.addEventListener('scroll', renderLinePreview, true);
+new ResizeObserver(renderLinePreview).observe(answerArea);
+
 const slots: HTMLButtonElement[] = [];
 const anchors: HTMLButtonElement[] = [];
 const live = el('p', 'selection'); live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
@@ -104,7 +137,7 @@ function renderSlots() {
 answerArea.addEventListener('keydown', event => {
   if (event.key === 'Escape') { lineStart = null; lineEnd = null; refresh(); }
 });
-answerArea.append(counts, lines); measure.append(notation, answerArea); score.append(measure);
+answerArea.append(counts, lines, preview); measure.append(notation, answerArea); score.append(measure);
 const keypad = el('div', 'keypad'); keypad.setAttribute('role', 'group'); keypad.setAttribute('aria-label', 'Symbol keypad');
 for (const symbol of alphabet) keypad.append(button(symbol, () => put(symbol)));
 keypad.append(button('Erase', () => put('')));
@@ -146,6 +179,7 @@ function showPage(focus = true) {
   subtitle.textContent = isSettings ? 'Counting, content, and what comes next.' : 'One measure. Read, write, and revise.';
   document.title = `${isSettings ? 'Rhythm settings' : 'Count Writing'} — tUno prototype`;
   settings.sync(fixture.id, dottedConvention, presentation);
+  renderLinePreview();
   if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
 }
 window.addEventListener('hashchange', () => {
@@ -177,6 +211,7 @@ function refresh() {
   lineButton.textContent = lineStart === null && lineEnd === null ? 'Start duration line' : 'Cancel duration line';
   restButton.setAttribute('aria-pressed', String(answer.rests[selected]));
   renderFeedback();
+  renderLinePreview();
 }
 function renderFeedback() {
   feedback.replaceChildren();

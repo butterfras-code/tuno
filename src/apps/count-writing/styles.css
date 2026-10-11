@@ -40,6 +40,8 @@ select { max-width: 100%; }
 .keypad .control { min-width: 48px; }
 .keypad [aria-pressed="true"] { background: var(--color-tint); border-color: var(--color-accent); }
 .lines { position: absolute; inset: 0; pointer-events: none; }
+.duration-preview { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.duration-preview line { stroke: var(--color-teal); stroke-width: 3px; stroke-linecap: round; opacity: .7; }
 .duration-line { position: absolute; height: 3px; background: var(--color-accent); margin-top: -1.5px; margin-left: var(--anchor-x); min-width: 2px; }
 .line-handle { position: absolute; top: -22px; width: 44px; height: 44px; border: 0; background: transparent; padding: 0; cursor: ew-resize; touch-action: none; pointer-events: auto; }
 .line-handle::after { content: ''; display: block; margin: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
