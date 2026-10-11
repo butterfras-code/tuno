@@ -93,8 +93,22 @@ window.__rhythmActivityCheck = (async () => {
     button('Next exercise').click();
     assert(id() !== identity && document.querySelectorAll('.passage-measure').length === 4, 'Next uses pending shared configuration exactly once');
     assert(answer().every(s => s === '·') && !review() && !document.querySelectorAll('.dimension').length, 'Next clears both old responses and results');
-    for (const response of ['write', 'tap', 'both']) { mode(response); assert(document.documentElement.scrollWidth <= innerWidth, 'no document overflow in ' + response); }
+    for (const response of ['write', 'tap', 'both']) {
+      mode(response);
+      assert(document.documentElement.scrollWidth <= innerWidth, 'no document overflow in ' + response);
+      const score = document.querySelector('.passage-scroll');
+      assert(score.scrollWidth <= score.clientWidth, 'no score scrolling in ' + response);
+      if (response === 'tap' && innerWidth <= 540) assert(bounds(pad).bottom - bounds(score).top <= 480, 'four stacked measures and pad fit in mobile performance area');
+    }
     checks.push('optional visible counts, one Next lifecycle, both responses cleared, all-mode layout at ' + innerWidth + 'px');
+    mode('tap'); document.querySelector('.tap-response input[type=number]').value = '180';
+    await begin();
+    const performanceScroll = scrollY, systems = [...document.querySelectorAll('.passage-measure')].map(n => bounds(n).top);
+    if (innerWidth <= 540) assert(bounds(pad).bottom <= innerHeight && bounds(document.querySelector('.passage-scroll')).top >= 0, 'all four measures and pad visible during mobile count-in');
+    await sleep(1500);
+    assert(scrollY === performanceScroll && systems.every((top, index) => Math.abs(top - bounds(document.querySelectorAll('.passage-measure')[index]).top) < 1), 'systems and viewport stay still through count-in into recording');
+    button('Stop / Cancel').click();
+    checks.push('four-measure performance keeps score/pad in view without playback jumps');
     const originalResume = AudioContext.prototype.resume;
     let resolveResume;
     AudioContext.prototype.resume = () => new Promise(resolve => { resolveResume = resolve; });

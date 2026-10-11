@@ -51,8 +51,9 @@ try {
         assert.equal(await bars.nth(0).locator('.passage-duration[data-outgoing="true"]').count(), 1);
         assert.equal(await bars.nth(1).locator('.passage-duration[data-incoming="true"]').count(), 1);
         await button('Wrap notation into systems').tap();
-        assert.equal(await page.locator('.passage-ties [data-tie="across-bar"]').count(), 1, 'one continuous tie across adjacent bars');
-        assert.equal(await page.locator('.passage-ties [data-tie="incoming"], .passage-ties [data-tie="outgoing"]').count(), 0, 'no artificial join at a barline');
+        const stacked = width < 680;
+        assert.equal(await page.locator('.passage-ties [data-tie="across-bar"]').count(), stacked ? 0 : 1, 'automatic systems preserve the correct tie join');
+        assert.equal(await page.locator('.passage-ties [data-tie="incoming"], .passage-ties [data-tie="outgoing"]').count(), stacked ? 2 : 0, 'narrow systems retain broken tie hooks');
         await button('Check').tap();
         assert.ok((await page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className))).every(name => name === 'dimension correct'), 'changing visual systems does not change grading');
         await button('Wrap notation into systems').tap();

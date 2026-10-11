@@ -85,7 +85,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
       if (audio.state !== 'running') throw new Error('Audio could not start');
       result = null; review.replaceChildren(); retry.hidden = true; download.hidden = true;
       options.decorate(null);
-      transport = new Transport(audio, capture, tick, finish); pad.focus(); tick(transport.time());
+      transport = new Transport(audio, capture, tick, finish); pad.focus({ preventScroll: true }); tick(transport.time());
     } catch {
       if (token !== generation) return;
       finish(capture.interrupt('Audio could not start. Check browser audio permissions and retry.', -capture.plan.countIn));

@@ -84,10 +84,14 @@ try {
       assert.ok((await bars.locator('.count-slot').allTextContents()).every(text => text === '·'));
       const barBounds = await bars.evaluateAll(nodes => nodes.map(n => { const b = n.getBoundingClientRect(); return { x: b.x, y: b.y, right: b.right }; }));
       for (let index = 1; index < barBounds.length; index++) {
-        assert.ok(Math.abs(barBounds[index].y - barBounds[0].y) < 1, 'consecutive measures share one staff row');
-        assert.ok(Math.abs(barBounds[index].x - barBounds[index - 1].right) < 1, 'bars are adjacent, without independent card gaps');
+        if (Math.abs(barBounds[index].y - barBounds[index - 1].y) < 1) {
+          assert.ok(Math.abs(barBounds[index].x - barBounds[index - 1].right) < 1, 'bars within a system are adjacent');
+        } else {
+          assert.ok(barBounds[index].y > barBounds[index - 1].y && Math.abs(barBounds[index].x - barBounds[0].x) < 1, 'automatic systems wrap in reading order');
+        }
       }
       assert.equal(await bars.locator('.notation text').count(), 2);
+      assert.equal(await page.locator('.passage-scroll').evaluate(n => n.scrollWidth <= n.clientWidth), true, `score needs no horizontal scrolling at ${width}px, ${length} measures`);
       const rests = await bars.locator('g[data-kind="rest"]').evaluateAll(nodes => nodes.map(n => ({ start: Number(n.dataset.start), duration: Number(n.dataset.duration), dotted: !!n.querySelector('circle') })));
       assert.ok(rests.every(rest => !rest.dotted && (rest.duration < 2 || rest.start % 2 === 0)), 'beginner notation keeps longer rests on beats and omits dotted rests');
       if (length > 1) {

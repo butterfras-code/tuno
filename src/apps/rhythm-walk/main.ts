@@ -65,7 +65,7 @@ const passageStrip = el('div', 'passage-strip');
 passageScroll.append(passageStrip);
 const wrap = button('Wrap notation into systems', () => { passageStrip.classList.toggle('wrapped'); preferences.wrapped = passageStrip.classList.contains('wrapped'); persist(); wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped'))); tieNotation?.refresh(); });
 wrap.setAttribute('aria-pressed', 'false');
-const passageHint = el('p', 'setting-hint', 'Scroll or swipe along the passage. Counts restart at each barline.');
+const passageHint = el('p', 'setting-hint', 'Measures fit the available width and stack on smaller screens. Counts restart at each barline.');
 passage.append(passageScroll, wrap, passageHint);
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
@@ -85,6 +85,10 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
     if (!active) next.disabled = Boolean(generationIssue(generation));
     if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
     updateResponseView();
+    if (active) {
+      // Settle the entire score/pad into view once, before count-in. No playback scrolling.
+      passage.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
   },
   decorate: decoratePerformance,
 });
@@ -150,6 +154,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
   measures = currentMeasures;
   const grid = passageGrid(measures);
+  passageStrip.dataset.measures = String(measures.length);
   const tied = measures.some(m => m.events.some(e => e[1]?.tieNext));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap || preferences.wrapped));
   wrap.setAttribute('aria-pressed', String(passageStrip.classList.contains('wrapped')));

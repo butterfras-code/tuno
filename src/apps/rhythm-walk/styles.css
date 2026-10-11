@@ -35,3 +35,32 @@
 .timeline-rail { stroke: var(--color-line); stroke-width: 2; }
 .timeline-hit { stroke: var(--color-teal); stroke-width: 3; }
 .timeline-hit.unmatched { stroke: var(--color-accent); }
+
+/* Stable systems: use the viewport, never a horizontally scrolling score. */
+main[data-view="practice"] { max-width: 1920px; }
+.passage-scroll { overflow: visible; container-type: inline-size; }
+.passage-strip { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; row-gap: 12px; }
+.passage-measure { min-width: 0; width: 100%; }
+.passage .measure { min-width: 0; }
+@container (min-width: 680px) {
+  .passage-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 1360px) {
+  .passage-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .passage-strip[data-measures="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .passage-strip[data-measures="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.passage-strip[data-measures="1"], .passage-strip.wrapped { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 540px) {
+  .passage { padding: 12px; }
+  .passage-strip { row-gap: 8px; }
+  .passage .count-slot { width: 32px; font-size: 20px; }
+  .passage .duration-anchor { width: 32px; }
+  .passage .rest-existing-opening { left: 0; }
+  .passage .rest-existing-closing { right: 0; }
+  .passage .rest-existing-opening .rest-opening { left: 0; }
+  .passage .rest-existing-closing .rest-closing { right: 0; }
+  .measure-heading { font-size: 12px; margin-bottom: 0; }
+  .tap-response { margin-top: 12px; }
+  .tap-response > .pad { min-height: 80px; border-radius: 12px; }
+}

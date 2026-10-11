@@ -426,6 +426,8 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
         top = Math.min(top, line.top - area.top - 12);
         bottom = Math.max(bottom, line.bottom - area.top + 12);
       });
+      // Keep rest outlines inside a responsive measure rather than widening the score.
+      left = Math.max(0, left); right = Math.min(area.width, right);
       const outline = el('div', pending ? 'rest-open-group' : 'rest-group');
       outline.dataset.start = String(group.start); outline.dataset.end = String(group.end);
       Object.assign(outline.style, { left: `${left}px`, top: `${top}px`, width: `${right - left}px`, height: `${bottom - top}px` });
