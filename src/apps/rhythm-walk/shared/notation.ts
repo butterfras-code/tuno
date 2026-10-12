@@ -1,3 +1,4 @@
+import { divide } from '../../../music/fraction.ts';
 import { derivePassage } from '../../../music/measure.ts';
 import type { RhythmMeasure } from '../../../music/measure.ts';
 import { countGrid, slotX } from '../../count-writing/grid.ts';
@@ -10,7 +11,9 @@ function node(tag: string, attrs: Record<string, string | number>) {
 export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage: { first: boolean; last: boolean } = { first: true, last: true }) {
   const grid = countGrid(measure);
   const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `${measure.meter.join("/")} rhythm: ${label}`, class: 'notation' });
-  const x = (tick: number) => slotX(tick, grid.slots.length) * 8;
+  const groupOf = (event: typeof grid.events[number]) => { const p = divide(event.start, grid.policy.pulse); return Math.floor(p[0] / p[1]); };
+  const short = (event: typeof grid.events[number] | undefined) => event && ['E', 'S'].includes(event.written[0]);
+  const x = (tick: number) => slotX(tick, grid.slots.length, grid.fine) * 8;
   svg.append(node('line', { x1: passage.first ? 80 : 0, x2: passage.last ? 798 : 800, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of passage.first ? [80, passage.last ? 798 : 800] : [passage.last ? 798 : 800]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': passage.last && bx !== 80 ? 4 : 2 }));
   if (passage.last) svg.append(node('line', { x1: 790, x2: 790, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
@@ -24,7 +27,8 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
     if (event.kind === 'rest') {
       if (event.written[0] === 'H') {
         group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
-      } else if (event.written[0] === 'E') {
+      } else if (['E', 'S'].includes(event.written[0])) {
+        if (event.written[0] === 'S') group.append(node('path', { d: 'M -9 7 C -20 17 -24 1 -13 1 C -5 1 -5 7 -9 7 Z M -8 30 L 8 -18', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'sixteenth' }));
         group.append(node('path', { d: 'M -6 20 L 8 -18 M 6 -12 C -8 -2 -14 -18 -3 -18 C 5 -18 7 -12 6 -12 Z', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'eighth' }));
       } else
       group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
@@ -32,12 +36,25 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
       const hollow = event.written[0] === 'H';
       group.append(node('ellipse', { cx: nx, cy: 100, rx: 11, ry: 7.5, transform: `rotate(-20 ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
       group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
-      if (event.written[0] === 'E') {
-        const previous = grid.events[index - 1], next = grid.events[index + 1];
-        const pairedNext = next?.written[0] === 'E' && next.kind === 'note' && Math.floor(event.startSlot / grid.policy.groupSlots) === Math.floor(next.startSlot / grid.policy.groupSlots) && next.startSlot === event.startSlot + 1;
-        const pairedPrevious = previous?.written[0] === 'E' && previous.kind === 'note' && Math.floor(previous.startSlot / grid.policy.groupSlots) === Math.floor(event.startSlot / grid.policy.groupSlots) && event.startSlot === previous.startSlot + 1;
-        if (pairedNext) group.append(node('line', { x1: nx + 10, x2: x(next.startSlot) + 10, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7, 'data-beam': 'true' }));
-        else if (!pairedPrevious) group.append(node('path', { d: `M ${nx + 10} 42 C ${nx + 12} 55 ${nx + 33} 56 ${nx + 23} 80 C ${nx + 25} 64 ${nx + 13} 64 ${nx + 10} 61 Z`, fill: 'currentColor' }));
+      if (short(event)) {
+        // Primary beams connect short-note groups, including intervening written rests.
+        const members = grid.events.filter(e => short(e) && groupOf(e) === groupOf(event));
+        const run = members.filter(e => !grid.events.some(barrier => barrier.index > Math.min(e.index, event.index) && barrier.index < Math.max(e.index, event.index) && !short(barrier)));
+        const notes = run.filter(e => e.kind === 'note');
+        const at = notes.indexOf(event), previous = notes[at - 1], next = notes[at + 1];
+        if (next) group.append(node('line', { x1: nx + 10, x2: x(next.startSlot) + 10, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7, 'data-beam': 'true' }));
+        if (event.written[0] === 'S' && notes.length > 1) {
+          const joinedNext = next?.written[0] === 'S' && next.index === event.index + 1;
+          const joinedPrevious = previous?.written[0] === 'S' && previous.index === event.index - 1;
+          if (joinedNext || !joinedPrevious) {
+            const end = joinedNext ? x(next.startSlot) + 10 : nx + 10 + (next ? 20 : -20);
+            group.append(node('line', { x1: nx + 10, x2: end, y1: 54, y2: 54, stroke: 'currentColor', 'stroke-width': 6, 'data-beam': joinedNext ? 'secondary' : 'partial' }));
+          }
+        }
+        if (notes.length === 1) for (let level = 0; level < (event.written[0] === 'S' ? 2 : 1); level++) {
+          const y = 42 + level * 12;
+          group.append(node('path', { d: `M ${nx + 10} ${y} C ${nx + 12} ${y + 13} ${nx + 33} ${y + 14} ${nx + 23} ${y + 38} C ${nx + 25} ${y + 22} ${nx + 13} ${y + 22} ${nx + 10} ${y + 19} Z`, fill: 'currentColor', 'data-flag': level + 1 }));
+        }
       }
       if (event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     }

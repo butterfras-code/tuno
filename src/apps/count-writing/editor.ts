@@ -4,15 +4,15 @@ import { countGrid, durationEndSlot, slotX } from './grid.ts';
 import { blankAnswer, evaluate } from './evaluation.ts';
 import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './evaluation.ts';
 import { renderMeasure } from './notation.ts';
-import { countKey, displayCount } from './input.ts';
-import type { OffbeatSymbol } from './input.ts';
+import { countKey, displayCount, translateCount, countAt, syllableBuffer } from './input.ts';
+import type { OffbeatSymbol, CountingSystem } from './input.ts';
 import { createCountPopover } from './count-popover.ts';
 import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
   scroller: HTMLElement; lastMeasure: boolean;
   grid?: ReturnType<typeof countGrid>; externalLines?: boolean;
-  offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
+  system?: CountingSystem; offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   hidden: () => boolean; edited: () => void; check: () => void; navigate: (delta: number, clear?: boolean) => boolean;
 }) {
   const lifecycle = new AbortController();
@@ -20,12 +20,14 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     target.addEventListener(name, handler as EventListener, { capture, signal: lifecycle.signal });
   }
   let offbeat = options.offbeat;
+  let system = options.system ?? 'numbers';
+  const buffer = syllableBuffer();
   let presentation = options.presentation;
   const fixture = source;
-  let grid = options.grid ?? countGrid(fixture);
+  let grid = options.grid ?? countGrid(fixture, system);
   let answer = blankAnswer(fixture);
   const positionLabel = (slot: number) => `measure ${number}, ${grid.slots[slot]!.label}`;
-  const tickX = (slot: number) => slotX(slot, grid.slots.length);
+  const tickX = (slot: number) => slotX(slot, grid.slots.length, grid.fine);
   let selected = 0;
   let lineStart: number | null = null;
   let lineEnd: number | null = null;
@@ -38,7 +40,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   let result: Evaluation | null = null;
   let changed = false;
   let dottedConvention = options.convention;
-  const card = el('section', 'passage-measure'); card.setAttribute('aria-label', number === 1 ? 'Editable measure' : `Editable measure ${number}`); card.dataset.measure = String(number);
+  const card = el('section', 'passage-measure'); card.setAttribute('aria-label', number === 1 ? 'Editable measure' : `Editable measure ${number}`); card.dataset.measure = String(number); card.classList.toggle('fine-grid', grid.fine);
   const score = el('div', 'measure-editor');
   const measure = el('div', 'measure');
   const notation = el('div');
@@ -107,9 +109,10 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     const next = candidates.indexOf(index) + delta;
     return candidates[Math.max(0, Math.min(candidates.length - 1, next))]!;
   }
-  function focusSlot(index: number) { selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0 && number === 1) options.scroller.scrollLeft = 0; }
+  function focusSlot(index: number) { buffer.clear(); selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0 && number === 1) options.scroller.scrollLeft = 0; }
   function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
   function submitCount(symbol: CountSymbol): boolean {
+    buffer.clear();
     put(symbol);
     const next = grid.availableSlots.find(tick => tick > selected);
     if (next === undefined) { countPopover.dismiss(); if (!options.navigate(1)) slots[selected]!.focus({ preventScroll: true }); return false; }
@@ -117,7 +120,10 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   }
   const countPopover = createCountPopover({
     id: `count-popover-${number}`,
-    symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a'],
+    symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te'],
+    enabled: symbol => grid.policy.compound || (/^\d/.test(symbol) || (system === 'syllables' ? ['ta', 'te'].includes(symbol) : ['&', 'e', 'a'].includes(symbol))),
+    input: enterKey,
+    restActions: grid.fine ? { start: () => beginRest(selected), close: () => { closeRest(selected); countPopover.dismiss(true); }, remove: () => { const group = answer.rests.find(r => selected >= r.start && selected <= r.end); if (group) removeRest(group); countPopover.dismiss(true); } } : undefined,
     select: tick => { selected = tick; refresh(); slots[tick]!.focus({ preventScroll: true }); },
     label: () => `Count for ${positionLabel(selected)}`,
     anchor: () => {
@@ -148,7 +154,20 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   });
   listen(window, 'blur', cancelKeyboardLine);
   listen(document, 'pointerdown', cancelKeyboardLine, true);
+  function enterKey(event: KeyboardEvent): boolean {
+    if (event.ctrlKey || event.metaKey || event.altKey) { buffer.clear(); return false; }
+    if (system === 'syllables' && !grid.policy.compound && event.key === 't') {
+      event.preventDefault(); if (!event.repeat) buffer.key('t'); live.textContent = 'Type a or e to complete ta or te. Escape cancels.'; return true;
+    }
+    const symbol = system === 'syllables' && !grid.policy.compound ? buffer.key(event.key) : countKey(event.key);
+    if (symbol !== null) { event.preventDefault(); if (!event.repeat) countPopover.submit(symbol); return true; }
+    return false;
+  }
+  listen(window, 'blur', () => buffer.clear());
+  listen(document, 'pointerdown', () => buffer.clear(), true);
   function countNavigation(event: KeyboardEvent): boolean {
+    if (buffer.active() && ['Backspace', 'Delete', 'Escape'].includes(event.key)) { event.preventDefault(); buffer.clear(); refresh(); return true; }
+    if (['Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Escape'].includes(event.key)) buffer.clear();
     if (event.ctrlKey || event.metaKey || event.altKey) { cancelKeyboardLine(); return false; }
     if (event.key === 'Enter' && keyboardLine) { event.preventDefault(); return true; }
     if (event.key === 'Shift' && !options.externalLines) { if (!event.repeat) startKeyboardLine(); return true; }
@@ -285,8 +304,9 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       });
       slot.setAttribute('aria-haspopup', 'dialog'); slot.setAttribute('aria-controls', `count-popover-${number}`);
       slot.hidden = !grid.slots[tick]!.available;
-      slot.className = 'count-slot'; slot.style.left = `${tickX(tick)}%`;
-      slot.addEventListener('focus', () => { selected = tick; refresh(); });
+      slot.className = 'count-slot'; slot.style.setProperty('--subdivision', String(grid.slots[tick]!.subdivision)); slot.style.left = `${tickX(tick)}%`;
+      slot.addEventListener('blur', () => buffer.clear());
+      slot.addEventListener('focus', () => { buffer.clear(); selected = tick; refresh(); });
       slot.addEventListener('pointerenter', event => {
         if (event.pointerType === 'mouse') { hoveredRest = tick; renderRestTargets(); }
       });
@@ -296,14 +316,13 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       slot.addEventListener('keydown', event => {
         if (countNavigation(event)) return;
         if (event.ctrlKey || event.metaKey || event.altKey) return;
-        const symbol = countKey(event.key);
-        if (symbol !== null) { event.preventDefault(); if (!event.repeat) countPopover.submit(symbol); }
+        if (enterKey(event)) return;
         else if (event.key === ')') { event.preventDefault(); closeRest(selected); }
         else if (event.key === 'Escape') { countPopover.dismiss(); lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); }
       });
       const anchor = button('', () => lineTap(tick));
       anchor.hidden = !grid.slots[tick]!.available;
-      anchor.className = 'duration-anchor';
+      anchor.className = 'duration-anchor'; anchor.style.setProperty('--subdivision', String(grid.slots[tick]!.subdivision));
       anchor.setAttribute('aria-label', `Duration line anchor at ${positionLabel(tick)}`);
       anchor.style.left = `${tickX(tick)}%`;
       anchors.push(anchor);
@@ -325,7 +344,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   function reset(focus: boolean) {
     countPopover.dismiss();
     keyboardLine = null;
-    grid = options.grid ?? countGrid(fixture); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
+    grid = options.grid ?? countGrid(fixture, system); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
     renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure }));
     notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
       const tick = Number(mark.dataset.start);
@@ -346,16 +365,24 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       mark.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); mark.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
       });
-    }); renderLines(); refresh();
+    }); positionNotationTargets(); renderLines(); refresh();
     if (focus) focusSlot(0);
   }
   function positionNotationTargets() {
-    notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
+    const marks = [...notation.querySelectorAll<SVGGElement>('g[data-start]')];
+    marks.forEach((mark, index) => {
       const hit = mark.querySelector<SVGRectElement>('[data-count-hit]')!;
       hit.remove();
       const bounds = mark.getBBox();
-      hit.setAttribute('x', String(bounds.x - 8)); hit.setAttribute('y', String(bounds.y - 8));
-      hit.setAttribute('width', String(Math.max(44, bounds.width + 16))); hit.setAttribute('height', String(Math.max(44, bounds.height + 16)));
+      const center = tickX(Number(mark.dataset.start)) * 8;
+      const previous = marks[index - 1], next = marks[index + 1];
+      // A beam belongs to its group visually, but must not steal a neighboring
+      // note's entry target. Bound each target by adjacent onset midpoints.
+      const left = Math.max(bounds.x - 8, previous ? (center + tickX(Number(previous.dataset.start)) * 8) / 2 : 0);
+      const right = Math.min(Math.max(bounds.x + bounds.width + 8, left + 44), next ? (center + tickX(Number(next.dataset.start)) * 8) / 2 : 800);
+      hit.setAttribute('x', String(left)); hit.setAttribute('y', String(bounds.y - 8));
+      hit.setAttribute('width', String(right - left)); hit.setAttribute('height', String(Math.max(44, bounds.height + 16)));
+      mark.querySelectorAll('[data-beam]').forEach(beam => beam.setAttribute('pointer-events', 'none'));
       mark.prepend(hit);
     });
   }
@@ -411,8 +438,9 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     const drawGroup = (group: Span, pending = false) => {
       const covered = grid.availableSlots.filter(tick => tick >= group.start && tick <= group.end);
       const rectangles = covered.map(tick => slots[tick]!.getBoundingClientRect());
-      let left = Math.min(...rectangles.map(r => r.left)) - area.left - 16;
-      let right = Math.max(...rectangles.map(r => r.right)) - area.left + 16;
+      const inset = grid.fine ? 0 : 16;
+      let left = Math.min(...rectangles.map(r => r.left)) - area.left - inset;
+      let right = Math.max(...rectangles.map(r => r.right)) - area.left + inset;
       let top = Math.min(...rectangles.map(r => r.top)) - area.top - 4;
       let bottom = Math.max(...rectangles.map(r => r.bottom)) - area.top + 4;
       answer.spans.forEach((span, index) => {
@@ -474,7 +502,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       const track = el('div', 'duration-line');
       track.style.left = `${tickX(span.start)}%`;
       track.style.width = `${tickX(span.end) - tickX(span.start)}%`;
-      track.style.top = `calc(var(--anchor-y) + ${lane * 44}px)`;
+      track.style.top = `calc(var(--anchor-y) + var(--subdivision-row, 0px) * ${grid.slots[span.start]?.subdivision ?? 0} + ${lane * 44}px)`;
       const body = button('', () => editDuration(index));
       body.className = 'duration-body'; body.setAttribute('aria-label', `Edit line ${index + 1} endpoint`); track.append(body);
       for (const endpoint of ['start', 'end'] as const) {
@@ -508,7 +536,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
           if (!moved) return;
           const rect = measure.getBoundingClientRect();
           const anchorOffset = parseFloat(getComputedStyle(answerArea).getPropertyValue('--anchor-x'));
-          const tick = Math.round(((event.clientX - rect.left - anchorOffset) / rect.width * 100 - 16) / (88 / grid.slots.length));
+          const tick = Math.round(((event.clientX - rect.left - anchorOffset) / rect.width * 100 - (grid.fine ? 12 : 16)) / ((grid.fine ? 80 : 88) / grid.slots.length));
           const minStart = Math.max(0, ...answer.spans.flatMap((other, otherIndex) => otherIndex !== index && other.end < span.start ? [other.end + 1] : []));
           span[endpoint] = endpoint === 'start' ? nearestSlot(tick, minStart, span.end) : durationEndSlot(grid, nearestSlot(tick, span.start, durationLimit(span.start, index)));
           update();
@@ -552,15 +580,31 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     markEdited: () => { if (result) { changed = true; options.edited(); } refresh(); },
     backspace: () => { focusSlot(grid.availableSlots.at(-1)!); put(''); },
     card, feedback,
-    check: () => { countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention); changed = false; refresh(); return result; },
+    check: () => { countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention, system); changed = false; refresh(); return result; },
     retry: () => { result = null; changed = false; refresh(); },
     reset: () => reset(false),
     focus: (last = false) => focusSlot(last ? grid.availableSlots.at(-1)! : grid.availableSlots[0]!),
-    update: (symbol: OffbeatSymbol, display: CountPresentation, convention: DottedQuarterConvention) => {
+    update: (symbol: OffbeatSymbol, display: CountPresentation, convention: DottedQuarterConvention, nextSystem: CountingSystem = 'numbers') => {
+      let announcement: string | null = null;
+      if (system !== nextSystem) {
+        buffer.clear(); countPopover.dismiss();
+        let cleared = 0;
+        if (!grid.policy.compound) answer.symbols = answer.symbols.map((token, i) => {
+          const translated = translateCount(token, grid.slots[i]!.position, system, nextSystem);
+          if (token && !translated) cleared++;
+          return translated;
+        });
+        system = nextSystem;
+        grid.slots.forEach(slot => { slot.symbol = countAt(slot.position, grid.policy.compound, system); });
+        result = null; changed = false; options.edited();
+        announcement = cleared ? `${cleared} ambiguous count token(s) cleared. Check again.` : 'Counting system changed. Check again.';
+        card.dataset.clearedCounts = String(cleared);
+      }
       if (dottedConvention !== convention && result) { changed = true; options.edited(); }
       offbeat = symbol; presentation = display; dottedConvention = convention; refresh();
+      if (announcement) live.textContent = announcement;
     },
-    suspend: () => { countPopover.dismiss(); cancelKeyboardLine(); lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); },
+    suspend: () => { buffer.clear(); countPopover.dismiss(); cancelKeyboardLine(); lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); },
     resume: () => { if (options.hidden()) return; positionNotationTargets(); renderRestMarks(); renderLinePreview(); },
     destroy: () => { lifecycle.abort(); observer.disconnect(); countPopover.destroy(); card.remove(); feedback.remove(); },
   };

@@ -1,13 +1,14 @@
+import type { CountingSystem } from './input.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-import { compare, fraction } from '../../music/fraction.ts';
+import { compare, divide, fraction } from '../../music/fraction.ts';
 import { countGrid } from './grid.ts';
 import type { Span } from './evaluation.ts';
 
 /** Derived answer coordinates only. Authored music stays in RhythmMeasure. */
-export function passageGrid(source: readonly RhythmMeasure[]) {
+export function passageGrid(source: readonly RhythmMeasure[], system: CountingSystem = 'numbers') {
   const derived = derivePassage(source);
-  const grids = source.map(countGrid);
+  const grids = source.map(m => countGrid(m, system));
   const offsets = grids.map((_, index) => grids.slice(0, index).reduce((sum, grid) => sum + grid.slots.length, 0));
   const sounding = derived.attacks.map(attack => {
     const first = attack.sources[0]!, last = attack.sources.at(-1)!;
@@ -26,7 +27,7 @@ export function passageGrid(source: readonly RhythmMeasure[]) {
     const position = offsets[measure]! + index;
     const sound = sounding.find(s => s.start <= position && s.end >= position)!;
     const attack = sound.start === position;
-    const dottedInternal = compare(sound.duration, fraction(3, 8)) === 0 && !slot.onCount && !attack;
+    const dottedInternal = compare(sound.duration, fraction(3, 8)) === 0 && !slot.onCount && divide(slot.position, fraction(1, 8))[1] === 1 && !attack;
     return { ...slot, measure, index, sound, attack, dottedInternal, available: slot.available || dottedInternal };
   }));
   grids.forEach((grid, measure) => {

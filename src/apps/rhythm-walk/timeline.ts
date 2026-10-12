@@ -23,7 +23,7 @@ export function timingTimelines(record: AttemptRecord) {
     const grid = countGrid(measure);
     const duration = musicalSeconds(grid.measure.length, record.bpm, grid.policy.pulse);
     const end = start + duration;
-    const position = (time: number) => Math.max(0, Math.min(100, slotX((time - start) / duration * grid.slots.length, grid.slots.length)));
+    const position = (time: number) => Math.max(0, Math.min(100, slotX((time - start) / duration * grid.slots.length, grid.slots.length, grid.fine)));
     const contains = (time: number) => time >= start && time < end || index === 0 && time < 0 || index === record.exercise.measures.length - 1 && time >= end;
     const expected = record.plan.notes.flatMap((note, i) => note.sources[0]!.measure === index ? [{ x: position(note.start), time: note.start, missing: evaluation.missing.includes(i) }] : []);
     const received = evaluation.holds.flatMap((hold, i) => {
