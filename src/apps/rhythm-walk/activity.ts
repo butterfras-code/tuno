@@ -7,7 +7,7 @@ import type { Exercise } from './fixtures.ts';
 import { defaultPresentation, linePlacementOptions, sustainAppearanceOptions } from '../count-writing/presentation.ts';
 import type { CountPresentation } from '../count-writing/presentation.ts';
 import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
-import type { OffbeatSymbol } from '../count-writing/input.ts';
+import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 import { meters } from './shared/meter.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 import { derivePassage } from '../../music/measure.ts';
@@ -24,11 +24,11 @@ export const presets: readonly PassageFixture[] = [
 ];
 export interface Preferences {
   version: 1; mode: Mode; generation: GenerationSettings; preset: string;
-  offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
+  countingSystem: CountingSystem; offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   bpm: number; metronome: boolean; showCounts: boolean; wrapped: boolean; playStyle: PlayStyle;
 }
 export const preferenceKey = 'tuno.rhythm-walk.preferences.v1';
-export const defaultPreferences = (): Preferences => ({ version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
+export const defaultPreferences = (): Preferences => ({ version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', countingSystem: 'numbers', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
 /** Restore known, structurally valid fields; keep invalid ingredient combinations editable. */
 export function readPreferences(raw: string | null): Preferences {
   const defaults = defaultPreferences();
@@ -38,6 +38,7 @@ export function readPreferences(raw: string | null): Preferences {
     if (modes.includes(p.mode!)) defaults.mode = p.mode!;
     if (playStyles.includes(p.playStyle!)) defaults.playStyle = p.playStyle!;
     if (p.preset === 'generated' || presets.some(f => f.id === p.preset)) defaults.preset = p.preset!;
+    if (p.countingSystem === 'numbers' || p.countingSystem === 'syllables') defaults.countingSystem = p.countingSystem;
     if (p.offbeat === '&' || p.offbeat === '+') defaults.offbeat = p.offbeat;
     if (['review', 'required', 'optional'].includes(p.convention!)) defaults.convention = p.convention!;
     if (linePlacementOptions.some(o => o.value === p.presentation?.linePlacement) && sustainAppearanceOptions.some(o => o.value === p.presentation?.sustainAppearance)) defaults.presentation = { ...p.presentation! };

@@ -3,7 +3,7 @@ import { button, el, field, select } from '../../../shared/ui/components.ts';
 import type { DottedQuarterConvention } from '../../count-writing/evaluation.ts';
 import { linePlacementOptions, sustainAppearanceOptions } from '../../count-writing/presentation.ts';
 import type { CountPresentation, LinePlacement, SustainAppearance } from '../../count-writing/presentation.ts';
-import type { OffbeatSymbol } from '../../count-writing/input.ts';
+import type { OffbeatSymbol, CountingSystem } from '../../count-writing/input.ts';
 import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
@@ -64,6 +64,7 @@ export function createSettingsPage(callbacks: {
   playField: HTMLElement;
   newExercise: () => void;
   generation: (value: GenerationSettings) => void;
+  system: (value: CountingSystem) => void;
   offbeat: (value: OffbeatSymbol) => void;
   placement: (value: LinePlacement) => void;
   appearance: (value: SustainAppearance) => void;
@@ -80,9 +81,12 @@ export function createSettingsPage(callbacks: {
   const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
   const activeControls = el('div', 'settings-live-controls');
   const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
-  offbeat.dataset.setting = 'count-system';
-  const systemField = field('Counting system', offbeat);
-  systemField.append(el('p', 'setting-hint', 'In simple meters, either + or & enters the chosen offbeat symbol. Changing it preserves your answer. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
+  offbeat.dataset.setting = 'offbeat-symbol';
+  const system = select([{ value: 'numbers', label: '1 e & a' }, { value: 'syllables', label: '1 ta-te-ta' }], value => callbacks.system(value as CountingSystem));
+  system.dataset.setting = 'count-system';
+  const systemField = field('Counting system', system);
+  systemField.append(field('Offbeat symbol · 1 e & a', offbeat));
+  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for an atomic syllable. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
   const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
   convention.dataset.setting = 'dotted-quarter-convention';
   const conventionField = field('Dotted-quarter internal &', convention);
@@ -118,7 +122,7 @@ export function createSettingsPage(callbacks: {
     });
     label.append(input, el('span', '', meter)); meterField.append(label);
   }
-  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
+  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. Sixteenth notes/rests and dotted eighth notes are retained but omitted in 6/8. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
   const lengthField = field('Exercise length', length);
   lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
   const vocabulary = el('fieldset', 'settings-options active-ingredients');
@@ -199,8 +203,9 @@ export function createSettingsPage(callbacks: {
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
       if (!active) newExercise.disabled = Boolean(generationIssue(generation));
     },
-    sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false) => {
-      offbeat.disabled = convention.disabled = locked || compound;
+    sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false, countingSystem: CountingSystem = 'numbers') => {
+      system.disabled = convention.disabled = locked || compound;
+      system.value = countingSystem; offbeat.disabled = locked || compound || countingSystem === 'syllables';
       offbeat.value = symbol; convention.value = value;
       placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance;
     },

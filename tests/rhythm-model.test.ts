@@ -92,7 +92,7 @@ test('rests advance time but emit no attack; bars reject gaps and overflow', () 
 test('prototype guard separates domain support from rendering and counting support', () => {
   const sixteenths = bar(Array.from({ length:16 }, () => ['S'] as const));
   assert.doesNotThrow(() => deriveMeasure(sixteenths));
-  assert.throws(() => countGrid(sixteenths), /currently supports/);
+  assert.equal(countGrid(sixteenths).slots.length, 16);
   assert.throws(() => countGrid({ meter:[6,8], events:[['Q',{dots:2}], ['E',{dots:1}], ['E']] }), /currently supports/);
 });
 test('counting policy follows notation, not fixture IDs, including shifted dotted quarters', () => {

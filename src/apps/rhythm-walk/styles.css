@@ -190,3 +190,29 @@ main.rhythm-app {
 .performance-surface[hidden] { display: none; }
 
 .timeline-lift-window { stroke: var(--color-teal); stroke-width: 2; stroke-dasharray: 2 3; opacity: .65; }
+
+/* A dense bar takes a full system. On compact systems, subdivision lanes keep
+   count and duration targets at usable sizes without changing musical x/time. */
+.passage-strip:has(.fine-grid) { grid-template-columns: minmax(0, 1fr); }
+@container (max-width: 900px) {
+  .fine-grid .answer-area { --subdivision-row: 56px; --anchor-y: 302px; --anchor-x: 0px; }
+  .fine-grid .counts { height: 500px; }
+  .passage .fine-grid .count-slot { width: 44px; font-size: 22px; top: calc(42px + var(--subdivision) * 56px); }
+  .fine-grid .answer-area[data-appearance="raised"] .count-slot.sustained { top: calc(30px + var(--subdivision) * 56px); font-size: 19px; }
+  .fine-grid .answer-area[data-appearance="lowered"] .count-slot.sustained { top: calc(54px + var(--subdivision) * 56px); font-size: 19px; }
+  .passage .fine-grid .duration-anchor { width: 44px; top: calc(var(--anchor-y) + var(--subdivision) * 56px); }
+  .rhythm-app .fine-grid .score-actions { position: static; pointer-events: auto; }
+  .rhythm-app .fine-grid .score-actions > .control, .rhythm-app .fine-grid .write-actions { transform: none; }
+}
+
+/* Fine-grid rest editing has full-size popup actions. Keep bracket edges clear
+   of count centers, and avoid overlapping ghost targets in dense lanes. */
+.fine-grid .rest-targets { display: none; }
+.fine-grid .rest-existing-opening, .fine-grid .rest-existing-closing { width: 12px; }
+.fine-grid .rest-existing-opening { left: 0; }
+.fine-grid .rest-existing-closing { right: 0; }
+.fine-grid .rest-existing-opening .rest-opening { left: 0; width: 10px; }
+.fine-grid .rest-existing-closing .rest-closing { right: 0; width: 10px; }
+
+.count-popover-rest-actions { grid-template-columns: minmax(0, 1fr); margin-top: 8px; }
+.count-popover-rest { min-height: 44px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-canvas); color: var(--color-ink); font: 700 14px var(--font-heading); cursor: pointer; }

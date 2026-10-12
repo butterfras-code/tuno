@@ -2,7 +2,7 @@ import { meters, meterPolicy, syncopated } from './meter.ts';
 import type { CountMeter } from './meter.ts';
 import { derivePassage, deriveMeasure, duration } from '../../../music/measure.ts';
 import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
-import { add, compare, fraction } from '../../../music/fraction.ts';
+import { add, compare, divide, fraction, multiply } from '../../../music/fraction.ts';
 import type { Fraction } from '../../../music/fraction.ts';
 import { readableRestPlacement } from './notation-policy.ts';
 
@@ -15,6 +15,9 @@ export const ingredients = [
   { id: 'eighth-rest', label: 'Eighth rests', event: ['E', { rest: true }] },
   { id: 'half-rest', label: 'Half rests', event: ['H', { rest: true }] },
   { id: 'dotted-quarter-rest', label: 'Dotted quarter rests', event: ['Q', { dots: 1, rest: true }] },
+  { id: 'sixteenth', label: 'Sixteenth notes', event: ['S'] },
+  { id: 'sixteenth-rest', label: 'Sixteenth rests', event: ['S', { rest: true }] },
+  { id: 'dotted-eighth', label: 'Dotted eighth notes', event: ['E', { dots: 1 }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
 export interface GenerationSettings {
@@ -27,7 +30,7 @@ export interface GenerationSettings {
   ties?: boolean;
   syncopation?: boolean;
 }
-export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => i.id !== 'dotted-quarter-rest').map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
 
 /** The pool chooses one meter for the whole exercise, never one per measure. */
 export function selectedMeters(settings: GenerationSettings): CountMeter[] {
@@ -48,12 +51,17 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
   if (!settings.ingredients.length) throw new Error('Select at least one rhythm ingredient.');
   // Retain selections across meters; only generate the supported, readable subset.
   const pool = ingredients.filter(i => settings.ingredients.includes(i.id) &&
-    !(policy.compound && i.event[0] === 'H') &&
+    !(policy.compound && (i.event[0] === 'H' || ['sixteenth', 'sixteenth-rest', 'dotted-eighth'].includes(i.id))) &&
     !(!policy.compound && !settings.allowUnintuitiveNotation && i.id === 'dotted-quarter-rest'));
   const memo = new Map<string, boolean>();
   const barEnd = policy.length;
   const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && syncopated(position, duration(ingredient.event), policy.pulse);
+  const quarterEnd = (position: Fraction) => { const beat = divide(position, fraction(1, 4)); return multiply(fraction(Math.floor(beat[0] / beat[1]) + 1), fraction(1, 4)); };
   const allowedAt = (ingredient: typeof pool[number], position: Fraction, used = 0) =>
+    // Readable short values stay inside quarter groups; dotted eighths start on a beat.
+    (policy.compound || settings.allowUnintuitiveNotation || compare(duration(ingredient.event), fraction(1, 4)) >= 0 ||
+      (compare(add(position, duration(ingredient.event)), quarterEnd(position)) <= 0 &&
+       (ingredient.id !== 'dotted-eighth' || divide(position, fraction(1, 4))[1] === 1))) &&
     (!syncAt(ingredient, position) || (settings.syncopation && used === 0)) && compare(add(position, duration(ingredient.event)), barEnd) <= 0 &&
     (settings.allowUnintuitiveNotation || readableRestPlacement(ingredient.event, position, policy.id));
   function fills(position: Fraction, used = 0): boolean {

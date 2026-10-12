@@ -1,5 +1,7 @@
 # Rhythm Walk meters
 
+Current simple-meter sixteenth vocabulary, both counting systems and adaptive grid policy are specified in [sixteenths](sixteenths.md). 6/8 vocabulary and numbered counting are unchanged.
+
 Current behavior, reconciled 2026-10-11 with `99046ee`. Read alongside the [unified Rhythm Walk contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
 Implemented slice: 2/4, 3/4, 4/4 and 6/8, one meter drawn from the checked time signatures throughout each exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Preferences survive reloads; responses/results do not. Both response modes use the same exercise and meter policy.

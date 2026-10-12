@@ -1,8 +1,9 @@
+import type { CountingSystem } from './input.ts';
 import { countGrid } from './grid.ts';
 import { passageGrid } from './passage.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-export const alphabet = ['1', '2', '3', '4', '5', '6', '&', 'e', 'a'] as const;
+export const alphabet = ['1', '2', '3', '4', '5', '6', '&', 'e', 'a', 'ta', 'te'] as const;
 export type CountSymbol = typeof alphabet[number] | '';
 export interface Span { start: number; end: number }
 export interface CountAnswer { symbols: CountSymbol[]; spans: Span[]; rests: Span[] }
@@ -19,11 +20,11 @@ export const blankAnswer = (measure: RhythmMeasure): CountAnswer => {
  * Dotted-quarter internal & is accepted both present and absent pending review.
  */
 export type DottedQuarterConvention = 'review' | 'required' | 'optional';
-function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConvention: DottedQuarterConvention = 'review'): Evaluation {
+function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConvention: DottedQuarterConvention = 'review', system: CountingSystem = 'numbers'): Evaluation {
   const counts: Dimension = { verdict: 'correct', issues: [] };
   const spans: Dimension = { verdict: 'correct', issues: [] };
   const rests: Dimension = { verdict: 'correct', issues: [] };
-  const grid = countGrid(measure);
+  const grid = countGrid(measure, system);
   if (answer.symbols.length !== grid.slots.length) throw new Error('Answer does not match count grid.');
   const hasDottedQuarter = grid.slots.some(s => s.dottedInternal);
   let countReview = hasDottedQuarter && dottedConvention === 'review';
@@ -73,18 +74,18 @@ function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConv
 }
 
 /** Single-bar entry validates complete tie chains, too. */
-export function evaluate(measure: RhythmMeasure, answer: CountAnswer, convention: DottedQuarterConvention = 'review'): Evaluation {
-  if (measure.events.some(e => e[1]?.tieNext)) return evaluatePassage([measure], [answer], convention)[0]!;
-  return evaluateMeasure(measure, answer, convention);
+export function evaluate(measure: RhythmMeasure, answer: CountAnswer, convention: DottedQuarterConvention = 'review', system: CountingSystem = 'numbers'): Evaluation {
+  if (measure.events.some(e => e[1]?.tieNext)) return evaluatePassage([measure], [answer], convention, undefined, system)[0]!;
+  return evaluateMeasure(measure, answer, convention, system);
 }
 
 /** Rest pairs stay measure-local. Duration spans may use passage-wide derived positions. */
-export function evaluatePassage(measures: readonly RhythmMeasure[], answers: readonly CountAnswer[], convention: DottedQuarterConvention = 'review', passageSpans?: readonly Span[]): Evaluation[] {
+export function evaluatePassage(measures: readonly RhythmMeasure[], answers: readonly CountAnswer[], convention: DottedQuarterConvention = 'review', passageSpans?: readonly Span[], system: CountingSystem = 'numbers'): Evaluation[] {
   derivePassage(measures);
   if (answers.length !== measures.length) throw new Error('Provide one answer per measure.');
-  const results = measures.map((measure, index) => evaluateMeasure(measure, answers[index]!, convention));
+  const results = measures.map((measure, index) => evaluateMeasure(measure, answers[index]!, convention, system));
   if (measures.some(m => m.events.some(e => e[1]?.tieNext)) || passageSpans) {
-    const grid = passageGrid(measures);
+    const grid = passageGrid(measures, system);
     const lines = passageSpans ?? answers.flatMap((answer, measure) => answer.spans.map(span => ({ start: span.start + grid.offsets[measure]!, end: span.end + grid.offsets[measure]! })));
     results.forEach(result => { result.counts = { verdict: 'correct', issues: [] }; result.spans = { verdict: 'correct', issues: [] }; });
     grid.slots.forEach(slot => {

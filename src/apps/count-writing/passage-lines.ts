@@ -116,8 +116,8 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
       all.forEach((span, index) => spanPieces(span, grid.grids.map(g => g.slots.length)).filter(p => p.measure === measure).forEach(piece => {
         const track = el('div', `duration-line passage-duration${span.draft ? ' draft-line' : ''}`);
         track.dataset.line = String(index); track.dataset.incoming = String(piece.incoming); track.dataset.outgoing = String(piece.outgoing);
-        const x1 = piece.incoming ? 0 : slotX(piece.start, grid.grids[measure]!.slots.length), x2 = piece.outgoing ? 100 : slotX(piece.end, grid.grids[measure]!.slots.length);
-        track.style.left = `${x1}%`; track.style.width = `${x2 - x1}%`; track.style.top = `calc(var(--anchor-y) + ${laneFor[index]! * 44}px)`;
+        const x1 = piece.incoming ? 0 : slotX(piece.start, grid.grids[measure]!.slots.length, grid.grids[measure]!.fine), x2 = piece.outgoing ? 100 : slotX(piece.end, grid.grids[measure]!.slots.length, grid.grids[measure]!.fine);
+        track.style.left = `${x1}%`; track.style.width = `${x2 - x1}%`; track.style.top = `calc(var(--anchor-y) + var(--subdivision-row, 0px) * ${grid.grids[measure]!.slots[piece.start]?.subdivision ?? 0} + ${laneFor[index]! * 44}px)`;
         if (!span.draft) {
           const body = button('', () => { draft = { ...spans[index]!, end: lastAvailable(spans[index]!.end), editing: index }; render(); });
           body.addEventListener('keydown', event => { if (['Delete', 'Backspace'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); removeSaved(index); } });
