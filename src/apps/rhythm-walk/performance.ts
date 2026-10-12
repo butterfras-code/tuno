@@ -155,20 +155,20 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (!main.closest('[hidden]')) results.heading.focus({ preventScroll: true });
     const evaluation = evaluateAttempt(record);
     const evidence = el('details', 'timing-evidence'); evidence.append(el('summary', '', 'Timing evidence'), download);
-    review.replaceChildren(el('h2', '', 'Target-time review'), evidence);
+    review.replaceChildren(evidence);
     if (evaluation.status === 'interrupted') {
-      status.textContent = 'Interrupted'; review.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
+      status.textContent = 'Interrupted'; evidence.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
     }
     status.textContent = 'Reviewing';
-    if (record.timingOffset) review.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
+    if (record.timingOffset) evidence.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
     const holdStyle = (record.playStyle ?? 'hold') === 'hold';
-    review.append(el('p', '', `${holdStyle ? 'Tap + Hold' : 'Tap'} · ${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. ${holdStyle ? 'Review attacks, duration and releases below.' : 'Review attacks below. Releases are not graded.'}`));
-    if (holdStyle) review.append(el('p', 'note', 'Expected timeline: solid sections show holding; dashed sections allow a brief lift before the next separate note. Ties stay continuous. This timeline uses target tempo; hold accuracy uses the labeled rhythm tempo basis.'));
+    evidence.append(el('p', '', `${holdStyle ? 'Tap + Hold' : 'Tap'} · ${evaluation.evidenceAvailable ? `${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra.` : 'Musical assessment unavailable; target-relative evidence below is ungraded.'} ${holdStyle ? 'Review attacks, duration and releases below.' : 'Review attacks below. Releases are not graded.'}`));
+    if (holdStyle) evidence.append(el('p', 'note', record.assessmentPolicy?.version !== 2 ? 'Legacy attempt: expected dashed end sections retain the saved target-time lift allowance. Hold feedback retains the original release policy.' : 'Expected bars show written duration at target tempo. Sustain is assessed from your own attack at the labeled assessment tempo. Lift between separate notes; hold through ties.'));
     const list = el('ol');
     record.plan.notes.forEach((note, i) => {
       const match = evaluation.matches.find(m => m.expected === i);
       const refs = note.sources.map(s => `measure ${s.measure + 1}, note ${s.event + 1}`).join(' → ');
-      const text = `${refs}${note.sources.length > 1 ? ' (tied chain)' : ''}: ${match ? `attack ${offset(match.onsetOffset)} (${match.attackAccepted ? 'within provisional tolerance' : 'outside provisional tolerance'})${holdStyle ? `; release ${offset(match.releaseOffset)}; duration ${match.durationFeedback}` : ''}` : 'missing attack'}.`;
+      const text = `${refs}${note.sources.length > 1 ? ' (tied chain)' : ''}: ${match ? `attack ${offset(match.onsetOffset)} (${!evaluation.evidenceAvailable ? 'musical assessment unavailable' : match.attackAccepted ? 'accepted musical timing' : 'rhythm needs attention'})${holdStyle ? `; release ${offset(match.releaseOffset)}; duration ${match.durationFeedback}` : ''}` : evaluation.evidenceAvailable ? 'missing attack' : 'musical assessment unavailable; raw evidence retained'}.`;
       const item = el('li', '', text); item.id = `feedback-note-${i}`; list.append(item);
 
     });
@@ -176,12 +176,12 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
       const overlaps = evaluation.restOverlaps.filter(o => o.rest === i);
       const attacks = evaluation.restAttacks.filter(o => o.rest === i);
       const violations = evaluation.restViolations.filter(o => o.rest === i);
-      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${holdStyle ? overlaps.length ? `${overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ')} (${violations.length ? 'input needs attention' : 'within attack/release tolerance'})` : 'silent' : violations.length ? `${violations.length} attack(s) during rest outside tolerance` : attacks.length ? `${attacks.length} early attack(s) within tolerance; raw rest overlap retained` : 'no attacks during rest'}.`;
+      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${!evaluation.evidenceAvailable ? 'musical assessment unavailable; raw intersections retained' : holdStyle ? overlaps.length ? `${overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ')} (${violations.length ? 'input needs attention' : 'accepted musical timing; target intersections retained'})` : 'silent' : violations.length ? `${violations.length} attack(s) during rest outside tolerance` : attacks.length ? `${attacks.length} target-relative attack intersection(s); musical timing accepted` : 'no attacks during rest'}.`;
       const item = el('li', '', text); item.id = `feedback-rest-${i}`; list.append(item);
 
     });
     evaluation.extra.forEach(i => list.append(el('li', '', `Extra attack at ${evaluation.holds[i]!.down.toFixed(3)} s after exercise start.`)));
-    review.append(list); options.decorate(record);
+    evidence.append(list); options.decorate(record);
     if (record.timingOffset) {
       const raw = evaluateAttempt(record, null);
       const details = el('details'); details.append(el('summary', '', 'Raw timing before correction'));
@@ -189,9 +189,9 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
       const rawList = el('ul');
       raw.matches.forEach(match => rawList.append(el('li', '', `Attack ${match.expected + 1}: ${offset(match.onsetOffset)}; release ${offset(match.releaseOffset)}.`)));
       raw.extra.forEach(i => rawList.append(el('li', '', `Unmatched raw attack at ${raw.holds[i]!.down.toFixed(3)} s.`)));
-      details.append(rawList); review.append(details);
+      details.append(rawList); evidence.append(details);
     }
-    if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) review.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
+    if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) evidence.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
   }
   // Starting is a separate gesture: its release must never enter the capture.
   let startingKey = false;

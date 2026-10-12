@@ -30,7 +30,7 @@ export function timingTimelines(record: AttemptRecord) {
       if (hold.countIn) return [];
       const match = evaluation.matches.find(match => match.hold === i);
       const belongs = match ? record.plan.notes[match.expected]!.sources[0]!.measure === index : contains(hold.down);
-      return belongs ? [{ x: position(hold.down), time: hold.down, extra: evaluation.extra.includes(i), attention: match ? !match.attackAccepted : true }] : [];
+      return belongs ? [{ x: position(hold.down), time: hold.down, extra: evaluation.extra.includes(i), attention: match ? !match.attackAccepted : evaluation.evidenceAvailable }] : [];
     });
     // Split intervals in musical time at each measure. The renderer never creates
     // an attack at a clipped segment edge, including automatic system breaks.
@@ -48,7 +48,7 @@ export function timingTimelines(record: AttemptRecord) {
     const expectedSustain = showSustain ? record.plan.notes.flatMap((note, i) => {
       const pieces = segment(note.start, note.end, note.end, evaluation.missing.includes(i) ? 'missing' : 'accepted');
       const adjacent = Math.abs((record.plan.notes[i + 1]?.start ?? Infinity) - note.end) < 1e-9;
-      if (adjacent) {
+      if (adjacent && record.assessmentPolicy?.version !== 2) {
         const allowance = releaseAllowances(note.end - note.start, true, record.evaluationPolicy ?? legacyEvaluation, note.finalSegmentDuration);
         const windowStart = note.end - allowance.early;
         // Only the final sounding-chain end permits lifting. Internal ties and
@@ -64,10 +64,10 @@ export function timingTimelines(record: AttemptRecord) {
       // Count-in holds may continue sounding across the start: show the observed
       // interval without inventing an attack or a release.
       const match = evaluation.matches.find(m => m.hold === i);
-      return segment(hold.down, hold.up, hold.up ?? record.endedAt - hold.correction, match?.durationFeedback ?? 'extra', match ? record.plan.notes[match.expected]!.sources[0]!.measure : undefined);
+      return segment(hold.down, hold.up, hold.up ?? record.endedAt - hold.correction, match?.durationFeedback ?? (evaluation.evidenceAvailable ? 'extra' : 'unavailable'), match ? record.plan.notes[match.expected]!.sources[0]!.measure : undefined);
     }) : [];
     start = end;
-    return { expected, received, expectedSustain, receivedSustain, showSustain };
+    return { expected, received, expectedSustain, receivedSustain, showSustain, assessmentAvailable:evaluation.evidenceAvailable, ownAttackPolicy:record.assessmentPolicy?.version === 2 };
   });
 }
 
@@ -76,8 +76,8 @@ export function renderTimingTimeline(data: ReturnType<typeof timingTimelines>[nu
   svg.classList.add('timing-timeline'); svg.setAttribute('viewBox', '0 0 800 64');
   svg.setAttribute('role', 'img');
   const durations = data.receivedSustain.map(s => s.incomplete ? 'Incomplete hold: no release observed; dashed extent ends at capture limit.' : `Hold ${Math.round(s.start * 1000)}–${Math.round(s.end! * 1000)} ms: ${s.feedback}.`).join(' ');
-  const attacks = `${data.expected.length} expected; ${data.received.length} received; ${data.expected.filter(h => h.missing).length} missing; ${data.received.filter(h => h.extra).length} extra; ${data.received.filter(h => !h.extra && h.attention).length} matched attacks outside provisional tolerance.`;
-  svg.setAttribute('aria-label', `Expected and received attacks${data.showSustain ? ' and held durations' : ' only; releases not graded'}${corrected ? ' after session timing correction' : ''}. ${attacks} ${durations}${data.showSustain ? ' Expected solid sections show sustain; dashed sections permit lifting before the next separate note, at target tempo. Internal ties require uninterrupted holding.' : ''}`);
+  const attacks = `${data.expected.length} expected; ${data.received.length} received; ${data.expected.filter(h => h.missing).length} missing; ${data.received.filter(h => h.extra).length} extra; ${data.received.filter(h => !h.extra && h.attention).length} matched attacks needing rhythm attention.`;
+  svg.setAttribute('aria-label', `Expected and received attacks${data.showSustain ? ' and held durations' : ' only; releases not graded'}${corrected ? ' after session timing correction' : ''}. ${data.assessmentAvailable ? '' : 'Musical assessment unavailable; actual timing evidence is retained without warning colors. '}${attacks} ${durations}${data.showSustain ? data.ownAttackPolicy ? ' Expected bars show written duration at target tempo. Hold feedback uses elapsed time from your own attack. Lift between separate notes; hold through ties.' : ' Legacy expected dashed ends permit lifting under the saved target-time release policy. Internal ties require continuous holding.' : ''}`);
   function element(name: string, attributes: Record<string, string>, text?: string) {
     const node = document.createElementNS(svg.namespaceURI, name);
     Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
@@ -88,7 +88,7 @@ export function renderTimingTimeline(data: ReturnType<typeof timingTimelines>[nu
     if (first) svg.append(element('text', { x: '4', y: String(row + 5), class: 'timeline-label' }, label));
     svg.append(element('line', { x1: first ? '104' : '0', x2: '800', y1: String(row), y2: String(row), class: 'timeline-rail' }));
     sustain.forEach(s => {
-      const attention = !['accepted', 'not-graded'].includes(s.feedback);
+      const attention = !['accepted', 'not-graded', 'unavailable'].includes(s.feedback);
       const releaseWindow = s.releaseWindow;
       if (releaseWindow) {
         const optional = element('line', { x1: String(releaseWindow.x1 * 8), x2: String(releaseWindow.x2 * 8), y1: String(row), y2: String(row), class: 'timeline-lift-window' });
@@ -106,7 +106,7 @@ export function renderTimingTimeline(data: ReturnType<typeof timingTimelines>[nu
     });
     hits.forEach(hit => {
       const marker = element('line', { x1: String(hit.x * 8), x2: String(hit.x * 8), y1: String(row - 8), y2: String(row + 8), class: 'timeline-hit' + ('missing' in hit && hit.missing || 'extra' in hit && hit.extra || 'attention' in hit && hit.attention ? ' unmatched' : '') });
-      const feedback = 'missing' in hit && hit.missing ? '; missing attack' : 'extra' in hit && hit.extra ? '; extra attack' : 'attention' in hit && hit.attention ? '; attack outside provisional tolerance' : '';
+      const feedback = 'missing' in hit && hit.missing ? '; missing attack' : 'extra' in hit && hit.extra ? '; extra attack' : 'attention' in hit && hit.attention ? '; attack needing rhythm attention' : '';
       marker.append(element('title', {}, `${label} attack at ${Math.round(hit.time * 1000)} ms from exercise start${feedback}${hit.x === 0 || hit.x === 100 ? ' (clipped to score edge)' : ''}`));
       svg.append(marker);
     });

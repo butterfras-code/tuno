@@ -1,5 +1,5 @@
 /** Run in native T3 preview_evaluate. __assessmentScenario: keyboard, pointer,
- * slower, compound, or cancellation. Synthetic timestamps test lifecycle and
+ * slower, compound, accepted, or cancellation. Synthetic timestamps test lifecycle and
  * interpretation; they do not validate physical device latency or audio output. */
 window.__assessmentCheck = (async () => {
   const scenario = window.__assessmentScenario ?? 'keyboard';
@@ -24,13 +24,13 @@ window.__assessmentCheck = (async () => {
   const download=async()=>{button('Download timing evidence').click();return evidence;};
   const begin=async(retry=false)=>{scheduled=[];(retry?button('Try again'):pad).click();await wait(()=>scheduled.length && document.querySelector('.tap-response .status').textContent.startsWith('Count-in'));return scheduled[0]+document.querySelectorAll('.count-in-dot').length*60/Number(tempo.value);};
   let stampAnchor;
-  const pointer=scenario==='pointer'||scenario==='compound';
+  const pointer=scenario==='pointer'||scenario==='compound'||scenario==='accepted';
   const stamp=(action,time,start)=>{
     const event=pointer?new PointerEvent(action==='down'?'pointerdown':'pointerup',{pointerId:71,pointerType:'touch',button:0,bubbles:true,cancelable:true}):new KeyboardEvent(action==='down'?'keydown':'keyup',{code:'Space',key:' ',bubbles:true,cancelable:true});
     Object.defineProperty(event,'timeStamp',{value:stampAnchor+(start+time+.015)*1000});pad.dispatchEvent(event);
   };
   try {
-    choose(mode,'both');choose(preset,'half');choose(preset,scenario==='compound'?'six-eighths':'quarters');choose(tempo,'180');choose(style,pointer?'hold':'tap');
+    choose(mode,'both');choose(preset,'half');choose(preset,scenario==='compound'?'six-eighths':'quarters');choose(tempo,scenario==='accepted'?'120':'180');choose(style,pointer?'hold':'tap');
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;
     const slot=document.querySelector('.count-slot');slot.focus();slot.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
@@ -45,9 +45,10 @@ window.__assessmentCheck = (async () => {
     }
     await wait(()=>context.currentTime>=start+.01);
     stampAnchor=performance.now()-context.currentTime*1000;
-    const scale=scenario==='slower'?1.4:1, count=scenario==='compound'?6:8, spacing=scenario==='compound'?1/9:1/3;
-    for(let i=0;i<count;i++) {stamp('down',i*spacing*scale,start);if(i<count-1)stamp('up',pointer?(i+1)*spacing*scale-.005:i*spacing*scale+.01,start);}
-    // Complete with last key/pointer still down. Its late release goes to the
+    const scale=scenario==='slower'?1.4:1, count=scenario==='compound'?6:8, spacing=scenario==='compound'?1/9:scenario==='accepted'?1/2:1/3;
+    for(let i=0;i<count;i++) {const shift=scenario==='accepted'?.08:0;stamp('down',i*spacing*scale+shift,start);if(scenario==='accepted')stamp('up',i*spacing+shift+spacing*(i===count-1?.8:.7),start);else if(i<count-1)stamp('up',pointer?(i+1)*spacing*scale-.005:i*spacing*scale+.01,start);}
+    // Except in the accepted-sustain case, complete with the last input down.
+    // Its late release goes to the
     // hidden pad or focused noninteractive heading, never to a result button.
     await wait(()=>surface.hidden);await sleep(40);
     assert(document.activeElement.id==='performance-results-heading','completion moves focus to results heading');
@@ -56,10 +57,13 @@ window.__assessmentCheck = (async () => {
     document.activeElement.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true}));
     assert(surface.hidden && panel.isConnected,'finishing release and synthesized click cannot retry');
     assert(text.includes(`Rhythm accuracy at ${scenario==='compound'?'target':'performed'} tempo:`) && Number(text.match(/tempo: (\d+)%/)[1])>=95,'pattern score and tempo basis are explicit (synthetic clock tolerance)');
+    assert(panel.querySelector('.result-summary') && !/BPM|%|ms/.test(panel.querySelector('.result-summary').textContent),'concise musical summary without technical metrics');
+    assert(!panel.querySelector('details').open && panel.querySelector('details .result-metrics'),'numbers remain available in collapsed Details');
     assert(text.includes('Hold accuracy')===pointer,'hold metric follows attempt style');
     assert(document.querySelectorAll('.timing-timeline').length>0 && document.querySelectorAll('.notation').length>0,'score and target timelines remain');
     assert(id()===exercise && written()===answer,'Both retains independent writing');
-    const record=await download();assert(record.assessmentPolicy.version===1 && record.assessment.matches.length===count,'download includes snapshot, estimates and counts');
+    const record=await download();assert(record.assessmentPolicy.version===2 && record.holdPolicy.version===3 && record.assessment.matches.length===count,'download includes snapshot, estimates and counts');
+    if(scenario==='accepted') {assert(record.assessment.rhythm===100 && record.assessment.hold===100,'late start and elapsed 70/80 percent sustain accepted');assert(!document.querySelector('.timeline-sustain.attention, .timeline-hit.unmatched, [data-feedback=overlap]'),'accepted assessment has no contradictory timeline or score warnings');assert(!document.querySelector('.timeline-lift-window'),'target-time lift-credit promise removed');}
     if(scenario==='slower') assert(Math.abs(record.assessment.tempo.bpm-180/1.4)<2 && record.assessment.extra===0,'drift beyond old window retains slow tempo association');
     if(scenario==='compound') assert(record.plan.pulseSeconds===1/3 && record.assessment.tempo===null,'short compound fixture has explicit tempo evidence limit');
     choose(tempo,'160');choose(style,pointer?'tap':'hold');
