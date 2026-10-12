@@ -41,9 +41,9 @@ test('all six stable definitions have versioned provenance and exact inspected f
 });
 test('higher levels remain blocked, independently of sounded eighth triplet support', () => {
   const actual = generationCapabilities();
-  assert.ok(!actual.ingredients.includes('triplet-eighth'));
+  assert.ok(actual.ingredients.includes('triplet-eighth'));
   for (const definition of teachingPresets.slice(2)) for (const triplets of [false, true]) {
-    const result = resolveTeachingPreset(definition, { ...actual, ingredients: [...actual.ingredients, ...(triplets ? ['triplet-eighth'] : [])] });
+    const result = resolveTeachingPreset(definition, { ...actual, ingredients: [...actual.ingredients.filter(id => id !== 'triplet-eighth'), ...(triplets ? ['triplet-eighth'] : [])] });
     assert.equal(result.supported, false);
     if (!result.supported) {
       assert.ok(!result.reasons.includes('Missing ingredient: whole.'));
