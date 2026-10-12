@@ -8,7 +8,7 @@ The shared repertoire is the actual implemented exercise set: 2/4, 3/4, 4/4 and 
 
 Read [the unified activity contract](unified-activity.md) for shared ownership, lifecycle, persistence, entry points and validation. Shared generation, presets, settings, meter policy and notation have one implementation. Answer coordinates and count evaluation stay separate from audio timing, capture, calibration and performance evaluation. [Timing calibration](timing-calibration.md) still governs the fixed session offset and raw versus corrected evidence.
 
-The first [musical assessment slice](assessment.md) now reports rhythm accuracy, optional hold accuracy, performed tempo and typical pulse steadiness. It preserves target-relative score/timeline evidence and replaces only the completed performance pad. Results are provisional feedback, not mastery standards.
+The first [musical assessment slice](assessment.md) now reports rhythm accuracy, optional hold accuracy, performed tempo and typical pulse steadiness. It preserves target-relative score/timeline evidence and replaces only the completed performance pad. Results are provisional feedback, not mastery standards. Release policy v2 permits practical lifts between separate notes (25% of duration, capped at 180 ms); expected timeline dashed end sections show those allowances. Internal ties stay continuous, and saved attempts retain their original policy.
 
 ## Decisions carried forward
 

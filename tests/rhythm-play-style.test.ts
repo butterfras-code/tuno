@@ -42,7 +42,7 @@ test('adjacent-note articulation is bounded relative to expected end across temp
       pair(c, c.plan.notes[1]!.start, c.plan.notes[1]!.end);
       pair(c, c.plan.notes[2]!.start, c.plan.notes[2]!.end);
       assert.equal(evaluateAttempt(complete(c)).matches[0]!.durationFeedback, delta < 0 ? 'early' : 'accepted');
-      assert.ok(allowance.early <= .08 && allowance.early <= (n.end - n.start) * .15);
+      assert.ok(allowance.early <= .18 && allowance.early <= (n.end - n.start) * .25);
     }
     // The ordinary and articulation bands are alternatives, not additive.
     const c = capture('hold', adjacent, bpm), n = c.plan.notes[0]!;

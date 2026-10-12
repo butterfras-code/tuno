@@ -1,7 +1,7 @@
 import { alignAttacks } from './alignment.ts';
 import type { TimingOffset } from './offset.ts';
 import type { AttemptRecord } from './capture.ts';
-import { provisionalEvaluation, releaseAllowances } from './play-policy.ts';
+import { legacyEvaluation, releaseAllowances } from './play-policy.ts';
 export type DurationFeedback = 'not-graded' | 'accepted' | 'early' | 'late' | 'short' | 'incomplete';
 export type { Hold } from './evidence.ts';
 import { capturedHolds } from './evidence.ts';
@@ -11,7 +11,7 @@ export interface Match { expected: number; hold: number; onsetOffset: number; re
  * Gaps are independent; release times never influence attack alignment. Stable ties prefer matching. */
 export function evaluateAttempt(record: AttemptRecord, timingOffset: TimingOffset | null | undefined = record.timingOffset) {
   if (record.status === 'interrupted') return { status: 'interrupted' as const, reason: record.reason, matches: [] as Match[], missing: [] as number[], extra: [] as number[], restOverlaps: [] as { rest: number; hold: number; start: number; end: number }[], restAttacks: [] as { rest: number; hold: number }[], restViolations: [] as { rest: number; hold: number }[], holds: [] as Hold[], acceptable: false };
-  const policy = record.evaluationPolicy ?? provisionalEvaluation;
+  const policy = record.evaluationPolicy ?? legacyEvaluation;
   // Legacy evidence predates selectable behavior and was explicitly hold-oriented.
   const holdStyle = (record.playStyle ?? 'hold') === 'hold';
   const holds = capturedHolds(record, timingOffset);
@@ -23,7 +23,7 @@ export function evaluateAttempt(record: AttemptRecord, timingOffset: TimingOffse
     const onsetOffset = hold.down - note.start;
     const releaseOffset = hold.up === null ? null : hold.up - note.end;
     const adjacent = Math.abs((expected[e + 1]?.start ?? Infinity) - note.end) < 1e-9;
-    const allowance = releaseAllowances(note.end - note.start, adjacent, policy);
+    const allowance = releaseAllowances(note.end - note.start, adjacent, policy, note.finalSegmentDuration);
     const durationFeedback: DurationFeedback = !holdStyle ? 'not-graded' : releaseOffset === null ? 'incomplete'
       : releaseOffset < -allowance.early - 1e-9 ? 'early' : releaseOffset > allowance.late + 1e-9 ? 'late'
       : hold.up! - hold.down < allowance.minimumSustain - 1e-9 ? 'short' : 'accepted';

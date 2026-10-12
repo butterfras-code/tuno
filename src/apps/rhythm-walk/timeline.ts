@@ -1,3 +1,4 @@
+import { legacyEvaluation, releaseAllowances } from './play-policy.ts';
 import type { AttemptRecord } from './capture.ts';
 import { evaluateAttempt } from './evaluation.ts';
 import { countGrid, slotX } from '../count-writing/grid.ts';
@@ -8,6 +9,7 @@ export interface SustainSegment {
   x1: number; x2: number; start: number; end: number | null; observedUntil: number;
   continuesBefore: boolean; continuesAfter: boolean; incomplete: boolean;
   feedback: DurationFeedback | 'missing' | 'extra';
+  releaseWindow?: { x1: number; x2: number; start: number; end: number };
 }
 
 /** Use the engraver's slot spacing, with seconds derived from the captured pulse.
@@ -43,7 +45,21 @@ export function timingTimelines(record: AttemptRecord) {
         incomplete: release === null, feedback }];
     }
     const showSustain = (record.playStyle ?? 'hold') === 'hold';
-    const expectedSustain = showSustain ? record.plan.notes.flatMap((note, i) => segment(note.start, note.end, note.end, evaluation.missing.includes(i) ? 'missing' : 'accepted')) : [];
+    const expectedSustain = showSustain ? record.plan.notes.flatMap((note, i) => {
+      const pieces = segment(note.start, note.end, note.end, evaluation.missing.includes(i) ? 'missing' : 'accepted');
+      const adjacent = Math.abs((record.plan.notes[i + 1]?.start ?? Infinity) - note.end) < 1e-9;
+      if (adjacent) {
+        const allowance = releaseAllowances(note.end - note.start, true, record.evaluationPolicy ?? legacyEvaluation, note.finalSegmentDuration);
+        const windowStart = note.end - allowance.early;
+        // Only the final sounding-chain end permits lifting. Internal ties and
+        // barline continuation pieces remain continuous; coordinates stay target-timed.
+        const clippedStart = Math.max(start, windowStart), clippedEnd = Math.min(end, note.end);
+        if (clippedEnd > clippedStart) pieces.forEach(piece => {
+          piece.releaseWindow = { x1: position(clippedStart), x2: position(clippedEnd), start: windowStart, end: note.end };
+        });
+      }
+      return pieces;
+    }) : [];
     const receivedSustain = showSustain ? evaluation.holds.flatMap((hold, i) => {
       // Count-in holds may continue sounding across the start: show the observed
       // interval without inventing an attack or a release.
@@ -61,7 +77,7 @@ export function renderTimingTimeline(data: ReturnType<typeof timingTimelines>[nu
   svg.setAttribute('role', 'img');
   const durations = data.receivedSustain.map(s => s.incomplete ? 'Incomplete hold: no release observed; dashed extent ends at capture limit.' : `Hold ${Math.round(s.start * 1000)}–${Math.round(s.end! * 1000)} ms: ${s.feedback}.`).join(' ');
   const attacks = `${data.expected.length} expected; ${data.received.length} received; ${data.expected.filter(h => h.missing).length} missing; ${data.received.filter(h => h.extra).length} extra; ${data.received.filter(h => !h.extra && h.attention).length} matched attacks outside provisional tolerance.`;
-  svg.setAttribute('aria-label', `Expected and received attacks${data.showSustain ? ' and held durations' : ' only; releases not graded'}${corrected ? ' after session timing correction' : ''}. ${attacks} ${durations}`);
+  svg.setAttribute('aria-label', `Expected and received attacks${data.showSustain ? ' and held durations' : ' only; releases not graded'}${corrected ? ' after session timing correction' : ''}. ${attacks} ${durations}${data.showSustain ? ' Expected solid sections show sustain; dashed sections permit lifting before the next separate note, at target tempo. Internal ties require uninterrupted holding.' : ''}`);
   function element(name: string, attributes: Record<string, string>, text?: string) {
     const node = document.createElementNS(svg.namespaceURI, name);
     Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
@@ -73,7 +89,13 @@ export function renderTimingTimeline(data: ReturnType<typeof timingTimelines>[nu
     svg.append(element('line', { x1: first ? '104' : '0', x2: '800', y1: String(row), y2: String(row), class: 'timeline-rail' }));
     sustain.forEach(s => {
       const attention = !['accepted', 'not-graded'].includes(s.feedback);
-      const bar = element('line', { x1: String(s.x1 * 8), x2: String(s.x2 * 8), y1: String(row), y2: String(row),
+      const releaseWindow = s.releaseWindow;
+      if (releaseWindow) {
+        const optional = element('line', { x1: String(releaseWindow.x1 * 8), x2: String(releaseWindow.x2 * 8), y1: String(row), y2: String(row), class: 'timeline-lift-window' });
+        optional.append(element('title', {}, `Release permitted from ${Math.round(releaseWindow.start * 1000)} to ${Math.round(releaseWindow.end * 1000)} ms at target tempo to lift before the next separate note; sustain is still required.`));
+        svg.append(optional);
+      }
+      const bar = element('line', { x1: String(s.x1 * 8), x2: String((releaseWindow?.x1 ?? s.x2) * 8), y1: String(row), y2: String(row),
         class: `timeline-sustain${attention ? ' attention' : ''}${s.incomplete ? ' incomplete' : ''}`, 'data-feedback': s.feedback });
       const description = `${label} duration from ${Math.round(s.start * 1000)} ms; ${s.incomplete ? `no release observed (dashed to capture limit ${Math.round(s.observedUntil * 1000)} ms)` : `release ${Math.round(s.end! * 1000)} ms; ${s.feedback}`}${s.continuesBefore || s.continuesAfter ? '; continues across measure boundary' : ''}`;
       bar.append(element('title', {}, description)); svg.append(bar);

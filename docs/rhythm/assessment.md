@@ -94,11 +94,13 @@ Percentages use `Math.round` only in presentation, never in assessment.
 ## Hold accuracy (Tap + Hold only)
 
 Use the same tempo basis as rhythm, with sounding-chain duration and end scaled by
-`s` (or target for fallback). Existing centralized allowances remain:
+`s` (or target for fallback). Centralized release policy v2 (new attempts) uses:
 
 - Ordinary early/late release allowance: `min(.060 s, .10 × sounding duration)`.
 - For adjacent separate notes, replace early allowance with
-  `min(.15 × sounding duration, .080 s)`; do not add allowances.
+  `min(.25 × sounding duration, .180 s, .25 × final written segment duration)`;
+  do not add allowances. For an untied note, final segment duration equals its
+  sounding duration. The final-segment cap keeps tie boundaries fully sustained.
 - Meaningful sustain: at least `.70 × expected sounding duration`.
 
 Beyond the allowed release window, credit declines linearly to zero over an
@@ -108,6 +110,19 @@ To handle short holds deterministically, cap release credit by
 receive full credit just because its release is close. Negative/zero duration earns
 zero. Internal tie boundaries have no allowance: a tied chain is one continuous note;
 an internal release truncates it and a reattack is extra.
+
+The separate-note lift allowance was widened from v1's 15% / 80 ms after review
+showed that the expected continuous bars suggested an impossible uninterrupted key
+hold between separate attacks. At 80 BPM an adjacent quarter permits a 180 ms lift;
+an adjacent eighth permits 93.75 ms. The 70% meaningful-sustain rule still applies,
+so this is permission to lift briefly, not to omit the note's duration. Beyond this
+wider band, the same linear release-credit decay remains. Rest-boundary/final release
+allowances, overhold penalties, rhythm accuracy and tempo estimation are unchanged.
+
+Capture snapshots `evaluationPolicy.version: 2` and its numerical values. Existing
+v1 snapshots (including snapshots without a version field) keep their original values;
+records without any evaluation policy explicitly fall back to frozen v1 defaults.
+Policy changes therefore never reinterpret old results or old evidence downloads.
 
 Average credits equally across matched sounding notes, independent of length. Missing
 attacks affect rhythm and do not create zero-credit holds. Display the played-note
@@ -148,6 +163,16 @@ the completion announcement without a second live-region announcement. A finishi
 Space/pointer release cannot activate result actions; hidden-pad click synthesis is
 ignored. Interrupted attempts show ungraded evidence and retry.
 
+Expected timeline bars retain full written extents at target tempo. Before an
+adjacent **separate sounding note**, the allowed early-release portion is dashed and
+the preceding sustain section is solid. Titles, SVG accessible text and a visible
+review legend explain that lifting in the dashed portion is permitted. Bands use the
+attempt's captured release policy and target tempo, while hold accuracy still uses
+its labeled assessment tempo. Bands appear at sounding-chain ends only: internal tie
+boundaries and tied barline continuations remain solid. A separate note across a
+barline gets a band at the preceding note's end. Before rests and at the final note,
+no separate-note lift band appears. Received bars and all actual edges are unchanged.
+
 **Try again** keeps exercise identity, notation and written answer, removes performance
 results, restores the pad and starts the ordinary count-in with current preferences.
 **Next exercise** uses the shared generator/replacement lifecycle and clears writing,
@@ -187,3 +212,17 @@ served an older build, so current built JS/CSS were injected into the native pre
 (font payload omitted). Preview resize timed out; narrow checks use a 375 CSS-pixel
 iframe in that same native browser. Physical devices and release preview acceptance
 remain unverified. No production publication is part of this slice.
+
+Release-policy v2 follow-up: `npm run check` passes **258 tests**, type checking and
+hosted/portable builds on Node 24. New deterministic cases verify the 180 ms quarter
+boundary, shorter-note proportional bands, gradual penalties, truncated holds,
+v1 replay (a 60% v1 example becomes 100% only for a new v2 attempt), unchanged rhythm
+and tempo, target-time geometry, barline adjacency and final short tie-member sustain.
+The [lift browser scenarios](../../scripts/rhythm-lift-browser-scenarios.js) pass
+keyboard and synthetic pointer full-credit lifts, rendered bands and accessible
+legend/titles, policy retention and cancellation at 375 CSS pixels with no horizontal
+overflow. Existing 6/8 tied-barline geometry/retention/retry checks also pass. Native
+T3 preview uses the current built code in the same narrow iframe described above;
+synthetic focus/pointer/timestamp stubs do not constitute physical-device validation.
+The original screenshot's exact attempt cannot be regraded without its timing file;
+this tuning deliberately preserves completed attempts' original interpretation.

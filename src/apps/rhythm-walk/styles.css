@@ -188,3 +188,5 @@ main.rhythm-app {
 .result-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
 .performance-results .note { font-size: .85rem; }
 .performance-surface[hidden] { display: none; }
+
+.timeline-lift-window { stroke: var(--color-teal); stroke-width: 2; stroke-dasharray: 2 3; opacity: .65; }

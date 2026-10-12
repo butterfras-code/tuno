@@ -163,6 +163,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (record.timingOffset) review.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
     const holdStyle = (record.playStyle ?? 'hold') === 'hold';
     review.append(el('p', '', `${holdStyle ? 'Tap + Hold' : 'Tap'} · ${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. ${holdStyle ? 'Review attacks, duration and releases below.' : 'Review attacks below. Releases are not graded.'}`));
+    if (holdStyle) review.append(el('p', 'note', 'Expected timeline: solid sections show holding; dashed sections allow a brief lift before the next separate note. Ties stay continuous. This timeline uses target tempo; hold accuracy uses the labeled rhythm tempo basis.'));
     const list = el('ol');
     record.plan.notes.forEach((note, i) => {
       const match = evaluation.matches.find(m => m.expected === i);
