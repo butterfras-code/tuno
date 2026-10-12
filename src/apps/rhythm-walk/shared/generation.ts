@@ -18,6 +18,7 @@ export const ingredients = [
   { id: 'sixteenth', label: 'Sixteenth notes', event: ['S'] },
   { id: 'sixteenth-rest', label: 'Sixteenth rests', event: ['S', { rest: true }] },
   { id: 'dotted-eighth', label: 'Dotted eighth notes', event: ['E', { dots: 1 }] },
+  { id: 'triplet-eighth', label: 'Triplet eighth notes', event: ['E', { tuplet: [3, 2] }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
 export interface GenerationSettings {
@@ -30,7 +31,25 @@ export interface GenerationSettings {
   ties?: boolean;
   syncopation?: boolean;
 }
-export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+
+/** Shared UI/generation boundary; pattern IDs describe complete supported atoms.
+ * UIL resolution may query this without changing definitions or active settings. */
+export interface RhythmCapabilities {
+  readonly meter: CountMeter;
+  readonly ingredients: readonly IngredientId[];
+  readonly patterns: readonly 'triplet-eighth'[];
+}
+export function rhythmCapabilities(meter: CountMeter): RhythmCapabilities {
+  const compound = meterPolicy(meter).compound;
+  return {
+    meter,
+    ingredients: ingredients.filter(i => !compound || (i.event[0] !== 'H' && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id))).map(i => i.id),
+    patterns: compound ? [] : ['triplet-eighth'] as const,
+  };
+}
+// A triplet is an atomic quarter-beat choice, emitted as ordinary written events.
+const atomDuration = (ingredient: typeof ingredients[number]): Fraction => ingredient.id === 'triplet-eighth' ? fraction(1, 4) : duration(ingredient.event);
 
 /** The pool chooses one meter for the whole exercise, never one per measure. */
 export function selectedMeters(settings: GenerationSettings): CountMeter[] {
@@ -50,27 +69,29 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
   if (settings.ingredients.some(id => !ingredients.some(i => i.id === id))) throw new Error('Unknown rhythm ingredient.');
   if (!settings.ingredients.length) throw new Error('Select at least one rhythm ingredient.');
   // Retain selections across meters; only generate the supported, readable subset.
+  const supported = rhythmCapabilities(meter).ingredients;
   const pool = ingredients.filter(i => settings.ingredients.includes(i.id) &&
-    !(policy.compound && (i.event[0] === 'H' || ['sixteenth', 'sixteenth-rest', 'dotted-eighth'].includes(i.id))) &&
+    supported.includes(i.id) &&
     !(!policy.compound && !settings.allowUnintuitiveNotation && i.id === 'dotted-quarter-rest'));
   const memo = new Map<string, boolean>();
   const barEnd = policy.length;
-  const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && syncopated(position, duration(ingredient.event), policy.pulse);
+  const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && syncopated(position, atomDuration(ingredient), policy.pulse);
   const quarterEnd = (position: Fraction) => { const beat = divide(position, fraction(1, 4)); return multiply(fraction(Math.floor(beat[0] / beat[1]) + 1), fraction(1, 4)); };
   const allowedAt = (ingredient: typeof pool[number], position: Fraction, used = 0) =>
+    (ingredient.id !== 'triplet-eighth' || divide(position, fraction(1, 4))[1] === 1) &&
     // Readable short values stay inside quarter groups; dotted eighths start on a beat.
-    (policy.compound || settings.allowUnintuitiveNotation || compare(duration(ingredient.event), fraction(1, 4)) >= 0 ||
-      (compare(add(position, duration(ingredient.event)), quarterEnd(position)) <= 0 &&
+    (policy.compound || settings.allowUnintuitiveNotation || compare(atomDuration(ingredient), fraction(1, 4)) >= 0 ||
+      (compare(add(position, atomDuration(ingredient)), quarterEnd(position)) <= 0 &&
        (ingredient.id !== 'dotted-eighth' || divide(position, fraction(1, 4))[1] === 1))) &&
-    (!syncAt(ingredient, position) || (settings.syncopation && used === 0)) && compare(add(position, duration(ingredient.event)), barEnd) <= 0 &&
+    (!syncAt(ingredient, position) || (settings.syncopation && used === 0)) && compare(add(position, atomDuration(ingredient)), barEnd) <= 0 &&
     (settings.allowUnintuitiveNotation || readableRestPlacement(ingredient.event, position, policy.id));
   function fills(position: Fraction, used = 0): boolean {
     if (compare(position, barEnd) === 0) return true;
     const key = position.join('/') + ':' + used;
-    if (!memo.has(key)) memo.set(key, pool.some(i => allowedAt(i, position, used) && fills(add(position, duration(i.event)), used + Number(syncAt(i, position)))));
+    if (!memo.has(key)) memo.set(key, pool.some(i => allowedAt(i, position, used) && fills(add(position, atomDuration(i)), used + Number(syncAt(i, position)))));
     return memo.get(key)!;
   }
-  const choicesAt = (position: Fraction, used = 0) => pool.filter(i => allowedAt(i, position, used) && fills(add(position, duration(i.event)), used + Number(syncAt(i, position))));
+  const choicesAt = (position: Fraction, used = 0) => pool.filter(i => allowedAt(i, position, used) && fills(add(position, atomDuration(i)), used + Number(syncAt(i, position))));
   if (!fills(fraction(0))) throw new Error(`These ingredients cannot fill ${policy.id} with the current notation and pulse policy. Add compatible quarters/eighths, enable syncopation, or remove incompatible ingredients.`);
   return { choicesAt, syncAt, policy };
 }
@@ -93,9 +114,9 @@ export function generateExercise(settings: GenerationSettings, random = Math.ran
       const draw = random();
       if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');
       const choice = choices[Math.floor(draw * choices.length)]!;
-      events.push(structuredClone(choice.event));
+      for (let member = 0; member < (choice.id === 'triplet-eighth' ? 3 : 1); member++) events.push(structuredClone(choice.event));
       used += Number(syncAt(choice, position));
-      position = add(position, duration(choice.event));
+      position = add(position, atomDuration(choice));
     }
     return { meter: policy.meter, events };
   });
@@ -104,7 +125,7 @@ export function generateExercise(settings: GenerationSettings, random = Math.ran
     const candidates: RhythmMeasure[][] = [];
     for (let start = 0; start < refs.length - 1; start++) for (const size of [2, 3]) {
       const chain = refs.slice(start, start + size);
-      if (chain.length !== size || chain.some(r => passage[r.measure]!.events[r.event]![1]?.rest)) continue;
+      if (chain.length !== size || chain.some(r => { const m = passage[r.measure]!.events[r.event]![1]; return m?.rest || m?.tuplet; })) continue;
       const candidate = structuredClone(passage);
       chain.slice(0, -1).forEach(r => {
         const bar = candidate[r.measure]!;

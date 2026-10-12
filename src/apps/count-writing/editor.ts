@@ -120,8 +120,8 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   }
   const countPopover = createCountPopover({
     id: `count-popover-${number}`,
-    symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te'],
-    enabled: symbol => grid.policy.compound || (/^\d/.test(symbol) || (system === 'syllables' ? ['ta', 'te'].includes(symbol) : ['&', 'e', 'a'].includes(symbol))),
+    symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te', 'la', 'li'],
+    enabled: symbol => grid.policy.compound || (/^\d/.test(symbol) || ['la', 'li'].includes(symbol) || (system === 'syllables' ? ['ta', 'te'].includes(symbol) : ['&', 'e', 'a'].includes(symbol))),
     input: enterKey,
     restActions: grid.fine ? { start: () => beginRest(selected), close: () => { closeRest(selected); countPopover.dismiss(true); }, remove: () => { const group = answer.rests.find(r => selected >= r.start && selected <= r.end); if (group) removeRest(group); countPopover.dismiss(true); } } : undefined,
     select: tick => { selected = tick; refresh(); slots[tick]!.focus({ preventScroll: true }); },
@@ -156,10 +156,10 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   listen(document, 'pointerdown', cancelKeyboardLine, true);
   function enterKey(event: KeyboardEvent): boolean {
     if (event.ctrlKey || event.metaKey || event.altKey) { buffer.clear(); return false; }
-    if (system === 'syllables' && !grid.policy.compound && event.key === 't') {
-      event.preventDefault(); if (!event.repeat) buffer.key('t'); live.textContent = 'Type a or e to complete ta or te. Escape cancels.'; return true;
+    if (!grid.policy.compound && (event.key === 'l' || (system === 'syllables' && event.key === 't'))) {
+      event.preventDefault(); if (!event.repeat) buffer.key(event.key); live.textContent = event.key === 'l' ? 'Type a or i to complete la or li. Escape cancels.' : 'Type a or e to complete ta or te. Escape cancels.'; return true;
     }
-    const symbol = system === 'syllables' && !grid.policy.compound ? buffer.key(event.key) : countKey(event.key);
+    const symbol = !grid.policy.compound && (system === 'syllables' || buffer.active()) ? buffer.key(event.key) : countKey(event.key);
     if (symbol !== null) { event.preventDefault(); if (!event.repeat) countPopover.submit(symbol); return true; }
     return false;
   }
@@ -342,6 +342,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   const measureNumber = el('h2', 'measure-heading', String(number)); measureNumber.setAttribute('aria-label', `Measure ${number}`);
   card.append(measureNumber, score, live);
   function reset(focus: boolean) {
+    buffer.clear();
     countPopover.dismiss();
     keyboardLine = null;
     grid = options.grid ?? countGrid(fixture, system); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
@@ -356,7 +357,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       hit.setAttribute('fill', 'transparent'); hit.setAttribute('pointer-events', 'all');
       mark.prepend(hit);
       mark.setAttribute('role', 'button'); mark.setAttribute('tabindex', '0');
-      mark.dataset.entryLabel = `Enter count at ${positionLabel(tick)}`; mark.setAttribute('aria-label', mark.dataset.entryLabel);
+      mark.dataset.entryLabel = `Enter count at ${positionLabel(tick)}${grid.slots[tick]!.triplet ? '; eighth-note triplet, three in the time of two' : ''}`; mark.setAttribute('aria-label', mark.dataset.entryLabel);
       mark.setAttribute('aria-haspopup', 'dialog'); mark.setAttribute('aria-controls', `count-popover-${number}`);
       mark.addEventListener('click', event => { if (!options.hidden()) activateCount(tick, event); });
       mark.addEventListener('pointerdown', event => {
@@ -580,8 +581,8 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     markEdited: () => { if (result) { changed = true; options.edited(); } refresh(); },
     backspace: () => { focusSlot(grid.availableSlots.at(-1)!); put(''); },
     card, feedback,
-    check: () => { countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention, system); changed = false; refresh(); return result; },
-    retry: () => { result = null; changed = false; refresh(); },
+    check: () => { buffer.clear(); countPopover.dismiss(); keyboardLine = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = evaluate(fixture, answer, dottedConvention, system); changed = false; refresh(); return result; },
+    retry: () => { buffer.clear(); result = null; changed = false; refresh(); },
     reset: () => reset(false),
     focus: (last = false) => focusSlot(last ? grid.availableSlots.at(-1)! : grid.availableSlots[0]!),
     update: (symbol: OffbeatSymbol, display: CountPresentation, convention: DottedQuarterConvention, nextSystem: CountingSystem = 'numbers') => {
@@ -590,12 +591,12 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
         buffer.clear(); countPopover.dismiss();
         let cleared = 0;
         if (!grid.policy.compound) answer.symbols = answer.symbols.map((token, i) => {
-          const translated = translateCount(token, grid.slots[i]!.position, system, nextSystem);
+          const translated = translateCount(token, grid.slots[i]!.position, system, nextSystem, grid.slots[i]!.triplet);
           if (token && !translated) cleared++;
           return translated;
         });
         system = nextSystem;
-        grid.slots.forEach(slot => { slot.symbol = countAt(slot.position, grid.policy.compound, system); });
+        grid.slots.forEach(slot => { slot.symbol = slot.symbol ? countAt(slot.position, grid.policy.compound, system, slot.triplet) : ''; });
         result = null; changed = false; options.edited();
         announcement = cleared ? `${cleared} ambiguous count token(s) cleared. Check again.` : 'Counting system changed. Check again.';
         card.dataset.clearedCounts = String(cleared);

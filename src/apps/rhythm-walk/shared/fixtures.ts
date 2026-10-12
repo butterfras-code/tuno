@@ -1,5 +1,5 @@
 import { derivePassage } from '../../../music/measure.ts';
-import type { RhythmMeasure } from '../../../music/measure.ts';
+import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
 export type CountFixture = RhythmMeasure & { readonly id: string; readonly label: string };
 export const countWritingFixtures: readonly CountFixture[] = [
   { id: 'half', label: 'Half • quarter • two eighths', meter: [4, 4], events: [['H'], ['Q'], ['E'], ['E']] },
@@ -52,7 +52,20 @@ export const sixteenthFixtures: readonly PassageFixture[] = [
   { id: 'sixteenth-bar-tie', label: 'Sixteenth tie across a barline/system', wrap: true, measures: [{ meter: [2, 4], events: [['Q'], ['E'], ['S'], ['S', { tieNext: true }]] }, { meter: [2, 4], events: [['S'], ['S'], ['E'], ['Q']] }] },
   { id: 'dense-sixteenths', label: 'Dense sixteenths · four bars', measures: Array.from({ length: 4 }, () => ({ meter: [4, 4] as const, events: Array.from({ length: 16 }, () => ['S'] as const) })) },
 ];
+
+/** Shared written sources; the canonical compiler supplies all tuplet group IDs. */
+const triplet = (): RhythmEvent[] => Array.from({ length: 3 }, () => ['E', { tuplet: [3, 2] }] as const);
+const mixedTripletBar = (): RhythmMeasure => ({ meter: [4, 4], events: [...triplet(), ['E'], ['E'], ...triplet(), ['S'], ['S'], ['S'], ['S']] });
+export const tripletFixtures: readonly PassageFixture[] = [
+  { id: 'triplet-isolated', label: 'Triplet · quarter · half', measures: [{ meter: [4, 4], events: [...triplet(), ['Q'], ['H']] }] },
+  { id: 'triplet-consecutive', label: '2/4 · consecutive triplets', measures: [{ meter: [2, 4], events: [...triplet(), ...triplet()] }] },
+  { id: 'triplet-beat-two', label: '3/4 · triplet on beat 2', measures: [{ meter: [3, 4], events: [['Q'], ...triplet(), ['Q']] }] },
+  { id: 'triplet-mixed', label: 'Triplets beside eighths and sixteenths', measures: [mixedTripletBar()] },
+  { id: 'triplet-rest-tie', label: 'Triplets beside rest and ordinary tie', measures: [{ meter: [4, 4], events: [...triplet(), ['Q', { rest: true }], ['E', { tieNext: true }], ['E'], ['Q']] }] },
+  ...[2, 3, 4].map(length => ({ id: `triplet-mixed-${length}`, label: `Mixed triplets · ${length} bars`, measures: Array.from({ length }, mixedTripletBar) })),
+];
+
 export const practiceFixtures: readonly PassageFixture[] = [
-  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures,
+  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures, ...tripletFixtures,
 ];
 practiceFixtures.forEach(f => derivePassage(f.measures));

@@ -258,7 +258,7 @@ function updateResponseView() {
   passageStrip.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
     glyph.setAttribute('role', writing && !performing ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing ? '0' : '-1');
     if (writing && !performing) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.setAttribute('aria-haspopup', 'dialog'); }
-    else { glyph.setAttribute('aria-label', `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
+    else { glyph.setAttribute('aria-label', glyph.dataset.musicLabel ?? `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
   });
   passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing; });
   decoratePerformance(preferences.mode === 'tap' || (preferences.mode === 'both' && !performing) ? performance.record() : null);

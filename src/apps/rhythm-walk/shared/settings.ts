@@ -86,7 +86,7 @@ export function createSettingsPage(callbacks: {
   system.dataset.setting = 'count-system';
   const systemField = field('Counting system', system);
   systemField.append(field('Offbeat symbol · 1 e & a', offbeat));
-  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for an atomic syllable. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
+  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for ta/te. Triplets use 1 la li in both systems; type l then a/i. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
   const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
   convention.dataset.setting = 'dotted-quarter-convention';
   const conventionField = field('Dotted-quarter internal &', convention);
@@ -122,7 +122,7 @@ export function createSettingsPage(callbacks: {
     });
     label.append(input, el('span', '', meter)); meterField.append(label);
   }
-  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. Sixteenth notes/rests and dotted eighth notes are retained but omitted in 6/8. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
+  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. Sixteenth notes/rests, dotted eighth notes and triplet eighths are retained but omitted in 6/8. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
   const lengthField = field('Exercise length', length);
   lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
   const vocabulary = el('fieldset', 'settings-options active-ingredients');

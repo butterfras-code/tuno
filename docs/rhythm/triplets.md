@@ -1,0 +1,35 @@
+# Uno234 simple-meter triplet contract
+
+`triplet-eighth` is an opt-in ingredient in 2/4, 3/4 and 4/4. Defaults remain two measures with the previous ingredients. Write Counts, Tap Rhythms and Both share generated passages and the same eight triplet review fixtures. A response-mode change preserves the score and answers; Next/New Exercise replaces them through the existing lifecycle.
+
+## Written music and generation
+
+A group is three sounded `['E', { tuplet: [3, 2] }]` events, each exactly 1/12 of a whole note, occupying one quarter beat from its boundary. The generator selects the complete group as an atomic quarter-duration choice and emits three ordinary canonical events. Reachability uses memoized exact fractions with bounded random draws; neither retry loops nor unselected fillers are added. Binary and ternary subdivisions can occur on different beats in one passage. Every selected meter must independently admit complete bars.
+
+The shared capability API is `rhythmCapabilities(meter: CountMeter)` in [generation.ts](../../src/apps/rhythm-walk/shared/generation.ts). It returns `{ meter, ingredients: IngredientId[], patterns }`; `patterns` contains `triplet-eighth` in simple meters and is empty in 6/8. That pattern means **complete sounded eighth 3:2 groups on quarter boundaries**, without triplet rests, partial/mixed-value groups or ties involving members. The ingredient list describes the implemented vocabulary, while `generationIssue(settings)` still checks notation, syncopation and bar-fill constraints. This is the integration boundary for UIL capability resolution; it makes no claims about official levels or other enforceable pattern restrictions. UIL definitions/resolver are unchanged and must adopt this API on integration.
+
+6/8 retains its vocabulary, six numbered eighth counts and dotted-quarter performance pulse. A mixed meter pool retains the triplet selection but omits it when generating 6/8. Selecting only triplets with 6/8 gives an explicit complete-bar failure. The tie pass skips every chain containing a triplet member, while ordinary ties and syncopation remain available elsewhere. The counting adapter also rejects unsupported tuplets and ties entering members, including across a barline. Canonical domain support for other tuplets remains broader than this UI boundary.
+
+## Counting and entry
+
+Both counting systems use `1 la li`, `2 la li`, etc. These are atomic stored tokens at the beat onset, one third and two thirds respectively. Ordinary beats retain `e & a` (or displayed `+`) or `ta te ta`. There is no triplet-counting preference. Switching systems preserves `la` and `li`, including wrong tokens/positions, and invalidates stale count feedback. Binary translation retains its existing ambiguity rules.
+
+Measures containing triplets derive a 1/48-whole-note presentation lattice: twelve positions per quarter, accommodating exact thirds, eighths and sixteenths. This is answer storage/layout, never authored time. Each triplet beat exposes only its three positions; neighboring beats derive their own available positions from written values. Other measures retain their previous eighth/sixteenth grids. Passage offsets, rest ranges, tied sounding spans, duration endpoints, navigation and timeline mapping use these derived sizes. Hidden fractional positions have no count token and are never required. Duration lines elsewhere retain trailing hidden positions through release.
+
+Type `l`, then `a` or `i`, in either simple-meter counting system. `l` only starts transient input and announces the completion keys. The second letter commits once and advances once. Backspace/Delete cancel the prefix without deleting a saved answer; arrows/Tab, Escape, blur, pointer entry, mode/system changes and editor suspension clear it. Touch choices expose `la` and `li` alongside the selected binary system without filtering choices by correct answer.
+
+## Engraving and performance
+
+The compiler's `tupletGroup` identifies each complete group. Members share the existing quarter-beat primary beam, with one centered italic 3 above it; consecutive groups keep separate beams and labels. Accessible event descriptions identify eighth-note triplets and the three-in-two relationship in all response modes. Layout keeps whole measures on a system, so groups cannot split. Compact subdivision lanes preserve 44px count/duration targets without horizontal overflow. Count-in/capture retain the existing score/pad behavior.
+
+Tap and Tap + Hold consume canonical fractions through the unchanged timing plan and assessment pipeline. At 60 quarter BPM, six consecutive triplets in 2/4 start at 0, 1/3, 2/3, 1, 4/3 and 5/3 seconds, each lasting 1/3 second. Count-in remains four quarter pulses. Calibration, policy snapshots, short-note hold exemptions and actual received down/up evidence remain unchanged. No scoring formula or tolerance was changed.
+
+## Review sources and validation
+
+[Shared fixtures](../../src/apps/rhythm-walk/shared/fixtures.ts) cover isolated/consecutive groups, a group on beat 2, groups beside ordinary eighths/sixteenths, rests/ordinary ties, and mixed 1–4-bar passages. [Unit tests](../../tests/rhythm-triplets.test.ts) specify independent onset/count tables, exact durations, complete groups, selected-ingredient generation across meters/lengths, tie exclusion, wrong-token retention, prefix cancellation, rest/tie duration geometry, and capture/timeline expectations.
+
+Native T3 [editor scenarios](../../scripts/rhythm-triplets-browser-scenarios.js) cover actual DOM focus, synthetic keyboard input, atomic touch-menu choices, both counting systems, shared mode/score/answer retention, 6/8 regression, canonical group labels and desktop/320px CSS hit testing. [Performance scenarios](../../scripts/rhythm-triplets-performance-scenarios.js) use real audio-clock count-in/completion and controlled synthetic keyboard/pointer timestamps for mixed Tap and Tap + Hold, exact targets, captured policy/evidence retention, short-note exemptions, timeline alignment, Retry/Next and mode-change cancellation.
+
+Validation uses Node 24.21.0 and `npm ci`. `npm run check` passes type checking, **316 unit tests**, and builds; `git diff --check` passes. Native editor checks pass **452 assertions** across desktop and a same-origin 320px iframe. Existing native sixteenth regression checks also pass **111 assertions**. Native desktop performance checks pass **36 assertions**. Environment-port navigation failed and localhost reached an older build, so this worktree's HTML/CSS/JS/fonts were loaded inline into the native preview. Native resize timed out; the 320px iframe establishes compact CSS layout, not physical mobile behavior. Compact real-audio capture attempts were interrupted by the preview losing pad focus and are not counted as passing performance validation.
+
+Physical keyboard/touch timing, phone/tablet hardware, Safari/Chromebook, latency, audibility and assistive-technology acceptance remain unverified. Full release verification, Cloudflare candidate review and production promotion were not performed. No UIL integration was merged or published.
