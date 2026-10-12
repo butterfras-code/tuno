@@ -31,6 +31,9 @@ window.__assessmentCheck = (async () => {
     Object.defineProperty(event,'timeStamp',{value:stampAnchor+(start+time+.015)*1000});pad.dispatchEvent(event);
     if(pointer && action==='down') {
       const pressed=pad.getAttribute('aria-pressed');
+      const touch=new Event('touchstart',{bubbles:true,cancelable:true});
+      pad.querySelector('.pad-action').dispatchEvent(touch);
+      assert(touch.defaultPrevented && pad.getAttribute('aria-pressed')===pressed,'touch default canceled without changing pointer hold');
       const menu=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});
       pad.querySelector('.pad-action').dispatchEvent(menu);
       assert(menu.defaultPrevented && pad.getAttribute('aria-pressed')===pressed,'held-pad context menu is canceled without releasing input');
@@ -40,6 +43,8 @@ window.__assessmentCheck = (async () => {
     assert(getComputedStyle(pad).touchAction==='none' && getComputedStyle(pad.querySelector('.pad-action')).userSelect==='none','pad and child labels prevent touch gestures and selection');
     const outsideMenu=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});document.querySelector('.rhythm-nav').dispatchEvent(outsideMenu);
     assert(!outsideMenu.defaultPrevented,'context menus elsewhere remain available');
+    const outsideTouch=new Event('touchstart',{bubbles:true,cancelable:true});document.querySelector('.rhythm-nav').dispatchEvent(outsideTouch);
+    assert(!outsideTouch.defaultPrevented,'touch gestures elsewhere remain available');
     choose(mode,'both');choose(preset,'half');choose(preset,scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');choose(style,holdStyle?'hold':'tap');
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;

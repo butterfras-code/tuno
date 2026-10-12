@@ -199,6 +199,9 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   let startingPointer: number | null = null;
   // Long presses are performance input, including on the pad's child labels.
   pad.addEventListener('contextmenu', event => event.preventDefault());
+  // Cancel native touch gestures before long-press recognition. Pointer events
+  // still own capture; this listener must not create a second musical input.
+  pad.addEventListener('touchstart', event => event.preventDefault(), { passive: false });
   pad.addEventListener('click', event => { if (!pad.closest('[hidden]') && event.detail === 0 && !transport && !starting) void begin(); });
   // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
   pad.addEventListener('keydown', event => {
