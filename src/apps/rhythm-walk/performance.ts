@@ -163,7 +163,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     record.plan.rests.forEach((rest, i) => {
       const overlaps = evaluation.restOverlaps.filter(o => o.rest === i);
       const attacks = evaluation.restAttacks.filter(o => o.rest === i);
-      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${holdStyle ? overlaps.length ? `${overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ')} (${evaluation.restViolations.some(o => o.rest === i) ? 'release needs attention' : 'within release tolerance'})` : 'silent' : attacks.length ? `${attacks.length} attack(s) during rest` : 'no attacks during rest'}.`;
+      const violations = evaluation.restViolations.filter(o => o.rest === i);
+      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${holdStyle ? overlaps.length ? `${overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ')} (${violations.length ? 'input needs attention' : 'within attack/release tolerance'})` : 'silent' : violations.length ? `${violations.length} attack(s) during rest outside tolerance` : attacks.length ? `${attacks.length} early attack(s) within tolerance; raw rest overlap retained` : 'no attacks during rest'}.`;
       const item = el('li', '', text); item.id = `feedback-rest-${i}`; list.append(item);
 
     });

@@ -92,6 +92,34 @@ test('rest-boundary and final releases use ordinary tolerance, retaining finite 
   assert.equal(record.events.length, 1);
 });
 
+test('accepted early attacks after rests keep raw overlap without a contradictory rest violation', () => {
+  for (const style of ['tap', 'hold'] as const) for (const early of [.01, .08, .081]) {
+    const c = capture(style, rest);
+    pair(c, 0, .5); pair(c, .75 - early, 1);
+    const record = complete(c), raw = structuredClone(record.events), result = evaluateAttempt(record);
+    assert.equal(result.matches[1]!.attackAccepted, early <= .08);
+    assert.equal(result.acceptable, early <= .08);
+    assert.equal(result.restViolations.length, early <= .08 ? 0 : 1);
+    assert.equal(result.restAttacks.length, 1, 'raw rest attack remains evidence');
+    assert.ok(Math.abs(result.restOverlaps[0]!.end - result.restOverlaps[0]!.start - early) < 1e-9);
+    assert.deepEqual(record.events, raw);
+  }
+});
+
+test('rest acceptance does not excuse unmatched attacks or unrelated sustained intrusion', () => {
+  for (const style of ['tap', 'hold'] as const) {
+    const c = capture(style, rest);
+    pair(c, 0, .5); pair(c, .51, .52); pair(c, .74, 1);
+    const result = evaluateAttempt(complete(c));
+    assert.equal(result.extra.length, 1); assert.equal(result.restAttacks.length, 2);
+    assert.equal(result.restViolations.length, 1); assert.equal(result.acceptable, false);
+  }
+  const held = capture('hold', rest); pair(held, 0, .7); pair(held, .74, 1);
+  const result = evaluateAttempt(complete(held));
+  assert.equal(result.restViolations.length, 1, 'previous note overhold still fails despite accepted next attack');
+  assert.equal(result.matches[0]!.durationFeedback, 'late');
+});
+
 test('ties require a single continuous hold, within and across bars', () => {
   for (const measures of [
     [{ meter: [2, 4] as const, events: [['Q', { tieNext: true }], ['Q']] as const }],

@@ -274,7 +274,8 @@ function decoratePerformance(record: AttemptRecord | null) {
   });
   record.plan.rests.forEach((rest, index) => {
     const violations = evaluation.restViolations.filter(o => o.rest === index);
-    annotate(rest.source.measure, rest.source.event, violations.length ? 'overlap' : 'silent', violations.length ? 'Input during this rest' : record.playStyle === 'tap' ? 'No attacks during rest' : 'Silent or within release tolerance', `feedback-rest-${index}`);
+    const early = evaluation.restAttacks.some(o => o.rest === index);
+    annotate(rest.source.measure, rest.source.event, violations.length ? 'overlap' : 'silent', violations.length ? 'Input during this rest outside tolerance' : record.playStyle === 'tap' ? early ? 'Early attack within tolerance; raw rest overlap retained' : 'No attacks during rest' : 'Silent or within attack/release tolerance', `feedback-rest-${index}`);
   });
 }
 loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);

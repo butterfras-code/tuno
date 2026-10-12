@@ -32,13 +32,14 @@ export function timingTimelines(record: AttemptRecord) {
     });
     // Split intervals in musical time at each measure. The renderer never creates
     // an attack at a clipped segment edge, including automatic system breaks.
-    function segment(onset: number, release: number | null, observedUntil: number, feedback: SustainSegment['feedback']): SustainSegment[] {
+    function segment(onset: number, release: number | null, observedUntil: number, feedback: SustainSegment['feedback'], attackMeasure?: number): SustainSegment[] {
       // Keep out-of-score tail inputs as clipped evidence on the final segment,
       // just as attack markers at that edge retain their actual time in titles.
       const last = index === record.exercise.measures.length - 1;
-      if (observedUntil <= start || onset >= end && !last) return [];
-      return [{ x1: position(Math.max(start, onset)), x2: position(Math.min(end, observedUntil)), start: onset, end: release, observedUntil,
-        continuesBefore: onset < start, continuesAfter: observedUntil > end,
+      const anchored = attackMeasure === index;
+      if (attackMeasure !== undefined && index < attackMeasure || !anchored && (observedUntil <= start || onset >= end && !last)) return [];
+      return [{ x1: position(anchored ? onset : Math.max(start, onset)), x2: position(Math.min(end, observedUntil)), start: onset, end: release, observedUntil,
+        continuesBefore: !anchored && onset < start, continuesAfter: observedUntil > end,
         incomplete: release === null, feedback }];
     }
     const showSustain = (record.playStyle ?? 'hold') === 'hold';
@@ -47,7 +48,7 @@ export function timingTimelines(record: AttemptRecord) {
       // Count-in holds may continue sounding across the start: show the observed
       // interval without inventing an attack or a release.
       const match = evaluation.matches.find(m => m.hold === i);
-      return segment(hold.down, hold.up, hold.up ?? record.endedAt - hold.correction, match?.durationFeedback ?? 'extra');
+      return segment(hold.down, hold.up, hold.up ?? record.endedAt - hold.correction, match?.durationFeedback ?? 'extra', match ? record.plan.notes[match.expected]!.sources[0]!.measure : undefined);
     }) : [];
     start = end;
     return { expected, received, expectedSustain, receivedSustain, showSustain };

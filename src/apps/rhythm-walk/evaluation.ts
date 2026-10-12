@@ -46,16 +46,24 @@ export function evaluateAttempt(record: AttemptRecord, timingOffset: TimingOffse
     return end > start ? [{ rest, hold, start, end }] : [];
   }));
   const restAttacks = record.plan.rests.flatMap((r, rest) => scored.flatMap(({ h, i }) => h.down >= r.start && h.down < r.end ? [{ rest, hold: i }] : []));
+  function acceptedEarlyAttack(hold: number, rest: number) {
+    const match = matches.find(m => m.hold === hold);
+    return !!match?.attackAccepted && Math.abs(expected[match.expected]!.start - record.plan.rests[rest]!.end) < 1e-9;
+  }
+  const restAttackViolations = restAttacks.filter(o => !acceptedEarlyAttack(o.hold, o.rest));
   // Preserve every overlap as raw derived evidence, but only grade sustain in Hold.
   // An associated note's small late release uses its ordinary allowance once.
   const restViolations = holdStyle ? restOverlaps.filter(o => {
+    // An accepted attack leading into the following note uses its attack
+    // tolerance once, while its exact intrusion remains in rest evidence.
+    if (acceptedEarlyAttack(o.hold, o.rest)) return false;
     const match = matches.find(m => m.hold === o.hold);
     if (!match) return true;
     const note = expected[match.expected]!;
     const rest = record.plan.rests[o.rest]!;
     return Math.abs(note.end - rest.start) > 1e-9 || match.durationFeedback !== 'accepted';
-  }) : restAttacks;
-  const acceptable = !missing.length && !extra.length && !restAttacks.length && !restViolations.length
+  }) : restAttackViolations;
+  const acceptable = !missing.length && !extra.length && !restAttackViolations.length && !restViolations.length
     && matches.every(m => m.attackAccepted && (m.durationFeedback === 'accepted' || m.durationFeedback === 'not-graded'));
   return { status: 'completed' as const, matches, missing, extra, restOverlaps, restAttacks, restViolations, holds, acceptable };
 }

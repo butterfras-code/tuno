@@ -81,3 +81,40 @@ test('calibrated early barline attacks and nearby unmatched attacks remain disti
   assert.equal(rows[1]!.received.length, 1);
   assert.equal(rows[1]!.received[0]!.extra, false);
 });
+
+test('early barline sustain starts at its matched marker, with no stray preceding segment', () => {
+  for (const correction of [0, .113]) {
+    const capture = new Capture(quarters, 80, true, undefined, correction ? { version: 1, seconds: correction, input: 'keyboard', method: 'tap', samples: 12, spread: 0 } : undefined, 'hold');
+    capture.input('down', 'keyboard', 3 - .021 + correction, 0);
+    capture.input('up', 'keyboard', 3.75 - .04 + correction, 0);
+    const record = capture.advance(capture.plan.captureEnd)!;
+    const rows = timingTimelines(record);
+    assert.equal(rows[0]!.receivedSustain.length, 0);
+    assert.equal(rows[1]!.receivedSustain.length, 1);
+    const segment = rows[1]!.receivedSustain[0]!;
+    assert.equal(segment.x1, rows[1]!.received[0]!.x);
+    assert.equal(segment.continuesBefore, false, 'this segment contains the actual attack');
+    assert.ok(Math.abs(segment.end! - segment.start - .731) < 1e-9);
+    assert.ok(segment.x1 < 16, 'early timing remains visible before the expected attack');
+    assert.equal(record.events[0]!.time, 3 - .021 + correction);
+  }
+});
+
+test('an early barline attack anchors a tied or incomplete hold while later continuations still split', () => {
+  for (const release of [2.99, null]) {
+    const capture = new Capture({ id: 'barline-chain', label: '', description: '', measures: [
+      { meter: [2, 4], events: [['H', { rest: true }]] },
+      { meter: [2, 4], events: [['H', { tieNext: true }]] },
+      { meter: [2, 4], events: [['H']] },
+    ] }, 120, false, undefined, undefined, 'hold');
+    capture.input('down', 'keyboard', .99, 0);
+    if (release !== null) capture.input('up', 'keyboard', release, 0);
+    const rows = timingTimelines(capture.advance(capture.plan.captureEnd)!);
+    assert.deepEqual(rows.map(row => row.received.length), [0, 1, 0]);
+    assert.deepEqual(rows.map(row => row.receivedSustain.length), [0, 1, 1]);
+    assert.equal(rows[1]!.receivedSustain[0]!.x1, rows[1]!.received[0]!.x);
+    assert.equal(rows[2]!.receivedSustain[0]!.continuesBefore, true);
+    assert.equal(rows[2]!.receivedSustain[0]!.incomplete, release === null);
+    assert.equal(rows[2]!.receivedSustain[0]!.end, release);
+  }
+});

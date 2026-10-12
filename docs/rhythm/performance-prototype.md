@@ -30,6 +30,10 @@ Tap Expected/Received timelines show attacks only. Tap + Hold adds thin bars for
 
 ### Calibration boundary
 
+Rest-boundary grading honors the same attack tolerance as note feedback: a matched, accepted early attack for the note immediately following a rest does not create a rest violation. Its corrected attack time, `restAttacks` entry and exact `restOverlaps` remain evidence. Unmatched/out-of-tolerance attacks and unrelated holds intruding into the rest still require attention. Hold-duration/release evaluation remains independent of this attack allowance.
+
+Matched duration bars start in their attack marker's expected-note measure, at the same displaced x-coordinate, even when the attack occurs slightly before a barline. They create no stray onset segment in the preceding measure. Later sustained continuations still split at true measure/system boundaries; release times and interval lengths remain actual corrected evidence. Unmatched inputs retain absolute-time placement.
+
 Automatic offset estimation and manual tap-along calibration now extend this prototype. See [session timing rules and validation](timing-calibration.md); those rules supersede the initial no-calibration behavior and count-in/capture-end policies described below. Raw timestamps remain unchanged.
 
 ## Requirements and decisions

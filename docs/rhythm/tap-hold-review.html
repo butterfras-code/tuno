@@ -59,7 +59,7 @@
     </article>
     <article><span class="number">02 / Review</span><h2>Show what happened</h2>
       <p>Tap keeps attack markers. Tap + Hold adds thin bars from onset to actual release, with tied durations continuing across bars and wrapped systems.</p>
-      <p>Accepted gaps stay visible. Early releases, overholds and unmatched holds keep their actual timing. Incomplete holds use a distinct dashed extent, no release endpoint, and “no release observed.”</p>
+      <p>Accepted gaps stay visible. Accepted early attacks after rests retain raw overlap without a rest violation. Matched bars start at their attack markers, including just before a barline. Early releases, overholds and unmatched holds keep their actual timing. Incomplete holds use a distinct dashed extent, no release endpoint, and “no release observed.”</p>
       <p class="note">Text, SVG descriptions and endpoint shapes supplement color. No live sustain animation or additional guidance mode.</p>
     </article>
     <article><span class="number">03 / Provisional policy</span><h2>Bounded allowances</h2>
@@ -78,7 +78,7 @@
     </article>
     <article class="full"><span class="number">05 / Evidence</span><h2>Automated coverage</h2>
       <div class="evidence">
-        <div><span class="stat">234</span><h3>Tests pass</h3><p class="note">Type checking and builds pass. Tests cover both settings, scaled boundaries, rests, ties, final releases, calibration invariance and raw evidence.</p></div>
+        <div><span class="stat">238</span><h3>Tests pass</h3><p class="note">Type checking and builds pass. Tests cover both settings, scaled boundaries, rests, ties, final releases, calibration invariance and raw evidence.</p></div>
         <div><span class="stat">4</span><h3>Count browser suites</h3><p class="note">Chromium regression suites preserve the shared editor, modes, keyboard/touch writing, supported meters and narrow layouts.</p></div>
         <div><span class="stat">320</span><h3>Pixels, narrow review</h3><p class="note">Native preview scenarios cover both settings, synthetic input, 6/8, persistence, cancellation and wrapped durations. Desktop width: 1521 px.</p></div>
       </div>

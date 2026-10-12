@@ -1,5 +1,7 @@
 /** Native T3 preview_evaluate expression. Set window.__playScenario to tap,
- * hold, compound, geometry, evidence or lifecycle. Await window.__playCheck separately
+ * hold, compound, geometry, evidence, rest-boundary, barline or lifecycle.
+ * For rest-boundary, set __boundaryStyle to tap or hold.
+ * Await window.__playCheck separately
  * if the preview tool's per-call deadline is shorter than the audio exercise.
  * Inputs are synthetic; pointer capture is stubbed only for invented IDs. */
 window.__playCheck = (async () => {
@@ -64,6 +66,38 @@ window.__playCheck = (async () => {
       await begin(); button('Stop').click(); assert((await raw()).playStyle === 'tap', 'retry uses current selection');
       assert(!play.disabled, 'selection unlocked after cancellation');
       checks.push('settings persistence, exercise/configuration/answer retention, mode cancellation, stopped audio, retry snapshot');
+    } else if (scenario === 'rest-boundary' || scenario === 'barline') {
+      choose(preset, scenario === 'rest-boundary' ? 'tie-rests' : 'quarters');
+      choose(play, scenario === 'barline' ? 'hold' : window.__boundaryStyle ?? 'hold');
+      const start = await begin();
+      // Controlled synthetic timestamps test the rendered policy near boundaries;
+      // the real audio clock still governs completion. This is not device timing.
+      const stamp = relative => {
+        const event = new KeyboardEvent(relative.action === 'down' ? 'keydown' : 'keyup', { code: 'Space', key: ' ', bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'timeStamp', { value: performance.now() + (start + relative.time - context.currentTime) * 1000 });
+        pad.dispatchEvent(event);
+      };
+      await wait(() => context.currentTime >= start + .1);
+      const intervals = scenario === 'barline' ? [[4/3-.03,5/3-.015]] : [[1/3-.03,2/3-.015],[1-.03,4/3-.015]];
+      for (const [down, up] of intervals) { stamp({action:'down',time:down}); stamp({action:'up',time:up}); }
+      await wait(() => status() === 'Reviewing');
+      const record = await raw();
+      if (scenario === 'rest-boundary') {
+        assert(review.innerText.includes('2 matched attacks · 0 missing · 0 extra'), 'post-rest attacks match');
+        assert(!review.innerText.includes('outside tolerance') && !review.innerText.includes('needs attention'), 'accepted post-rest attack has no contradictory rest grading');
+        const rests = [...document.querySelectorAll('.notation g[data-kind=rest]')];
+        assert(rests.every(n=>n.dataset.feedback==='silent'), 'rest score feedback accepts early attacks');
+        assert(record.events.some(e=>e.accepted && e.action==='down' && e.time<1/3), 'raw early attack retained');
+        checks.push('accepted early post-rest attacks retain raw evidence with consistent '+record.playStyle+' review');
+      } else {
+        const rows = [...document.querySelectorAll('.timing-timeline')];
+        const bar = rows[1].querySelector('.timeline-sustain[y1="48"]');
+        const hit = [...rows[1].querySelectorAll('.timeline-hit')].find(n=>n.getAttribute('y1')==='40');
+        assert(!rows[0].querySelector('.timeline-sustain[y1="48"]'), 'no stray early barline sustain in preceding measure');
+        assert(bar.getAttribute('x1')===hit.getAttribute('x1'), 'received attack and sustain share the same start');
+        assert(Number(bar.getAttribute('x1'))<128, 'early displacement remains visible');
+        checks.push('matched early barline attack joins its sustain without a preceding segment');
+      }
     } else if (scenario === 'evidence') {
       choose(preset, 'tie'); choose(play, 'hold'); pad.setPointerCapture = () => {};
       const start = await begin();
