@@ -190,6 +190,7 @@ Allow **min(60 ms, 15% of rest duration)** intrusion. Beyond it, rest credit dec
 linearly over an additional **60% of rest duration**. For a 500 ms rest this accepts
 60 ms, then reaches zero at 360 ms overlap. A matched hold's final credit is the
 **minimum** of duration credit and applicable rest credits, never a sum of deductions.
+Rest evidence identifies extra attacks separately from sustained overlap.
 Extra rest attacks retain the one extra-attack penalty; their rest evidence supplies
 musical feedback without adding another numerical score. Tap assesses rest attacks,
 not release/overhold intersections.
@@ -218,7 +219,9 @@ Feedback selection is deterministic:
 2. A clear performed-tempo pattern at least 95%, with no missing/extra attacks, can
    say “You kept the rhythm!” (or name the different pace). Otherwise describe partial
    written rhythm without mastery or invented recovery claims.
-3. Prefer substantial rest intrusion (credit below .5) or repeated intrusion first.
+3. Prefer extra attacks during rests in either style. Only Tap + Hold also considers
+   substantial sustained rest intrusion (credit below .5) or repeated intrusion.
+   Tap retains overlap as evidence without giving hold-related criticism.
 4. Then suggest sustain/release work for two hold credits below .8, or one below .4.
 5. Then suggest consistent pace if steadiness is Uneven; then concrete attack guidance
    for missing/extra attacks or rhythm below 85%.
@@ -326,3 +329,14 @@ focus, writing retention, retry/Next, settings retention and layout checks pass.
 Synthetic input does not establish physical keyboard/touch tolerances. The 400 ms
 threshold remains provisional pending actual playing; no staging or production
 publication was performed.
+
+
+### Tap feedback and mobile pad follow-up (2026-10-12)
+
+`npm run check` passes 298 tests, type checking and builds on Node 24.21.0. Regression
+cases distinguish perfect Tap attacks with held rest overlap, the same input in Hold,
+brief extra rest attacks in both styles, and accepted early attacks after rests.
+Native T3 `tap-rest` and `accepted` browser scenarios pass: Tap overlap produces no
+hold criticism, and canceling a synthetic context-menu event on a held pad label does
+not release the pointer input. Selection suppression and normal context-menu behavior
+outside the pad are checked. Physical mobile long-press verification remains pending.

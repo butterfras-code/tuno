@@ -197,6 +197,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   // Starting is a separate gesture: its release must never enter the capture.
   let startingKey = false;
   let startingPointer: number | null = null;
+  // Long presses are performance input, including on the pad's child labels.
+  pad.addEventListener('contextmenu', event => event.preventDefault());
   pad.addEventListener('click', event => { if (!pad.closest('[hidden]') && event.detail === 0 && !transport && !starting) void begin(); });
   // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
   pad.addEventListener('keydown', event => {

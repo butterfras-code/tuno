@@ -1,5 +1,5 @@
 /** Run in native T3 preview_evaluate. __assessmentScenario: keyboard, pointer,
- * slower, compound, accepted, short, tied, or cancellation. Synthetic timestamps test lifecycle and
+ * slower, compound, accepted, short, tied, tap-rest, or cancellation. Synthetic timestamps test lifecycle and
  * interpretation; they do not validate physical device latency or audio output. */
 window.__assessmentCheck = (async () => {
   const scenario = window.__assessmentScenario ?? 'keyboard';
@@ -29,9 +29,18 @@ window.__assessmentCheck = (async () => {
   const stamp=(action,time,start)=>{
     const event=pointer?new PointerEvent(action==='down'?'pointerdown':'pointerup',{pointerId:71,pointerType:'touch',button:0,bubbles:true,cancelable:true}):new KeyboardEvent(action==='down'?'keydown':'keyup',{code:'Space',key:' ',bubbles:true,cancelable:true});
     Object.defineProperty(event,'timeStamp',{value:stampAnchor+(start+time+.015)*1000});pad.dispatchEvent(event);
+    if(pointer && action==='down') {
+      const pressed=pad.getAttribute('aria-pressed');
+      const menu=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});
+      pad.querySelector('.pad-action').dispatchEvent(menu);
+      assert(menu.defaultPrevented && pad.getAttribute('aria-pressed')===pressed,'held-pad context menu is canceled without releasing input');
+    }
   };
   try {
-    choose(mode,'both');choose(preset,'half');choose(preset,scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'?'120':'180');choose(style,holdStyle?'hold':'tap');
+    assert(getComputedStyle(pad).touchAction==='none' && getComputedStyle(pad.querySelector('.pad-action')).userSelect==='none','pad and child labels prevent touch gestures and selection');
+    const outsideMenu=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});document.querySelector('.rhythm-nav').dispatchEvent(outsideMenu);
+    assert(!outsideMenu.defaultPrevented,'context menus elsewhere remain available');
+    choose(mode,'both');choose(preset,'half');choose(preset,scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');choose(style,holdStyle?'hold':'tap');
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;
     const slot=document.querySelector('.count-slot');slot.focus();slot.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
@@ -46,8 +55,9 @@ window.__assessmentCheck = (async () => {
     }
     await wait(()=>context.currentTime>=start+.01);
     stampAnchor=performance.now()-context.currentTime*1000;
-    const scale=scenario==='slower'?1.4:1, count=scenario==='tied'?3:scenario==='compound'?6:8, spacing=scenario==='compound'?1/9:scenario==='accepted'?1/2:1/3;
-    if(scenario==='tied') { for(const [down,up] of [[0,.5],[.75,.79],[1,1.8]]) { stamp('down',down,start);stamp('up',up,start); } }
+    const scale=scenario==='slower'?1.4:1, count=scenario==='tap-rest'?4:scenario==='tied'?3:scenario==='compound'?6:8, spacing=scenario==='compound'?1/9:scenario==='accepted'?1/2:1/3;
+    if(scenario==='tap-rest') { for(const [down,up] of [[0,.95],[1,1.1],[1.25,1.35],[1.5,1.9]]) { stamp('down',down,start);stamp('up',up,start); } }
+    else if(scenario==='tied') { for(const [down,up] of [[0,.5],[.75,.79],[1,1.8]]) { stamp('down',down,start);stamp('up',up,start); } }
     else for(let i=0;i<count;i++) {const shift=scenario==='accepted'?.08:0;stamp('down',i*spacing*scale+shift,start);if(scenario==='accepted')stamp('up',i*spacing+shift+spacing*(i===count-1?.8:.7),start);else if(i<count-1||scenario==='short')stamp('up',pointer?(i+1)*spacing*scale-.005:i*spacing*scale+.01,start);}
     // Except in the accepted-sustain case, complete with the last input down.
     // Its late release goes to the
@@ -65,6 +75,7 @@ window.__assessmentCheck = (async () => {
     assert(document.querySelectorAll('.timing-timeline').length>0 && document.querySelectorAll('.notation').length>0,'score and target timelines remain');
     assert(id()===exercise && written()===answer,'Both retains independent writing');
     const record=await download();assert(record.assessmentPolicy.version===2 && record.holdPolicy.version===4 && record.assessment.matches.length===count,'download includes snapshot, estimates and counts');
+    if(scenario==='tap-rest') { assert(record.assessment.rhythm===100 && record.assessment.restIntrusions.length>0,'perfect Tap rhythm retains raw rest overlap');assert(!panel.querySelector('.result-suggestion'),'Tap receives no held-overlap criticism'); }
     if(scenario==='short') { assert(record.assessment.hold===null && record.assessment.matches.every(m=>m.holdCredit===null),'short sounds excluded, no fabricated hold credit');assert(text.includes('Hold not assessed—short notes only.'),'short-note explanation visible in Details');assert(!panel.querySelector('.result-suggestion') && !document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'short taps have no sustain warnings'); }
     if(scenario==='tied') { assert(record.assessment.hold===100 && record.assessment.matches[0].duration.waivedFinalDuration===.25,'short tied tail optional');assert(text.includes('across 2 assessed notes') && text.includes('final tied member optional (250 ms)'),'eligible denominator and optional tail explained');assert(!document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'waived tail has no contradictory warnings'); }
     if(scenario==='accepted') {assert(record.assessment.rhythm===100 && record.assessment.hold===100,'late start and elapsed 70/80 percent sustain accepted');assert(!document.querySelector('.timeline-sustain.attention, .timeline-hit.unmatched, [data-feedback=overlap]'),'accepted assessment has no contradictory timeline or score warnings');assert(!document.querySelector('.timeline-lift-window'),'target-time lift-credit promise removed');}

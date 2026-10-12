@@ -373,3 +373,30 @@ test('v4 exempt notes retain rest-intrusion evidence without entering the hold d
   const absent=currentAttempt([0],[{meter:[2,4],events:[['E'],['E',{rest:true}],['Q',{rest:true}]]}],{style:'hold',releases:[null]});
   assert.equal(assessAttempt(absent).hold,null); assert.ok(evaluateAttempt(absent).restViolations.length);
 });
+
+
+test('Tap ignores held overlap in rests while Hold still gives release guidance', () => {
+  const music: RhythmMeasure[] = Array.from({length:2},()=>({meter:[4,4],events:[['Q'],['Q',{rest:true}],['Q'],['Q']]}));
+  const times=[0,1,1.5,2,3,3.5], releases=[.95,1.35,1.9,2.95,3.35,3.9];
+  for (const style of ['tap','hold'] as const) {
+    const record=currentAttempt(times,music,{style,releases});
+    const a=assessAttempt(record);
+    near(a.rhythm,100); assert.equal(a.restIntrusions.length,2);
+    assert.ok(a.restIntrusions.every(r=>!r.attack));
+    assert.equal(musicalFeedback(record,a).suggestion,style==='tap'?null:'Leave a little more silence in the rests.');
+    assert.equal(evaluateAttempt(record).restViolations.length,style==='tap'?0:2);
+  }
+});
+
+test('a brief extra rest attack gets silence guidance in either style; accepted early attacks do not', () => {
+  const music: RhythmMeasure[] = Array.from({length:2},()=>({meter:[4,4],events:[['Q'],['Q',{rest:true}],['Q'],['Q']]}));
+  for (const style of ['tap','hold'] as const) {
+    const record=currentAttempt([0,.7,1,1.5,2,3,3.5],music,{style,releases:[.4,.71,1.35,1.9,2.4,3.35,3.9]});
+    const a=assessAttempt(record);
+    assert.equal(a.extra,1); assert.equal(a.restIntrusions.length,1);
+    assert.equal(a.restIntrusions[0]!.attack,true); near(a.restIntrusions[0]!.credit,1);
+    assert.equal(musicalFeedback(record,a).suggestion,'Leave a little more silence in the rests.');
+    const early=currentAttempt([0,.98,1.5,2,2.98,3.5],music,{style,releases:[.4,1.35,1.9,2.4,3.35,3.9]});
+    near(assessAttempt(early).rhythm,100); assert.equal(musicalFeedback(early,assessAttempt(early)).suggestion,null);
+  }
+});

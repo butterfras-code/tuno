@@ -9,6 +9,7 @@ import { planPassage, musicalSeconds } from './timing.ts';
 import { sourcePolicy } from './shared/meter.ts';
 
 type TempoFit = { scale: number; displacement: number; displacementBound: number; matched: number; span: number; medianResidual: number | null; ambiguous: boolean; withinBounds: boolean };
+type RestIntrusion = { rest: number; actual: number; hold: number; seconds: number; credit: number; attack: boolean };
 type Pair = [number, number];
 type Association = { pairs: Pair[]; cost: number; scale: number; displacement: number };
 const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x));
@@ -98,7 +99,7 @@ export function sustainEvidence(duration: number, elapsed: number | null, adjace
 export function assessAttempt(record: AttemptRecord) {
   if ((record.assessmentPolicy?.version ?? 1) === 1) {
     const legacy = assessLegacyAttempt(record);
-    return { ...legacy, startingDisplacement: null, tempoFit: null as TempoFit | null, holdPolicy: null, restIntrusions: [] as {rest:number; actual:number; hold:number; seconds:number; credit:number}[],
+    return { ...legacy, startingDisplacement: null, tempoFit: null as TempoFit | null, holdPolicy: null, restIntrusions: [] as RestIntrusion[],
       matches: legacy.matches.map(m => ({ ...m, duration: null as ReturnType<typeof sustainEvidence> | null })) };
   }
   const policy = record.assessmentPolicy ?? assessmentPolicy;
@@ -107,7 +108,7 @@ export function assessAttempt(record: AttemptRecord) {
   const allHolds = capturedHolds(record);
   const holds = allHolds.filter(h => !h.countIn);
   const expected = target.notes.map(n => n.start), actual = holds.map(h => h.down);
-  const base = { version: 2 as const, policy, holdPolicy: hp, tempoFit: null as TempoFit | null, startingDisplacement: null as number | null, restIntrusions: [] as {rest:number; actual:number; hold:number; seconds:number; credit:number}[], targetBpm: record.bpm, expectedAttacks: expected.length, capturedAttacks: actual.length };
+  const base = { version: 2 as const, policy, holdPolicy: hp, tempoFit: null as TempoFit | null, startingDisplacement: null as number | null, restIntrusions: [] as RestIntrusion[], targetBpm: record.bpm, expectedAttacks: expected.length, capturedAttacks: actual.length };
   const unavailable = (reason: string) => ({ ...base, basis: 'unavailable' as const, rhythm: null, hold: null, tempo: null, steadiness: null, reason, tempoReason: reason, steadinessReason: reason, holdReason: reason, matchedNotes: 0, missing: null, extra: null, matches: [] as { expected: number; actual: number; error: number; credit: number; holdCredit: number | null; duration: ReturnType<typeof sustainEvidence> | null }[], usableIntervals: 0, intervalSpan: 0, performedBeat: null as number | null, residualMedian: null as number | null });
   if (expected.length > policy.maximumExpectedAttacks || actual.length > policy.maximumCapturedAttacks) return unavailable('Too much input for a reliable bounded assessment. Raw evidence is retained.');
   if (record.status !== 'completed') return unavailable('Interrupted attempts are not graded.');
@@ -115,7 +116,7 @@ export function assessAttempt(record: AttemptRecord) {
     const result = unavailable(actual.length ? 'Rest exercise: attacks were received during silence. Review the rest evidence.' : 'Rest exercise: no attacks received. Review the rest evidence.');
     result.restIntrusions = target.rests.flatMap((r,rest)=>allHolds.flatMap((h,hold)=>{
       const seconds=Math.max(0,Math.min(r.end,h.up ?? record.endedAt-h.correction)-Math.max(r.start,h.down));
-      return seconds>0 ? [{rest,actual:holds.indexOf(h),hold,seconds,credit:0}] : [];
+      return seconds>0 ? [{rest,actual:holds.indexOf(h),hold,seconds,credit:0,attack:!h.countIn && h.down>=r.start && h.down<r.end}] : [];
     }));
     return result;
   }
@@ -156,7 +157,7 @@ export function assessAttempt(record: AttemptRecord) {
     const match = chosen.pairs.find(([,a]) => a === actual);
     if (match && Math.abs(target.notes[match[0]]!.start-r.end)<1e-9 && attackCredit(h.down-end,beat,policy) >= 1-1e-9) return [];
     const extraRestAttack = actual >= 0 && !match && h.down >= start && h.down < end;
-    return seconds > allowance + 1e-9 || extraRestAttack ? [{rest,actual,hold,seconds,credit:clamp(1-(seconds-allowance)/((end-start)*hp.restPenaltyRatio),0,1)}] : [];
+    return seconds > allowance + 1e-9 || extraRestAttack ? [{rest,actual,hold,seconds,attack:extraRestAttack,credit:clamp(1-(seconds-allowance)/((end-start)*hp.restPenaltyRatio),0,1)}] : [];
   }));
   const holdStyle = (record.playStyle ?? 'hold') === 'hold';
   const matches = chosen.pairs.map(([e, a]) => {

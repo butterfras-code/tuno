@@ -12,14 +12,17 @@ export function steadinessDescription(variation: number, a: Assessment) {
 /** One evidence-backed summary and at most one concrete musical suggestion. */
 export function musicalFeedback(record: AttemptRecord, a: Assessment) {
   if (record.status !== 'completed') return {summary:'This attempt was interrupted.', suggestion:'Try again when you’re ready.'};
-  const restIssue = a.capturedAttacks>0 || ((record.playStyle ?? 'hold') === 'hold' && a.restIntrusions.length>0);
+  const holdStyle = (record.playStyle ?? 'hold') === 'hold';
+  const restIssue = a.capturedAttacks>0 || (holdStyle && a.restIntrusions.length>0);
   if (!a.expectedAttacks) return {summary:restIssue ? 'There was input during this rest exercise.' : 'You left the rests silent.', suggestion:restIssue ? 'Leave silence in the rests.' : null};
   if (a.rhythm === null) return {summary:'We couldn’t clearly assess this attempt.',suggestion:'Try again with one tap for each note.'};
   if (!a.matchedNotes) return {summary:'We didn’t hear the written notes clearly.',suggestion:'Try tapping once when each note starts.'};
   if (a.basis === 'target') return {summary:'There are only a few notes to assess.',suggestion:(a.missing ?? 0)>0 ? 'Try tapping once for each note.' : null};
-  const poorHolds = a.matches.filter(m=>m.holdCredit !== null && m.holdCredit < .8);
+  const poorHolds = holdStyle ? a.matches.filter(m=>m.holdCredit !== null && m.holdCredit < .8) : [];
   let suggestion: string | null = null;
-  if (a.restIntrusions.some(r=>r.credit<.5) || a.restIntrusions.length>=2) suggestion='Leave a little more silence in the rests.';
+  const restAttack = a.restIntrusions.some(r=>r.attack);
+  const sustainedRestIssue = holdStyle && (a.restIntrusions.some(r=>r.credit<.5) || a.restIntrusions.length>=2);
+  if (restAttack || sustainedRestIssue) suggestion='Leave a little more silence in the rests.';
   else if (poorHolds.length>=2 || poorHolds.some(m=>m.holdCredit!<.4)) suggestion=poorHolds.some(m=>m.duration?.elapsed === null) ? 'Release when the note ends.' : poorHolds.some(m=>m.duration && m.duration.elapsed!>m.duration.maximum) ? 'Release when the note ends.' : 'Try holding the longer notes a little more.';
   else if (a.steadiness !== null && a.steadiness>a.policy.mostlySteadyPercent) suggestion='Keep the same pace through the whole exercise.';
   else if ((a.missing ?? 0)+(a.extra ?? 0)>0 || a.rhythm<85) suggestion='Try tapping once when each note starts.';
