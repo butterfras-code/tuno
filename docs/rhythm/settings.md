@@ -42,7 +42,7 @@ This table maps the [original handoff](reference/RHYTHM_GAME_HANDOFF.md) to the 
 
 | Settings group | Options represented | Handoff sections |
 | --- | --- | --- |
-| Available now | Counting system, review exercise, teacher-dependent dotted-quarter rule, duration-line placement, sustained-count appearance and the fixed rest-parentheses rule | 4, 12; subsequent teacher decisions |
+| Available now | Counting system, review exercise, teacher-dependent dotted-quarter rule, duration-line placement, sustained-count appearance, fixed rest-parentheses rule and How to play (Tap / Tap + Hold) | 4, 12; subsequent teacher decisions |
 | Write Counts | Open vs guided symbol entry, required counts / extra subdivisions, keyboard and touch, line endpoints, hints / answer visibility | 12 |
 | Activity & exercises | Write Counts / Tap Rhythms / Both (active shared mode selector), all three performance formats, passage length, fixed / generated / curated content, developmental presets and UIL I–VI, custom preset saving/sharing, quick-start defaults and instructions | 1, 3, 6, 7 |
 | Rhythm vocabulary | Starting and optional goal checklists: whole, half, quarter, single/paired/triplet eighths, sixteenths, dotted half/quarter, whole/half/quarter/eighth rests, ties; pattern/syncopation restrictions, dotted-eighth figures, ties across beats/bars, rest placement, sixteenth rests, double dots, duplets; undecided accents, articulation, swing, pickups and multiple parts | 4, 6, 7, 15 |
@@ -71,3 +71,7 @@ The subsequent [ties/syncopation validation](ties-syncopation.md#original-slice-
 Browser regression coverage includes two-way convention synchronization, retaining answers across views, explicit clearing on exercise change, stale feedback, keyboard navigation, back navigation, settings deep links, reload semantics, independent future guidance controls and disabled placeholders. Expanded settings are checked for horizontal overflow at 320, 375, 768 and 1280 CSS pixels. Screenshots and reports are written by `npm run test:counts:browser` under `dist/validation/count-writing-{chromium,firefox}/`.
 
 Node 24.21.0 and `npm ci` were used. Type checking, all 118 unit tests, hosted/portable build checks and Count Writing browser checks passed in Chromium and Firefox. Local T3 preview navigation failed; repository browser regression checks supplied the local interaction and layout evidence. Physical-device checks and full release acceptance remain separate requirements; this page is a prototype on a feature branch.
+
+## How to play
+
+Performance settings include Tap (default) — “Tap when each note starts.” — and Tap + Hold — “Hold each note for its length. Release for rests.” The saved `playStyle` applies to Tap Rhythms and Both; it preserves the current exercise, configuration, written answer and completed interpretation. It locks during count-in/capture and calibration. Retry snapshots the current selection. No learner tolerance controls are added; see the [provisional performance policy](performance-prototype.md#selectable-tap--tap--hold).

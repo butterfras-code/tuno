@@ -1,8 +1,8 @@
 # Canonical rhythm music model
 
-Current integration: [one Rhythm Walk activity](unified-activity.md) shares written events and exact derived time across Write Counts and Tap Rhythms. Their answer and performance evaluations remain separate.
+Current integration: [one Uno234 activity](unified-activity.md) shares written events and exact derived time across Write Counts, Tap Rhythms and Both. Their answer and performance evaluations remain separate. Tap / Tap + Hold is a performance preference, never a response mode or an alternative musical model.
 
-Implemented 2026-10-10 at the owner's request. This is the shared source contract for both Rhythm Walk response modes. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
+Implemented 2026-10-10 at the owner's request. This is the shared source contract for Uno234. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
 
 ## Compact source
 
@@ -61,6 +61,8 @@ Supported tuplets are flat 3:2 triplets and 2:3 duplets. Each member carries the
 `tieNext` connects the event to the immediately following written event, including across a barline or meter change. This is a monophonic rhythm model; there is no pitch or voice matching yet. Rests cannot start or receive ties.
 
 `deriveMeasure` validates a bar and permits an outgoing final tie because it cannot know the next measure. **Use `derivePassage` to validate complete exercises.** It rejects unresolved final ties and derives an attack list: tied notes produce one attack with their summed duration and references to all written members. Written notation remains intact. A rest creates no attack. Count Writing must use written events and its counting policy, rather than treating every member of a tie as a new performed attack.
+
+Both performance settings consume the same derived sounding attack list. Tap evaluates chain onsets and ignores releases; Tap + Hold evaluates one continuous hold through the derived chain end. Written tie boundaries allow no release/reattack or articulation gap. Separate sounding notes allow a bounded early release relative to the preceding expected end. Numerical allowances belong to the [performance policy](performance-prototype.md#selectable-tap--tap--hold), not to authored notation or exact musical time. Expected duration bars use derived sounding chains; actual bars use input-specific corrected down/up evidence without snapping to musical endpoints.
 
 ## Count Writing integration
 

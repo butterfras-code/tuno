@@ -184,7 +184,7 @@ try {
   const countInBounds = await page.locator('.performance-surface').boundingBox();
   await status.filter({ hasText: 'Performing' }).waitFor({ timeout: 10000 });
   assert.equal(await page.locator('.count-in-display').isVisible(), false, 'performing hides count-in indicators');
-  assert.equal(await pad.locator('.pad-action').innerText(), 'Tap / hold');
+  assert.equal(await pad.locator('.pad-action').innerText(), 'Tap');
   const inputBounds = await page.locator('.performance-surface').boundingBox();
   assert.ok(Math.abs(inputBounds.y - countInBounds.y) < 1 && Math.abs(inputBounds.height - countInBounds.height) < 1, 'pad stays in place across count-in/input states');
   await status.filter({ hasText: 'Reviewing' }).waitFor({ timeout: 10000 });

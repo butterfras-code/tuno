@@ -61,6 +61,7 @@ function placeholder(setting: Setting): HTMLElement {
 export function createSettingsPage(callbacks: {
   initialGeneration: GenerationSettings;
   metronomeField: HTMLElement;
+  playField: HTMLElement;
   newExercise: () => void;
   generation: (value: GenerationSettings) => void;
   offbeat: (value: OffbeatSymbol) => void;
@@ -161,7 +162,7 @@ export function createSettingsPage(callbacks: {
   restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
   restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
   const performanceControls = el('div', 'settings-live-controls performance-settings');
-  performanceControls.append(callbacks.metronomeField);
+  performanceControls.append(callbacks.playField, callbacks.metronomeField);
   available.append(activeHeader, el('h3', '', 'Exercise settings'), exerciseControls, el('h3', '', 'Performance'), performanceControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
@@ -176,7 +177,7 @@ export function createSettingsPage(callbacks: {
   planned.append(el('summary', '', 'Future options'), browse, el('p', 'setting-hint', 'These options are planned or still being decided. They do not change your exercises.'));
   page.append(intro, savedNote, settingsActions, available, planned);
   for (const group of settingsGroups) {
-    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping', 'activity-mode'].includes(setting.id));
+    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping', 'activity-mode', 'performance-input'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
     section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
     const summary = el('summary');

@@ -92,6 +92,11 @@ main.rhythm-app {
 .timeline-rail { stroke: var(--color-line); stroke-width: 2; }
 .timeline-hit { stroke: var(--color-teal); stroke-width: 3; }
 .timeline-hit.unmatched { stroke: var(--color-accent); }
+.timeline-sustain { stroke: var(--color-teal); stroke-width: 4; }
+.timeline-release { stroke: var(--color-teal); stroke-width: 2; }
+.timeline-sustain.attention, .timeline-release.attention { stroke: var(--color-accent); }
+.timeline-sustain.attention { stroke-dasharray: 5 2; }
+.timeline-sustain.incomplete { stroke-dasharray: 2 4; }
 
 /* Stable systems: use the viewport, never a horizontally scrolling score. */
 .passage-scroll { overflow: visible; container-type: inline-size; }

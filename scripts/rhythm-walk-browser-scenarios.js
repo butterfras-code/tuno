@@ -48,6 +48,8 @@
   const audioWait = async time => wait(() => context.currentTime >= time);
   try {
     await wait(() => !picker.disabled);
+    const play = document.querySelector('[data-setting="how-to-play"]');
+    play.value = 'hold'; play.dispatchEvent(new Event('change'));
     if (scenario === 'keyboard') {
     choose('quarters'); tempo.value = '180'; metro.checked = true;
     const exerciseStart = await begin();

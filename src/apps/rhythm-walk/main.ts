@@ -135,6 +135,7 @@ practiceView.append(banner, showCountsField, passage, writeResponse);
 const settings = createSettingsPage({
   initialGeneration: generation,
   metronomeField: performance.metronomeField,
+  playField: performance.playField,
   newExercise: () => newExercise(true),
   offbeat: value => { offbeat = value; updateEditors(); },
   placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },
@@ -268,11 +269,12 @@ function decoratePerformance(record: AttemptRecord | null) {
   }
   record.plan.notes.forEach((note, index) => {
     const match = evaluation.matches.find(m => m.expected === index);
-    note.sources.forEach(source => annotate(source.measure, source.event, match ? 'matched' : 'missing', match ? `Attack ${Math.round(match.onsetOffset * 1000)} ms; release ${match.releaseOffset === null ? 'not observed' : Math.round(match.releaseOffset * 1000) + ' ms'}` : 'Missing attack', `feedback-note-${index}`));
+    const accepted = match?.attackAccepted && ['accepted', 'not-graded'].includes(match.durationFeedback);
+    note.sources.forEach(source => annotate(source.measure, source.event, match ? accepted ? 'matched' : 'overlap' : 'missing', match ? `Attack ${Math.round(match.onsetOffset * 1000)} ms${match.durationFeedback === 'not-graded' ? '; release not graded' : `; duration ${match.durationFeedback}; release ${match.releaseOffset === null ? 'not observed' : Math.round(match.releaseOffset * 1000) + ' ms'}`}` : 'Missing attack', `feedback-note-${index}`));
   });
   record.plan.rests.forEach((rest, index) => {
-    const overlaps = evaluation.restOverlaps.filter(o => o.rest === index);
-    annotate(rest.source.measure, rest.source.event, overlaps.length ? 'overlap' : 'silent', overlaps.length ? 'Input overlaps this rest' : 'Silent', `feedback-rest-${index}`);
+    const violations = evaluation.restViolations.filter(o => o.rest === index);
+    annotate(rest.source.measure, rest.source.event, violations.length ? 'overlap' : 'silent', violations.length ? 'Input during this rest' : record.playStyle === 'tap' ? 'No attacks during rest' : 'Silent or within release tolerance', `feedback-rest-${index}`);
   });
 }
 loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);

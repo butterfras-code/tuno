@@ -11,6 +11,8 @@ import type { OffbeatSymbol } from '../count-writing/input.ts';
 import { meters } from './shared/meter.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 import { derivePassage } from '../../music/measure.ts';
+import { playStyles } from './play-policy.ts';
+import type { PlayStyle } from './play-policy.ts';
 
 export const modes = ['write', 'tap', 'both'] as const;
 export type Mode = typeof modes[number];
@@ -23,10 +25,10 @@ export const presets: readonly PassageFixture[] = [
 export interface Preferences {
   version: 1; mode: Mode; generation: GenerationSettings; preset: string;
   offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
-  bpm: number; metronome: boolean; showCounts: boolean; wrapped: boolean;
+  bpm: number; metronome: boolean; showCounts: boolean; wrapped: boolean; playStyle: PlayStyle;
 }
 export const preferenceKey = 'tuno.rhythm-walk.preferences.v1';
-export const defaultPreferences = (): Preferences => ({ version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false });
+export const defaultPreferences = (): Preferences => ({ version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
 /** Restore known, structurally valid fields; keep invalid ingredient combinations editable. */
 export function readPreferences(raw: string | null): Preferences {
   const defaults = defaultPreferences();
@@ -34,6 +36,7 @@ export function readPreferences(raw: string | null): Preferences {
     const p = JSON.parse(raw ?? 'null') as Partial<Preferences> | null;
     if (!p || p.version !== 1) return defaults;
     if (modes.includes(p.mode!)) defaults.mode = p.mode!;
+    if (playStyles.includes(p.playStyle!)) defaults.playStyle = p.playStyle!;
     if (p.preset === 'generated' || presets.some(f => f.id === p.preset)) defaults.preset = p.preset!;
     if (p.offbeat === '&' || p.offbeat === '+') defaults.offbeat = p.offbeat;
     if (['review', 'required', 'optional'].includes(p.convention!)) defaults.convention = p.convention!;

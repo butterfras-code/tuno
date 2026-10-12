@@ -10,6 +10,8 @@ Read [the unified activity contract](unified-activity.md) for shared ownership, 
 
 ## Decisions carried forward
 
+- Performance **How to play** is selectable in shared settings: Tap (default) or Tap + Hold. Both reuse canonical sounding chains and raw capture. Attempts retain the choice/policy used; completed reviews do not change when preferences do. Tap reviews attacks only; Tap + Hold adds actual duration bars and provisional release/articulation feedback. See [performance policy](performance-prototype.md#selectable-tap--tap--hold).
+
 - One shared exercise/configuration with freely switchable Write Counts, Tap Rhythms and Both; writing then performing is optional. Switching preserves the exact exercise; Next replaces it and clears both responses.
 - Musical source is a flat written-event sequence with exact fractional time, not stored base-twelve positions. The twelve-subdivision beat coordinate is derived; ties join written members into one sounding attack. Thirty-second notes and quintuplets remain out of scope. Domain support for other values does not imply UI support.
 - Default generated length is two measures, configurable 1–4. 6/8 uses six numbered eighth counts, grouped 123 / 456, and two dotted-quarter performance pulses.

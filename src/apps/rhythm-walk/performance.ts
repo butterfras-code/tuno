@@ -1,5 +1,7 @@
 import { createTimingPanel } from './calibration.ts';
-import { el, button, field, numberInput } from '../../shared/ui/components.ts';
+import { el, button, field, numberInput, select } from '../../shared/ui/components.ts';
+import { playOptions, playInstructions } from './play-policy.ts';
+import type { PlayStyle } from './play-policy.ts';
 import type { Exercise } from './fixtures.ts';
 import type { Preferences } from './activity.ts';
 import { sourcePolicy } from './shared/meter.ts';
@@ -23,6 +25,13 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   const tempo = numberInput(40, 180, options.preferences.bpm);
   const metronome = el('input'); metronome.type = 'checkbox'; metronome.checked = options.preferences.metronome;
   const metronomeLabel = field('Metronome during exercise', metronome);
+  const howToPlay = select(playOptions, value => {
+    options.preferences.playStyle = value as PlayStyle; options.changed(); refreshExercise();
+  });
+  howToPlay.value = options.preferences.playStyle; howToPlay.dataset.setting = 'how-to-play';
+  const playField = field('How to play', howToPlay);
+  const playHint = el('p', 'setting-hint', playInstructions[options.preferences.playStyle]);
+  playHint.id = 'how-to-play-hint'; howToPlay.setAttribute('aria-describedby', playHint.id); playField.append(playHint);
   const tempoField = field('Tempo (quarter-note BPM)', tempo); tempoField.className = 'score-tempo';
   tempoField.querySelector('.field-label')!.className = 'field-label sr-only';
   const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -82,14 +91,14 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   function lock(active: boolean) {
     timing.setLocked(active);
     main.classList.toggle('active', active); options.busy(active);
-    tempo.disabled = metronome.disabled = active;
+    tempo.disabled = metronome.disabled = howToPlay.disabled = active;
     stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Start'; download.disabled = calibrate.disabled = active;
   }
   function tick(time: number) {
     if (!transport) return;
     const phase = transport.capture.phase(time);
     countInDisplay.hidden = phase !== 'count-in'; pulse.hidden = phase === 'count-in';
-    padAction.textContent = phase === 'count-in' ? 'Count In' : 'Tap / hold';
+    padAction.textContent = phase === 'count-in' ? 'Count In' : transport.capture.playStyle === 'hold' ? 'Tap + Hold' : 'Tap';
     const next = phase === 'count-in' ? 'Count-in — release before the start' : time >= transport.capture.plan.duration ? 'Performing — capturing final release' : 'Performing';
     if (status.textContent !== next) status.textContent = next;
     const pulses = transport.capture.plan.pulses;
@@ -107,7 +116,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (transport || starting) return;
     if (!tempo.reportValidity()) return;
     // Snapshot before awaiting audio activation, even though controls are locked.
-    const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current());
+    const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current(), options.preferences.playStyle);
     renderCountIn(capture.plan);
     const token = ++generation; pending = capture;
     starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
@@ -141,18 +150,20 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     }
     status.textContent = 'Reviewing';
     if (record.timingOffset) review.append(el('p', '', `${Math.round(record.timingOffset.seconds * 1000)} ms timing offset subtracted for ${record.timingOffset.input === 'keyboard' ? 'keyboard' : 'touch / mouse'}. This fixed session correction changes neither spacing nor hold lengths. Other input methods remain uncorrected.`));
-    review.append(el('p', '', `${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. Review onset, release, and rest evidence below.`));
+    const holdStyle = (record.playStyle ?? 'hold') === 'hold';
+    review.append(el('p', '', `${holdStyle ? 'Tap + Hold' : 'Tap'} · ${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra. ${holdStyle ? 'Review attacks, duration and releases below.' : 'Review attacks below. Releases are not graded.'}`));
     const list = el('ol');
     record.plan.notes.forEach((note, i) => {
       const match = evaluation.matches.find(m => m.expected === i);
       const refs = note.sources.map(s => `measure ${s.measure + 1}, note ${s.event + 1}`).join(' → ');
-      const text = `${refs}${note.sources.length > 1 ? ' (tied chain)' : ''}: ${match ? `attack ${offset(match.onsetOffset)}; release ${offset(match.releaseOffset)}` : 'missing attack'}.`;
+      const text = `${refs}${note.sources.length > 1 ? ' (tied chain)' : ''}: ${match ? `attack ${offset(match.onsetOffset)} (${match.attackAccepted ? 'within provisional tolerance' : 'outside provisional tolerance'})${holdStyle ? `; release ${offset(match.releaseOffset)}; duration ${match.durationFeedback}` : ''}` : 'missing attack'}.`;
       const item = el('li', '', text); item.id = `feedback-note-${i}`; list.append(item);
 
     });
     record.plan.rests.forEach((rest, i) => {
       const overlaps = evaluation.restOverlaps.filter(o => o.rest === i);
-      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${overlaps.length ? overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ') : 'silent'}.`;
+      const attacks = evaluation.restAttacks.filter(o => o.rest === i);
+      const text = `Measure ${rest.source.measure + 1}, rest ${rest.source.event + 1}: ${holdStyle ? overlaps.length ? `${overlaps.map(o => `${Math.round((o.end - o.start) * 1000)} ms of input overlap`).join('; ')} (${evaluation.restViolations.some(o => o.rest === i) ? 'release needs attention' : 'within release tolerance'})` : 'silent' : attacks.length ? `${attacks.length} attack(s) during rest` : 'no attacks during rest'}.`;
       const item = el('li', '', text); item.id = `feedback-rest-${i}`; list.append(item);
 
     });
@@ -224,7 +235,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
-    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.`;
+    playHint.textContent = playInstructions[options.preferences.playStyle];
+    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
   }
   function cancel(reason: string) {
     timing.cancel();
@@ -240,6 +252,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     section: main,
     tempoField,
     metronomeField: metronomeLabel,
+    playField,
     help,
     cancel,
     start: begin,

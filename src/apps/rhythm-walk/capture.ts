@@ -3,6 +3,8 @@ import type { TimingOffset } from './offset.ts';
 import { planPassage, prototypeTiming } from './timing.ts';
 import type { Plan, TimingPolicy } from './timing.ts';
 import type { Exercise } from './fixtures.ts';
+import { provisionalEvaluation } from './play-policy.ts';
+import type { PlayStyle, EvaluationPolicy } from './play-policy.ts';
 export type Phase = 'ready' | 'count-in' | 'performing' | 'reviewing' | 'interrupted';
 export interface InputEvent {
   readonly action: 'down' | 'up'; readonly source: string; readonly timestampMs: number;
@@ -14,6 +16,8 @@ export interface ClockEvidence {
   readonly sampleRate: number; readonly baseLatency: number; readonly outputLatency?: number;
 }
 export interface AttemptRecord {
+  readonly playStyle?: PlayStyle;
+  readonly evaluationPolicy?: EvaluationPolicy;
   readonly timingOffset?: TimingOffset;
   readonly version: 1; readonly clock?: ClockEvidence;
   readonly exercise: Exercise; readonly bpm: number; readonly metronome: boolean; readonly policy: TimingPolicy;
@@ -29,7 +33,10 @@ export class Capture {
   private clock: ClockEvidence | undefined;
   private owner: string | null = null;
   private result: AttemptRecord | null = null;
-  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset) {
+  readonly playStyle: PlayStyle;
+  readonly evaluationPolicy: EvaluationPolicy;
+  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset, playStyle: PlayStyle = 'tap', evaluationPolicy: EvaluationPolicy = provisionalEvaluation) {
+    this.playStyle = playStyle; this.evaluationPolicy = { ...evaluationPolicy };
     this.exercise = structuredClone(exercise); this.policy = { ...policy };
     this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
@@ -56,6 +63,6 @@ export class Capture {
     return this.result!;
   }
   private end(status: AttemptRecord['status'], endedAt: number, reason?: string) {
-    this.result = structuredClone({ version: 1 as const, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
+    this.result = structuredClone({ version: 1 as const, playStyle: this.playStyle, evaluationPolicy: this.evaluationPolicy, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
   }
 }
