@@ -118,3 +118,41 @@ test('an early barline attack anchors a tied or incomplete hold while later cont
     assert.equal(rows[2]!.receivedSustain[0]!.end, release);
   }
 });
+
+test('expected lift windows use the saved policy and leave actual intervals intact', () => {
+  const capture=new Capture(quarters,80,false,undefined,undefined,'hold');
+  capture.plan.notes.forEach(note=>{capture.input('down','keyboard',note.start,0);capture.input('up','keyboard',note.end-.18,0);});
+  const record=capture.advance(capture.plan.captureEnd)!;
+  const rows=timingTimelines(record), windows=rows.flatMap(row=>row.expectedSustain.flatMap(s=>s.releaseWindow?[s.releaseWindow]:[]));
+  assert.equal(windows.length,7);assert.ok(Math.abs(windows[0]!.start-.57)<1e-9);assert.equal(windows[0]!.end,.75);
+  assert.ok(rows[0]!.expectedSustain.at(-1)!.releaseWindow,'separate note across barline allows lift on preceding bar');
+  assert.equal(rows[1]!.expectedSustain.at(-1)!.releaseWindow,undefined,'last note has no adjacent-note lift band');
+  assert.ok(Math.abs(rows[0]!.receivedSustain[0]!.end!-.57)<1e-9);assert.equal(rows[0]!.expectedSustain[0]!.end,.75);
+  assert.ok(rows.flatMap(row=>row.receivedSustain).every(s=>!s.releaseWindow));
+  const legacy={...record,evaluationPolicy:{...record.evaluationPolicy!,articulationRatio:.15,articulationCeiling:.08}};
+  assert.ok(Math.abs(timingTimelines(legacy)[0]!.expectedSustain[0]!.releaseWindow!.start-.67)<1e-9);
+  assert.deepEqual(timingTimelines({...legacy,evaluationPolicy:undefined}),timingTimelines(legacy));
+});
+
+test('lift bands never break internal ties or precede rests, and Tap has none', () => {
+  const music={id:'lift-ties',label:'',description:'',measures:[
+    {meter:[2,4] as const,events:[['H',{tieNext:true}]] as const},
+    {meter:[2,4] as const,events:[['Q'],['Q']] as const},
+    {meter:[2,4] as const,events:[['Q',{rest:true}],['Q']] as const},
+  ]};
+  const hold=new Capture(music,120,false,undefined,undefined,'hold');const rows=timingTimelines(hold.advance(hold.plan.captureEnd)!);
+  assert.equal(rows[0]!.expectedSustain[0]!.releaseWindow,undefined,'internal tied barline continuous');
+  assert.ok(rows[1]!.expectedSustain[0]!.releaseWindow,'chain end before separate note permits lift');
+  assert.equal(rows[1]!.expectedSustain[1]!.releaseWindow,undefined,'before rest uses ordinary release');
+  const tap=new Capture(music,120,false);assert.ok(timingTimelines(tap.advance(tap.plan.captureEnd)!).every(row=>!row.expectedSustain.length));
+});
+
+test('a long tied chain ending in a short eighth never gets a lift band at an internal tie boundary', () => {
+  const capture=new Capture({id:'short-tie-end',label:'',description:'',measures:[
+    {meter:[6,8],events:[['Q',{tieNext:true}],['E'],['Q',{dots:1}]]},
+  ]},180,false,undefined,undefined,'hold');
+  const record=capture.advance(capture.plan.captureEnd)!;
+  const note=record.plan.notes[0]!;assert.ok(Math.abs(note.finalSegmentDuration!-1/9)<1e-9);
+  const band=timingTimelines(record)[0]!.expectedSustain[0]!.releaseWindow!;
+  assert.ok(Math.abs(band.start-11/36)<1e-9);assert.ok(band.start>2/9,'last tied eighth has a solid sustain section');
+});

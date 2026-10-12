@@ -1,7 +1,7 @@
 import type { AttemptRecord } from './capture.ts';
 import { capturedHolds } from './evidence.ts';
 import { median } from './offset.ts';
-import { releaseAllowances, provisionalEvaluation } from './play-policy.ts';
+import { releaseAllowances, legacyEvaluation } from './play-policy.ts';
 import { assessmentPolicy } from './assessment-policy.ts';
 import type { AssessmentPolicy } from './assessment-policy.ts';
 import { planPassage } from './timing.ts';
@@ -102,7 +102,7 @@ export function assessAttempt(record: AttemptRecord) {
     const note = target.notes[e]!, h = holds[a]!;
     const duration = (note.end - note.start) * scale;
     const adjacent = Math.abs((target.notes[e + 1]?.start ?? Infinity) - note.end) < 1e-9;
-    const allowance = releaseAllowances(duration, adjacent, record.evaluationPolicy ?? provisionalEvaluation);
+    const allowance = releaseAllowances(duration, adjacent, record.evaluationPolicy ?? legacyEvaluation, (note.finalSegmentDuration ?? note.end - note.start) * scale);
     let holdCredit: number | null = null;
     if (holdStyle) {
       if (h.up === null) holdCredit = 0;

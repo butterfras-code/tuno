@@ -6,6 +6,9 @@ import type { CountSymbol } from './evaluation.ts';
 export function createCountPopover(actions: {
   id?: string;
   symbols?: readonly CountSymbol[];
+  enabled?: (symbol: CountSymbol) => boolean;
+  input?: (event: KeyboardEvent) => boolean;
+  restActions?: { start: () => void; close: () => void; remove: () => void };
   display: (symbol: CountSymbol) => string;
   keydown: (event: KeyboardEvent) => boolean;
   select: (tick: number) => void;
@@ -38,13 +41,22 @@ export function createCountPopover(actions: {
     choice.setAttribute('aria-label', `Enter count ${symbol}`);
     (/^\d+$/.test(symbol) ? beats : subdivisions).append(choice);
   }
-  popup.append(header, beats, subdivisions); document.body.append(popup);
+  popup.append(header, beats, subdivisions);
+  if (actions.restActions) {
+    const row = el('div', 'count-popover-row count-popover-rest-actions'); row.setAttribute('aria-label', 'Rest parentheses');
+    for (const [label, action] of [['Start rest pair', actions.restActions.start], ['Close rest pair', actions.restActions.close], ['Remove rest pair', actions.restActions.remove]] as const) {
+      const control = button(label, action); control.className = 'count-popover-rest'; row.append(control);
+    }
+    popup.append(row);
+  }
+  document.body.append(popup);
   let offsetX = 0;
   let gesture: { id: number; target: Element; choice: HTMLButtonElement | null } | null = null;
   let ignoredClick: { target: Element; until: number } | null = null;
   function update() {
     heading.textContent = actions.label();
     popup.querySelectorAll<HTMLButtonElement>('[data-symbol]').forEach(choice => {
+      choice.hidden = actions.enabled ? !actions.enabled(choice.dataset.symbol as CountSymbol) : false;
       const label = actions.display(choice.dataset.symbol as CountSymbol);
       choice.textContent = label; choice.setAttribute('aria-label', `Enter count ${label}`);
     });
@@ -96,7 +108,7 @@ export function createCountPopover(actions: {
   }
   listen(document, 'pointermove', event => {
     if (!gesture || gesture.id !== event.pointerId) return;
-    const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLButtonElement>('.count-popover-symbol') ?? null;
+    const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLButtonElement>('.count-popover-symbol[data-symbol]') ?? null;
     gesture.choice?.classList.remove('slide-selected'); gesture.choice = hit;
     hit?.classList.add('slide-selected');
   });
@@ -124,6 +136,7 @@ export function createCountPopover(actions: {
     if (event.key === 'Escape') { event.preventDefault(); dismiss(true); }
     else if (popup.contains(event.target as Node) && !event.ctrlKey && !event.metaKey && !event.altKey) {
       if (actions.keydown(event)) return;
+      if (actions.input) { actions.input(event); return; }
       const symbol = countKey(event.key);
       if (symbol !== null) { event.preventDefault(); if (!event.repeat) submit(symbol); }
 

@@ -12,13 +12,17 @@ export function musicalSeconds(time: Fraction, bpm: number, pulse: Fraction = qu
   return toNumber(divide(time, pulse)) * 60 / bpm;
 }
 export interface Source { measure: number; event: number }
-export interface ExpectedNote { start: number; end: number; sources: Source[] }
+export interface ExpectedNote { start: number; end: number; sources: Source[]; finalSegmentDuration?: number }
 export interface ExpectedRest { start: number; end: number; source: Source }
 export function planPassage(measures: readonly RhythmMeasure[], bpm: number, policy: TimingPolicy = prototypeTiming, pulse: Fraction = quarterPulse) {
   const passage = derivePassage(measures);
   if (!passage.measures.length) throw new Error('Empty passage.');
   const seconds = (time: Fraction) => musicalSeconds(time, bpm, pulse);
-  const notes: ExpectedNote[] = passage.attacks.map(a => ({ start: seconds(a.start), end: seconds(add(a.start, a.duration)), sources: a.sources }));
+  const notes: ExpectedNote[] = passage.attacks.map(a => {
+    const last = a.sources.at(-1)!;
+    return { start: seconds(a.start), end: seconds(add(a.start, a.duration)), sources: a.sources,
+      finalSegmentDuration: seconds(passage.measures[last.measure]!.events[last.event]!.duration) };
+  });
   let offset = fraction(0);
   const rests: ExpectedRest[] = [];
   const pulses: { time: number; downbeat: boolean; countIn: boolean; beat: number }[] = [];

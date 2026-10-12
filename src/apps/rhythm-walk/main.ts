@@ -20,13 +20,14 @@ import { passageGrid } from '../count-writing/passage.ts';
 import { renderPassageTies } from './shared/notation.ts';
 import { createPassageLines } from '../count-writing/passage-lines.ts';
 import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
-import type { OffbeatSymbol } from '../count-writing/input.ts';
+import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
 const preferences = readPreferences(saved);
 const requestedFixture = new URLSearchParams(location.search).get('fixture');
 if (requestedFixture && practiceFixtures.some(f => f.id === requestedFixture)) preferences.preset = requestedFixture;
+let countingSystem: CountingSystem = preferences.countingSystem;
 let offbeat: OffbeatSymbol = preferences.offbeat;
 let presentation = preferences.presentation;
 let dottedConvention: DottedQuarterConvention = preferences.convention;
@@ -34,7 +35,7 @@ let generation = preferences.generation;
 let fixtureId = preferences.preset;
 const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
 function persist() {
-  Object.assign(preferences, { offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
+  Object.assign(preferences, { countingSystem, offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
   try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Memory fallback. */ }
 }
 let editors: ReturnType<typeof createMeasureEditor>[] = [];
@@ -93,7 +94,7 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
   busy: active => {
     performing = active; picker.disabled = next.disabled = active;
     settings.setLocked(active);
-    settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8);
+    settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
     if (!active) next.disabled = Boolean(generationIssue(generation));
     if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
     updateResponseView();
@@ -108,7 +109,7 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
 });
 function evaluateAnswer() {
   lineEditor?.cancel(); editors.forEach(e => e.suspend());
-  const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans());
+  const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans(), countingSystem);
   editors.forEach((editor, index) => editor.showResult(results[index]!));
   const dimensions = results.flatMap(result => Object.values(result));
   summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
@@ -139,6 +140,12 @@ const settings = createSettingsPage({
   metronomeField: performance.metronomeField,
   playField: performance.playField,
   newExercise: () => newExercise(true),
+  system: value => {
+    countingSystem = value; updateEditors();
+    const cleared = editors.reduce((sum, editor) => sum + Number(editor.card.dataset.clearedCounts ?? 0), 0);
+    summary.textContent = cleared ? `${cleared} ambiguous count token(s) cleared to avoid guessing their subdivision. Other answers are kept. Check again.` : 'Counting system changed. Your answer positions and markings are kept. Check again.';
+    retry.hidden = true;
+  },
   offbeat: value => { offbeat = value; updateEditors(); },
   placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },
   appearance: value => { presentation = { ...presentation, sustainAppearance: value }; updateEditors(); },
@@ -159,7 +166,7 @@ activitySurface.append(pageTitle, sharedControls, practiceView, settings.page);
 main.append(header, activitySurface, help); app.append(main);
 function chooseFixture(id: string) {
   if (id === fixtureId) return;
-  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8); return; }
+  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem); return; }
   performance.cancel('Exercise changed');
   fixtureId = id; picker.value = id;
   focusNewRhythm = Boolean(practiceView.hidden);
@@ -173,7 +180,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   tieNotation?.destroy(); tieNotation = null;
   lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
   measures = currentMeasures;
-  const grid = passageGrid(measures);
+  const grid = passageGrid(measures, countingSystem);
   passageStrip.dataset.measures = String(measures.length);
   const tied = measures.some(m => m.events.some(e => e[1]?.tieNext));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
@@ -182,7 +189,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
     const editor = createMeasureEditor(measure, index + 1, {
       scroller: passageScroll, lastMeasure: index === measures.length - 1,
       grid: grid.grids[index], externalLines: tied,
-      offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
+      system: countingSystem, offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
       edited: () => { summary.textContent = 'Answer or counting rule changed. Check again for updated feedback.'; },
       check: evaluateAnswer,
       navigate: (delta, clear) => { const target = editors[index + delta]; if (!target) return false; if (clear) target.backspace(); else target.focus(delta < 0); return true; },
@@ -200,15 +207,15 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
   summary.textContent = ''; retry.hidden = true;
   const compound = measures[0]!.meter[1] === 8;
-  banner.textContent = compound ? 'Count 1 2 3 | 4 5 6 · Two dotted-quarter pulses per bar.' : 'Count quarter beats and eighth offbeats · Restart at each barline.';
+  banner.textContent = compound ? 'Count 1 2 3 | 4 5 6 · Two dotted-quarter pulses per bar.' : 'Count written onsets and sustained quarter beats · Restart at each barline.';
   updateEditors(); updateResponseView();
   if (focus && preferences.mode !== 'tap') editors[0]?.focus();
 }
 function updateEditors() {
   persist();
   lineEditor?.cancel();
-  editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention));
-  settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8);
+  editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention, countingSystem));
+  settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
 }
 function showPage(focus = true) {
   lineEditor?.cancel();

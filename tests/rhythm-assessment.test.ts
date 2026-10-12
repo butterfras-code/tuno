@@ -151,3 +151,32 @@ test('minimum tempo and steadiness counts/spans are inclusive and independent', 
   const shortSpan=assessAttempt(attempt([0,.25,.5,.75],eighths));assert.equal(shortSpan.tempo,null);assert.equal(shortSpan.basis,'target');
   const three=assessAttempt(attempt([0,.5,1.5]));assert.equal(three.tempo,null);assert.equal(three.basis,'target');
 });
+
+test('v2 permits practical lifts while v1 snapshots replay unchanged', () => {
+  const music: RhythmMeasure[]=[{meter:[4,4],events:[['Q'],['Q'],['Q'],['Q']]}];
+  const record=attempt([0,.75,1.5,2.25],music,{bpm:80,style:'hold',releases:[.57,1.32,2.07,3]});
+  const current=assessAttempt(record);near(current.hold,100);near(current.rhythm,100);assert.equal(record.evaluationPolicy!.version,2);
+  const v1={...record,evaluationPolicy:{...record.evaluationPolicy!,version:1 as const,articulationRatio:.15,articulationCeiling:.08}};
+  near(assessAttempt(v1).hold,60);
+  const noVersion={...v1,evaluationPolicy:{...v1.evaluationPolicy,version:undefined}};near(assessAttempt(noVersion).hold,60);
+  near(assessAttempt({...v1,evaluationPolicy:undefined}).hold,60);
+  assert.deepEqual(assessAttempt(JSON.parse(JSON.stringify(v1))),assessAttempt(v1));
+  // Same attacks and tempo: only release policy changes the hold percentage.
+  assert.deepEqual(current.tempo,assessAttempt(v1).tempo);near(current.rhythm,assessAttempt(v1).rhythm!);
+  const shorter=assessAttempt(attempt([0,.75,1.5,2.25],music,{bpm:80,style:'hold',releases:[.52,1.27,2.02,3]}));near(shorter.hold,80);
+});
+
+test('lift allowance exact boundary and small separate eighths retain real sustain', () => {
+  const two: RhythmMeasure[]=[{meter:[2,4],events:[['Q'],['Q']]}];
+  near(assessAttempt(attempt([0,.75],two,{bpm:80,style:'hold',releases:[.57,1.5]})).hold,100);
+  near(assessAttempt(attempt([0,.75],two,{bpm:80,style:'hold',releases:[.569,1.5]})).hold,100*(1+(1-.001/.1875))/2);
+  const eighths: RhythmMeasure[]=[{meter:[2,4],events:[['E'],['E'],['Q']]}];
+  near(assessAttempt(attempt([0,.375,.75],eighths,{bpm:80,style:'hold',releases:[.28125,.65625,1.5]})).hold,100);
+  const veryShort=assessAttempt(attempt([0,.375,.75],eighths,{bpm:80,style:'hold',releases:[.1,.475,1.5]}));near(veryShort.hold,100/3);
+});
+
+test('a lift cannot skip the final short member of a tied chain', () => {
+  const music: RhythmMeasure[]=[{meter:[6,8],events:[['Q',{tieNext:true}],['E'],['Q',{dots:1}]]}];
+  const continuous=assessAttempt(attempt([0,1/3],music,{bpm:180,style:'hold',releases:[11/36,2/3]}));near(continuous.hold,100);
+  const truncated=assessAttempt(attempt([0,1/3],music,{bpm:180,style:'hold',releases:[2/9,2/3]}));near(truncated.hold,50);near(truncated.rhythm,100);
+});

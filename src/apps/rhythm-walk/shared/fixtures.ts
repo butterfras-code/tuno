@@ -40,7 +40,19 @@ export const meterFixtures: readonly PassageFixture[] = [
   { id: 'six-wrap', label: '6/8 · barline tie with visual wrap', wrap: true, measures: [{ meter: [6, 8], events: [['Q', { dots: 1 }], ['Q', { dots: 1, tieNext: true }]] }, { meter: [6, 8], events: [['Q', { dots: 1 }], ['Q', { dots: 1 }]] }] },
   { id: 'six-syncopation', label: '6/8 · count 3 attack across pulse 4', measures: [{ meter: [6, 8], events: [['Q'], ['Q'], ['Q']] }] },
 ];
+/** Independent written review examples; expectations are recorded in sixteenths.md. */
+export const sixteenthFixtures: readonly PassageFixture[] = [
+  { id: 'four-sixteenths', label: 'Four sixteenths · mixed vocabulary', measures: [{ meter: [4, 4], events: [['S'], ['S'], ['S'], ['S'], ['Q'], ['H']] }] },
+  { id: 'eighth-two-sixteenths', label: 'Eighth + two sixteenths', measures: [{ meter: [2, 4], events: [['E'], ['S'], ['S'], ['Q']] }] },
+  { id: 'two-sixteenths-eighth', label: 'Two sixteenths + eighth', measures: [{ meter: [2, 4], events: [['S'], ['S'], ['E'], ['Q']] }] },
+  { id: 'dotted-eighth-sixteenth', label: 'Dotted eighth + sixteenth', measures: [{ meter: [3, 4], events: [['E', { dots: 1 }], ['S'], ['Q'], ['Q']] }] },
+  { id: 'sixteenth-rests', label: 'Sixteenth rests at all four subdivisions', measures: [{ meter: [4, 4], events: Array.from({ length: 16 }, (_, i) => ['S', { rest: Math.floor(i / 4) === i % 4 }] as const) }] },
+  { id: 'sixteenth-all-rests', label: 'Sixteenth rests · adjacent pairs', measures: [{ meter: [4, 4], events: Array.from({ length: 16 }, () => ['S', { rest: true }] as const) }] },
+  { id: 'sixteenth-tie', label: 'Sixteenth tie within a beat', measures: [{ meter: [2, 4], events: [['S', { tieNext: true }], ['S'], ['E'], ['Q']] }] },
+  { id: 'sixteenth-bar-tie', label: 'Sixteenth tie across a barline/system', wrap: true, measures: [{ meter: [2, 4], events: [['Q'], ['E'], ['S'], ['S', { tieNext: true }]] }, { meter: [2, 4], events: [['S'], ['S'], ['E'], ['Q']] }] },
+  { id: 'dense-sixteenths', label: 'Dense sixteenths · four bars', measures: Array.from({ length: 4 }, () => ({ meter: [4, 4] as const, events: Array.from({ length: 16 }, () => ['S'] as const) })) },
+];
 export const practiceFixtures: readonly PassageFixture[] = [
-  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures,
+  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures,
 ];
 practiceFixtures.forEach(f => derivePassage(f.measures));
