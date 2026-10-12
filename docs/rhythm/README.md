@@ -36,3 +36,7 @@ Supporting documents retain musical decisions and implementation history:
 - [Original handoff](reference/RHYTHM_GAME_HANDOFF.md) and [reference provenance](reference/README.md), preserved without modification. Their proposals are not approved defaults.
 
 Those records do not override this naming, architecture, persistence or mode-switching contract. Teaching tolerances, mastery scores, adaptive progression, journey mechanics, imported content, additional meters/vocabulary and physical-device acceptance remain unresolved or deferred. Follow [AGENTS.md](../../AGENTS.md), [hosting](../hosting.md), and [release instructions](../releasing.md); feature validation does not authorize publishing to `main`.
+
+## Coordinated implementation prompts
+
+The next parallel slices are [simple-meter triplets with 1 la li counting](prompts/triplets.md) and [source-verified UIL level presets](prompts/uil-presets.md). Both follow the [shared ownership and capability contract](prompts/README.md). These prompts describe planned work, not implemented support.
