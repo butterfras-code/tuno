@@ -1,3 +1,5 @@
+import { assessAttempt } from './assessment.ts';
+import { createResults } from './results.ts';
 import { createTimingPanel } from './calibration.ts';
 import { el, button, field, numberInput, select } from '../../shared/ui/components.ts';
 import { playOptions, playInstructions } from './play-policy.ts';
@@ -12,7 +14,7 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void }) {
+export function createPerformance(options: { exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
   let audio: AudioContext | undefined;
   let transport: Transport | null = null;
@@ -21,6 +23,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   let generation = 0;
   let pending: Capture | null = null;
   let result: AttemptRecord | null = null;
+  let results: ReturnType<typeof createResults> | null = null;
 
   const tempo = numberInput(40, 180, options.preferences.bpm);
   const metronome = el('input'); metronome.type = 'checkbox'; metronome.checked = options.preferences.metronome;
@@ -66,7 +69,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   const stop = button('Stop', () => cancel('Stopped by learner')); stop.disabled = true;
   const download = button('Download timing evidence', () => {
     if (!result) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ ...result, assessment: assessAttempt(result) }, null, 2)], { type: 'application/json' }));
     const link = el('a'); link.href = url; link.download = `rhythm-walk-${result.exercise.id}.json`; link.click(); URL.revokeObjectURL(url);
   }); download.hidden = true;
   const actions = el('div', 'pad-tools'); actions.append(stop);
@@ -99,7 +102,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     const phase = transport.capture.phase(time);
     countInDisplay.hidden = phase !== 'count-in'; pulse.hidden = phase === 'count-in';
     padAction.textContent = phase === 'count-in' ? 'Count In' : transport.capture.playStyle === 'hold' ? 'Tap + Hold' : 'Tap';
-    const next = phase === 'count-in' ? 'Count-in — release before the start' : time >= transport.capture.plan.duration ? 'Performing — capturing final release' : 'Performing';
+    const next = phase === 'count-in' ? 'Count-in — release before the start' : time >= transport.capture.plan.duration ? 'Performing — capturing final input' : 'Performing';
     if (status.textContent !== next) status.textContent = next;
     const pulses = transport.capture.plan.pulses;
     const latest = [...pulses].reverse().find(p => p.time <= time);
@@ -117,6 +120,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (!tempo.reportValidity()) return;
     // Snapshot before awaiting audio activation, even though controls are locked.
     const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current(), options.preferences.playStyle);
+    results?.panel.remove(); results = null; surface.hidden = false;
     renderCountIn(capture.plan);
     const token = ++generation; pending = capture;
     starting = true; startCancelled = false; lock(true); status.textContent = 'Ready — activating audio';
@@ -142,9 +146,16 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     clearCountIn(); pulse.hidden = true;
     result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
     download.hidden = false;
+    const assessment = assessAttempt(record);
+    results?.panel.remove();
+    results = createResults(record, assessment, () => { void begin(); }, options.next, options.nextIssue());
+    surface.hidden = true; surface.after(results.panel);
+    // Focus a noninteractive heading. A finishing Space/pointer release cannot
+    // trigger a result action, and hidden pad click synthesis cannot restart.
+    if (!main.closest('[hidden]')) results.heading.focus({ preventScroll: true });
     const evaluation = evaluateAttempt(record);
     const evidence = el('details', 'timing-evidence'); evidence.append(el('summary', '', 'Timing evidence'), download);
-    review.replaceChildren(el('h2', '', record.status === 'completed' ? 'Completed attempt' : 'Interrupted attempt'), evidence);
+    review.replaceChildren(el('h2', '', 'Target-time review'), evidence);
     if (evaluation.status === 'interrupted') {
       status.textContent = 'Interrupted'; review.append(el('p', '', `${record.reason}. Timing evidence retained; this attempt is not graded.`)); return;
     }
@@ -184,7 +195,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
   // Starting is a separate gesture: its release must never enter the capture.
   let startingKey = false;
   let startingPointer: number | null = null;
-  pad.addEventListener('click', event => { if (event.detail === 0 && !transport && !starting) void begin(); });
+  pad.addEventListener('click', event => { if (!pad.closest('[hidden]') && event.detail === 0 && !transport && !starting) void begin(); });
   // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
   pad.addEventListener('keydown', event => {
     if (event.code !== 'Space') return;
@@ -258,7 +269,8 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     cancel,
     start: begin,
     record: () => result,
-    reset: () => { cancel('Exercise changed'); result = null; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
+    syncResults: () => results?.sync(options.nextIssue()),
+    reset: () => { cancel('Exercise changed'); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 
 }

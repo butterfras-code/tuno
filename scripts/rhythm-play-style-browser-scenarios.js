@@ -33,7 +33,7 @@ window.__playCheck = (async () => {
   document.addEventListener('click', prevent, true);
   const raw = async () => { button('Download timing evidence').click(); return evidence; };
   const begin = async () => {
-    scheduled = []; pad.click(); await wait(() => status().startsWith('Count-in'));
+    scheduled = []; (document.querySelector('.performance-results button') ?? pad).click(); await wait(() => status().startsWith('Count-in'));
     assert(play.disabled && tempo.disabled && preset.disabled, 'capture locks performance settings');
     const count = document.querySelectorAll('.count-in-dot').length;
     return scheduled[0] + count * 60 / Number(tempo.value);

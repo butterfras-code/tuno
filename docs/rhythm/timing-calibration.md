@@ -30,7 +30,7 @@ This is a tap-along estimate of perceived timing, not an instrument-grade measur
 
 Raw `InputEvent.time`, original DOM timestamps, accepted/rejected flags and capture regions remain unchanged. `AttemptRecord.timingOffset` snapshots the applied value, input kind, estimation method, sample count, spread, and version. The evaluator accepts an explicit null offset to reproduce raw grading; the review exposes raw results and downloads retain all original events. Corrected hold coordinates exist only in derived evaluation.
 
-For the calibrated input, an attack whose corrected time falls within the first attack's early matching window can associate with it, even if its raw capture region was count-in. Earlier held count-in input still creates no synthetic attack. Capture lasts an additional positive saved offset so the final release retains the same grace period after correction. Rest-overlap calculations use corrected edges, including correction of an unreleased hold's end bound. Uncalibrated input retains the original count-in policy.
+For the calibrated input, an attack whose corrected time falls within the first attack's early matching window can associate with it, even if its raw capture region was count-in. Earlier held count-in input still creates no synthetic attack. Capture now includes the bounded slower-tempo tail described in [musical assessment](assessment.md), plus an additional positive saved offset so the final release retains the same grace period after correction. Rest-overlap calculations use corrected edges, including correction of an unreleased hold's end bound. Uncalibrated input retains the original count-in policy.
 
 ## Validation
 

@@ -1,3 +1,5 @@
+import { assessmentPolicy } from './assessment-policy.ts';
+import type { AssessmentPolicy } from './assessment-policy.ts';
 import { sourcePolicy } from './shared/meter.ts';
 import type { TimingOffset } from './offset.ts';
 import { planPassage, prototypeTiming } from './timing.ts';
@@ -16,6 +18,7 @@ export interface ClockEvidence {
   readonly sampleRate: number; readonly baseLatency: number; readonly outputLatency?: number;
 }
 export interface AttemptRecord {
+  readonly assessmentPolicy?: AssessmentPolicy;
   readonly playStyle?: PlayStyle;
   readonly evaluationPolicy?: EvaluationPolicy;
   readonly timingOffset?: TimingOffset;
@@ -35,13 +38,17 @@ export class Capture {
   private result: AttemptRecord | null = null;
   readonly playStyle: PlayStyle;
   readonly evaluationPolicy: EvaluationPolicy;
-  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset, playStyle: PlayStyle = 'tap', evaluationPolicy: EvaluationPolicy = provisionalEvaluation) {
+  readonly assessmentPolicy: AssessmentPolicy;
+  constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset, playStyle: PlayStyle = 'tap', evaluationPolicy: EvaluationPolicy = provisionalEvaluation, scoringPolicy: AssessmentPolicy = assessmentPolicy) {
+    this.assessmentPolicy = { ...scoringPolicy };
     this.playStyle = playStyle; this.evaluationPolicy = { ...evaluationPolicy };
     this.exercise = structuredClone(exercise); this.policy = { ...policy };
     this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
     this.plan = planPassage(this.exercise.measures, bpm, this.policy, sourcePolicy(this.exercise.measures[0]!).pulse);
-    this.plan.captureEnd += Math.max(0, timingOffset?.seconds ?? 0);
+    // Bounded analysis permits slower performances; retain their final attack and
+    // release without changing target notation, click times or received evidence.
+    this.plan.captureEnd = this.plan.duration * this.assessmentPolicy.maximumScale + this.policy.releaseGrace + Math.max(0, timingOffset?.seconds ?? 0);
   }
   setClockEvidence(clock: ClockEvidence) { this.clock = { ...clock }; }
   get heldBy() { return this.owner; }
@@ -63,6 +70,6 @@ export class Capture {
     return this.result!;
   }
   private end(status: AttemptRecord['status'], endedAt: number, reason?: string) {
-    this.result = structuredClone({ version: 1 as const, playStyle: this.playStyle, evaluationPolicy: this.evaluationPolicy, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
+    this.result = structuredClone({ version: 1 as const, assessmentPolicy: this.assessmentPolicy, playStyle: this.playStyle, evaluationPolicy: this.evaluationPolicy, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
   }
 }

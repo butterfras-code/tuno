@@ -8,6 +8,8 @@ The shared repertoire is the actual implemented exercise set: 2/4, 3/4, 4/4 and 
 
 Read [the unified activity contract](unified-activity.md) for shared ownership, lifecycle, persistence, entry points and validation. Shared generation, presets, settings, meter policy and notation have one implementation. Answer coordinates and count evaluation stay separate from audio timing, capture, calibration and performance evaluation. [Timing calibration](timing-calibration.md) still governs the fixed session offset and raw versus corrected evidence.
 
+The first [musical assessment slice](assessment.md) now reports rhythm accuracy, optional hold accuracy, performed tempo and typical pulse steadiness. It preserves target-relative score/timeline evidence and replaces only the completed performance pad. Results are provisional feedback, not mastery standards.
+
 ## Decisions carried forward
 
 - Performance **How to play** is selectable in shared settings: Tap (default) or Tap + Hold. Both reuse canonical sounding chains and raw capture. Attempts retain the choice/policy used; completed reviews do not change when preferences do. Tap reviews attacks only; Tap + Hold adds actual duration bars and provisional release/articulation feedback. See [performance policy](performance-prototype.md#selectable-tap--tap--hold).
@@ -21,7 +23,7 @@ Read [the unified activity contract](unified-activity.md) for shared ownership, 
 
 ## Document authority
 
-Use this page and the [unified activity contract](unified-activity.md) for product scope and lifecycle; [music-model.md](music-model.md) for canonical musical data; [meters.md](meters.md) and [ties-syncopation.md](ties-syncopation.md) for counting/notation policy; [settings.md](settings.md) for settings ownership and inventory; and [performance-prototype.md](performance-prototype.md) plus [timing-calibration.md](timing-calibration.md) for performance behavior. Numerical timing thresholds remain provisional. When extending the activity, update the relevant contract and shared fixtures/tests together.
+Use this page and the [unified activity contract](unified-activity.md) for product scope and lifecycle; [music-model.md](music-model.md) for canonical musical data; [meters.md](meters.md) and [ties-syncopation.md](ties-syncopation.md) for counting/notation policy; [settings.md](settings.md) for settings ownership and inventory; and [assessment.md](assessment.md), [performance-prototype.md](performance-prototype.md) plus [timing-calibration.md](timing-calibration.md) for performance behavior. Numerical timing thresholds remain provisional. When extending the activity, update the relevant contract and shared fixtures/tests together.
 
 The original handoff and first-release plans preserve provenance, not additional approved requirements. Historical validation counts describe their named slice, not the current suite; see the [reviewed baseline](unified-activity.md#reviewed-baseline).
 

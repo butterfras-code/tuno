@@ -103,6 +103,8 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
     }
   },
   decorate: decoratePerformance,
+  next: () => newExercise(),
+  nextIssue: () => generationIssue(generation),
 });
 function evaluateAnswer() {
   lineEditor?.cancel(); editors.forEach(e => e.suspend());
@@ -143,7 +145,7 @@ const settings = createSettingsPage({
   convention: value => { dottedConvention = value; updateEditors(); },
   generation: value => {
     generation = value; persist();
-    const issue = generationIssue(generation); next.disabled = Boolean(issue);
+    const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
     exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; Next exercise uses these settings.';
   },
 });

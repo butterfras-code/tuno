@@ -73,7 +73,7 @@ test('capture bounds, final late release, and unreleased input complete within f
   const r = evaluateAttempt(finish(c)); assert.equal(r.matches[0]!.releaseOffset, .5);
   const stuck = capture('quarters'); input(stuck, 'down', 5.25); assert.equal(finish(stuck).status, 'completed');
   assert.equal(evaluateAttempt(finish(stuck)).matches[0]!.releaseOffset, null);
-  const boundary = capture(); input(boundary, 'down', -boundary.plan.countIn - .01); input(boundary, 'down', -boundary.plan.countIn); input(boundary, 'up', -.1); input(boundary, 'down', 0); input(boundary, 'up', 1.5); input(boundary, 'down', 6.74); input(boundary, 'up', 6.75);
+  const boundary = capture(); input(boundary, 'down', -boundary.plan.countIn - .01); input(boundary, 'down', -boundary.plan.countIn); input(boundary, 'up', -.1); input(boundary, 'down', 0); input(boundary, 'up', 1.5); input(boundary, 'down', boundary.plan.captureEnd - .01); input(boundary, 'up', boundary.plan.captureEnd);
   const record = finish(boundary); assert.equal(record.events[0]!.accepted, false); assert.equal(record.events[1]!.accepted, true);
   assert.equal(evaluateAttempt(record).extra.length, 1); assert.equal(record.events.at(-1)!.action, 'down');
 });

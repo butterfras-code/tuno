@@ -1,5 +1,7 @@
 # Tap Rhythms performance contract
 
+Current numerical feedback and completion behavior: see the [first musical assessment slice](assessment.md). Its versioned policy and results lifecycle supersede historical evidence-only descriptions below; target-relative review remains available.
+
 Current behavior, reconciled 2026-10-11 with the selectable-performance slice. Read alongside the [unified Uno234 contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
 Implemented for the owner's first playable performance slice. This is a development review surface, not a production release or an approved teaching/scoring policy.
