@@ -164,6 +164,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     const holdStyle = (record.playStyle ?? 'hold') === 'hold';
     evidence.append(el('p', '', `${holdStyle ? 'Tap + Hold' : 'Tap'} · ${evaluation.evidenceAvailable ? `${evaluation.matches.length} matched attacks · ${evaluation.missing.length} missing · ${evaluation.extra.length} extra.` : 'Musical assessment unavailable; target-relative evidence below is ungraded.'} ${holdStyle ? 'Review attacks, duration and releases below.' : 'Review attacks below. Releases are not graded.'}`));
     if (holdStyle) evidence.append(el('p', 'note', record.assessmentPolicy?.version !== 2 ? 'Legacy attempt: expected dashed end sections retain the saved target-time lift allowance. Hold feedback retains the original release policy.' : 'Expected bars show written duration at target tempo. Sustain is assessed from your own attack at the labeled assessment tempo. Lift between separate notes; hold through ties.'));
+    if (holdStyle && record.holdPolicy?.version === 4) evidence.append(el('p', 'note', 'Sounds shorter than 400 ms at the assessment tempo are excluded from hold accuracy. In longer tied sounds, only the final written member is optional when shorter than 400 ms. Rest releases are still reviewed.'));
     const list = el('ol');
     record.plan.notes.forEach((note, i) => {
       const match = evaluation.matches.find(m => m.expected === i);

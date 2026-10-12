@@ -15,11 +15,13 @@ export type AssessmentPolicy = { readonly [K in keyof typeof legacyAssessmentPol
 
 export const assessmentPolicy: AssessmentPolicy = Object.freeze({ ...legacyAssessmentPolicy, version: 2, displacementMaximum: .150, displacementBeatRatio: .30 });
 /** Snapshot with assessment v2; times are seconds. No learner tolerance controls. */
-export const holdPolicy = Object.freeze({
+export const legacyHoldPolicy = Object.freeze({
   version: 3, adjacentRatio: .70, restFinalRatio: .80,
   shortAllowance: .020, minimumRatio: .60, minimumSeconds: .040,
   overholdRatio: .15, overholdMaximum: .080,
   restAllowanceRatio: .15, restAllowanceMaximum: .060, restPenaltyRatio: .60,
   shortPenaltyRatio: .60, longPenaltyRatio: .75,
 });
-export type HoldPolicy = typeof holdPolicy;
+export type HoldPolicy = { readonly [K in keyof typeof legacyHoldPolicy]: K extends 'version' ? 3 | 4 : number } & { readonly holdThresholdSeconds?: number };
+/** Short sounds are excluded from sustain scoring; only the final short tied member may be waived. */
+export const holdPolicy: HoldPolicy = Object.freeze({ ...legacyHoldPolicy, version: 4, holdThresholdSeconds: .400 });

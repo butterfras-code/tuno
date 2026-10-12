@@ -1,5 +1,5 @@
 import { assessmentPolicy, holdPolicy } from './assessment-policy.ts';
-import type { AssessmentPolicy } from './assessment-policy.ts';
+import type { AssessmentPolicy, HoldPolicy } from './assessment-policy.ts';
 import { sourcePolicy } from './shared/meter.ts';
 import type { TimingOffset } from './offset.ts';
 import { planPassage, prototypeTiming } from './timing.ts';
@@ -19,7 +19,7 @@ export interface ClockEvidence {
 }
 export interface AttemptRecord {
   readonly assessmentPolicy?: AssessmentPolicy;
-  readonly holdPolicy?: typeof holdPolicy;
+  readonly holdPolicy?: HoldPolicy;
   readonly playStyle?: PlayStyle;
   readonly evaluationPolicy?: EvaluationPolicy;
   readonly timingOffset?: TimingOffset;

@@ -3,9 +3,10 @@ import { test } from 'node:test';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import type { AttemptRecord } from '../src/apps/rhythm-walk/capture.ts';
 import type { RhythmMeasure } from '../src/music/measure.ts';
-import { assessAttempt, attackCredit, attackWindows } from '../src/apps/rhythm-walk/assessment.ts';
-import { assessmentPolicy, legacyAssessmentPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
+import { assessAttempt, attackCredit, attackWindows, sustainEvidence } from '../src/apps/rhythm-walk/assessment.ts';
+import { assessmentPolicy, legacyAssessmentPolicy, legacyHoldPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
 import { tempoDescription, steadinessDescription, musicalFeedback } from '../src/apps/rhythm-walk/results.ts';
+import { timingTimelines } from '../src/apps/rhythm-walk/timeline.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
 import { presets } from '../src/apps/rhythm-walk/activity.ts';
 import { defaultGeneration, generateExercise, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
@@ -111,7 +112,7 @@ test('every preset and generated supported meter/length uses the same assessment
   for (const measures of passages) for (const style of ['tap','hold'] as const) {
     const c=new Capture({id:'coverage',label:'',description:'',measures},120,false,undefined,undefined,style);
     const a=assessAttempt(attempt(c.plan.notes.map(n=>n.start),[...measures],{style,current:true,releases:c.plan.notes.map(n=>style==='hold'?n.end:n.start+.01)}));
-    if(c.plan.notes.length) { near(a.rhythm,100); if(style==='hold') near(a.hold,100); } else assert.equal(a.rhythm,null);
+    if(c.plan.notes.length) { near(a.rhythm,100); if(style==='hold') { if(c.plan.notes.some(n=>n.end-n.start>=.4-1e-9)) near(a.hold,100); else assert.equal(a.hold,null); } } else assert.equal(a.rhythm,null);
   }
 });
 
@@ -181,6 +182,7 @@ test('a lift cannot skip the final short member of a tied chain', () => {
   const truncated=assessAttempt(attempt([0,1/3],music,{bpm:180,style:'hold',releases:[2/9,2/3]}));near(truncated.hold,50);near(truncated.rhythm,100);
 });
 
+const v3Attempt = (times: number[], measures = quarters, options: Parameters<typeof attempt>[2] = {}) => ({ ...attempt(times,measures,{...options,current:true}), holdPolicy: legacyHoldPolicy });
 const currentAttempt = (times: number[], measures = quarters, options: Parameters<typeof attempt>[2] = {}) => attempt(times,measures,{...options,current:true});
 test('v2 spacing fit separates 80 ms start from exact, slower and faster tempo',()=>{
   for (const spacing of [.5,.7,.4]) for (const displacement of [0,.08]) {
@@ -203,21 +205,21 @@ test('v2 own-attack duration accepts 70/80 percent and late onset without duplic
   const rest: RhythmMeasure[]=[{meter:[4,4],events:[['Q'],['Q',{rest:true}],['Q'],['Q']]}];
   near(assessAttempt(currentAttempt([0,1,1.5],rest,{style:'hold',releases:[.4,1.35,1.9]})).hold,100);
 });
-test('v2 short notes, taps, gradual curves, overholds, missing releases and final tie member',()=>{
+test('saved hold v3 retains short-note, gradual-curve and final-member scoring',()=>{
   const two: RhythmMeasure[]=[{meter:[2,4],events:[['Q'],['Q']]}];
   for(const [elapsed,credit] of [[.33,1],[.31,1-.02/(.33*.6)],[.01,0],[.575,1],[.675,1-.1/(.5*.75)],[1,0]] as const){
-    const a=assessAttempt(currentAttempt([0],two,{style:'hold',releases:[elapsed]}));near(a.hold,100*credit);
+    const a=assessAttempt(v3Attempt([0],two,{style:'hold',releases:[elapsed]}));near(a.hold,100*credit);
   }
-  near(assessAttempt(currentAttempt([0],two,{style:'hold',releases:[null]})).hold,0);
+  near(assessAttempt(v3Attempt([0],two,{style:'hold',releases:[null]})).hold,0);
   const eighth: RhythmMeasure[]=[{meter:[2,4],events:[['E'],['E'],['Q']]}];
-  const short=assessAttempt(currentAttempt([0,1/6,1/3],eighth,{bpm:180,style:'hold',releases:[.1,1/6+.1,.6]}));near(short.hold,100);
-  const taps=assessAttempt(currentAttempt([0,1/6,1/3],eighth,{bpm:180,style:'hold',releases:[.01,1/6+.01,1/3+.01]}));near(taps.hold,0);
+  const short=assessAttempt(v3Attempt([0,1/6,1/3],eighth,{bpm:180,style:'hold',releases:[.1,1/6+.1,.6]}));near(short.hold,100);
+  const taps=assessAttempt(v3Attempt([0,1/6,1/3],eighth,{bpm:180,style:'hold',releases:[.01,1/6+.01,1/3+.01]}));near(taps.hold,0);
   // Domain sixteenths tested without extending reviewed UI vocabulary.
   const sixteenth: RhythmMeasure[]=[{meter:[2,4],events:[['S'],['S'],['E'],['Q']]}];
-  const s=assessAttempt(currentAttempt([0,1/12,1/6,1/3],sixteenth,{bpm:180,style:'hold',releases:[.05,1/12+.05,1/6+.1,.6]}));near(s.hold,100);
+  const s=assessAttempt(v3Attempt([0,1/12,1/6,1/3],sixteenth,{bpm:180,style:'hold',releases:[.05,1/12+.05,1/6+.1,.6]}));near(s.hold,100);
   const tie: RhythmMeasure[]=[{meter:[4,4],events:[['H',{tieNext:true}],['E'],['Q',{dots:1}]]}];
-  const omitted=assessAttempt(currentAttempt([0,1.25],tie,{style:'hold',releases:[1,2]}));near(omitted.hold,50);
-  const continuous=assessAttempt(currentAttempt([0,1.25],tie,{style:'hold',releases:[1.16,1.85]}));near(continuous.hold,100);
+  const omitted=assessAttempt(v3Attempt([0,1.25],tie,{style:'hold',releases:[1,2]}));near(omitted.hold,50);
+  const continuous=assessAttempt(v3Attempt([0,1.25],tie,{style:'hold',releases:[1.16,1.85]}));near(continuous.hold,100);
 });
 test('v2 analytical rests preserve target intersections but accept small overlap; intrusion is one hold penalty',()=>{
   const music: RhythmMeasure[]=[{meter:[4,4],events:[['Q'],['Q',{rest:true}],['Q'],['Q']]},{meter:[4,4],events:[['Q'],['Q'],['Q'],['Q']]}];
@@ -225,11 +227,11 @@ test('v2 analytical rests preserve target intersections but accept small overlap
   const record=currentAttempt(times,music,{style:'hold',releases:[.6,1.43,1.93,2.43,2.93,3.43,3.98]});
   const a=assessAttempt(record),e=evaluateAttempt(record);near(a.hold,100);assert.ok(e.restOverlaps.length);assert.equal(e.restViolations.length,0);
   const long=currentAttempt(times,music,{style:'hold',releases:[.9,1.43,1.93,2.43,2.93,3.43,3.98]});
-  const b=assessAttempt(long);assert.equal(b.restIntrusions.length,1);assert.equal(evaluateAttempt(long).restViolations.length,1);near(b.rhythm,100);assert.ok(b.hold!<100);assert.equal(b.matches[0]!.holdCredit,Math.min(b.matches[0]!.duration!.credit,b.restIntrusions[0]!.credit));
+  const b=assessAttempt(long);assert.equal(b.restIntrusions.length,1);assert.equal(evaluateAttempt(long).restViolations.length,1);near(b.rhythm,100);assert.ok(b.hold!<100);assert.equal(b.matches[0]!.holdCredit,Math.min(b.matches[0]!.duration!.credit!,b.restIntrusions[0]!.credit));
 });
 test('v2 policies snapshot; absent/v1 scoring policy replays legacy interpretation',()=>{
   const record=currentAttempt([.08,.58,1.08,1.58,2.08,2.58,3.08,3.58]);const saved=structuredClone(record);const current=assessAttempt(record);
-  assert.equal(record.assessmentPolicy!.version,2);assert.equal(record.holdPolicy!.version,3);assert.deepEqual(assessAttempt(JSON.parse(JSON.stringify(record))),current);assert.deepEqual(record,saved);
+  assert.equal(record.assessmentPolicy!.version,2);assert.equal(record.holdPolicy!.version,4);assert.deepEqual(assessAttempt(JSON.parse(JSON.stringify(record))),current);assert.deepEqual(record,saved);
   const old={...record,assessmentPolicy:legacyAssessmentPolicy,holdPolicy:undefined};assert.ok(assessAttempt(old).tempo!.bpm<120);assert.deepEqual(assessAttempt({...old,assessmentPolicy:undefined}),assessAttempt(old));
 });
 
@@ -279,4 +281,95 @@ test('v2 spacing uses unequal notes, silence and compound musical pulse with dis
   const a=assessAttempt(currentAttempt([.08,1.58,1.88,2.48,3.68,4.28],music));near(a.tempo!.bpm,100);near(a.rhythm,100);near(a.startingDisplacement,.08);
   const six: RhythmMeasure[]=Array.from({length:3},()=>({meter:[6,8],events:[['Q',{dots:1}],['Q',{dots:1}]]}));
   const b=assessAttempt(currentAttempt([.08,.68,1.28,1.88,2.48,3.08],six));near(b.tempo!.bpm,100);near(b.rhythm,100);near(b.startingDisplacement,.08);
+});
+
+
+test('v4 short notes are excluded, with no hold percentage or sustain warning', () => {
+  for (const count of [8,16]) {
+    const music: RhythmMeasure[] = [{ meter:[4,4], events:Array.from({length:count},()=>[count===8?'E':'S']) }];
+    const times = Array.from({length:count},(_,i)=>i*3/count);
+    const record = currentAttempt(times,music,{bpm:80,style:'hold',releases:times.map(t=>t+.04)});
+    const a = assessAttempt(record);
+    near(a.rhythm,100); assert.equal(a.hold,null); assert.match(a.holdReason!,/short notes only/);
+    assert.ok(a.matches.every(m=>m.holdCredit===null && m.duration?.eligible===false));
+    assert.ok(evaluateAttempt(record).matches.every(m=>m.durationFeedback==='not-graded'));
+    assert.equal(evaluateAttempt(record).acceptable,true);
+    assert.equal(musicalFeedback(record,a).suggestion,null);
+    const timeline = timingTimelines(record)[0]!;
+    timeline.receivedSustain.forEach((bar,i)=>{
+      assert.equal(bar.feedback,'not-graded'); near(bar.start,times[i]!); near(bar.end,times[i]!+.04);
+    });
+    // Legacy v3 and absent hold snapshots retain their former short-note scoring.
+    const old = {...record,holdPolicy:legacyHoldPolicy};
+    near(assessAttempt(old).hold,0);
+    assert.deepEqual(assessAttempt({...record,holdPolicy:undefined}),assessAttempt(old));
+    assert.deepEqual(assessAttempt(JSON.parse(JSON.stringify(record))),a);
+  }
+});
+
+test('v4 boundary is 400 ms at assessment tempo, independent of written value', () => {
+  for (const duration of [.399,.4,.401]) {
+    const d = sustainEvidence(duration,.01,true,duration);
+    assert.equal(d.eligible,duration>=.4); assert.equal(d.credit,duration>=.4?0:null);
+  }
+  const times = [0,.4,.8,1.2,1.6,2,2.4,2.8];
+  const atBoundary = assessAttempt(currentAttempt(times,quarters,{bpm:120,style:'hold'}));
+  near(atBoundary.tempo!.bpm,150); near(atBoundary.hold,0);
+  const faster = assessAttempt(currentAttempt(times.map(t=>t*.975),quarters,{bpm:120,style:'hold'}));
+  near(faster.tempo!.bpm,60/.39); assert.equal(faster.hold,null);
+  const slowEighths: RhythmMeasure[] = [{meter:[4,4],events:Array.from({length:8},()=>['E'])}];
+  near(assessAttempt(currentAttempt(times,slowEighths,{bpm:80,style:'hold'})).hold,0);
+  const compound: RhythmMeasure[] = [{meter:[6,8],events:Array.from({length:6},()=>['E'])}];
+  assert.equal(assessAttempt(currentAttempt([0,.25,.5,.75,1,1.25],compound,{bpm:80,style:'hold'})).hold,null);
+});
+
+test('v4 mixed notes average only eligible played holds; missing long notes stay rhythm errors', () => {
+  const music: RhythmMeasure[] = [{meter:[4,4],events:[['E'],['E'],['Q'],['H']]}];
+  const record=currentAttempt([0,.25,.5,1],music,{style:'hold',releases:[.01,.26,.51,1.8]});
+  const a=assessAttempt(record); near(a.rhythm,100); near(a.hold,50);
+  assert.deepEqual(a.matches.map(m=>m.holdCredit),[null,null,0,1]);
+  const missing=assessAttempt(currentAttempt([0,.25],music,{style:'hold'}));
+  assert.equal(missing.hold,null); assert.equal(missing.missing,2); near(missing.rhythm,50);
+});
+
+test('v4 waives only a short final tie member, preserving the full endpoint and continuous attack', () => {
+  const music: RhythmMeasure[] = [{meter:[4,4],events:[['Q'],['Q'],['H',{tieNext:true}]]},
+    {meter:[4,4],events:[['E'],['E',{rest:true}],['Q'],['Q'],['Q']]}];
+  const times=[0,.75,1.5,3.75,4.5,5.25];
+  for (const release of [2.68,3,3.375]) {
+    const record=currentAttempt(times,music,{bpm:80,style:'hold',releases:[.55,1.3,release,4.3,5.05,5.85]});
+    const a=assessAttempt(record); near(a.rhythm,100); near(a.hold,100);
+    const d=a.matches[2]!.duration!;
+    near(d.expectedDuration,1.875); near(d.assessedDuration,1.5); near(d.waivedFinalDuration,.375);
+    near(d.minimum,1.18); near(d.maximum,1.955);
+    assert.ok(evaluateAttempt(record).matches.every(m=>m.durationFeedback==='accepted'));
+  }
+  near(sustainEvidence(1.875,1.955,false,.375).credit,1);
+  assert.ok(sustainEvidence(1.875,2.2,false,.375).credit!<1);
+  assert.equal(sustainEvidence(1.875,null,false,.375).credit,0);
+  const split=assessAttempt(currentAttempt([0,.75,1.5,3,3.75,4.5,5.25],music,{bpm:80,style:'hold',releases:[.55,1.3,2.9,3.1,4.3,5.05,5.85]}));
+  assert.equal(split.extra,1); assert.ok(split.rhythm!<100);
+  const multi: RhythmMeasure[]=[{meter:[4,4],events:[['H',{tieNext:true}],['E',{tieNext:true}],['S'],['S'],['Q']]}];
+  const truncated=assessAttempt(currentAttempt([0,1.375,1.5],multi,{style:'hold',releases:[1,1.4,1.9]}));
+  const d=truncated.matches[0]!.duration!;
+  near(d.waivedFinalDuration,.125); near(d.assessedDuration,1.25); near(d.credit,0);
+  // 250 + 250 ms is eligible as one sound, though each written member is short.
+  const tiedShorts: RhythmMeasure[]=[{meter:[2,4],events:[['E',{tieNext:true}],['E'],['Q']]}];
+  const chain=assessAttempt(currentAttempt([0,.5],tiedShorts,{style:'hold',releases:[.2,.9]}));
+  near(chain.hold,100); assert.equal(chain.matches[0]!.duration!.eligible,true);
+  assert.equal(sustainEvidence(.375,.01,true,.125).eligible,false);
+  assert.equal(sustainEvidence(1.4,1,true,.4).waivedFinalDuration,0);
+  assert.ok(sustainEvidence(1.4,1,true,.4).credit!<1);
+});
+
+test('v4 exempt notes retain rest-intrusion evidence without entering the hold denominator', () => {
+  const music: RhythmMeasure[]=[{meter:[4,4],events:[['E'],['E',{rest:true}],['Q'],['Q'],['Q']]}];
+  const record=currentAttempt([0,.75,1.5,2.25],music,{bpm:80,style:'hold',releases:[.7,1.3,2.05,2.85]});
+  const a=assessAttempt(record); near(a.rhythm,100); near(a.hold,100);
+  assert.equal(a.matches[0]!.holdCredit,null); assert.equal(a.restIntrusions.length,1);
+  assert.equal(evaluateAttempt(record).matches[0]!.durationFeedback,'late');
+  assert.equal(evaluateAttempt(record).acceptable,false);
+  assert.match(musicalFeedback(record,a).suggestion!,/silence/);
+  const absent=currentAttempt([0],[{meter:[2,4],events:[['E'],['E',{rest:true}],['Q',{rest:true}]]}],{style:'hold',releases:[null]});
+  assert.equal(assessAttempt(absent).hold,null); assert.ok(evaluateAttempt(absent).restViolations.length);
 });

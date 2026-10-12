@@ -1,6 +1,6 @@
 # Uno234 musical assessment
 
-Assessment v2 and hold policy v3 are provisional tuning defaults for musical feedback,
+Assessment v2 and hold policy v4 are provisional tuning defaults for musical feedback,
 not mastery standards. Rhythm accuracy, hold accuracy, tempo and steadiness stay
 independent. There is no combined score, progression, new vocabulary or publication.
 The canonical written passage supplies attacks, rests, sounding chains and pulse.
@@ -17,17 +17,18 @@ correction, rewrites received timestamps, shifts individual notes, snaps bars, o
 stretches sections. Displacement cannot distinguish learner timing from residual device
 or clock delay; results make no attribution. Expected timelines remain at target time.
 
-New attempts snapshot [assessment policy v2 and hold policy v3](../../src/apps/rhythm-walk/assessment-policy.ts),
+New attempts snapshot [assessment policy v2 and hold policy v4](../../src/apps/rhythm-walk/assessment-policy.ts),
 as well as the existing capture, articulation and calibration policies. Assessment v1
 snapshots and records lacking an assessment policy use the retained
 [legacy estimator](../../src/apps/rhythm-walk/legacy-assessment.ts), including their saved
-v1/v2 articulation interpretation. They are never silently upgraded. UI wording may
+v1/v2 articulation interpretation. They are never silently upgraded. Assessment v2 attempts with a saved hold v3 policy,
+or no hold-policy snapshot, retain v3 sustain scoring without a short-note exemption. UI wording may
 change, but completed evidence, numerical interpretation and visual policy do not.
 
 Downloads include raw evidence and computed assessment: versions and full policy
 values, tempo basis, fit confidence evidence and bounds, analytical displacement,
 matched indices, missing/extra counts, attack residuals, actual elapsed durations,
-expected durations, full-credit limits, final tied member, hold credits, analytical
+expected durations, full-credit limits, final tied member, eligibility, assessed duration, waived final duration, hold credits, analytical
 rest intrusions and reasons for unavailable metrics. Target-relative intersections
 remain inspectable in Timing evidence and through raw replay. Interpretation is pure
 and deterministic; completed results survive preferences, pages and mode changes.
@@ -95,15 +96,54 @@ through 10%, Uneven above 10%. A steady slower performance can still be Steady.
 Tempo descriptions are On target through 5% difference, Slightly faster/slower through
 10%, Faster/Slower above 10%. These are separate descriptions, not mastery claims.
 
-## Own-attack sustain: exact hold policy v3
+## Hold eligibility and optional tied tail: policy v4
+
+Use **400 ms** at the assessment tempo (confident performed tempo, otherwise the
+existing explicit target-tempo fallback). This is a provisional acceptance policy,
+not a measured universal hardware limit. A sound shorter than 400 ms has no hold
+credit and is excluded from the denominator; exactly 400 ms is eligible. A 1 ns
+comparison epsilon only absorbs floating-point conversion at the boundary. Attacks
+still count normally. When all matched sounds are short, report **Hold not
+assessed—short notes only**, without a percentage or a short-sustain warning.
+
+Eligibility uses the **entire sounding tie chain**, before any exemption. For an
+eligible chain, if its final written member alone is shorter than 400 ms, waive that
+member from required sustain. Apply the usual sustain formulas below to the remaining
+portion and its last retained member. Remove only one member, never successive short
+members. A 250 + 250 ms chain is eligible and requires sustain in its first member;
+a 375 ms total chain is wholly excluded. A final member of exactly 400 ms is required.
+
+The original full sounding duration still determines the overhold limit and long
+penalty curve, and written rest boundaries do not move. Holding through the optional
+member is fully accepted. Ties retain one attack and one continuous physical press;
+a reattack is extra. This deliberately accepts some shortened tied rhythms without
+trying to distinguish a release cue from a continuing rhythmic pattern.
+
+For example, at quarter = 80, a half tied across a barline to an eighth lasts 1,875 ms.
+The final 375 ms is optional; assess the preceding 1,500 ms with normal tolerances.
+Before a rest, full credit starts at 1,180 ms of elapsed hold and extends through
+1,955 ms, including the original overhold allowance. A chain ending in several short
+members still requires sustain in the penultimate member.
+
+Short excluded notes retain raw press/release evidence and independent rest-intrusion
+feedback. They never enter the hold denominator, even when they intrude into a rest.
+Eligible holds still combine duration/rest credit using the strongest issue. Details
+report the actual number of assessed notes and identify optional tied tails; score
+and timeline feedback do not flag an ordinary exempt tap as short sustain.
+
+## Sustain formulas (v3 baseline, applied to eligible v4 sounds)
 
 Tap remains attack-only. Tap + Hold compares **corrected release − corrected press**
 with the intended sounding duration at the same assessment tempo. An absolute target
 release deadline is evidence, not the sustain rule. Missing attacks do not create
-zero-credit holds; hold accuracy averages equally across matched played notes only.
-No matched notes means unavailable. Missing release earns zero without an invented up.
+zero-credit holds; hold accuracy averages equally across eligible matched played notes only (all matched
+notes for saved v3 attempts).
+No eligible matched notes means unavailable. For an eligible hold, a missing release
+earns zero without an invented up.
 
-All times below are seconds. Let `D` be intended sounding duration, `F` the final
+For v4, use the retained portion and its last member for the minimum, short-credit
+and final-member formulas; keep the original full duration for maximum and long
+credit. All times below are seconds. Let `D` be intended sounding duration, `F` the final
 written member's duration (ordinary notes have `F=D`), `L` elapsed hold, and `r=.70`
 before a separate adjacent note or `.80` before a rest/final end. Define:
 
@@ -118,16 +158,17 @@ final-member cap = clamp((L-(D-F))/m(F), 0, 1)
 duration credit = min(sustain credit, final-member cap)
 ```
 
-A null release gives zero credit. The **20 ms** practical allowance is bounded by a
+An eligible hold with a null release gives zero credit. The **20 ms** practical allowance is bounded by a
 **60%** duration floor and **40 ms** minimum (capped at the whole intended duration for
-very short notes). A brief tap cannot satisfy meaningful sustain. For a 500 ms note,
+very short notes). A brief tap cannot satisfy eligible meaningful sustain. For a 500 ms note,
 full sustain starts at **330 ms** before a separate note or **380 ms** before rest/end;
 350/400 ms holds therefore comfortably earn full credit. Full overhold extends to
-575 ms. A 166.7 ms adjacent eighth has a 100 ms minimum; an 83.3 ms domain sixteenth
-has a 50 ms minimum. This refinement does not expand vocabulary; the PR base now supplies reviewed sixteenth UI support.
+575 ms. For saved v3, a 166.7 ms adjacent eighth has a 100 ms minimum; an 83.3 ms domain sixteenth
+has a 50 ms minimum. V4 excludes both from hold scoring. This refinement does not expand vocabulary; the PR base now supplies reviewed sixteenth UI support.
 
-The final-member requirement prevents a long tie from hiding omission of its final
-short member. Releasing at the start of that member gets zero chain-duration credit.
+For saved v3, the final-member requirement prevents a long tie from hiding omission
+of its final short member. V4 applies this requirement to the last retained member
+after the optional-tail rule above. Releasing at the start of the required member gets zero chain-duration credit.
 Ties still require one physical uninterrupted hold: internal written boundaries have
 no articulation permission. A reattack is extra; there is no joining of split holds.
 Separate notes still need a real release followed by a new attack.
@@ -135,7 +176,7 @@ Separate notes still need a real release followed by a new attack.
 Gradual short/long curves avoid a sudden collapse just outside full credit. Zero
 sustain credit is reserved for holds below 40% of the minimum or overholds beyond the
 maximum plus 75% of intended duration. The final-member cap can lower truncated tie
-credit sooner, because continuity through the complete written chain matters.
+credit sooner, because continuity through the required portion of the chain matters.
 
 ## Musical silence without duplicate penalties
 
@@ -233,8 +274,8 @@ and an 80% final hold. Values below are rounded for review; calculation keeps pr
 | 700 ms spacing, start 80 ms late, adjacent holds 490 ms | 83.33 / 97.92% / 70.83% | 85.71 / 100% / 100% |
 
 Missing one exact quarter still gives 87.5% rhythm; adding an extra gives 88.89%.
-A 10 ms tap on a 500 ms note receives zero hold credit. Omitting a tied chain’s final
-member receives zero chain hold credit, even if the preceding long members were held.
+A 10 ms tap on a 500 ms note receives zero hold credit. Under saved v3, omitting a tied chain’s final member receives zero chain hold credit.
+V4 waives a final member shorter than 400 ms as described above.
 Substantial rest intrusion still produces silence guidance and a single hold deduction.
 
 ## Validation evidence for this refinement (2026-10-11)
@@ -266,3 +307,22 @@ attacks in both styles, plus 100% Hold accuracy. Diagnostic assessment times wer
 not acceptance thresholds. Native browser evidence above precedes this base merge;
 post-merge verification here is automated Node/build validation. Physical-device and
 production acceptance remain outstanding.
+
+
+## Validation evidence for short-sound policy v4 (2026-10-12)
+
+Node 24.21.0, `npm ci`, `npm run check` (296 tests, strict type checking, hosted and
+portable builds), and `git diff --check` pass. Deterministic cases cover eighths and
+sixteenths at 80 BPM, the exact 400 ms boundary, performed-tempo eligibility, 6/8,
+mixed-score denominators, missing notes/releases, a half tied across a barline to an
+eighth, single-member-only exemption, reattacks, unchanged overhold/rest boundaries,
+raw timeline endpoints, and saved v3/absent-policy replay.
+
+Native T3 browser scenarios `short`, `tied`, and `accepted` pass against the local
+app: keyboard short taps show no hold percentage or sustain warnings; an omitted
+short tied tail earns full credit with an accurate assessed-note count; synthetic
+pointer long holds remain accepted. Downloads retain v4 policy/evidence, and result
+focus, writing retention, retry/Next, settings retention and layout checks pass.
+Synthetic input does not establish physical keyboard/touch tolerances. The 400 ms
+threshold remains provisional pending actual playing; no staging or production
+publication was performed.

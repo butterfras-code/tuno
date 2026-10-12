@@ -39,7 +39,7 @@ export function createResults(record: AttemptRecord, a: Assessment, retry: () =>
     const metrics = el('div', 'result-metrics');
     const rhythmLabel = a.basis === 'performed' ? 'Rhythm accuracy at performed tempo' : a.basis === 'target' ? 'Rhythm accuracy at target tempo' : 'Rhythm accuracy';
     metrics.append(el('p', '', `${rhythmLabel}: ${a.rhythm === null ? 'Unavailable' : `${Math.round(a.rhythm)}%`}`));
-    if ((record.playStyle ?? 'hold') === 'hold') metrics.append(el('p', '', a.hold === null ? `Hold accuracy: Unavailable · ${a.holdReason}` : `Hold accuracy: ${Math.round(a.hold)}% across ${a.matchedNotes} played notes`));
+    if ((record.playStyle ?? 'hold') === 'hold') metrics.append(el('p', '', a.hold === null ? `Hold accuracy: Unavailable · ${a.holdReason}` : `Hold accuracy: ${Math.round(a.hold)}% across ${a.matches.filter(m => m.holdCredit !== null).length} assessed notes`));
     if (a.tempo) {
       const difference = a.tempo.differencePercent;
       metrics.append(el('p', '', `Performed tempo: ${Math.round(a.tempo.bpm)} BPM · target ${a.targetBpm} · ${Math.round(Math.abs(difference))}% ${Math.abs(difference) < .000001 ? 'difference' : difference < 0 ? 'slower' : 'faster'} · ${tempoDescription(difference, a)}`));
@@ -50,7 +50,15 @@ export function createResults(record: AttemptRecord, a: Assessment, retry: () =>
     details.append(el('p', 'note', record.assessmentPolicy?.version === 2 ? 'Expected bars use target time; received positions are actual input. Accepted colors use the labeled assessment tempo and elapsed sustain. Target tempo is an explicit fallback when spacing evidence is insufficient.' : 'This saved attempt retains its legacy assessment. Score and timeline colors use target-relative attack/release feedback; pattern metrics use the labeled tempo basis.'));
     details.append(el('p','',`Assessment policy ${a.policy.version}${a.holdPolicy ? ` · hold policy ${a.holdPolicy.version}` : ' · legacy saved release policy'}`));
     const durations = el('ul');
-    a.matches.forEach(m => { const d=m.duration; if (d) durations.append(el('li','',`Note ${m.expected+1}: ${d.elapsed === null ? 'no release observed' : `held ${Math.round(d.elapsed*1000)} ms`} · intended ${Math.round(d.expectedDuration*1000)} ms · full sustain credit from ${Math.round(d.minimum*1000)} to ${Math.round(d.maximum*1000)} ms${m.holdCredit !== null ? ` · hold credit ${Math.round(m.holdCredit*100)}% including musical rest checks` : ''}.`)); });
+    a.matches.forEach(m => {
+      const d = m.duration;
+      if (!d) return;
+      const elapsed = d.elapsed === null ? 'no release observed' : `held ${Math.round(d.elapsed*1000)} ms`;
+      const sustain = !d.eligible ? 'hold not assessed (short note)' : `full sustain credit from ${Math.round(d.minimum*1000)} to ${Math.round(d.maximum*1000)} ms`;
+      const optional = d.waivedFinalDuration ? ` · final tied member optional (${Math.round(d.waivedFinalDuration*1000)} ms)` : '';
+      const credit = m.holdCredit !== null ? ` · hold credit ${Math.round(m.holdCredit*100)}% including musical rest checks` : '';
+      durations.append(el('li','',`Note ${m.expected+1}: ${elapsed} · intended ${Math.round(d.expectedDuration*1000)} ms · ${sustain}${optional}${credit}.`));
+    });
     if (durations.childElementCount) details.append(durations);
     if (a.startingDisplacement !== null) details.append(el('p','',`Analytical starting displacement: ${Math.round(a.startingDisplacement*1000)} ms. Its source cannot be determined; it is not session calibration.`));
     details.append(el('p', '', `${a.expectedAttacks} expected attacks · ${a.capturedAttacks} received attacks. ${a.basis === 'unavailable' ? 'Association counts unavailable.' : `${a.matchedNotes} matched · ${a.missing} missing · ${a.extra} extra · ${a.usableIntervals} usable pace intervals spanning ${Number(a.intervalSpan.toFixed(2))} performance beats.`}`));

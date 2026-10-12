@@ -2,9 +2,10 @@ import { assessLegacyAttempt } from './legacy-assessment.ts';
 import type { AttemptRecord } from './capture.ts';
 import { capturedHolds } from './evidence.ts';
 import { median } from './offset.ts';
-import { assessmentPolicy, holdPolicy } from './assessment-policy.ts';
+import { assessmentPolicy, holdPolicy, legacyHoldPolicy } from './assessment-policy.ts';
 import type { AssessmentPolicy } from './assessment-policy.ts';
-import { planPassage } from './timing.ts';
+import { duration as writtenDuration } from '../../music/measure.ts';
+import { planPassage, musicalSeconds } from './timing.ts';
 import { sourcePolicy } from './shared/meter.ts';
 
 type TempoFit = { scale: number; displacement: number; displacementBound: number; matched: number; span: number; medianResidual: number | null; ambiguous: boolean; withinBounds: boolean };
@@ -70,16 +71,26 @@ function fit(expected: number[], actual: number[], beat: number, p: AssessmentPo
   const margin = Math.max(p.ambiguityCost, p.ambiguityCostPerAttack * Math.max(expected.length, actual.length));
   return { best, ambiguous: candidates.some(c => c.cost <= best.cost + margin && JSON.stringify(c.pairs) !== JSON.stringify(best.pairs)), margin };
 }
-export function sustainEvidence(duration: number, elapsed: number | null, adjacent: boolean, finalMember: number, p = holdPolicy) {
+export function sustainEvidence(duration: number, elapsed: number | null, adjacent: boolean, finalMember: number, p = holdPolicy, precedingMember = duration - finalMember) {
+  const threshold = p.version === 4 ? p.holdThresholdSeconds ?? .400 : 0;
+  // The tiny epsilon only absorbs floating-point conversion at an exact boundary.
+  const eligible = duration + 1e-9 >= threshold;
+  const waivedFinalDuration = eligible && finalMember + 1e-9 < duration && finalMember + 1e-9 < threshold ? finalMember : 0;
+  const assessedDuration = duration - waivedFinalDuration;
+  // Remove only the final member. The preceding member keeps its normal sustain
+  // requirement, even if it too is short; never recursively waive a tied tail.
+  const requiredFinalMember = waivedFinalDuration ? precedingMember : finalMember;
   const ratio = adjacent ? p.adjacentRatio : p.restFinalRatio;
-  const minimum = Math.min(duration, Math.max(p.minimumSeconds, duration * p.minimumRatio, duration * ratio - p.shortAllowance,
-    duration - finalMember + Math.max(finalMember * ratio - p.shortAllowance, finalMember * p.minimumRatio, Math.min(p.minimumSeconds, finalMember))));
+  const finalMinimum = Math.max(requiredFinalMember * p.minimumRatio, requiredFinalMember * ratio - p.shortAllowance, Math.min(p.minimumSeconds, requiredFinalMember));
+  const minimum = Math.min(assessedDuration, Math.max(p.minimumSeconds, assessedDuration * p.minimumRatio, assessedDuration * ratio - p.shortAllowance,
+    assessedDuration - requiredFinalMember + finalMinimum));
+  // Optional sustain still belongs to the written sound. Neither its endpoint nor
+  // the overhold/rest boundary moves earlier when the final member is waived.
   const maximum = duration + Math.min(p.overholdMaximum, duration * p.overholdRatio);
   const credit = elapsed === null ? 0 : elapsed < minimum ? Math.max(0, 1 - (minimum - elapsed) / (minimum * p.shortPenaltyRatio))
     : elapsed > maximum ? Math.max(0, 1 - (elapsed - maximum) / (duration * p.longPenaltyRatio)) : 1;
-  const finalMinimum = Math.max(finalMember * p.minimumRatio, finalMember * ratio - p.shortAllowance, Math.min(p.minimumSeconds, finalMember));
-  const finalCredit = elapsed === null ? 0 : clamp((elapsed - (duration-finalMember)) / finalMinimum, 0, 1);
-  return { elapsed, expectedDuration: duration, minimum, maximum, finalMember, credit: Math.min(credit, finalCredit) };
+  const finalCredit = elapsed === null ? 0 : clamp((elapsed - (assessedDuration-requiredFinalMember)) / finalMinimum, 0, 1);
+  return { elapsed, expectedDuration: duration, eligible, assessedDuration, waivedFinalDuration, minimum, maximum, finalMember, credit: eligible ? Math.min(credit, finalCredit) : null };
 }
 
 /** Pure assessment from canonical music and captured evidence. Does not mutate timelines,
@@ -91,7 +102,7 @@ export function assessAttempt(record: AttemptRecord) {
       matches: legacy.matches.map(m => ({ ...m, duration: null as ReturnType<typeof sustainEvidence> | null })) };
   }
   const policy = record.assessmentPolicy ?? assessmentPolicy;
-  const hp = record.holdPolicy ?? holdPolicy;
+  const hp = record.holdPolicy ?? legacyHoldPolicy;
   const target = planPassage(record.exercise.measures, record.bpm, record.policy, sourcePolicy(record.exercise.measures[0]!).pulse);
   const allHolds = capturedHolds(record);
   const holds = allHolds.filter(h => !h.countIn);
@@ -152,15 +163,18 @@ export function assessAttempt(record: AttemptRecord) {
     const note = target.notes[e]!, h = holds[a]!;
     const duration = (note.end - note.start) * scale;
     const adjacent = Math.abs((target.notes[e + 1]?.start ?? Infinity) - note.end) < 1e-9;
-    const durationEvidence = holdStyle ? sustainEvidence(duration, h.up === null ? null : h.up-h.down, adjacent, (note.finalSegmentDuration ?? note.end-note.start)*scale, hp) : null;
+    const preceding = note.sources.at(-2);
+    const precedingMember = preceding ? musicalSeconds(writtenDuration(record.exercise.measures[preceding.measure]!.events[preceding.event]!), record.bpm, sourcePolicy(record.exercise.measures[0]!).pulse) * scale : 0;
+    const durationEvidence = holdStyle ? sustainEvidence(duration, h.up === null ? null : h.up-h.down, adjacent, (note.finalSegmentDuration ?? note.end-note.start)*scale, hp, precedingMember) : null;
     // One hold credit: use the strongest duration/rest issue, never add penalties.
-    const holdCredit = durationEvidence ? Math.min(durationEvidence.credit, ...restIntrusions.filter(r=>r.actual===a).map(r=>r.credit)) : null;
+    const holdCredit = durationEvidence?.credit != null ? Math.min(durationEvidence.credit, ...restIntrusions.filter(r=>r.actual===a).map(r=>r.credit)) : null;
     const error = h.down - note.start * scale - displacement;
     return { expected: e, actual: a, error, credit: attackCredit(error, beat, policy), holdCredit, duration: durationEvidence };
   });
   const extra = actual.length - matches.length;
   const rhythm = 100 * matches.reduce((sum, m) => sum + m.credit, 0) / (expected.length + extra);
-  const hold = holdStyle && matches.length ? 100 * matches.reduce((sum, m) => sum + m.holdCredit!, 0) / matches.length : null;
+  const gradedHolds = matches.filter(m => m.holdCredit !== null);
+  const hold = gradedHolds.length ? 100 * gradedHolds.reduce((sum, m) => sum + m.holdCredit!, 0) / gradedHolds.length : null;
   const tempo = confident ? { bpm: record.bpm / scale, differencePercent: 100 * (1 / scale - 1) } : null;
   const intervals: { duration: number; beats: number }[] = [];
   if (confident) for (let i = 1; i < matches.length; i++) {
@@ -181,6 +195,8 @@ export function assessAttempt(record: AttemptRecord) {
     const spread = Math.max(1.4826 * median(intervals.map(i => Math.abs(i.duration - typical))), (quantile(.75) - quantile(.25)) / 1.349);
     steadiness = 100 * spread / typical;
   }
-  return { ...base, startingDisplacement: confident ? displacement : null, restIntrusions, basis, rhythm, hold, tempo, steadiness, reason: confident ? null : actual.length ? 'Not enough evidence for performed tempo; rhythm uses target tempo.' : 'No attacks received.', tempoReason: tempo ? null : 'Not enough evidence: need four matched attacks spanning three performance beats with a clear tempo fit.', steadinessReason: steadiness === null ? 'Not enough evidence: need a clear tempo and four uninterrupted intervals spanning four performance beats.' : null, holdReason: hold === null ? 'No matched played notes.' : null, matchedNotes: matches.length, missing: expected.length - matches.length, extra, matches, usableIntervals: intervals.length, intervalSpan, performedBeat: confident ? beat : null, residualMedian };
+  const holdReason = hold !== null ? null : !holdStyle ? 'Tap assesses attacks only.'
+    : matches.length ? 'Hold not assessed—short notes only.' : 'No matched played notes.';
+  return { ...base, startingDisplacement: confident ? displacement : null, restIntrusions, basis, rhythm, hold, tempo, steadiness, reason: confident ? null : actual.length ? 'Not enough evidence for performed tempo; rhythm uses target tempo.' : 'No attacks received.', tempoReason: tempo ? null : 'Not enough evidence: need four matched attacks spanning three performance beats with a clear tempo fit.', steadinessReason: steadiness === null ? 'Not enough evidence: need a clear tempo and four uninterrupted intervals spanning four performance beats.' : null, holdReason, matchedNotes: matches.length, missing: expected.length - matches.length, extra, matches, usableIntervals: intervals.length, intervalSpan, performedBeat: confident ? beat : null, residualMedian };
 }
 export type Assessment = ReturnType<typeof assessAttempt>;

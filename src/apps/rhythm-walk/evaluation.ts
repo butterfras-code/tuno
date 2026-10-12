@@ -61,7 +61,9 @@ export function evaluateAttempt(record: AttemptRecord, timingOffset: TimingOffse
     const shared: Match[] = !available ? matches.map(m => ({...m, attackAccepted:true, durationFeedback:'unavailable'})) : a.matches.map(m => {
       const hold = holds[indices[m.actual]!]!, note = expected[m.expected]!;
       const d = m.duration;
-      const durationFeedback: DurationFeedback = !holdStyle ? 'not-graded' : hold.up === null ? 'incomplete' : m.holdCredit! >= 1-1e-9 ? 'accepted'
+      const exemptFeedback: DurationFeedback = a.restIntrusions.some(r => r.actual === m.actual) ? 'late' : 'not-graded';
+      const durationFeedback: DurationFeedback = !holdStyle ? 'not-graded' : d?.eligible === false ? exemptFeedback
+        : hold.up === null ? 'incomplete' : m.holdCredit! >= 1-1e-9 ? 'accepted'
         : d && d.elapsed! < d.minimum ? 'short' : 'late';
       return { expected:m.expected, hold:indices[m.actual]!, onsetOffset:hold.down-note.start, releaseOffset:hold.up === null ? null : hold.up-note.end,
         attackAccepted:m.credit>=1-1e-9, durationFeedback };

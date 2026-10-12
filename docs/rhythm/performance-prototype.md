@@ -1,4 +1,4 @@
-> Current assessment: [assessment v2 / hold policy v3](assessment.md) supersedes target-release deadline scoring and fixed target lift-band guidance below for new attempts. Sustain is elapsed release minus press; analytical tempo/displacement locate musical rests without moving received evidence. Old snapshots retain their original numerical and visual policy. The sections below retain implementation history where marked provisional/original.
+> Current assessment: [assessment v2 / hold policy v4](assessment.md) supersedes target-release deadline scoring and fixed target lift-band guidance below for new attempts. Sustain is elapsed release minus press; analytical tempo/displacement locate musical rests without moving received evidence. Old snapshots retain their original numerical and visual policy. The sections below retain implementation history where marked provisional/original.
 
 # Tap Rhythms performance contract
 
@@ -16,7 +16,7 @@ The current activity is **Uno234**; historical internal paths stay compatible. R
 
 **How to play** lives in the existing Performance settings, applies in Tap Rhythms and Both, and saves with shared preferences. **Tap** is the default: “Tap when each note starts.” **Tap + Hold** says: “Hold each note for its length. Release for rests.” Changing it preserves exercise, pending configuration, written response and completed review. It is disabled from activation through count-in/capture and during calibration. Attempts snapshot `playStyle` and `evaluationPolicy`; Retry snapshots current preferences. Legacy JSON with no style remains hold-oriented; older preferences with no style default to Tap.
 
-Tap grades note attacks, missing/extra attacks and attacks inside written rests. It does not grade release, hold duration, incomplete holds or an existing hold extending into a rest. Both down/up edges remain raw evidence. A tied chain has one attack. Tap + Hold additionally grades duration and release: separate notes need release/reattack, tied notes need a single uninterrupted hold through the full derived chain, rests require musical silence, and final-note sustain uses the elapsed-duration policy with the existing finite capture tail. There is no synthetic release at the deadline.
+Tap grades note attacks, missing/extra attacks and attacks inside written rests. It does not grade release, hold duration, incomplete holds or an existing hold extending into a rest. Both down/up edges remain raw evidence. A tied chain has one attack. Tap + Hold additionally grades duration and release: separate notes need release/reattack, tied notes use one uninterrupted hold with the captured short-tail exemption, rests require musical silence, and final-note sustain uses the elapsed-duration policy with the existing finite capture tail. There is no synthetic release at the deadline.
 
 [Current central assessment/hold policy](../../src/apps/rhythm-walk/assessment-policy.ts) defines provisional defaults with no required learner tolerance controls. See [the exact formulas and compatibility behavior](assessment.md).
 
@@ -24,13 +24,14 @@ Tap grades note attacks, missing/extra attacks and attacks inside written rests.
 | --- | --- |
 | Attack association | Bounded ordered edit fit with one global tempo and analytical starting displacement; missing/extra penalties retained |
 | Attack acceptance | Full credit within 10% of assessment beat, clamped to 30–60 ms; gradual deductions beyond |
+| Hold eligibility | Total sounding duration at least 400 ms at assessment tempo; shorter sounds excluded from the hold denominator |
 | Sustain before separate adjacent notes | Approximately 70% of intended duration from the learner's own attack |
 | Sustain before rests/final end | Approximately 80%, with bounded 20 ms allowance, 60% duration floor and 40 ms minimum |
 | Small overhold | Accept through intended duration plus min(80 ms, 15% of duration) |
 | Written rest intrusion | Allow min(60 ms, 15% of rest length) at the analytical tempo/displacement; then gradual deduction |
-| Ties | One continuous physical hold, retaining meaningful sustain in the final written member; no internal lift permission |
+| Ties | One continuous physical hold; only the final written member is optional if below 400 ms, with normal sustain required in the retained portion; no reattack permission |
 
-Duration and rest evidence produce one hold credit using the strongest issue, never summed penalties. Missing attacks affect rhythm only; their absent holds are not graded. Actual attack positions and sustain bars remain received evidence. Expected bars show written target duration; new attempts have no fixed target-time lift-credit bands. Legacy attempts retain their saved release policy and bands.
+For eligible notes, duration and rest evidence produce one hold credit using the strongest issue, never summed penalties. Missing attacks affect rhythm only; their absent holds are not graded. Excluded short sounds still receive independent rest-intrusion feedback. Actual attack positions and sustain bars remain received evidence. Expected bars show written target duration; new attempts have no fixed target-time lift-credit bands. Legacy attempts retain their saved release policy and bands.
 
 Tap Expected/Received timelines show attacks only. Tap + Hold adds thin bars for canonical sounding chains and actual corrected input intervals. Bars split at barlines and automatic system wraps without adding attacks. Accepted gaps stay visible, unmatched holds are shown, and overholds extend until their real release (clipped at the score edge when necessary). An absent release stays null: its observed extent is dashed to capture end, without a release endpoint. SVG titles/labels and the textual review explain missing/extra, early/late/short and incomplete evidence without requiring color. [Current automated and device validation](unified-activity.md#tap--tap--hold-validation) and the [HTML review](tap-hold-review.html) record the slice's evidence and remaining decisions.
 
