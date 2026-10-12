@@ -4,7 +4,7 @@ Updated 2026-10-12. **Uno234 is one activity with three freely interchangeable r
 
 Configure one exercise, then choose how to respond without changing its identity, notation or configuration. Both exposes writing and the performance pad independently; completing or checking the writing is never required. Each response and its evaluation survives mode switching within the exercise. Switching during count-in, capture or calibration cancels safely and stops scheduled audio. A canceled performance is interrupted, never completed or graded.
 
-The shared repertoire is the actual implemented exercise set: 2/4, 3/4, 4/4 and 6/8; 1–4 measures (default two); half, quarter, eighth and dotted-quarter notes/rests, plus opt-in simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets; the existing dotted-half review fixture; bounded ties and syncopation; readable versus unintuitive rest spelling; all historical writing and performance review presets. In 6/8, Write Counts uses numbers 1–6 on eighths, grouped 123 / 456, while Tap Rhythms uses two dotted-quarter pulses. See [meter rules](meters.md) and the [canonical music model](music-model.md).
+The shared repertoire is the actual implemented exercise set: 2/4, 3/4, 4/4 and 6/8; 1–4 measures (default two); half, quarter, eighth and dotted-quarter notes/rests, plus opt-in simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets; opt-in whole notes in 4/4 and dotted-half generation; bounded ties and syncopation; readable versus unintuitive rest spelling; all historical writing and performance review presets. In 6/8, Write Counts uses numbers 1–6 on eighths, grouped 123 / 456, while Tap Rhythms uses two dotted-quarter pulses. See [meter rules](meters.md) and the [canonical music model](music-model.md).
 
 Read [the triplet contract](triplets.md) for complete simple-meter groups, shared capability queries, exact thirds and atomic `la`/`li` entry.
 
@@ -42,3 +42,7 @@ Those records do not override this naming, architecture, persistence or mode-swi
 ## Coordinated implementation prompts
 
 The next parallel slices are [simple-meter triplets with 1 la li counting](prompts/triplets.md) and [source-verified UIL level presets](prompts/uil-presets.md). Both follow the [shared ownership and capability contract](prompts/README.md). Triplet support is implemented on its feature branch under [triplets.md](triplets.md); UIL preset work remains a separate slice.
+
+[UIL teaching presets](uil-presets.md) now provide inspectable Levels I–VI and qualified note-only I–II practice. Higher levels remain blocked by explicit capability/source gaps. Whole and dotted-half notes are opt-in shared ingredients.
+
+The coordinated prompts are [simple-meter triplets with 1 la li counting](prompts/triplets.md) and [source-verified UIL level presets](prompts/uil-presets.md). Both follow the [shared ownership and capability contract](prompts/README.md). Triplets remain planned; the implemented UIL scope and remaining gaps are documented above.
