@@ -124,7 +124,7 @@ very short notes). A brief tap cannot satisfy meaningful sustain. For a 500 ms n
 full sustain starts at **330 ms** before a separate note or **380 ms** before rest/end;
 350/400 ms holds therefore comfortably earn full credit. Full overhold extends to
 575 ms. A 166.7 ms adjacent eighth has a 100 ms minimum; an 83.3 ms domain sixteenth
-has a 50 ms minimum. Domain tests do not expand current UI vocabulary.
+has a 50 ms minimum. This refinement does not expand vocabulary; the PR base now supplies reviewed sixteenth UI support.
 
 The final-member requirement prevents a long tie from hiding omission of its final
 short member. Releasing at the start of that member gets zero chain-duration credit.
@@ -200,7 +200,7 @@ mode/page changes retain completed results; active changes interrupt safely.
 [Deterministic cases](../../tests/rhythm-assessment.test.ts) specify observed timings
 independently of scorer formulas. They cover exact/80 ms displaced 120 BPM; slower,
 faster and displaced versions; missing first, early extra, alternating skips,
-ambiguity, fit bounds, own-attack sustain, 70/80% duration, short eighths and domain
+ambiguity, fit bounds, own-attack sustain, 70/80% duration, short eighths and
 sixteenths, acceptable/substantial overholds, taps, absent releases, tied final members,
 gradual penalties, fixed calibration, snapshots/legacy replay and confidence-dependent
 feedback. Existing input ownership/calibration/cancellation tests remain. Legacy lift
@@ -253,3 +253,16 @@ bound; it correctly withheld assessment. The accepted browser case uses 120 BPM 
 leave room for synthetic cross-clock uncertainty; deterministic tests still require
 exact 80 ms displacement and unchanged 120 BPM. Device and release checks remain
 outstanding as listed above.
+
+### PR base integration
+
+The requested PR targets `t3code/rhythm-game-handoff`. After merging its existing
+sixteenth/counting update (`f50e1d8`) into this feature branch, `npm run check` passes
+**291 tests**, strict type checking and builds on Node 24.21.0. The inherited vocabulary
+and counting systems are preserved; this assessment slice adds neither. The existing
+64-attack dense-sixteenth reproducer retains 100% rhythm, 120 BPM, and no missing/extra
+attacks in both styles, plus 100% Hold accuracy. Diagnostic assessment times were
+1,292 ms (Tap) and 1,344 ms (Hold) in this workspace; those are runtime observations,
+not acceptance thresholds. Native browser evidence above precedes this base merge;
+post-merge verification here is automated Node/build validation. Physical-device and
+production acceptance remain outstanding.
