@@ -1,3 +1,4 @@
+import { legacyAssessmentPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
@@ -123,13 +124,13 @@ test('expected lift windows use the saved policy and leave actual intervals inta
   const capture=new Capture(quarters,80,false,undefined,undefined,'hold');
   capture.plan.notes.forEach(note=>{capture.input('down','keyboard',note.start,0);capture.input('up','keyboard',note.end-.18,0);});
   const record=capture.advance(capture.plan.captureEnd)!;
-  const rows=timingTimelines(record), windows=rows.flatMap(row=>row.expectedSustain.flatMap(s=>s.releaseWindow?[s.releaseWindow]:[]));
+  const rows=timingTimelines({...record,assessmentPolicy:legacyAssessmentPolicy}), windows=rows.flatMap(row=>row.expectedSustain.flatMap(s=>s.releaseWindow?[s.releaseWindow]:[]));
   assert.equal(windows.length,7);assert.ok(Math.abs(windows[0]!.start-.57)<1e-9);assert.equal(windows[0]!.end,.75);
   assert.ok(rows[0]!.expectedSustain.at(-1)!.releaseWindow,'separate note across barline allows lift on preceding bar');
   assert.equal(rows[1]!.expectedSustain.at(-1)!.releaseWindow,undefined,'last note has no adjacent-note lift band');
   assert.ok(Math.abs(rows[0]!.receivedSustain[0]!.end!-.57)<1e-9);assert.equal(rows[0]!.expectedSustain[0]!.end,.75);
   assert.ok(rows.flatMap(row=>row.receivedSustain).every(s=>!s.releaseWindow));
-  const legacy={...record,evaluationPolicy:{...record.evaluationPolicy!,articulationRatio:.15,articulationCeiling:.08}};
+  const legacy={...record,assessmentPolicy:legacyAssessmentPolicy,evaluationPolicy:{...record.evaluationPolicy!,articulationRatio:.15,articulationCeiling:.08}};
   assert.ok(Math.abs(timingTimelines(legacy)[0]!.expectedSustain[0]!.releaseWindow!.start-.67)<1e-9);
   assert.deepEqual(timingTimelines({...legacy,evaluationPolicy:undefined}),timingTimelines(legacy));
 });
@@ -140,7 +141,7 @@ test('lift bands never break internal ties or precede rests, and Tap has none', 
     {meter:[2,4] as const,events:[['Q'],['Q']] as const},
     {meter:[2,4] as const,events:[['Q',{rest:true}],['Q']] as const},
   ]};
-  const hold=new Capture(music,120,false,undefined,undefined,'hold');const rows=timingTimelines(hold.advance(hold.plan.captureEnd)!);
+  const hold=new Capture(music,120,false,undefined,undefined,'hold');const rows=timingTimelines({...hold.advance(hold.plan.captureEnd)!,assessmentPolicy:legacyAssessmentPolicy});
   assert.equal(rows[0]!.expectedSustain[0]!.releaseWindow,undefined,'internal tied barline continuous');
   assert.ok(rows[1]!.expectedSustain[0]!.releaseWindow,'chain end before separate note permits lift');
   assert.equal(rows[1]!.expectedSustain[1]!.releaseWindow,undefined,'before rest uses ordinary release');
@@ -153,6 +154,16 @@ test('a long tied chain ending in a short eighth never gets a lift band at an in
   ]},180,false,undefined,undefined,'hold');
   const record=capture.advance(capture.plan.captureEnd)!;
   const note=record.plan.notes[0]!;assert.ok(Math.abs(note.finalSegmentDuration!-1/9)<1e-9);
-  const band=timingTimelines(record)[0]!.expectedSustain[0]!.releaseWindow!;
+  const band=timingTimelines({...record,assessmentPolicy:legacyAssessmentPolicy})[0]!.expectedSustain[0]!.releaseWindow!;
   assert.ok(Math.abs(band.start-11/36)<1e-9);assert.ok(band.start>2/9,'last tied eighth has a solid sustain section');
+});
+
+test('v2 accepted timing stays at received positions without target lift promises or warnings',()=>{
+  const c=new Capture(quarters,120,false,undefined,undefined,'hold');
+  c.plan.notes.forEach((n,i)=>{c.input('down','keyboard',n.start+.08,0);c.input('up','keyboard',n.start+.08+(i===7?.4:.35),0);});
+  const rows=timingTimelines(c.advance(c.plan.captureEnd)!);
+  assert.ok(rows.flatMap(r=>r.expectedSustain).every(s=>!s.releaseWindow));
+  assert.ok(rows.flatMap(r=>r.receivedSustain).every(s=>s.feedback==='accepted'));
+  assert.ok(rows.flatMap(r=>r.received).every(h=>!h.attention && !h.extra));
+  assert.equal(rows[0]!.received[0]!.time,.08);assert.equal(rows[0]!.receivedSustain[0]!.end,.43);
 });

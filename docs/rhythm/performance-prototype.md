@@ -1,6 +1,8 @@
+> Current assessment: [assessment v2 / hold policy v3](assessment.md) supersedes target-release deadline scoring and fixed target lift-band guidance below for new attempts. Sustain is elapsed release minus press; analytical tempo/displacement locate musical rests without moving received evidence. Old snapshots retain their original numerical and visual policy. The sections below retain implementation history where marked provisional/original.
+
 # Tap Rhythms performance contract
 
-Current numerical feedback and completion behavior: see the [first musical assessment slice](assessment.md). Its versioned policy and results lifecycle supersede historical evidence-only descriptions below; target-relative review remains available.
+Current numerical feedback and completion behavior: see the [current musical assessment](assessment.md). Its versioned policy and results lifecycle supersede historical evidence-only descriptions below; target-relative review remains available.
 
 Current behavior, reconciled 2026-10-11 with the selectable-performance slice. Read alongside the [unified Uno234 contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
@@ -14,19 +16,21 @@ The current activity is **Uno234**; historical internal paths stay compatible. R
 
 **How to play** lives in the existing Performance settings, applies in Tap Rhythms and Both, and saves with shared preferences. **Tap** is the default: “Tap when each note starts.” **Tap + Hold** says: “Hold each note for its length. Release for rests.” Changing it preserves exercise, pending configuration, written response and completed review. It is disabled from activation through count-in/capture and during calibration. Attempts snapshot `playStyle` and `evaluationPolicy`; Retry snapshots current preferences. Legacy JSON with no style remains hold-oriented; older preferences with no style default to Tap.
 
-Tap grades note attacks, missing/extra attacks and attacks inside written rests. It does not grade release, hold duration, incomplete holds or an existing hold extending into a rest. Both down/up edges remain raw evidence. A tied chain has one attack. Tap + Hold additionally grades duration and release: separate notes need release/reattack, tied notes need a single uninterrupted hold through the full derived chain, rests require release at the preceding note's end, and final-note release uses the same tolerance with the existing finite capture tail. There is no synthetic release at the deadline.
+Tap grades note attacks, missing/extra attacks and attacks inside written rests. It does not grade release, hold duration, incomplete holds or an existing hold extending into a rest. Both down/up edges remain raw evidence. A tied chain has one attack. Tap + Hold additionally grades duration and release: separate notes need release/reattack, tied notes need a single uninterrupted hold through the full derived chain, rests require musical silence, and final-note sustain uses the elapsed-duration policy with the existing finite capture tail. There is no synthetic release at the deadline.
 
-[Central policy](../../src/apps/rhythm-walk/play-policy.ts) defines conservative **provisional engineering defaults, not approved teaching thresholds**. There are no learner tolerance controls.
+[Current central assessment/hold policy](../../src/apps/rhythm-walk/assessment-policy.ts) defines provisional defaults with no required learner tolerance controls. See [the exact formulas and compatibility behavior](assessment.md).
 
-| Check | Default |
+| Check | Current new-attempt policy |
 | --- | --- |
-| Attack association | Existing inclusive ±180 ms window, maximizing ordered one-to-one matches independently of releases |
-| Attack acceptance | Inclusive ±80 ms from expected onset; a wider-window association can still need correction |
-| Ordinary release tolerance | `min(60 ms, 10% × preceding sounding duration)` on either side of expected end for notes before rests/final notes; also the late bound for adjacent notes |
-| Adjacent-note early-release allowance | `min(180 ms, 25% × preceding sounding duration, 25% × final written segment duration)` (release policy v2) before the **expected** end; replaces the ordinary early allowance, never adds to it |
-| Meaningful sustain | Actual corrected up − down must be at least 70% of the expected sounding duration, independently of edge acceptance |
+| Attack association | Bounded ordered edit fit with one global tempo and analytical starting displacement; missing/extra penalties retained |
+| Attack acceptance | Full credit within 10% of assessment beat, clamped to 30–60 ms; gradual deductions beyond |
+| Sustain before separate adjacent notes | Approximately 70% of intended duration from the learner's own attack |
+| Sustain before rests/final end | Approximately 80%, with bounded 20 ms allowance, 60% duration floor and 40 ms minimum |
+| Small overhold | Accept through intended duration plus min(80 ms, 15% of duration) |
+| Written rest intrusion | Allow min(60 ms, 15% of rest length) at the analytical tempo/displacement; then gradual deduction |
+| Ties | One continuous physical hold, retaining meaningful sustain in the final written member; no internal lift permission |
 
-For an eighth at 180 quarter BPM (166.7 ms), articulation allows 41.7 ms early and ordinary release allows 16.7 ms; at 40 BPM (750 ms), articulation caps at 180 ms and ordinary release caps at 60 ms. An adjacent quarter at 120 BPM permits 125 ms early, not 125 + 50 ms. Its next attack is independently checked against that next expected onset: a late release and late reattack cannot validate each other merely because their gap is small. These allowances apply at sounding-chain ends, never internal written tie boundaries. Corrected rest intersections remain evidence; a preceding matched note's small accepted late release is tolerated once, while new rest attacks or other sustained rest intrusions require attention. Target-relative feedback remains per-event evidence; the separate [musical assessment](assessment.md) reports percentages without mastery claims. The expected timeline shows permitted lifts as dashed end sections; internal tie boundaries remain solid. Old attempts retain v1’s 15% / 80 ms policy.
+Duration and rest evidence produce one hold credit using the strongest issue, never summed penalties. Missing attacks affect rhythm only; their absent holds are not graded. Actual attack positions and sustain bars remain received evidence. Expected bars show written target duration; new attempts have no fixed target-time lift-credit bands. Legacy attempts retain their saved release policy and bands.
 
 Tap Expected/Received timelines show attacks only. Tap + Hold adds thin bars for canonical sounding chains and actual corrected input intervals. Bars split at barlines and automatic system wraps without adding attacks. Accepted gaps stay visible, unmatched holds are shown, and overholds extend until their real release (clipped at the score edge when necessary). An absent release stays null: its observed extent is dashed to capture end, without a release endpoint. SVG titles/labels and the textual review explain missing/extra, early/late/short and incomplete evidence without requiring color. [Current automated and device validation](unified-activity.md#tap--tap--hold-validation) and the [HTML review](tap-hold-review.html) record the slice's evidence and remaining decisions.
 
@@ -94,7 +98,7 @@ Modern DOM event timestamps use the monotonic performance clock; legacy epoch ti
 
 Raw JSON includes schema version, source exercise, expected plan, BPM, metronome assistance, play style, capture/evaluation policy values, accepted and rejected events, source IDs, original DOM timestamps, mapped relative times, region/rejection reason, completion/interruption and end time. When audio starts it also includes clock anchors, absolute exercise start, sample rate and browser-reported base/output latency. Those latency values are evidence, not corrections. Evaluation can be rerun with a new policy against the retained raw timings; source events also support deriving a new plan. Download or copy the record before Retry if it needs to outlive the current review. This is not an account/history storage schema.
 
-## Deterministic evaluation policy
+## Legacy target-relative evidence policy
 
 Grading follows the captured Tap / Tap + Hold selection and provisional policy above; raw release/rest intersections remain available in either setting. Pair accepted downs with their owner releases first; a still-held input retains a null release. Without calibration, exclude count-in attacks from association, but include their audible-time interval in silence/rest intersections. With calibration, classify on corrected time as described in [timing boundaries](timing-calibration.md#evidence-and-boundaries). Attack matching is ordered, one-to-one, maximizing the number of matches within an inclusive ±180 ms window, then minimizing total absolute onset offset. Stable ties prefer the matching candidate, then the missing-input branch. Gaps do not advance both sides, so a missing or extra attack cannot mechanically shift every later match. This bounded policy remains ambiguous if timing deviates far enough to resemble a neighboring note; results describe associations, not inferred intent.
 

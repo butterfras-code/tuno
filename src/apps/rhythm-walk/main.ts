@@ -278,13 +278,13 @@ function decoratePerformance(record: AttemptRecord | null) {
   }
   record.plan.notes.forEach((note, index) => {
     const match = evaluation.matches.find(m => m.expected === index);
-    const accepted = match?.attackAccepted && ['accepted', 'not-graded'].includes(match.durationFeedback);
-    note.sources.forEach(source => annotate(source.measure, source.event, match ? accepted ? 'matched' : 'overlap' : 'missing', match ? `Attack ${Math.round(match.onsetOffset * 1000)} ms${match.durationFeedback === 'not-graded' ? '; release not graded' : `; duration ${match.durationFeedback}; release ${match.releaseOffset === null ? 'not observed' : Math.round(match.releaseOffset * 1000) + ' ms'}`}` : 'Missing attack', `feedback-note-${index}`));
+    const accepted = match?.attackAccepted && ['accepted', 'not-graded', 'unavailable'].includes(match.durationFeedback);
+    note.sources.forEach(source => annotate(source.measure, source.event, match?.durationFeedback === 'unavailable' ? 'unavailable' : match ? accepted ? 'matched' : 'overlap' : evaluation.missing.includes(index) ? 'missing' : 'unavailable', match ? `Target-relative attack ${Math.round(match.onsetOffset * 1000)} ms${match.durationFeedback === 'not-graded' ? '; release not graded' : `; duration ${match.durationFeedback}; release ${match.releaseOffset === null ? 'not observed' : Math.round(match.releaseOffset * 1000) + ' ms'}`}` : evaluation.evidenceAvailable ? 'Missing attack' : 'Insufficient evidence for musical assessment', `feedback-note-${index}`));
   });
   record.plan.rests.forEach((rest, index) => {
     const violations = evaluation.restViolations.filter(o => o.rest === index);
     const early = evaluation.restAttacks.some(o => o.rest === index);
-    annotate(rest.source.measure, rest.source.event, violations.length ? 'overlap' : 'silent', violations.length ? 'Input during this rest outside tolerance' : record.playStyle === 'tap' ? early ? 'Early attack within tolerance; raw rest overlap retained' : 'No attacks during rest' : 'Silent or within attack/release tolerance', `feedback-rest-${index}`);
+    annotate(rest.source.measure, rest.source.event, !evaluation.evidenceAvailable ? 'unavailable' : violations.length ? 'overlap' : 'silent', !evaluation.evidenceAvailable ? 'Insufficient evidence for musical rest assessment; raw intersections retained' : violations.length ? 'Leave more silence in this rest' : record.playStyle === 'tap' ? early ? 'Raw target-relative rest intersection retained; musical timing accepted' : 'No attacks during rest' : 'Silent or within attack/release tolerance', `feedback-rest-${index}`);
   });
 }
 loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);

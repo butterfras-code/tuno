@@ -1,14 +1,15 @@
+import { assessLegacyAttempt } from './legacy-assessment.ts';
 import type { AttemptRecord } from './capture.ts';
 import { capturedHolds } from './evidence.ts';
 import { median } from './offset.ts';
-import { releaseAllowances, legacyEvaluation } from './play-policy.ts';
-import { assessmentPolicy } from './assessment-policy.ts';
+import { assessmentPolicy, holdPolicy } from './assessment-policy.ts';
 import type { AssessmentPolicy } from './assessment-policy.ts';
 import { planPassage } from './timing.ts';
 import { sourcePolicy } from './shared/meter.ts';
 
+type TempoFit = { scale: number; displacement: number; displacementBound: number; matched: number; span: number; medianResidual: number | null; ambiguous: boolean; withinBounds: boolean };
 type Pair = [number, number];
-type Association = { pairs: Pair[]; cost: number; scale: number };
+type Association = { pairs: Pair[]; cost: number; scale: number; displacement: number };
 const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x));
 export function attackWindows(beat: number, p: AssessmentPolicy = assessmentPolicy) {
   return { full: clamp(beat * p.fullBeatRatio, p.fullMinimum, p.fullMaximum), zero: clamp(beat * p.zeroBeatRatio, p.zeroMinimum, p.zeroMaximum) };
@@ -19,7 +20,7 @@ export function attackCredit(error: number, beat: number, p: AssessmentPolicy = 
 }
 /** Ordered edit alignment. A gap costs 1; matching costs normalized absolute error.
  * Keep two distinct paths when checking ambiguity (including same-tempo ambiguity). */
-function associate(expected: number[], actual: number[], scale: number, beat: number, p: AssessmentPolicy, alternatives = false): Association[] {
+function associate(expected: number[], actual: number[], scale: number, beat: number, p: AssessmentPolicy, alternatives = false, displacement = 0): Association[] {
   const window = attackWindows(beat * scale, p).zero;
   type Path = { pairs: Pair[]; cost: number };
   const table: Path[][][] = Array.from({ length: expected.length + 1 }, () => Array.from({ length: actual.length + 1 }, () => []));
@@ -30,65 +31,103 @@ function associate(expected: number[], actual: number[], scale: number, beat: nu
     if (i) table[i - 1]![j]!.forEach(a => paths.push({ pairs: a.pairs, cost: a.cost + 1 }));
     if (j) table[i]![j - 1]!.forEach(a => paths.push({ pairs: a.pairs, cost: a.cost + 1 }));
     if (i && j) {
-      const error = Math.abs(actual[j - 1]! - expected[i - 1]! * scale);
+      const error = Math.abs(actual[j - 1]! - expected[i - 1]! * scale - displacement);
       if (error <= window * p.associationWindowRatio + 1e-9) table[i - 1]![j - 1]!.forEach(a => paths.push({ pairs: [...a.pairs, [i - 1, j - 1]], cost: a.cost + error / window }));
     }
     paths.sort((a, b) => a.cost - b.cost || b.pairs.length - a.pairs.length);
+    if (!alternatives) { table[i]![j] = paths.slice(0,1); continue; }
     const unique = paths.filter((a, index) => !paths.slice(0, index).some(b => JSON.stringify(a.pairs) === JSON.stringify(b.pairs)));
     table[i]![j] = unique.slice(0, alternatives ? 2 : 1);
   }
-  return table[expected.length]![actual.length]!.map(a => ({ ...a, scale }));
+  return table[expected.length]![actual.length]!.map(a => ({ ...a, scale, displacement }));
 }
-/** No intercept: robust median of observed-time / score-time ratios, then reassociate.
- * Search is bounded and independent of the target-relative review matcher. */
+/** Bounded affine fit. Pairwise slopes use musical spacing, including rests.
+ * Displacement is analytical evidence only, never a correction to received input. */
 function fit(expected: number[], actual: number[], beat: number, p: AssessmentPolicy) {
-  const scales = new Set<number>([1]);
-  for (let i = 0; i <= p.searchSteps; i++) scales.add(p.minimumScale + (p.maximumScale - p.minimumScale) * i / p.searchSteps);
-  for (const e of expected) if (e > 0) for (const a of actual) {
-    const scale = a / e;
-    if (scale >= p.minimumScale && scale <= p.maximumScale) scales.add(Math.round(scale * 1000) / 1000);
-  }
   const candidates: Association[] = [];
-  for (const initial of scales) {
-    let candidate = associate(expected, actual, initial, beat, p)[0]!;
-    for (let iteration = 0; iteration < 2; iteration++) {
-      const ratios = candidate.pairs.filter(([e]) => expected[e]! > 0).map(([e, a]) => actual[a]! / expected[e]!);
-      if (!ratios.length) break;
-      const scale = clamp(median(ratios), p.minimumScale, p.maximumScale);
-      candidate = associate(expected, actual, scale, beat, p)[0]!;
+  const bound = Math.min(p.displacementMaximum ?? .150, beat * (p.displacementBeatRatio ?? .30));
+  for (let i = 0; i <= p.searchSteps; i++) {
+    const initial = p.minimumScale + (p.maximumScale - p.minimumScale) * i / p.searchSteps;
+    for (const seed of [-bound, 0, bound]) {
+      let c = associate(expected, actual, initial, beat, p, false, seed)[0]!;
+      for (let iteration = 0; iteration < 3; iteration++) {
+        const slopes: number[] = [];
+        for (let x = 0; x < c.pairs.length; x++) for (let y = x + 1; y < c.pairs.length; y++) {
+          const [e1,a1] = c.pairs[x]!, [e2,a2] = c.pairs[y]!;
+          if (expected[e2]! > expected[e1]!) slopes.push((actual[a2]! - actual[a1]!) / (expected[e2]! - expected[e1]!));
+        }
+        if (!slopes.length) break;
+        const scale = clamp(median(slopes), p.minimumScale, p.maximumScale);
+        const displacement = clamp(median(c.pairs.map(([e,a]) => actual[a]! - expected[e]! * scale)), -bound, bound);
+        c = associate(expected, actual, scale, beat, p, false, displacement)[0]!;
+      }
+      candidates.push(c);
     }
-    candidates.push(candidate);
   }
-  candidates.sort((a, b) => a.cost - b.cost || b.pairs.length - a.pairs.length || Math.abs(a.scale - 1) - Math.abs(b.scale - 1));
+  candidates.sort((a,b) => a.cost-b.cost || b.pairs.length-a.pairs.length || Math.abs(a.scale-1)-Math.abs(b.scale-1) || Math.abs(a.displacement)-Math.abs(b.displacement));
   const best = candidates[0]!;
-  candidates.push(...associate(expected, actual, best.scale, beat, p, true));
+  candidates.push(...associate(expected, actual, best.scale, beat, p, true, best.displacement));
   const margin = Math.max(p.ambiguityCost, p.ambiguityCostPerAttack * Math.max(expected.length, actual.length));
-  const ambiguous = candidates.some(c => c.cost <= best.cost + margin && JSON.stringify(c.pairs) !== JSON.stringify(best.pairs));
-  return { best, ambiguous, margin };
+  return { best, ambiguous: candidates.some(c => c.cost <= best.cost + margin && JSON.stringify(c.pairs) !== JSON.stringify(best.pairs)), margin };
+}
+export function sustainEvidence(duration: number, elapsed: number | null, adjacent: boolean, finalMember: number, p = holdPolicy) {
+  const ratio = adjacent ? p.adjacentRatio : p.restFinalRatio;
+  const minimum = Math.min(duration, Math.max(p.minimumSeconds, duration * p.minimumRatio, duration * ratio - p.shortAllowance,
+    duration - finalMember + Math.max(finalMember * ratio - p.shortAllowance, finalMember * p.minimumRatio, Math.min(p.minimumSeconds, finalMember))));
+  const maximum = duration + Math.min(p.overholdMaximum, duration * p.overholdRatio);
+  const credit = elapsed === null ? 0 : elapsed < minimum ? Math.max(0, 1 - (minimum - elapsed) / (minimum * p.shortPenaltyRatio))
+    : elapsed > maximum ? Math.max(0, 1 - (elapsed - maximum) / (duration * p.longPenaltyRatio)) : 1;
+  const finalMinimum = Math.max(finalMember * p.minimumRatio, finalMember * ratio - p.shortAllowance, Math.min(p.minimumSeconds, finalMember));
+  const finalCredit = elapsed === null ? 0 : clamp((elapsed - (duration-finalMember)) / finalMinimum, 0, 1);
+  return { elapsed, expectedDuration: duration, minimum, maximum, finalMember, credit: Math.min(credit, finalCredit) };
 }
 
 /** Pure assessment from canonical music and captured evidence. Does not mutate timelines,
  * raw events, calibration or target-relative review. Replaying uses the attempt policy. */
 export function assessAttempt(record: AttemptRecord) {
+  if ((record.assessmentPolicy?.version ?? 1) === 1) {
+    const legacy = assessLegacyAttempt(record);
+    return { ...legacy, startingDisplacement: null, tempoFit: null as TempoFit | null, holdPolicy: null, restIntrusions: [] as {rest:number; actual:number; hold:number; seconds:number; credit:number}[],
+      matches: legacy.matches.map(m => ({ ...m, duration: null as ReturnType<typeof sustainEvidence> | null })) };
+  }
   const policy = record.assessmentPolicy ?? assessmentPolicy;
+  const hp = record.holdPolicy ?? holdPolicy;
   const target = planPassage(record.exercise.measures, record.bpm, record.policy, sourcePolicy(record.exercise.measures[0]!).pulse);
-  const holds = capturedHolds(record).filter(h => !h.countIn);
+  const allHolds = capturedHolds(record);
+  const holds = allHolds.filter(h => !h.countIn);
   const expected = target.notes.map(n => n.start), actual = holds.map(h => h.down);
-  const base = { version: 1 as const, policy, targetBpm: record.bpm, expectedAttacks: expected.length, capturedAttacks: actual.length };
-  const unavailable = (reason: string) => ({ ...base, basis: 'unavailable' as const, rhythm: null, hold: null, tempo: null, steadiness: null, reason, tempoReason: reason, steadinessReason: reason, holdReason: reason, matchedNotes: 0, missing: null, extra: null, matches: [] as { expected: number; actual: number; error: number; credit: number; holdCredit: number | null }[], usableIntervals: 0, intervalSpan: 0, performedBeat: null as number | null, residualMedian: null as number | null });
+  const base = { version: 2 as const, policy, holdPolicy: hp, tempoFit: null as TempoFit | null, startingDisplacement: null as number | null, restIntrusions: [] as {rest:number; actual:number; hold:number; seconds:number; credit:number}[], targetBpm: record.bpm, expectedAttacks: expected.length, capturedAttacks: actual.length };
+  const unavailable = (reason: string) => ({ ...base, basis: 'unavailable' as const, rhythm: null, hold: null, tempo: null, steadiness: null, reason, tempoReason: reason, steadinessReason: reason, holdReason: reason, matchedNotes: 0, missing: null, extra: null, matches: [] as { expected: number; actual: number; error: number; credit: number; holdCredit: number | null; duration: ReturnType<typeof sustainEvidence> | null }[], usableIntervals: 0, intervalSpan: 0, performedBeat: null as number | null, residualMedian: null as number | null });
   if (expected.length > policy.maximumExpectedAttacks || actual.length > policy.maximumCapturedAttacks) return unavailable('Too much input for a reliable bounded assessment. Raw evidence is retained.');
   if (record.status !== 'completed') return unavailable('Interrupted attempts are not graded.');
-  if (!expected.length) return unavailable(actual.length ? 'Rest exercise: attacks were received during silence. Review the rest evidence.' : 'Rest exercise: no attacks received. Review the rest evidence.');
+  if (!expected.length) {
+    const result = unavailable(actual.length ? 'Rest exercise: attacks were received during silence. Review the rest evidence.' : 'Rest exercise: no attacks received. Review the rest evidence.');
+    result.restIntrusions = target.rests.flatMap((r,rest)=>allHolds.flatMap((h,hold)=>{
+      const seconds=Math.max(0,Math.min(r.end,h.up ?? record.endedAt-h.correction)-Math.max(r.start,h.down));
+      return seconds>0 ? [{rest,actual:holds.indexOf(h),hold,seconds,credit:0}] : [];
+    }));
+    return result;
+  }
   const { best, ambiguous } = fit(expected, actual, target.pulseSeconds, policy);
   const pairs = best.pairs;
   const span = pairs.length > 1 ? (expected[pairs.at(-1)![0]]! - expected[pairs[0]![0]]!) / target.pulseSeconds : 0;
+  const residualMedian = pairs.length ? median(pairs.map(([e, a]) => Math.abs(actual[a]! - expected[e]! * best.scale - best.displacement))) : null;
+  const slopes: number[] = [];
+  for (let i=0;i<pairs.length;i++) for (let j=i+1;j<pairs.length;j++) {
+    const [e1,a1]=pairs[i]!,[e2,a2]=pairs[j]!;
+    slopes.push((actual[a2]!-actual[a1]!)/(expected[e2]!-expected[e1]!));
+  }
+  const rawScale = slopes.length ? median(slopes) : best.scale;
+  const bound = Math.min(policy.displacementMaximum ?? .150, target.pulseSeconds*(policy.displacementBeatRatio ?? .30));
+  const rawDisplacement = pairs.length ? median(pairs.map(([e,a])=>actual[a]!-expected[e]!*best.scale)) : 0;
+  const withinBounds = rawScale>=policy.minimumScale-1e-9 && rawScale<=policy.maximumScale+1e-9 && Math.abs(rawDisplacement)<=bound+1e-9;
+  base.tempoFit = {scale:best.scale, displacement:best.displacement, displacementBound:bound, matched:pairs.length, span, medianResidual:residualMedian, ambiguous, withinBounds};
   if (ambiguous && Math.min(expected.length, actual.length) >= policy.minimumTempoAttacks && span >= policy.minimumTempoSpan) return unavailable('Several timing interpretations fit similarly. Rhythm accuracy is unavailable.');
-  const residualMedian = pairs.length ? median(pairs.map(([e, a]) => Math.abs(actual[a]! - expected[e]! * best.scale))) : null;
-  const confident = pairs.length >= policy.minimumTempoAttacks && span >= policy.minimumTempoSpan - 1e-9 && residualMedian! <= target.pulseSeconds * best.scale * policy.maximumMedianResidualBeats;
+  const confident = withinBounds && !ambiguous && pairs.length >= policy.minimumTempoAttacks && span >= policy.minimumTempoSpan - 1e-9 && residualMedian! <= target.pulseSeconds * best.scale * policy.maximumMedianResidualBeats;
   // Only sparse evidence receives a labeled target-tempo fallback. Dense incoherent
   // evidence cannot earn a relative-pattern percentage by silently choosing target.
   const sparse = Math.min(expected.length, actual.length) < policy.minimumTempoAttacks || span < policy.minimumTempoSpan;
-  if (!confident && !sparse && actual.length && pairs.length) return unavailable('Timing does not establish a consistent tempo. Rhythm accuracy is unavailable.');
+  if (!confident && !sparse && actual.length && pairs.length) return unavailable(withinBounds ? 'Timing does not establish a consistent tempo. Rhythm accuracy is unavailable.' : 'Timing lies outside the bounded tempo or starting displacement fit. Rhythm accuracy is unavailable.');
   const basis = confident ? 'performed' as const : 'target' as const;
   const scale = confident ? best.scale : 1;
   const chosen = confident ? best : associate(expected, actual, 1, target.pulseSeconds, policy, true)[0]!;
@@ -97,25 +136,27 @@ export function assessAttempt(record: AttemptRecord) {
     if (alternatives[1] && alternatives[1].cost <= chosen.cost + policy.ambiguityCost && JSON.stringify(alternatives[1].pairs) !== JSON.stringify(chosen.pairs)) return unavailable('Several target-time associations fit similarly. Rhythm accuracy is unavailable.');
   }
   const beat = target.pulseSeconds * scale;
+  const displacement = confident ? best.displacement : 0;
+  const restIntrusions = target.rests.flatMap((r,rest) => allHolds.flatMap((h,hold) => {
+    const actual = holds.indexOf(h);
+    const start = displacement + r.start * scale, end = displacement + r.end * scale;
+    const seconds = Math.max(0, Math.min(end, h.up ?? record.endedAt - h.correction) - Math.max(start,h.down));
+    const allowance = Math.min(hp.restAllowanceMaximum, (end-start)*hp.restAllowanceRatio);
+    const match = chosen.pairs.find(([,a]) => a === actual);
+    if (match && Math.abs(target.notes[match[0]]!.start-r.end)<1e-9 && attackCredit(h.down-end,beat,policy) >= 1-1e-9) return [];
+    const extraRestAttack = actual >= 0 && !match && h.down >= start && h.down < end;
+    return seconds > allowance + 1e-9 || extraRestAttack ? [{rest,actual,hold,seconds,credit:clamp(1-(seconds-allowance)/((end-start)*hp.restPenaltyRatio),0,1)}] : [];
+  }));
   const holdStyle = (record.playStyle ?? 'hold') === 'hold';
   const matches = chosen.pairs.map(([e, a]) => {
     const note = target.notes[e]!, h = holds[a]!;
     const duration = (note.end - note.start) * scale;
     const adjacent = Math.abs((target.notes[e + 1]?.start ?? Infinity) - note.end) < 1e-9;
-    const allowance = releaseAllowances(duration, adjacent, record.evaluationPolicy ?? legacyEvaluation, (note.finalSegmentDuration ?? note.end - note.start) * scale);
-    let holdCredit: number | null = null;
-    if (holdStyle) {
-      if (h.up === null) holdCredit = 0;
-      else {
-        const release = h.up - note.end * scale;
-        const excess = Math.max(0, -release - allowance.early, release - allowance.late);
-        const releaseCredit = clamp(1 - excess / Math.min(duration * policy.holdErrorRatio, policy.holdErrorMaximum), 0, 1);
-        // Sustain cap: proportional credit below the meaningful-sustain minimum.
-        holdCredit = Math.min(releaseCredit, clamp((h.up - h.down) / allowance.minimumSustain, 0, 1));
-      }
-    }
-    const error = h.down - note.start * scale;
-    return { expected: e, actual: a, error, credit: attackCredit(error, beat, policy), holdCredit };
+    const durationEvidence = holdStyle ? sustainEvidence(duration, h.up === null ? null : h.up-h.down, adjacent, (note.finalSegmentDuration ?? note.end-note.start)*scale, hp) : null;
+    // One hold credit: use the strongest duration/rest issue, never add penalties.
+    const holdCredit = durationEvidence ? Math.min(durationEvidence.credit, ...restIntrusions.filter(r=>r.actual===a).map(r=>r.credit)) : null;
+    const error = h.down - note.start * scale - displacement;
+    return { expected: e, actual: a, error, credit: attackCredit(error, beat, policy), holdCredit, duration: durationEvidence };
   });
   const extra = actual.length - matches.length;
   const rhythm = 100 * matches.reduce((sum, m) => sum + m.credit, 0) / (expected.length + extra);
@@ -140,6 +181,6 @@ export function assessAttempt(record: AttemptRecord) {
     const spread = Math.max(1.4826 * median(intervals.map(i => Math.abs(i.duration - typical))), (quantile(.75) - quantile(.25)) / 1.349);
     steadiness = 100 * spread / typical;
   }
-  return { ...base, basis, rhythm, hold, tempo, steadiness, reason: confident ? null : actual.length ? 'Not enough evidence for performed tempo; rhythm uses target tempo.' : 'No attacks received.', tempoReason: tempo ? null : 'Not enough evidence: need four matched attacks spanning three performance beats with a clear tempo fit.', steadinessReason: steadiness === null ? 'Not enough evidence: need a clear tempo and four uninterrupted intervals spanning four performance beats.' : null, holdReason: hold === null ? 'No matched played notes.' : null, matchedNotes: matches.length, missing: expected.length - matches.length, extra, matches, usableIntervals: intervals.length, intervalSpan, performedBeat: confident ? beat : null, residualMedian };
+  return { ...base, startingDisplacement: confident ? displacement : null, restIntrusions, basis, rhythm, hold, tempo, steadiness, reason: confident ? null : actual.length ? 'Not enough evidence for performed tempo; rhythm uses target tempo.' : 'No attacks received.', tempoReason: tempo ? null : 'Not enough evidence: need four matched attacks spanning three performance beats with a clear tempo fit.', steadinessReason: steadiness === null ? 'Not enough evidence: need a clear tempo and four uninterrupted intervals spanning four performance beats.' : null, holdReason: hold === null ? 'No matched played notes.' : null, matchedNotes: matches.length, missing: expected.length - matches.length, extra, matches, usableIntervals: intervals.length, intervalSpan, performedBeat: confident ? beat : null, residualMedian };
 }
 export type Assessment = ReturnType<typeof assessAttempt>;

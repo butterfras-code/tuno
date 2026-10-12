@@ -1,5 +1,5 @@
 /** Versioned initial tuning defaults, not mastery standards. Times are seconds. */
-export const assessmentPolicy = Object.freeze({
+export const legacyAssessmentPolicy = Object.freeze({
   version: 1 as const,
   maximumExpectedAttacks: 128, maximumCapturedAttacks: 256,
   minimumScale: 2 / 3, maximumScale: 1.5, searchSteps: 120,
@@ -11,4 +11,15 @@ export const assessmentPolicy = Object.freeze({
   holdErrorRatio: .25, holdErrorMaximum: .2,
   onTargetPercent: 5, slightTempoPercent: 10, steadyPercent: 5, mostlySteadyPercent: 10,
 });
-export type AssessmentPolicy = { readonly [K in keyof typeof assessmentPolicy]: K extends 'version' ? 1 : number };
+export type AssessmentPolicy = { readonly [K in keyof typeof legacyAssessmentPolicy]: K extends 'version' ? 1 | 2 : number } & { readonly displacementMaximum?: number; readonly displacementBeatRatio?: number };
+
+export const assessmentPolicy: AssessmentPolicy = Object.freeze({ ...legacyAssessmentPolicy, version: 2, displacementMaximum: .150, displacementBeatRatio: .30 });
+/** Snapshot with assessment v2; times are seconds. No learner tolerance controls. */
+export const holdPolicy = Object.freeze({
+  version: 3, adjacentRatio: .70, restFinalRatio: .80,
+  shortAllowance: .020, minimumRatio: .60, minimumSeconds: .040,
+  overholdRatio: .15, overholdMaximum: .080,
+  restAllowanceRatio: .15, restAllowanceMaximum: .060, restPenaltyRatio: .60,
+  shortPenaltyRatio: .60, longPenaltyRatio: .75,
+});
+export type HoldPolicy = typeof holdPolicy;

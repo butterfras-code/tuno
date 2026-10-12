@@ -1,228 +1,268 @@
-# Uno234 musical assessment: first slice
+# Uno234 musical assessment
 
-These are initial tuning defaults, not mastery standards. There is no combined score,
-pass/fail, progression, diagnosis, or history. The canonical written-event passage
-is the source for sounding attacks, rests, durations and tied chains. All current
-presets, meters and generated lengths use the same implementation.
+Assessment v2 and hold policy v3 are provisional tuning defaults for musical feedback,
+not mastery standards. Rhythm accuracy, hold accuracy, tempo and steadiness stay
+independent. There is no combined score, progression, new vocabulary or publication.
+The canonical written passage supplies attacks, rests, sounding chains and pulse.
 
-## Layers and immutable interpretation
+## Evidence, calibration and compatibility
 
-[Capture](../../src/apps/rhythm-walk/capture.ts) records original down/up timestamps,
-accepted/rejected input and regions. [Evidence](../../src/apps/rhythm-walk/evidence.ts)
-derives paired edges with the existing constant input-specific session correction.
-The same correction applies to both edges, preserving measured durations. Session
-calibration is separate: the existing first-session estimate/manual setup remains;
-assessment never estimates an offset, fits an intercept, moves individual notes or
-stretches sections. Retry snapshots current preferences and the saved session offset.
+Capture preserves raw DOM timestamps, mapped times, input ownership, rejected events,
+count-in regions and completion status. The fixed input-specific session correction
+subtracts the same constant from press and release, preserving elapsed duration.
+Automatic first-session calibration and manual calibration retain their existing rules.
 
-[Assessment](../../src/apps/rhythm-walk/assessment.ts) is a pure deterministic function
-of the canonical exercise and attempt, with no clock, randomness, storage or UI access.
-Attempts snapshot [assessment policy version 1](../../src/apps/rhythm-walk/assessment-policy.ts)
-and the centralized articulation policy. Legacy evidence lacking a scoring policy
-uses the version-1 defaults. Completed results retain their original exercise, target
-BPM, style, offset and policy when settings/mode change. JSON evidence downloads keep
-all raw events and include the policy, computed assessment, estimates, counts, matched
-indices, residuals, unavailable reasons and interval coverage; replay is deterministic.
-[Presentation](../../src/apps/rhythm-walk/results.ts) owns rounding and learner labels.
+Assessment fits an analytical starting displacement. It never changes that session
+correction, rewrites received timestamps, shifts individual notes, snaps bars, or
+stretches sections. Displacement cannot distinguish learner timing from residual device
+or clock delay; results make no attribution. Expected timelines remain at target time.
 
-The old target-relative 180 ms attack association, rest feedback, score coloring and
-received timelines remain independent. Analytical tempo association never overwrites
-them. A high percentage at performed tempo can coexist with visible target drift.
-Accepted early attacks at rest boundaries retain their raw intrusion evidence without
-an additional numerical penalty. Actual bars use corrected received edges, never
-analytically scaled edges.
+New attempts snapshot [assessment policy v2 and hold policy v3](../../src/apps/rhythm-walk/assessment-policy.ts),
+as well as the existing capture, articulation and calibration policies. Assessment v1
+snapshots and records lacking an assessment policy use the retained
+[legacy estimator](../../src/apps/rhythm-walk/legacy-assessment.ts), including their saved
+v1/v2 articulation interpretation. They are never silently upgraded. UI wording may
+change, but completed evidence, numerical interpretation and visual policy do not.
 
-## Bounded tempo association and confidence
+Downloads include raw evidence and computed assessment: versions and full policy
+values, tempo basis, fit confidence evidence and bounds, analytical displacement,
+matched indices, missing/extra counts, attack residuals, actual elapsed durations,
+expected durations, full-credit limits, final tied member, hold credits, analytical
+rest intrusions and reasons for unavailable metrics. Target-relative intersections
+remain inspectable in Timing evidence and through raw replay. Interpretation is pure
+and deterministic; completed results survive preferences, pages and mode changes.
 
-Expected attack positions are derived in seconds at target tempo, then multiplied by
-one overall scale `s`, anchored to calibrated exercise start (intercept exactly zero).
-The performed beat is `targetBeat × s`; performed BPM is `targetBPM / s`. Pulse is a
-quarter in supported simple meters and a dotted quarter in 6/8, independent of writing
-counts and unequal note values/rests.
+## Independent tempo and starting displacement
 
-The scale search is bounded to **2/3–1.5** (BPM 150%–66.7% of target), excluding half
-and double tempo. Candidates include target, a uniform 120-step inclusive grid, and
-observed-time/positive-expected-time ratios rounded to .001 within bounds. Ordered
-one-to-one edit association searches all captured eligible attacks, independently of
-surviving target-time matches. Missing and extra attacks each cost 1; a match costs
-absolute onset residual divided by the zero-credit window. Residuals beyond 1.5 times
-that window cannot match. Stable cost ties prefer more matches.
+For corrected observed attack `a`, target musical attack time `e`, scale `s` and
+starting displacement `d`, fit `a ≈ d + e × s`. Performed BPM is `targetBPM / s`.
+One global scale and one displacement apply to the entire passage. Timing uses exact
+musical spacing, including unequal note values and rests. 6/8 uses dotted-quarter
+pulses; written counts still number six eighths.
 
-Each candidate is refined twice using the median of matched `actualTime/expectedTime`
-ratios at positive expected positions, clamped to bounds, followed by reassociation.
-This robust anchored fit accounts for unequal durations and silence, rather than
-averaging inter-tap intervals. Candidates sort by edit cost, then coverage, then
-proximity to target. Two distinct paths are retained for a final best-scale ambiguity
-check. A different association within `max(.12, .02 × max(expected, observed))` edit
-cost of the best is ambiguous, including alternatives at the same tempo. Ratios and
-search are bounded; more than 128 expected or 256 captured eligible attacks withholds
-assessment and preserves raw evidence. This bound exceeds the reviewed repertoire.
+The bounded search uses 121 inclusive scale seeds between **2/3 and 1.5** and three
+starting displacement seeds (negative bound, zero, positive bound). Displacement is
+bounded by **min(150 ms, 30% of the target performance beat)**. These bounds exclude
+half/double tempo and discourage shifting repetitive attacks onto neighboring notes.
 
-Measured tempo requires **four matched attacks spanning three performance beats**,
-a nonambiguous association, and median absolute anchored residual no greater than
-15% of the performed beat. It is not inferred from releases. Dense inconsistent or
-ambiguous attempts withhold rhythm percentage and explain why. Sparse attempts (fewer
-than four attacks or insufficient span) use **Rhythm accuracy at target tempo**, only
-if target association is unambiguous. They do not use an uncertain relative-pattern
-fit. Empty or completely missed nonempty exercises receive 0%; rest-only exercises
-receive rest feedback with no fabricated percentage. Missing every other note cannot
-become 100% through a half/double-tempo reinterpretation.
+Each seed uses ordered one-to-one edit association. Missing and extra attacks each
+cost 1; matches cost absolute residual divided by the zero-credit attack window.
+Residuals above 1.5 times that window cannot associate. Refine three times: scale is
+the median of all matched pairwise slopes `(a₂−a₁)/(e₂−e₁)`; displacement is the median
+of `a−e×s`. Clamp search parameters, then reassociate. Sort by edit cost, match count,
+proximity to target scale and proximity to zero displacement. Release never influences
+association. Two distinct paths are retained in the final same-fit ambiguity check.
+A competing path within `max(.12, .02 × max(expected, captured))` cost is ambiguous.
 
-Capture now remains open through `1.5 × target duration + release grace + positive
-saved offset`, so the slowest supported fit can retain its final attack/release.
-Target duration, count-in, metronome scheduling and received coordinates are unchanged.
-This adds a bounded final-input wait, including for faster/exact/silent attempts.
-Input beyond this bound remains outside capture; tempos beyond the fitting bounds
-have no promised relative-pattern interpretation.
+Measured tempo needs **four matched attacks spanning three target musical beats**, a
+nonambiguous association and median absolute residual at most **15% of a performed
+beat**. The unclamped median spacing scale and median displacement must also lie
+inside the bounds: a saturated search cannot claim confidence for out-of-range input.
+More than 128 expected or 256 eligible captured attacks withholds analysis. Search,
+refinement and input volume are finite; no local sections are refitted.
 
-## Rhythm accuracy
+Dense ambiguous, inconsistent or out-of-bounds evidence withholds numerical rhythm
+and tempo. Sparse evidence uses an explicitly labeled **target-tempo fallback**, with
+zero analytical displacement, only if target association is clear. All-missed attempts
+have zero rhythm credit and unavailable hold/tempo, rather than fabricated played
+notes. Rest-only attempts have rest evidence but no rhythm/hold/tempo percentage.
+Interrupted attempts are ungraded. Missing first notes and extra attacks retain their
+penalties; skipping alternating notes cannot produce a perfect interpretation.
 
-For performed beat duration `b` (or target beat for the explicit sparse fallback):
+Capture retains the existing bounded slow tail: `1.5 × target duration + release grace
++ positive fixed session correction`. Target scheduling, count-in, received coordinates
+and the 750 ms release grace remain intact. Out-of-bound tempos have no promised fit.
 
-- Full-credit window: `clamp(.10 × b, .030, .060)` seconds.
-- Zero-credit window: `clamp(.30 × b, .090, .180)` seconds.
-- Attack credit: 1 within the full window; 0 at/beyond the zero window;
-  linear between, using absolute anchored onset residual.
-- Missing attacks contribute zero. Silence gives no bonus.
+## Rhythm and steadiness
 
-`rhythm = 100 × sum(attack credits) / (expected attacks + extra attacks)`.
-One extra attack during a rest increases the denominator once; rest evidence is
-retained separately. Eight exact attacks give 100%; seven exact plus one missing
-produce 87.5% → **88%**; eight exact plus one extra produce 88.89% → **89%**.
-Percentages use `Math.round` only in presentation, never in assessment.
+For assessment beat `b` (performed, or target in the fallback):
 
-## Hold accuracy (Tap + Hold only)
+- Full attack credit through `clamp(.10 × b, .030, .060)` seconds.
+- Zero attack credit at `clamp(.30 × b, .090, .180)` seconds.
+- Linear credit between these limits, using `abs(a−d−e×s)`.
+- `rhythm = 100 × sum(attack credits) / (expected attacks + extra attacks)`.
 
-Use the same tempo basis as rhythm, with sounding-chain duration and end scaled by
-`s` (or target for fallback). Centralized release policy v2 (new attempts) uses:
+Missing attacks contribute zero; extra attacks increase the denominator once. Silence
+is not a score bonus. A small consistent displacement does not reduce relative rhythm.
 
-- Ordinary early/late release allowance: `min(.060 s, .10 × sounding duration)`.
-- For adjacent separate notes, replace early allowance with
-  `min(.25 × sounding duration, .180 s, .25 × final written segment duration)`;
-  do not add allowances. For an untied note, final segment duration equals its
-  sounding duration. The final-segment cap keeps tie boundaries fully sustained.
-- Meaningful sustain: at least `.70 × expected sounding duration`.
+Steadiness uses consecutive matches with consecutive expected and observed indices,
+excluding intervals crossing missing/extra attacks. Divide each observed interval by
+its expected musical beat spacing. Require four usable intervals spanning four beats
+and confident tempo. Typical pace variation is
+`100 × max(1.4826 × MAD, (Q75−Q25)/1.349) / median(local beat durations)`.
+Quantiles interpolate at `(n−1)×q`. Descriptions are Steady through 5%, Mostly steady
+through 10%, Uneven above 10%. A steady slower performance can still be Steady.
+Tempo descriptions are On target through 5% difference, Slightly faster/slower through
+10%, Faster/Slower above 10%. These are separate descriptions, not mastery claims.
 
-Beyond the allowed release window, credit declines linearly to zero over an
-additional `min(.25 × sounding duration, .200 s)` error. Missing release earns zero.
-To handle short holds deterministically, cap release credit by
-`clamp(actual duration / meaningful-sustain minimum, 0, 1)`. Thus a short hold cannot
-receive full credit just because its release is close. Negative/zero duration earns
-zero. Internal tie boundaries have no allowance: a tied chain is one continuous note;
-an internal release truncates it and a reattack is extra.
+## Own-attack sustain: exact hold policy v3
 
-The separate-note lift allowance was widened from v1's 15% / 80 ms after review
-showed that the expected continuous bars suggested an impossible uninterrupted key
-hold between separate attacks. At 80 BPM an adjacent quarter permits a 180 ms lift;
-an adjacent eighth permits 93.75 ms. The 70% meaningful-sustain rule still applies,
-so this is permission to lift briefly, not to omit the note's duration. Beyond this
-wider band, the same linear release-credit decay remains. Rest-boundary/final release
-allowances, overhold penalties, rhythm accuracy and tempo estimation are unchanged.
+Tap remains attack-only. Tap + Hold compares **corrected release − corrected press**
+with the intended sounding duration at the same assessment tempo. An absolute target
+release deadline is evidence, not the sustain rule. Missing attacks do not create
+zero-credit holds; hold accuracy averages equally across matched played notes only.
+No matched notes means unavailable. Missing release earns zero without an invented up.
 
-Capture snapshots `evaluationPolicy.version: 2` and its numerical values. Existing
-v1 snapshots (including snapshots without a version field) keep their original values;
-records without any evaluation policy explicitly fall back to frozen v1 defaults.
-Policy changes therefore never reinterpret old results or old evidence downloads.
+All times below are seconds. Let `D` be intended sounding duration, `F` the final
+written member's duration (ordinary notes have `F=D`), `L` elapsed hold, and `r=.70`
+before a separate adjacent note or `.80` before a rest/final end. Define:
 
-Average credits equally across matched sounding notes, independent of length. Missing
-attacks affect rhythm and do not create zero-credit holds. Display the played-note
-denominator; no matched notes means unavailable, not 100%. Tap hides this metric while
-retaining release evidence.
+```
+m(x) = max(.60*x, r*x - .020, min(.040, x))
+minimum = min(D, max(.040, .60*D, r*D-.020, D-F+m(F)))
+maximum = D + min(.080, .15*D)
+short credit = clamp(1 - (minimum-L)/(.60*minimum), 0, 1)
+long credit  = clamp(1 - (L-maximum)/(.75*D), 0, 1)
+sustain credit = 1 within [minimum, maximum], otherwise short/long credit
+final-member cap = clamp((L-(D-F))/m(F), 0, 1)
+duration credit = min(sustain credit, final-member cap)
+```
 
-## Tempo and pulse steadiness
+A null release gives zero credit. The **20 ms** practical allowance is bounded by a
+**60%** duration floor and **40 ms** minimum (capped at the whole intended duration for
+very short notes). A brief tap cannot satisfy meaningful sustain. For a 500 ms note,
+full sustain starts at **330 ms** before a separate note or **380 ms** before rest/end;
+350/400 ms holds therefore comfortably earn full credit. Full overhold extends to
+575 ms. A 166.7 ms adjacent eighth has a 100 ms minimum; an 83.3 ms domain sixteenth
+has a 50 ms minimum. This refinement does not expand vocabulary; the PR base now supplies reviewed sixteenth UI support.
 
-Tempo difference is `100 × (performedBPM / targetBPM − 1)`. Display rounded BPM,
-whole-number absolute percent faster/slower, and target. Inclusive descriptions:
-up to 5% **On target**; over 5% through 10% **Slightly slower/faster**; over 10%
-**Slower/Faster**. Evidence below the confidence minimum says Not enough evidence.
+The final-member requirement prevents a long tie from hiding omission of its final
+short member. Releasing at the start of that member gets zero chain-duration credit.
+Ties still require one physical uninterrupted hold: internal written boundaries have
+no articulation permission. A reattack is extra; there is no joining of split holds.
+Separate notes still need a real release followed by a new attack.
 
-For consecutive matches with consecutive expected and observed indices, divide
-observed elapsed seconds by expected elapsed performance beats. Exclude intervals
-crossing missing or extra attacks. At least **four usable intervals collectively
-spanning four beats**, plus confident tempo association, are required.
+Gradual short/long curves avoid a sudden collapse just outside full credit. Zero
+sustain credit is reserved for holds below 40% of the minimum or overholds beyond the
+maximum plus 75% of intended duration. The final-member cap can lower truncated tie
+credit sooner, because continuity through the complete written chain matters.
 
-Typical variation uses robust spread divided by median local beat duration:
+## Musical silence without duplicate penalties
 
-`100 × max(1.4826 × MAD, (Q75 − Q25) / 1.349) / median`.
+Locate written rests at `d + target rest time × s`, using the same analytical basis.
+Intersect actual corrected holds, including holds begun in count-in, with those rest
+intervals. Preserve every target-relative intersection separately as raw evidence.
+A matched accepted early attack for the note immediately following a rest uses its
+attack acceptance once; it is not an additional hold/rest mistake.
 
-MAD is the median absolute deviation from the median. Quartiles use linear
-interpolation at `(n−1) × q` in sorted local durations. The IQR term prevents MAD from
-collapsing to zero for uneven alternating repeated values with an odd interval count.
-Both are robust normal-scale estimates. This deliberately extends the starting MAD
-proposal; it describes typical variation, not whether every beat was correct.
-Inclusive descriptions: up to 5% **Steady**, over 5% through 10% **Mostly steady**,
-over 10% **Uneven**. A consistently slower performance can still be Steady.
+Allow **min(60 ms, 15% of rest duration)** intrusion. Beyond it, rest credit declines
+linearly over an additional **60% of rest duration**. For a 500 ms rest this accepts
+60 ms, then reaches zero at 360 ms overlap. A matched hold's final credit is the
+**minimum** of duration credit and applicable rest credits, never a sum of deductions.
+Extra rest attacks retain the one extra-attack penalty; their rest evidence supplies
+musical feedback without adding another numerical score. Tap assesses rest attacks,
+not release/overhold intersections.
 
-## Results lifecycle and accessibility
+## Shared outcomes and child-facing feedback
 
-Completion disposes transport, stops scheduled audio and ends capture before replacing
-only the performance surface with a compact results panel. Score, target-time feedback
-and timelines remain visible; Both restores the independent written answer. The results
-heading is focusable but noninteractive and receives focus once on completion, providing
-the completion announcement without a second live-region announcement. A finishing
-Space/pointer release cannot activate result actions; hidden-pad click synthesis is
-ignored. Interrupted attempts show ungraded evidence and retry.
+New-policy score annotations, received timeline colors and results consume the same
+assessment association and accepted outcomes. Small variations within full-credit
+bands stay accepted everywhere. Actual received attacks and sustain endpoints remain
+at their recorded corrected positions. Unavailable assessment is neutral, not a red
+mistake or an accepted-performance claim. Expected bars always show target duration;
+new-policy timelines have no fixed target-time shaded/dashed full-credit lift promise.
+Guidance is: lift between separate notes, hold through ties, release for rests. Precise
+elapsed limits and target timing remain available on inspection/in Details.
 
-Expected timeline bars retain full written extents at target tempo. Before an
-adjacent **separate sounding note**, the allowed early-release portion is dashed and
-the preceding sustain section is solid. Titles, SVG accessible text and a visible
-review legend explain that lifting in the dashed portion is permitted. Bands use the
-attempt's captured release policy and target tempo, while hold accuracy still uses
-its labeled assessment tempo. Bands appear at sounding-chain ends only: internal tie
-boundaries and tied barline continuations remain solid. A separate note across a
-barline gets a band at the preceding note's end. Before rests and at the final note,
-no separate-note lift band appears. Received bars and all actual edges are unchanged.
+Results replace the pad after completion. Lead with one short evidence-backed musical
+summary and at most one suggestion. Numerical percentages, precise BPM/target
+comparisons, milliseconds, displacement and technical explanations are in collapsed
+**Details** / **Timing evidence**. A high rhythm score with tempo drift says “You kept
+the rhythm at a different pace”; Details explains target bars versus received input.
 
-**Try again** keeps exercise identity, notation and written answer, removes performance
-results, restores the pad and starts the ordinary count-in with current preferences.
-**Next exercise** uses the shared generator/replacement lifecycle and clears writing,
-performance results/review and timelines. Invalid generation disables Next and explains
-why; fixing settings re-enables it without reinterpreting results. Mode/settings changes
-retain completed results. Active mode/page changes cancel capture/calibration safely.
+Feedback selection is deterministic:
 
-## Validation and remaining limits
+1. Interrupted, rest-only, unavailable, all-missed and sparse evidence use their own
+   truthful messages. Sparse/ambiguous evidence never earns broad rhythm praise.
+2. A clear performed-tempo pattern at least 95%, with no missing/extra attacks, can
+   say “You kept the rhythm!” (or name the different pace). Otherwise describe partial
+   written rhythm without mastery or invented recovery claims.
+3. Prefer substantial rest intrusion (credit below .5) or repeated intrusion first.
+4. Then suggest sustain/release work for two hold credits below .8, or one below .4.
+5. Then suggest consistent pace if steadiness is Uneven; then concrete attack guidance
+   for missing/extra attacks or rhythm below 85%.
 
-[Deterministic fixtures](../../tests/rhythm-assessment.test.ts) independently specify
-observed times and expected scores/BPM, covering exact, bounded steady slower/faster,
-target-window drift, unequal values/rests, missing/extra/rest-boundary attacks,
-alternating pace, gradual acceleration/deceleration, short/allowed/overheld/missing
-releases, ties/barline continuations, 6/8, sparse/silent/all-missed/ambiguous attempts,
-input-specific fixed correction, duration preservation, policy snapshot/replay,
-threshold endpoints, rounding, half/double-tempo protection, and bounded real capture.
-Catalogue/generator coverage exercises both styles across every preset and supported
-meter/length; those broad exact fixtures use canonical derived times, distinct from
-the independently specified numerical examples.
+A tiny release deviation does not trigger a hold suggestion. Hold suggestions identify
+short sustain, missing releases or prolonged holds, rather than “outside tolerance.”
+Rest-only silence praise in Hold requires no sounding overlap, including count-in
+holds; Tap remains attack-only. No diagnoses, mastery or recovery are inferred.
 
-[Native browser scenarios](../../scripts/rhythm-assessment-browser-scenarios.js) exercise
-keyboard and synthetic pointer completion/release safety, Both independence, target
-review retention, downloads, settings/mode retention, invalid configurations, retry
-with current preferences, Next clearing both, cancellation, 6/8 and narrow layout.
-Synthetic timestamps allow a small browser-clock tolerance; numerical thresholds are
-validated in deterministic tests. Invented pointer capture and background-preview
-focus predicates are scoped stubs. These are automation checks, not physical-device
-latency, real touch delivery or screen-reader acceptance.
+## Lifecycle, accessibility and validation
 
-2026-10-11 validation: `npm run check` on Node 24 passes type checking, **252 tests**,
-and hosted/portable builds. Native T3 browser passed desktop keyboard, pointer,
-steady slower, 6/8 and cancellation scenarios, plus the pointer/results lifecycle
-at a 375 CSS-pixel viewport without horizontal overflow. Existing accepted early
-rest-boundary scenarios pass in both Tap and Tap + Hold, and the early barline
-attack/sustain geometry regression passes at 375 CSS pixels. Browser-local localhost initially
-served an older build, so current built JS/CSS were injected into the native preview
-(font payload omitted). Preview resize timed out; narrow checks use a 375 CSS-pixel
-iframe in that same native browser. Physical devices and release preview acceptance
-remain unverified. No production publication is part of this slice.
+Completion stops transport/audio before replacing the pad. Focus moves once to a
+noninteractive results heading. Finishing keyboard/pointer releases and synthesized
+hidden-pad clicks cannot activate actions. **Try again** retains exercise and the
+independent written response, and snapshots current preferences for a fresh count-in.
+**Next exercise** uses shared replacement and clears both responses, review and
+timelines. Invalid generation disables Next with an explanation. Preferences and
+mode/page changes retain completed results; active changes interrupt safely.
 
-Release-policy v2 follow-up: `npm run check` passes **258 tests**, type checking and
-hosted/portable builds on Node 24. New deterministic cases verify the 180 ms quarter
-boundary, shorter-note proportional bands, gradual penalties, truncated holds,
-v1 replay (a 60% v1 example becomes 100% only for a new v2 attempt), unchanged rhythm
-and tempo, target-time geometry, barline adjacency and final short tie-member sustain.
-The [lift browser scenarios](../../scripts/rhythm-lift-browser-scenarios.js) pass
-keyboard and synthetic pointer full-credit lifts, rendered bands and accessible
-legend/titles, policy retention and cancellation at 375 CSS pixels with no horizontal
-overflow. Existing 6/8 tied-barline geometry/retention/retry checks also pass. Native
-T3 preview uses the current built code in the same narrow iframe described above;
-synthetic focus/pointer/timestamp stubs do not constitute physical-device validation.
-The original screenshot's exact attempt cannot be regraded without its timing file;
-this tuning deliberately preserves completed attempts' original interpretation.
+[Deterministic cases](../../tests/rhythm-assessment.test.ts) specify observed timings
+independently of scorer formulas. They cover exact/80 ms displaced 120 BPM; slower,
+faster and displaced versions; missing first, early extra, alternating skips,
+ambiguity, fit bounds, own-attack sustain, 70/80% duration, short eighths and
+sixteenths, acceptable/substantial overholds, taps, absent releases, tied final members,
+gradual penalties, fixed calibration, snapshots/legacy replay and confidence-dependent
+feedback. Existing input ownership/calibration/cancellation tests remain. Legacy lift
+geometry tests explicitly replay legacy snapshots; current timelines test received
+positions, accepted colors and absence of target-deadline lift promises.
+
+Native [browser scenarios](../../scripts/rhythm-assessment-browser-scenarios.js) cover
+concise results, collapsed numerical Details, keyboard/synthetic pointer finish safety,
+Both writing retention, retry/Next, settings/mode retention, JSON downloads, cancellation,
+6/8 pulse semantics and layout. Synthetic pointer capture and background focus are
+scoped automation stubs. The preview cannot reach the workspace loopback server;
+current built assets are injected into the native browser (font payload omitted).
+This checks the app in that browser, not routing or physical timing accuracy.
+
+Physical-device latency, real held touch capture, audio audibility, Bluetooth/wired
+output, mobile Safari/Android/Chromebook and assistive-technology validation remain
+unperformed. No Cloudflare release preview, release candidate verification or production
+promotion is part of this feature slice. Tuning is provisional pending learner and
+physical-device review; out-of-bound/ambiguous fits intentionally withhold metrics.
+
+## Representative comparison with legacy assessment
+
+These independent two-bar quarter-note examples use target 120 BPM, eight attacks,
+and an 80% final hold. Values below are rounded for review; calculation keeps precision.
+
+| Observed performance | Legacy BPM / rhythm / hold | Current BPM / rhythm / hold |
+| --- | --- | --- |
+| 500 ms spacing, start 80 ms late, other holds 500 ms | 115.38 / 94.71% / 86.92% | 120 / 100% / 100% |
+| Same late start, adjacent holds 350 ms | 115.38 / 94.71% / 67.02% | 120 / 100% / 100% |
+| 700 ms spacing, start 80 ms late, adjacent holds 490 ms | 83.33 / 97.92% / 70.83% | 85.71 / 100% / 100% |
+
+Missing one exact quarter still gives 87.5% rhythm; adding an extra gives 88.89%.
+A 10 ms tap on a 500 ms note receives zero hold credit. Omitting a tied chain’s final
+member receives zero chain hold credit, even if the preceding long members were held.
+Substantial rest intrusion still produces silence guidance and a single hold deduction.
+
+## Validation evidence for this refinement (2026-10-11)
+
+Node **24.21.0**, `npm ci`, and `npm run check` pass strict type checking, **270 tests**,
+and hosted/portable builds; `git diff --check` passes. Native T3 checks pass keyboard,
+steady slower, 6/8 and cancellation scenarios at **1280 CSS pixels**, plus synthetic
+pointer lifecycle and displaced 70/80% accepted-sustain scenarios at **375 CSS pixels**.
+Accepted sustain produces no score/timeline warning colors or target lift-credit bands.
+Results focus, collapsed Details, downloads, preference/mode retention, retry/Next and
+Both writing independence pass. Preview resize timed out; narrow/desktop checks used
+same-origin iframes in the native preview with the current built assets, without a
+standalone automation browser. Fonts were omitted from asset injection. A browser
+clock offset pushed the first 180 BPM synthetic displaced case outside its 100 ms
+bound; it correctly withheld assessment. The accepted browser case uses 120 BPM to
+leave room for synthetic cross-clock uncertainty; deterministic tests still require
+exact 80 ms displacement and unchanged 120 BPM. Device and release checks remain
+outstanding as listed above.
+
+### PR base integration
+
+The requested PR targets `t3code/rhythm-game-handoff`. After merging its existing
+sixteenth/counting update (`f50e1d8`) into this feature branch, `npm run check` passes
+**291 tests**, strict type checking and builds on Node 24.21.0. The inherited vocabulary
+and counting systems are preserved; this assessment slice adds neither. The existing
+64-attack dense-sixteenth reproducer retains 100% rhythm, 120 BPM, and no missing/extra
+attacks in both styles, plus 100% Hold accuracy. Diagnostic assessment times were
+1,292 ms (Tap) and 1,344 ms (Hold) in this workspace; those are runtime observations,
+not acceptance thresholds. Native browser evidence above precedes this base merge;
+post-merge verification here is automated Node/build validation. Physical-device and
+production acceptance remain outstanding.

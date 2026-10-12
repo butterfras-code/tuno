@@ -1,4 +1,4 @@
-import { assessmentPolicy } from './assessment-policy.ts';
+import { assessmentPolicy, holdPolicy } from './assessment-policy.ts';
 import type { AssessmentPolicy } from './assessment-policy.ts';
 import { sourcePolicy } from './shared/meter.ts';
 import type { TimingOffset } from './offset.ts';
@@ -19,6 +19,7 @@ export interface ClockEvidence {
 }
 export interface AttemptRecord {
   readonly assessmentPolicy?: AssessmentPolicy;
+  readonly holdPolicy?: typeof holdPolicy;
   readonly playStyle?: PlayStyle;
   readonly evaluationPolicy?: EvaluationPolicy;
   readonly timingOffset?: TimingOffset;
@@ -70,6 +71,6 @@ export class Capture {
     return this.result!;
   }
   private end(status: AttemptRecord['status'], endedAt: number, reason?: string) {
-    this.result = structuredClone({ version: 1 as const, assessmentPolicy: this.assessmentPolicy, playStyle: this.playStyle, evaluationPolicy: this.evaluationPolicy, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
+    this.result = structuredClone({ version: 1 as const, assessmentPolicy: this.assessmentPolicy, ...(this.assessmentPolicy.version === 2 ? { holdPolicy: { ...holdPolicy } } : {}), playStyle: this.playStyle, evaluationPolicy: this.evaluationPolicy, ...(this.timingOffset ? { timingOffset: this.timingOffset } : {}), ...(this.clock ? { clock: this.clock } : {}), exercise: this.exercise, policy: this.policy, plan: this.plan, bpm: this.bpm, metronome: this.metronome, events: this.events, status, endedAt, ...(reason ? { reason } : {}) });
   }
 }

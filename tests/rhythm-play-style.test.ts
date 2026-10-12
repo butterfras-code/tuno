@@ -1,3 +1,4 @@
+import { legacyAssessmentPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
@@ -13,7 +14,7 @@ import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
 
 const adjacent: Exercise = { id: 'adjacent', label: '', description: '', measures: [{ meter: [2, 4], events: [['E'], ['E'], ['Q']] }] };
 const rest: Exercise = { id: 'rest', label: '', description: '', measures: [{ meter: [2, 4], events: [['Q'], ['E', { rest: true }], ['E']] }] };
-function capture(style: PlayStyle, exercise = adjacent, bpm = 120, offset?: TimingOffset) { return new Capture(exercise, bpm, false, undefined, offset, style); }
+function capture(style: PlayStyle, exercise = adjacent, bpm = 120, offset?: TimingOffset) { return new Capture(exercise, bpm, false, undefined, offset, style, undefined, legacyAssessmentPolicy); }
 function pair(c: Capture, down: number, up: number | null, source = 'keyboard') {
   c.input('down', source, down, 10000 + down * 1000);
   if (up !== null) c.input('up', source, up, 10000 + up * 1000);
