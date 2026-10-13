@@ -6,11 +6,14 @@ import type { CountSymbol, DottedQuarterConvention, Evaluation, Span } from './e
 import { renderMeasure } from './notation.ts';
 import { countKey, displayCount, translateCount, countAt, syllableBuffer } from './input.ts';
 import type { OffbeatSymbol, CountingSystem } from './input.ts';
+import { paletteSymbols } from './palette.ts';
 import { createCountPopover } from './count-popover.ts';
 import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
   scroller: HTMLElement; lastMeasure: boolean;
+  paletteVocabulary?: { sixteenths: boolean; triplets: boolean };
+  palette?: HTMLElement; paletteSelected?: () => void;
   grid?: ReturnType<typeof countGrid>; externalLines?: boolean;
   system?: CountingSystem; offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   hidden: () => boolean; edited: () => void; check: () => void; navigate: (delta: number, clear?: boolean) => boolean;
@@ -102,7 +105,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   const endpointPrompt = el('div', 'endpoint-prompt'); endpointPrompt.hidden = true;
   const endpointMessage = el('span');
   const cancelEndpoint = button('Cancel', () => { lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); });
-  endpointPrompt.append(endpointMessage, cancelEndpoint); card.append(endpointPrompt);
+  endpointPrompt.append(endpointMessage, cancelEndpoint); (options.palette ?? card).append(endpointPrompt);
   function edit() { if (result) { changed = true; options.edited(); } refresh(); }
   function nearestSlot(index: number, min = 0, max = grid.slots.length - 1) {
     const candidates = grid.availableSlots.filter(tick => tick >= min && tick <= max);
@@ -113,7 +116,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     const next = candidates.indexOf(index) + delta;
     return candidates[Math.max(0, Math.min(candidates.length - 1, next))]!;
   }
-  function focusSlot(index: number) { buffer.clear(); selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0 && number === 1) options.scroller.scrollLeft = 0; }
+  function focusSlot(index: number) { buffer.clear(); selected = nearestSlot(index); refresh(); slots[selected]!.focus({ preventScroll: true }); if (options.palette && !options.hidden() && restStart === null && lineStart === null && lineEnd === null) countPopover.open(selected, { x: 0, y: 0 }); slots[selected]!.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (selected === 0 && number === 1) options.scroller.scrollLeft = 0; }
   function put(symbol: CountSymbol) { answer.symbols[selected] = symbol; edit(); }
   function submitCount(symbol: CountSymbol): boolean {
     buffer.clear();
@@ -122,10 +125,15 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     if (next === undefined) { countPopover.dismiss(); if (!options.navigate(1)) slots[selected]!.focus({ preventScroll: true }); return false; }
     focusSlot(next); return true;
   }
+  const paletteVocabulary = options.paletteVocabulary ?? {
+    sixteenths: fixture.events.some(event => event[0] === 'S' || event[0] === 'E' && Boolean(event[1]?.dots)),
+    triplets: grid.triplets,
+  };
   const countPopover = createCountPopover({
     id: `count-popover-${number}`,
+    dock: options.palette, activated: options.paletteSelected,
     symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te', 'la', 'li'],
-    enabled: symbol => grid.policy.compound || (/^\d/.test(symbol) || ['la', 'li'].includes(symbol) || (system === 'syllables' ? ['ta', 'te'].includes(symbol) : ['&', 'e', 'a'].includes(symbol))),
+    enabled: symbol => paletteSymbols(fixture.meter[0], grid.policy.compound, system, paletteVocabulary).includes(symbol),
     input: enterKey,
     markings: {
       canRest: () => !activeRests().some(r => selected >= r.start && selected <= r.end),
@@ -315,11 +323,11 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       slot.addEventListener('pointerdown', event => {
         if (!options.hidden() && restStart === null && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
       });
-      slot.setAttribute('aria-haspopup', 'dialog'); slot.setAttribute('aria-controls', `count-popover-${number}`);
+      if (!options.palette) slot.setAttribute('aria-haspopup', 'dialog'); slot.setAttribute('aria-controls', `count-popover-${number}`);
       slot.hidden = !grid.slots[tick]!.available;
       slot.className = 'count-slot'; slot.style.setProperty('--subdivision', String(grid.slots[tick]!.subdivision)); slot.style.left = `${tickX(tick)}%`;
       slot.addEventListener('blur', () => buffer.clear());
-      slot.addEventListener('focus', () => { buffer.clear(); selected = tick; refresh(); });
+      slot.addEventListener('focus', () => { buffer.clear(); selected = tick; refresh(); if (options.palette && !options.hidden() && restStart === null && lineStart === null && lineEnd === null) countPopover.open(tick, { x: 0, y: 0 }); });
       slot.addEventListener('pointerenter', event => {
         if (event.pointerType === 'mouse') { hoveredRest = tick; renderRestTargets(); }
       });
@@ -371,7 +379,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       mark.prepend(hit);
       mark.setAttribute('role', 'button'); mark.setAttribute('tabindex', '0');
       mark.dataset.entryLabel = `Enter count at ${positionLabel(tick)}${grid.slots[tick]!.triplet ? '; eighth-note triplet, three in the time of two' : ''}`; mark.setAttribute('aria-label', mark.dataset.entryLabel);
-      mark.setAttribute('aria-haspopup', 'dialog'); mark.setAttribute('aria-controls', `count-popover-${number}`);
+      if (!options.palette) mark.setAttribute('aria-haspopup', 'dialog'); mark.setAttribute('aria-controls', `count-popover-${number}`);
       mark.addEventListener('click', event => { if (!options.hidden()) activateCount(tick, event); });
       mark.addEventListener('pointerdown', event => {
         if (!options.hidden() && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
@@ -629,6 +637,6 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     },
     suspend: () => { buffer.clear(); countPopover.dismiss(); cancelKeyboardLine(); lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); },
     resume: () => { if (options.hidden()) return; positionNotationTargets(); renderRestMarks(); renderLinePreview(); },
-    destroy: () => { lifecycle.abort(); observer.disconnect(); countPopover.destroy(); card.remove(); feedback.remove(); },
+    destroy: () => { lifecycle.abort(); observer.disconnect(); countPopover.destroy(); endpointPrompt.remove(); card.remove(); feedback.remove(); },
   };
 }

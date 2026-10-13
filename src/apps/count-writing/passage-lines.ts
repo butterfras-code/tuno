@@ -6,7 +6,7 @@ import type { createMeasureEditor } from './editor.ts';
 import { slotX } from './grid.ts';
 
 /** One saved logical span, projected into notation systems only for display. */
-export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors: ReturnType<typeof createMeasureEditor>[]) {
+export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors: ReturnType<typeof createMeasureEditor>[], promptHost: HTMLElement = root) {
   const lifecycle = new AbortController();
   let spans: Span[] = [];
   let draft: (Span & { editing?: number; keyboard?: boolean }) | null = null;
@@ -14,7 +14,7 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   const status = el('span', 'sr-only'); status.setAttribute('role', 'status'); root.append(status);
   const prompt = el('div', 'endpoint-prompt'); prompt.hidden = true;
   const message = el('span', '', 'Tap where the line ends');
-  prompt.append(message, button('Cancel', () => { draft = null; render(); })); root.append(prompt);
+  prompt.append(message, button('Cancel', () => { draft = null; render(); })); promptHost.append(prompt);
   root.addEventListener('start-duration', event => {
     const card = event.target as HTMLElement;
     const position = grid.offsets[Number(card.dataset.measure) - 1]! + (event as CustomEvent<number>).detail;

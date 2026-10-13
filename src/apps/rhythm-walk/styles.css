@@ -279,3 +279,33 @@ main.rhythm-app {
 .bone-slot.earned { fill: currentColor; stroke-dasharray: none; color: var(--color-ink); }
 .treat-unrated { font-size: 12px; color: var(--color-muted); }
 .feedback-snapshot .result-summary { color: var(--color-ink); }
+
+/* Counts and performance occupy the same lower interaction surface. */
+.shared-interaction { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; margin: 16px 0; }
+.interaction-selector { display: grid; gap: 8px; }
+.interaction-selector[hidden], .count-palette-host[hidden], .shared-interaction .tap-response[hidden] { display: none; }
+.interaction-body { min-width: 0; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
+.shared-interaction:has(.interaction-selector[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.shared-interaction .tap-response { margin-top: 0; }
+.performance-setup { display: flex; flex-wrap: wrap; align-items: start; gap: 16px; margin-bottom: 16px; }
+.performance-setup .field { margin: 0; flex: 1 1 180px; }
+.performance-setup .setting-hint { max-width: 36ch; margin: 6px 0 0; }
+.performance-setup .score-tempo { margin: 0; min-height: 48px; }
+.count-palette-host { min-height: 180px; }
+.count-palette-host .count-palette { position: static; width: 100%; max-width: none; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; touch-action: auto; box-sizing: border-box; }
+.count-palette-host .count-popover-dismiss { display: none; }
+.count-palette-host .count-popover-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.count-palette-host .count-popover-symbol { flex: 1 0 48px; max-width: 88px; touch-action: manipulation; }
+.count-palette-host .count-popover-markings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.count-palette-host .endpoint-prompt { margin: 0; min-height: 120px; }
+.palette-empty { margin: 0; color: var(--color-muted); font-size: 14px; }
+.count-palette-host:has(.count-palette:not([hidden]), .endpoint-prompt:not([hidden])) .palette-empty { display: none; }
+@media (max-width: 760px) {
+  .shared-interaction { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .interaction-body { padding: 12px; }
+  .count-palette-host .count-popover-markings { grid-template-columns: minmax(0, 1fr); }
+}
+
+.rhythm-app .passage-measure:not(.active-count-measure) .count-slot[aria-pressed="true"] { background: var(--color-canvas); border-color: var(--color-line); }
+.performance-setup input[type="checkbox"], .response-controls input[type="checkbox"] { width: 22px; height: 22px; }

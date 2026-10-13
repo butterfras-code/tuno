@@ -5,6 +5,8 @@ import type { CountSymbol } from './evaluation.ts';
 
 export function createCountPopover(actions: {
   id?: string;
+  dock?: HTMLElement;
+  activated?: () => void;
   symbols?: readonly CountSymbol[];
   enabled?: (symbol: CountSymbol) => boolean;
   input?: (event: KeyboardEvent) => boolean;
@@ -23,7 +25,7 @@ export function createCountPopover(actions: {
   }
   const popup = el('div', 'count-popover');
   popup.id = actions.id ?? 'count-popover'; popup.hidden = true;
-  popup.setAttribute('role', 'dialog'); popup.setAttribute('aria-label', 'Enter a count');
+  popup.setAttribute('role', actions.dock ? 'group' : 'dialog'); popup.setAttribute('aria-label', 'Enter a count');
   const heading = el('span', 'count-popover-heading');
   const close = button('×', () => dismiss(true)); close.className = 'count-popover-dismiss';
   close.setAttribute('aria-label', 'Dismiss count choices');
@@ -48,7 +50,8 @@ export function createCountPopover(actions: {
   rest.className = line.className = 'count-popover-marking';
   rest.setAttribute('aria-label', 'Start rest pair'); line.setAttribute('aria-label', 'Start duration line');
   markings.append(rest, line); popup.append(markings);
-  document.body.append(popup);
+  if (actions.dock) popup.classList.add('count-palette');
+  (actions.dock ?? document.body).append(popup);
   let offsetX = 0;
   let gesture: { id: number; target: Element; choice: HTMLButtonElement | null } | null = null;
   let ignoredClick: { target: Element; until: number } | null = null;
@@ -63,7 +66,7 @@ export function createCountPopover(actions: {
     position();
   }
   function position() {
-    if (popup.hidden) return;
+    if (popup.hidden || actions.dock) return;
     const viewport = window.visualViewport;
     const left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
     const right = left + (viewport?.width ?? innerWidth), bottom = top + (viewport?.height ?? innerHeight);
@@ -80,6 +83,8 @@ export function createCountPopover(actions: {
   }
 
   function open(tick: number, location: { x: number; y: number }) {
+    actions.activated?.();
+    if (actions.dock) actions.dock.querySelectorAll<HTMLElement>('.count-palette').forEach(other => { if (other !== popup) other.hidden = true; });
     actions.select(tick);
     const anchor = actions.anchor(); offsetX = location.x - anchor.x;
     popup.hidden = false; update();
@@ -93,6 +98,7 @@ export function createCountPopover(actions: {
     if (actions.submit(symbol)) { offsetX = 0; update(); } else dismiss();
   }
   function startPointer(event: PointerEvent, tick: number) {
+    if (actions.dock) return;
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     event.preventDefault();
     const target = event.currentTarget as Element;
@@ -121,7 +127,7 @@ export function createCountPopover(actions: {
   listen(document, 'pointercancel', event => { if (gesture?.id === event.pointerId) dismiss(); });
   listen(document, 'pointerdown', event => {
     ignoredClick = null; // A new gesture must remain usable after opening the popover.
-    if (!popup.hidden && !popup.contains(event.target as Node)) dismiss();
+    if (!actions.dock && !popup.hidden && !popup.contains(event.target as Node)) dismiss();
   }, true);
   // Opening can scroll the page before touch release. Suppress the gesture's
   // synthetic click even if scrolling moves a duration anchor under the finger.
