@@ -92,8 +92,8 @@ test('exact attack thresholds, clamping, tempo descriptions and steadiness bound
   assert.deepEqual(attackWindows(.1),{full:.03,zero:.09}); assert.deepEqual(attackWindows(2),{full:.06,zero:.18});
   for (const beat of [.1,.5,2]) { const {full,zero}=attackWindows(beat); near(attackCredit(full,beat),1); near(attackCredit(zero,beat),0); near(attackCredit((full+zero)/2,beat),.5); assert.ok(attackCredit(full+.00001,beat)<1); }
   const a=assessAttempt(attempt([0,.5,1,1.5,2,2.5,3,3.5]));
-  assert.equal(tempoDescription(5,a),'On target'); assert.equal(tempoDescription(-5.001,a),'Slightly slower'); assert.equal(tempoDescription(10,a),'Slightly faster'); assert.equal(tempoDescription(10.001,a),'Faster');
-  assert.equal(steadinessDescription(5,a),'Steady'); assert.equal(steadinessDescription(10,a),'Mostly steady'); assert.equal(steadinessDescription(10.001,a),'Uneven');
+  assert.equal(tempoDescription(7,a),'On target'); assert.equal(tempoDescription(-7.001,a),'Slightly slower'); assert.equal(tempoDescription(12,a),'Slightly faster'); assert.equal(tempoDescription(12.001,a),'Faster');
+  assert.equal(steadinessDescription(7,a),'Steady'); assert.equal(steadinessDescription(12,a),'Mostly steady'); assert.equal(steadinessDescription(12.001,a),'Uneven');
 });
 
 test('input-specific fixed calibration, policy snapshots and deterministic replay preserve duration', () => {

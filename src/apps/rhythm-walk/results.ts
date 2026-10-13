@@ -1,13 +1,14 @@
 import { el, button } from '../../shared/ui/components.ts';
 import type { Assessment } from './assessment.ts';
 import type { AttemptRecord } from './capture.ts';
+import { rewardPolicy, type TreatBagState } from './rewards.ts';
 
-export function tempoDescription(difference: number, a: Assessment) {
+export function tempoDescription(difference: number, _a: Assessment) {
   const amount = Math.abs(difference);
-  return amount <= a.policy.onTargetPercent + 1e-9 ? 'On target' : `${amount <= a.policy.slightTempoPercent + 1e-9 ? 'Slightly ' : ''}${difference < 0 ? 'slower' : 'faster'}`.replace(/^./, c => c.toUpperCase());
+  return amount <= rewardPolicy.tempo[0] ? 'On target' : `${amount <= rewardPolicy.tempo[1] ? 'Slightly ' : ''}${difference < 0 ? 'slower' : 'faster'}`.replace(/^./, c => c.toUpperCase());
 }
-export function steadinessDescription(variation: number, a: Assessment) {
-  return variation <= a.policy.steadyPercent + 1e-9 ? 'Steady' : variation <= a.policy.mostlySteadyPercent + 1e-9 ? 'Mostly steady' : 'Uneven';
+export function steadinessDescription(variation: number, _a: Assessment) {
+  return variation <= rewardPolicy.steadiness[0] ? 'Steady' : variation <= rewardPolicy.steadiness[1] ? 'Mostly steady' : 'Uneven';
 }
 /** One evidence-backed summary and at most one concrete musical suggestion. */
 export function musicalFeedback(record: AttemptRecord, a: Assessment) {
@@ -19,7 +20,7 @@ export function musicalFeedback(record: AttemptRecord, a: Assessment) {
   if (!a.matchedNotes) return {summary:'We didn’t hear the written notes clearly.',suggestion:'Try tapping once when each note starts.'};
   if (a.basis === 'target') return {summary:'There are only a few notes to assess.',suggestion:(a.missing ?? 0)>0 ? 'Try tapping once for each note.' : null};
   const lastMatched = Math.max(-1, ...a.matches.map(m => m.expected));
-  if (a.tempo && a.tempo.differencePercent < -a.policy.onTargetPercent && lastMatched < a.expectedAttacks - 1 && (a.missing ?? 0) > 0)
+  if (a.tempo && a.tempo.differencePercent < -rewardPolicy.tempo[0] && lastMatched < a.expectedAttacks - 1 && (a.missing ?? 0) > 0)
     return { summary: 'You fell behind the beat.', suggestion: 'Try a slower tempo.' };
   const poorHolds = holdStyle ? a.matches.filter(m=>m.holdCredit !== null && m.holdCredit < .8) : [];
   let suggestion: string | null = null;
@@ -27,9 +28,9 @@ export function musicalFeedback(record: AttemptRecord, a: Assessment) {
   const sustainedRestIssue = holdStyle && (a.restIntrusions.some(r=>r.credit<.5) || a.restIntrusions.length>=2);
   if (restAttack || sustainedRestIssue) suggestion='Leave a little more silence in the rests.';
   else if (poorHolds.length>=2 || poorHolds.some(m=>m.holdCredit!<.4)) suggestion=poorHolds.some(m=>m.duration?.elapsed === null) ? 'Release when the note ends.' : poorHolds.some(m=>m.duration && m.duration.elapsed!>m.duration.maximum) ? 'Release when the note ends.' : 'Try holding the longer notes a little more.';
-  else if (a.steadiness !== null && a.steadiness>a.policy.mostlySteadyPercent) suggestion='Keep the same pace through the whole exercise.';
+  else if (a.steadiness !== null && a.steadiness>rewardPolicy.steadiness[1]) suggestion='Keep the same pace through the whole exercise.';
   else if ((a.missing ?? 0)+(a.extra ?? 0)>0 || a.rhythm<85) suggestion='Try tapping once when each note starts.';
-  const summary = a.rhythm>=95 && !a.missing && !a.extra ? a.tempo && Math.abs(a.tempo.differencePercent)>a.policy.onTargetPercent ? 'You kept the rhythm at a different pace.' : 'You kept the rhythm!' : 'You played some of the written rhythm.';
+  const summary = a.rhythm>=rewardPolicy.rhythm[0] ? a.tempo && Math.abs(a.tempo.differencePercent)>rewardPolicy.tempo[0] ? 'You kept the rhythm at a different pace.' : 'You kept the rhythm!' : 'You played some of the written rhythm.';
   return {summary,suggestion};
 }
 export function createResults(record: AttemptRecord, a: Assessment, retry: () => void, next: () => void, nextIssue: string | null) {
@@ -38,9 +39,6 @@ export function createResults(record: AttemptRecord, a: Assessment, retry: () =>
   panel.append(heading);
   if (record.status === 'interrupted') panel.append(el('p', '', `${record.reason}. This attempt is not graded. Try again when ready.`));
   else {
-    const feedback = musicalFeedback(record,a);
-    panel.append(el('p','result-summary',feedback.summary));
-    if (feedback.suggestion) panel.append(el('p','result-suggestion',feedback.suggestion));
     const details = el('details'); details.append(el('summary', '', 'Details'));
     const metrics = el('div', 'result-metrics');
     const rhythmLabel = a.basis === 'performed' ? 'Rhythm accuracy at performed tempo' : a.basis === 'target' ? 'Rhythm accuracy at target tempo' : 'Rhythm accuracy';
@@ -78,4 +76,41 @@ export function createResults(record: AttemptRecord, a: Assessment, retry: () =>
   actions.append(button('Try again', retry), nextButton); panel.append(actions);
   const issue = el('p', 'note', nextIssue ?? ''); issue.hidden = !nextIssue; panel.append(issue);
   return { panel, heading, sync: (message: string | null) => { nextButton.disabled = Boolean(message); issue.textContent = message ?? ''; issue.hidden = !message; } };
+}
+
+/** A single accessible text rating; the five reusable SVG slots are decorative. */
+function boneIcon(earned: boolean) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 32 20'); svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', `bone-slot${earned ? ' earned' : ''}`);
+  svg.innerHTML = '<path d="M8 6C7 1 1 1 1 5c0 2 1 3 3 5-2 2-3 3-3 5 0 4 6 4 7-1h16c1 5 7 5 7 1 0-2-1-3-3-5 2-2 3-3 3-5 0-4-6-4-7 1Z"/>';
+  return svg;
+}
+export function renderTreatBag(host: HTMLElement, state: TreatBagState, interrupted = false) {
+  const heading = el('h2', '', 'Treat Bag: Earn Treats for Uno'); heading.id = 'feedback-snapshot-title';
+  host.replaceChildren(heading);
+  if (!state.completed) {
+    host.append(el('p', '', interrupted ? 'This attempt was interrupted. Play again when you’re ready to earn treats for Uno.' : 'Play the rhythm to earn bone treats for Uno!'));
+    return;
+  }
+  const { record, assessment, rewards } = state.completed;
+  host.dataset.exerciseId = record.exercise.id;
+  host.append(el('p', 'treat-attempt', `${state.previous ? 'Previous completed attempt' : 'Completed attempt'} · ${(record.playStyle ?? 'hold') === 'hold' ? 'Tap + Hold' : 'Tap'}`));
+  const list = el('ul', 'treat-ratings');
+  for (const category of rewards.categories) {
+    const item = el('li');
+    if (category.bones === null) item.append(el('span', '', category.label), el('span', 'treat-unrated', category.reason!));
+    else {
+      item.append(el('span', 'sr-only', `${category.label}: ${category.bones} out of 5 bones`));
+      const label = el('span', '', category.label); label.setAttribute('aria-hidden', 'true');
+      const slots = el('span', 'bone-slots'); slots.setAttribute('aria-hidden', 'true');
+      for (let i = 0; i < 5; i++) slots.append(boneIcon(i < category.bones));
+      item.append(label, slots);
+    }
+    list.append(item);
+  }
+  host.append(list);
+  const feedback = musicalFeedback(record, assessment);
+  host.append(el('p', 'result-summary', feedback.summary));
+  if (feedback.suggestion) host.append(el('p', 'result-suggestion', feedback.suggestion));
 }

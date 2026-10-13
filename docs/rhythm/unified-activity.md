@@ -1,6 +1,6 @@
 # One Uno234 activity
 
-Completed performance now replaces its pad with [musical results](assessment.md), leaving writing, score feedback and target-relative timelines independent. Try again retains the exact exercise/writing and starts count-in with current preferences; Next uses shared replacement and clears both. Assessment policy is snapshotted and completed interpretation survives preference/mode changes.
+Completed performance replaces its pad with result actions and numerical Details, leaving writing, score feedback and target-relative timelines independent. Try again retains the exact exercise/writing and starts count-in with current preferences; Next uses shared replacement and clears both. Assessment policy is snapshotted and completed interpretation survives preference/mode changes.
 
 ## Interface and response modes
 
@@ -83,3 +83,26 @@ The selectable-performance slice used Node 24.21.0 and `npm ci`. `npm run check`
 Physical keyboards/touch, native pointer capture, hardware timing/latency, Chromebook/Safari/mobile devices and assistive technology were **not tested**. Numerical policy remains provisional and requires teaching review. No mastery/progression, new guidance mode, production promotion or publication is included. [HTML review](tap-hold-review.html) summarizes this slice without replacing the concurrent layout report.
 
 The rest/barline review follow-up passed `npm run check` (**238 tests**, type checking and builds). New regressions cover 10 ms early accepted post-rest attacks in both styles, the inclusive attack-tolerance boundary and just beyond it, retained raw overlaps, unmatched attacks and independent preceding overholds. Duration geometry covers raw/calibrated early barline attacks, unchanged actual intervals, tied continuations and incomplete holds. Native `rest-boundary` scenarios passed Tap and Tap + Hold at 320px with consistent score/text feedback; `barline` passed at 320px and 1280px with identical attack/bar starts and no preceding stray received segment. These used controlled synthetic timestamps and the background-preview hidden-flag override; physical-device testing remains unperformed.
+
+## Treat Bag ownership
+
+The shared header’s former Recent Feedback placeholder is **Treat Bag: Earn Treats
+for Uno**, visible in Write Counts, Tap Rhythms and Both. It owns performance bone
+ratings and the only performance summary/suggestion. Writing keeps its independent
+feedback and earns no bones. Before playing, the bag invites children to earn treats
+for Uno; feedback never portrays Uno as sad, hungry or disappointed.
+
+Each rated category shows five lightweight SVG bone slots, with solid filled earned
+bones and dashed hollow unearned slots. One accessible text label names the category
+and “N out of 5 bones”; all icon slots are decorative. Unavailable categories have
+text without slots. The layout wraps on narrow screens, with no reward animation or
+delay. Try again and Next exercise remain where the completed pad was; percentages
+and technical evidence stay in Details. See [thresholds and eligibility](assessment.md#treat-bag-rewards-v1).
+
+The performance component retains completed feedback separately from retry capture.
+It passes the already computed assessment to the shared pure reward mapper, storing
+ratings with that record and exercise. Pending preferences and mode changes cannot
+reinterpret rewards. Retrying marks retained feedback as the previous completed
+attempt; interruptions do not overwrite it. Shared exercise replacement clears the
+bag along with other exercise-specific results. These are initial teaching defaults,
+not validated mastery standards or a cumulative reward economy.

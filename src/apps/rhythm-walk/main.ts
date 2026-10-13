@@ -77,8 +77,7 @@ customDialog.append(customHeader);
 const presetRow = el('div', 'preset-row'); presetRow.append(customButton);
 const setup = el('div', 'setup exercise-toolbar'); setup.append(presetRow);
 const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');
-const snapshotTitle = el('h2', '', 'Recent feedback'); snapshotTitle.id = 'feedback-snapshot-title';
-feedbackSnapshot.append(snapshotTitle, el('span', 'feedback-placeholder-label', 'Placeholder'), el('p', '', 'Your latest counting and performance feedback will appear here.'));
+
 const activitySurface = el('section', 'card activity-surface'); activitySurface.setAttribute('aria-label', 'Uno234 activity');
 const passage = el('section', 'passage'); passage.setAttribute('aria-label', 'Exercise passage');
 const passageScroll = el('div', 'score-scroll passage-scroll');
@@ -111,7 +110,7 @@ const showCounts = el('input'); showCounts.type = 'checkbox'; showCounts.checked
 showCounts.addEventListener('change', () => { preferences.showCounts = showCounts.checked; persist(); updateResponseView(); });
 const showCountsField = field('Show written counts during performance', showCounts);
 let performing = false;
-const performance = createPerformance({ exercise: () => activity.exercise, preferences, changed: persist,
+const performance = createPerformance({ treatBag: feedbackSnapshot, exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
     performing = active; picker.disabled = next.disabled = customButton.disabled = active;
     settings.setLocked(active);

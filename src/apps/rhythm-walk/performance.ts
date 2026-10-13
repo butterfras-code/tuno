@@ -1,5 +1,6 @@
 import { assessAttempt } from './assessment.ts';
-import { createResults } from './results.ts';
+import { TreatBagState } from './rewards.ts';
+import { createResults, renderTreatBag } from './results.ts';
 import { createTimingPanel } from './calibration.ts';
 import { el, button, field, numberInput, select } from '../../shared/ui/components.ts';
 import { playOptions, playInstructions } from './play-policy.ts';
@@ -14,8 +15,11 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
+export function createPerformance(options: { treatBag: HTMLElement; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
+  const treatBag = new TreatBagState();
+  const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted);
+  renderFeedback();
   let audio: AudioContext | undefined;
   let transport: Transport | null = null;
   let starting = false;
@@ -120,6 +124,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     if (!tempo.reportValidity()) return;
     // Snapshot before awaiting audio activation, even though controls are locked.
     const capture = new Capture(options.exercise(), tempo.valueAsNumber, metronome.checked, undefined, timing.current(), options.preferences.playStyle);
+    treatBag.begin(); renderFeedback();
     results?.panel.remove(); results = null; surface.hidden = false;
     renderCountIn(capture.plan);
     const token = ++generation; pending = capture;
@@ -147,6 +152,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     result = record; transport = null; pointer = null; lock(false); pulse.classList.remove('lit'); pad.setAttribute('aria-pressed', 'false');
     download.hidden = false;
     const assessment = assessAttempt(record);
+    treatBag.finish(record, assessment); renderFeedback(record.status === 'interrupted');
     results?.panel.remove();
     results = createResults(record, assessment, () => { void begin(); }, options.next, options.nextIssue());
     surface.hidden = true; surface.after(results.panel);
@@ -277,7 +283,7 @@ export function createPerformance(options: { exercise: () => Exercise; preferenc
     start: begin,
     record: () => result,
     syncResults: () => results?.sync(options.nextIssue()),
-    reset: () => { cancel('Exercise changed'); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
+    reset: () => { cancel('Exercise changed'); treatBag.clear(); delete options.treatBag.dataset.exerciseId; renderFeedback(); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 
 }

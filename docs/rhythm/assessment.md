@@ -96,8 +96,8 @@ excluding intervals crossing missing/extra attacks. Divide each observed interva
 its expected musical beat spacing. Require four usable intervals spanning four beats
 and confident tempo. Typical pace variation is
 `100 × max(1.4826 × MAD, (Q75−Q25)/1.349) / median(local beat durations)`.
-Quantiles interpolate at `(n−1)×q`. Descriptions are Steady through 5%, Mostly steady
-through 10%, Uneven above 10%. A steady slower performance can still be Steady.
+Quantiles interpolate at `(n−1)×q`. Presentation descriptions follow reward policy v1: Steady through 7%, Mostly steady
+through 12%, Uneven above 12%. Assessment computation is unchanged. A steady slower performance can still be Steady.
 Tempo descriptions are On target through 5% difference, Slightly faster/slower through
 10%, Faster/Slower above 10%. These are separate descriptions, not mastery claims.
 
@@ -211,8 +211,8 @@ new-policy timelines have no fixed target-time shaded/dashed full-credit lift pr
 Guidance is: lift between separate notes, hold through ties, release for rests. Precise
 elapsed limits and target timing remain available on inspection/in Details.
 
-Results replace the pad after completion. Lead with one short evidence-backed musical
-summary and at most one suggestion. Numerical percentages, precise BPM/target
+Results actions and Details replace the pad after completion. The shared Treat Bag
+owns the one short evidence-backed musical summary and at most one suggestion. Numerical percentages, precise BPM/target
 comparisons, milliseconds, displacement and technical explanations are in collapsed
 **Details** / **Timing evidence**. A high rhythm score with tempo drift says “You kept
 the rhythm at a different pace”; Details explains target bars versus received input.
@@ -221,7 +221,7 @@ Feedback selection is deterministic:
 
 1. Interrupted, rest-only, unavailable, all-missed and sparse evidence use their own
    truthful messages. Sparse/ambiguous evidence never earns broad rhythm praise.
-2. A clear performed-tempo pattern at least 95%, with no missing/extra attacks, can
+2. A clear performed-tempo pattern at least 90% can
    say “You kept the rhythm!” (or name the different pace). Otherwise describe partial
    written rhythm without mastery or invented recovery claims.
 3. Prefer extra attacks during rests in either style. Only Tap + Hold also considers
@@ -345,3 +345,64 @@ Native T3 `tap-rest` and `accepted` browser scenarios pass: Tap overlap produces
 hold criticism, and canceling a synthetic context-menu event on a held pad label does
 not release the pointer input. Selection suppression and normal context-menu behavior
 outside the pad are checked. Physical mobile long-press verification remains pending.
+
+## Treat Bag rewards (v1)
+
+**Treat Bag: Earn Treats for Uno** is the single visible home for performance bone
+ratings, the evidence-based summary and at most one actionable suggestion. These are
+initial teaching defaults that can be tuned, **not validated mastery standards**.
+Five bones means musically successful playing with room for small mistakes.
+
+[The shared pure mapper](../../src/apps/rhythm-walk/rewards.ts) consumes the existing
+assessment once at completion; it does not refit timing, calibration, association or
+holds. Version 1 selects the highest tier met using unrounded values:
+
+| Bones | Rhythm | Holding notes | Absolute tempo difference | Typical pace variation (Steady beat) |
+| --- | --- | --- | --- | --- |
+| 5 | ≥90% | ≥85% | ≤7% | ≤7% |
+| 4 | ≥75% | ≥70% | ≤12% | ≤12% |
+| 3 | ≥60% | ≥55% | ≤20% | ≤20% |
+| 2 | ≥40% | ≥35% | ≤30% | ≤30% |
+| 1 | <40% | <35% | >30% | >30% |
+
+Holding notes uses assessed hold credit, including forgiving duration tolerances and
+short-note exclusions; it is not a percentage of written duration physically held.
+Tempo uses absolute difference, equally rewarding slower and faster playing. Categories
+are independent: steady playing can earn five Steady beat bones at another tempo.
+Feedback descriptions use the same 7%/12% tempo and steadiness presentation boundaries.
+Numerical metrics and technical evidence remain in collapsed Details.
+
+Only completed attempts with assessable evidence earn rewards. Interrupted attempts,
+no-input note exercises, and unavailable/nonfinite metrics earn none. Existing tempo
+and steadiness confidence gates remain authoritative. Tap hides Holding notes. In
+Tap + Hold, excluded short-note holds say “No long notes to check” without bones;
+other unavailable metrics say “Not enough evidence”. Rest-only exercises retain
+silence feedback without attack, tempo or hold ratings. There is no overall grade,
+average, cumulative currency, economy, or Write Counts bone scoring.
+
+The exercise-local Treat Bag retains the completed record, its existing assessment,
+reward version and mapped ratings. Mode switching and pending settings do not change
+the captured Tap/Tap + Hold choice or completed rewards. Retry labels retained feedback
+“Previous completed attempt”; interrupted retries preserve it. A newly completed
+attempt replaces it, including truthful unrated feedback for no-input attempts.
+New exercise clears it. No feedback persists across reloads.
+
+### Treat Bag validation (2026-10-13)
+
+Node 24.21.0, `npm ci`, `npm run check` (344 tests, strict type checking and builds),
+and `git diff --check` pass. Focused reward tests cover every boundary and immediately
+adjacent unrounded values, tempo signs, missing/nonfinite metrics, interrupted and
+no-input attempts, all-rest silence, short holds, captured style, independent metrics,
+wording, mode/preferences retention and retry/replacement state.
+
+Native T3 browser checks passed accepted Tap + Hold and short-note cases at 1536px.
+At 375px, accepted holds and steady slower Tap passed reward accessibility markup,
+result focus/release safety, Details, writing retention, pending settings/modes,
+interrupted retry and Next clearing. No-input and silent-rest cases showed no rewards.
+Preview resizing timed out twice; narrow checks used a same-origin 375px iframe
+loading the actual local app. The older slower scenario sent final notes beyond the
+current capture deadline; its synthetic spacing now uses 1.1× target intervals so all
+notes finish inside that unchanged deadline. The resulting slower tempo earns four
+Tempo bones and five Steady beat bones. No scoring or capture policy changed.
+Physical touch/keyboard timing, audio audibility and real assistive-technology testing
+remain unverified. No release, staging integration or production publication occurred.

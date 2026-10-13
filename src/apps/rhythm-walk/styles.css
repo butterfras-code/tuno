@@ -70,9 +70,8 @@ main.rhythm-app {
 .exercise-toolbar { display: grid; gap: 12px; min-width: 0; }
 .preset-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
 .shared-controls .setup-actions .control { width: auto; }
-.feedback-snapshot { padding: 16px; border: 1px dashed var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
+.feedback-snapshot { padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
 .feedback-snapshot h2 { display: inline; margin: 0; font: 700 16px/1.3 var(--font-heading); }
-.feedback-placeholder-label { margin-left: 8px; font-size: 11px; color: var(--color-muted); }
 .feedback-snapshot p { margin: 8px 0 0; font-size: 13px; color: var(--color-muted); }
 .response-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 16px 0; }
 .response-controls .field { margin: 0; }
@@ -272,3 +271,11 @@ main.rhythm-app {
   .preset-row { grid-template-columns: minmax(0, 1fr); }
   .preset-row > .control { margin-top: 0; justify-self: start; }
 }
+
+.treat-ratings { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+.treat-ratings li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; font-size: 13px; }
+.bone-slots { display: inline-flex; gap: 4px; }
+.bone-slot { width: 24px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 2 2; color: var(--color-muted); }
+.bone-slot.earned { fill: currentColor; stroke-dasharray: none; color: var(--color-ink); }
+.treat-unrated { font-size: 12px; color: var(--color-muted); }
+.feedback-snapshot .result-summary { color: var(--color-ink); }
