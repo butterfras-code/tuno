@@ -8,7 +8,7 @@ import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
-import { teachingPresets, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
+import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
 
 export const dottedConventionOptions = [
   { value: 'review', label: 'Teacher review — accept both provisionally' },
@@ -170,7 +170,7 @@ export function createSettingsPage(callbacks: {
   }
   generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on New exercise.';
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
-  const teachingPicker = select([{ value: '', label: 'Custom' }, ...teachingPresets.map(p => ({ value: p.id, label: `${p.label}${resolveTeachingPreset(p).supported ? ' · note-only practice' : ' · unavailable'}` }))], value => {
+  const teachingPicker = select([{ value: '', label: 'Custom' }, ...generationLevels.map(p => ({ value: p.id, label: resolveTeachingPreset(p).supported ? teachingPresetLabel({ id: p.id, version: p.version, customized: false }) : `${p.label} · unavailable` }))], value => {
     if (!value) {
       const { teachingPreset: _source, restrictions: _restrictions, ...custom } = generation;
       generation = custom; generationChanged(false);
@@ -182,7 +182,7 @@ export function createSettingsPage(callbacks: {
   const teachingDetails = el('details'); teachingDetails.append(el('summary', '', 'Source and pattern requirements'));
   const teachingEvidence = el('div', 'setting-hint'); teachingDetails.append(teachingEvidence);
   function applySelectedLevel() {
-    const definition = teachingPresets.find(p => p.id === teachingPicker.value);
+    const definition = generationLevels.find(p => p.id === teachingPicker.value);
     if (!definition) return;
     const result = applyTeachingPreset(generation, definition);
     if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
@@ -197,13 +197,13 @@ export function createSettingsPage(callbacks: {
   const applyPreset = button('Apply level', applySelectedLevel);
   applyPreset.dataset.setting = 'apply-teaching-preset';
   function renderTeachingPreset() {
-    for (const definition of teachingPresets) {
+    for (const definition of generationLevels) {
       const option = [...teachingPicker.options].find(o => o.value === definition.id)!;
-      option.textContent = `${definition.label}${generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized ? ' · customized' : resolveTeachingPreset(definition).supported ? ' · note-only practice' : ' · unavailable'}`;
+      option.textContent = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
     }
-    const active = teachingPresets.find(p => p.id === generation.teachingPreset?.id);
-    teachingAttribution.textContent = active ? `${active.label}${generation.teachingPreset?.customized ? ' · customized' : ' · note-only practice'} · next exercise.` : 'Custom · pending settings. New exercise generates from these settings.';
-    const definition = teachingPresets.find(p => p.id === teachingPicker.value);
+    const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
+    teachingAttribution.textContent = active ? `${teachingPresetLabel(generation.teachingPreset)} · next exercise.` : 'Custom · pending settings. New exercise generates from these settings.';
+    const definition = generationLevels.find(p => p.id === teachingPicker.value);
     teachingEvidence.replaceChildren();
     if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
     const result = resolveTeachingPreset(definition);
@@ -211,6 +211,15 @@ export function createSettingsPage(callbacks: {
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
     teachingStatus.textContent = result.supported ? 'Available: general note figures only, no rests, ties or percussion-specific figures. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    if (!definition.source) {
+      teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
+      const settings = definition.recommended;
+      teachingEvidence.append(el('p', '', `Time signatures: ${settings.meters!.join(', ')}. One selected meter per exercise; your chosen length is preserved.`),
+        el('p', '', `Ingredients: ${ingredients.filter(i => settings.ingredients.includes(i.id)).map(i => i.label).join(', ')}.`),
+        el('p', '', `Ties: ${settings.ties ? 'on' : 'off'}. Syncopation: ${settings.syncopation ? 'on' : 'off'}. Unintuitive notation: ${settings.allowUnintuitiveNotation ? 'on' : 'off'}.`),
+        el('p', '', 'Only ingredients compatible with the chosen meter are generated. Whole notes require 4/4; sixteenths, dotted eighths and triplets use simple meters.'));
+      return;
+    }
     const source = el('a', '', `Official criteria · ${definition.source.revision} · retrieved ${definition.source.retrieved}`); source.href = definition.source.url;
     teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice uses one meter and preserves your chosen length.`));
     for (const figure of definition.figures) {
@@ -223,7 +232,7 @@ export function createSettingsPage(callbacks: {
   teachingPicker.value = generation.teachingPreset?.id ?? '';
   const teachingField = el('div', 'level-configuration');
   teachingField.append(field('Level', teachingPicker));
-  teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'UIL-derived rhythm practice, not a complete composition validator or UIL endorsement. Meters remain editable. No requirement that every allowed figure appear.'));
+  teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'Uno levels are practice configurations. UIL levels retain their qualified scope; they are not complete composition validators or UIL endorsements. Meters remain editable. No requirement that every allowed figure appear.'));
   teachingAttribution.id = 'pending-level';
   teachingPicker.setAttribute('aria-describedby', teachingAttribution.id);
   teachingField.append(teachingAttribution, teachingDetails);

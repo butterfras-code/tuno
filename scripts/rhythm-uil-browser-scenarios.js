@@ -34,7 +34,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   choose(d.querySelector('[data-setting="exercise-length"]'), '3');
   const picker = d.querySelector('[data-setting="teaching-preset"]');
   const apply = d.querySelector('[data-setting="apply-teaching-preset"]');
-  assert(picker.options.length === 7, 'all six teaching levels are inspectable');
+  assert(picker.options.length === 11, 'four Uno and six UIL levels are inspectable');
   for (const id of ['uil-3', 'uil-4', 'uil-5', 'uil-6']) {
     const before = JSON.stringify(generation()); choose(picker, id);
     assert(apply.disabled, `${id} application blocked`); apply.click();

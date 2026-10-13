@@ -20,7 +20,7 @@ import { passageGrid } from '../count-writing/passage.ts';
 import { renderPassageTies } from './shared/notation.ts';
 import { createPassageLines } from '../count-writing/passage-lines.ts';
 import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
-import { teachingPresets } from './shared/teaching-presets.ts';
+import { teachingPresetLabel } from './shared/teaching-presets.ts';
 import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 
 let saved: string | null = null;
@@ -241,7 +241,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
 }
 function updateExerciseSummary() {
   const source = activity.exerciseGeneration.teachingPreset;
-  const label = source ? `${teachingPresets.find(p => p.id === source.id)!.label}${source.customized ? ' · customized' : ' · note-only practice'}` : 'Custom';
+  const label = teachingPresetLabel(source);
   exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
   if (fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
   const issue = generationIssue(generation);

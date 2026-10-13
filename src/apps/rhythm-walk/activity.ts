@@ -13,7 +13,7 @@ import type { RhythmMeasure } from '../../music/measure.ts';
 import { derivePassage } from '../../music/measure.ts';
 import { playStyles } from './play-policy.ts';
 import type { PlayStyle } from './play-policy.ts';
-import { teachingPresets, matchesTeachingPreset, resolveTeachingPreset } from './shared/teaching-presets.ts';
+import { generationLevels, matchesTeachingPreset, resolveTeachingPreset } from './shared/teaching-presets.ts';
 
 export const modes = ['write', 'tap', 'both'] as const;
 export type Mode = typeof modes[number];
@@ -56,7 +56,7 @@ export function readPreferences(raw: string | null): Preferences {
       defaults.generation = { meters: [...new Set(selected)], measures: g.measures, ingredients: [...g.ingredients], allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: g.ties, syncopation: g.syncopation };
       if (g.restrictions && typeof g.restrictions.pairedEighths === 'boolean' && typeof g.restrictions.noQuarterRestBeatOne === 'boolean') defaults.generation.restrictions = { pairedEighths: g.restrictions.pairedEighths, noQuarterRestBeatOne: g.restrictions.noQuarterRestBeatOne };
       const identity = g.teachingPreset;
-      const definition = teachingPresets.find(p => p.id === identity?.id && p.version === identity?.version);
+      const definition = generationLevels.find(p => p.id === identity?.id && p.version === identity?.version);
       if (definition && typeof identity?.customized === 'boolean') {
         // Exact attribution requires both engine support and matching controlled fields.
         defaults.generation.teachingPreset = { id: definition.id, version: definition.version, customized: identity.customized || !resolveTeachingPreset(definition).supported || !matchesTeachingPreset(defaults.generation, definition) };

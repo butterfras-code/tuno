@@ -2,7 +2,18 @@
 
 Updated 2026-10-13. **Uno234 is one activity with three freely interchangeable response modes: Write Counts, Tap Rhythms, and Both.** The current activity is named **Uno234**. **Rhythm Walk** is reserved for an eventual continuous gameplay mode; it is not a current response mode. Existing prototype URLs, source directories, and preference keys retain their historical names for compatibility. Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes descriptions of separate activities and the earlier Count Writing-first sequencing. It does not authorize production publication.
 
-The shared **Level** selector chooses a generation configuration: qualified UIL I–II note-only practice or **Custom**. III–VI remain inspectable with explicit blockers. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
+The shared **Level** selector chooses a generation configuration: **Uno1–Uno4**, qualified UIL I–II note-only practice, or **Custom**. III–VI remain inspectable with explicit blockers. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
+
+The Uno configurations are cumulative, with independent 1–4 measure length:
+
+| Level | Musical configuration |
+| --- | --- |
+| Uno1 | 4/4; whole, half, quarter and eighth notes; quarter and half rests; no ties or syncopation. |
+| Uno2 | Uno1 plus 2/4 and 3/4, dotted-half and dotted-quarter notes, and ties. |
+| Uno3 | Uno2 plus 6/8, sixteenth notes, eighth rests, syncopation, sounded eighth triplets and dotted-eighth notes. |
+| Uno4 | All currently supported ingredients (also sixteenth and dotted-quarter rests), ties, syncopation and unintuitive notation in all four meters. |
+
+These are Uno practice configurations, separate from UIL criteria. Each exercise draws one selected meter and uses only its compatible ingredients: whole notes require 4/4; dotted halves are skipped in 2/4; half/whole values, sixteenths, dotted eighths and triplets are skipped in 6/8. “Everything” does not expand the supported repertoire.
 
 Configure one exercise, then choose how to respond without changing its identity, notation or configuration. Both exposes writing and the performance pad independently; completing or checking the writing is never required. Each response and its evaluation survives mode switching within the exercise. Switching during count-in, capture or calibration cancels safely and stops scheduled audio. A canceled performance is interrupted, never completed or graded.
 
@@ -47,3 +58,7 @@ Those records do not override this naming, architecture, persistence or mode-swi
 The [simple-meter triplet prompt](prompts/triplets.md) and [source-verified UIL level prompt](prompts/uil-presets.md) follow the [shared ownership and capability contract](prompts/README.md). Their implemented scope is documented in [triplets.md](triplets.md) and [uil-presets.md](uil-presets.md).
 
 [UIL teaching levels](uil-presets.md) provide inspectable I–VI generation configurations and qualified note-only I–II practice. Higher levels remain blocked by explicit capability/source gaps. Whole and dotted-half notes are opt-in shared ingredients.
+
+## Uno level validation
+
+The Uno configuration follow-up passed Node 24.21.0, `npm ci` and `npm run check` (333 tests, TypeScript and builds). [Focused unit tests](../../tests/rhythm-uno-presets.test.ts) verify the exact cumulative definitions, independent preferences, source customization/persistence, blocked UIL scope and generated vocabulary across all configured meters and lengths. [Native browser scenarios](../../scripts/rhythm-uno-browser-scenarios.js) passed 50 assertions each at desktop (1265px) and narrow (305px inside a 320px preview), covering application, current-score/writing retention, generation, shared modes, customization, fresh-document restoration and overflow. Loopback navigation failed, so browser checks used the complete local bundle in same-origin inline documents. Physical-device and completed-performance checks were not performed in this follow-up.
