@@ -70,7 +70,7 @@ customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
 const customTitle = el('h2', '', 'Customize next exercise'); customTitle.id = 'custom-exercise-title';
 const customButton = button('Customize…', () => { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
 customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute('aria-controls', customDialog.id);
-const customClose = button('Done', () => customDialog.close()); customClose.autofocus = true;
+const customClose = button('Done', () => customDialog.close());
 customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
 const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
 customDialog.append(customHeader);

@@ -120,7 +120,7 @@ export function createSettingsPage(callbacks: {
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';
-  lengthField.append(el('legend', '', 'Exercise length'));
+  lengthField.append(el('legend', '', 'Measures'));
   const lengthSegments = el('div', 'segmented-options');
   for (const measures of [1, 2, 3, 4]) {
     const { label } = segmentedOption({
@@ -151,11 +151,13 @@ export function createSettingsPage(callbacks: {
   }
   meterField.append(meterSegments);
   const vocabulary = el('div', 'active-ingredients');
-  for (const [rest, title] of [[false, 'Allowed Notes'], [true, 'Allowed Rests']] as const) {
-    const group = el('fieldset', 'ingredient-column');
-    group.append(el('legend', '', title));
-    for (const value of ['W', 'H', 'Q', 'E', 'S']) {
-      const row = el('div', 'ingredient-row');
+  const vocabularyHeadings = el('div', 'ingredient-headings');
+  vocabularyHeadings.append(el('h3', '', 'Allowed Notes'), el('h3', '', 'Allowed Rests'));
+  vocabulary.append(vocabularyHeadings);
+  for (const [value, name] of [['W', 'Whole'], ['H', 'Half'], ['Q', 'Quarter'], ['E', 'Eighth'], ['S', 'Sixteenth']] as const) {
+    const valueRow = el('div', 'ingredient-value-row'); valueRow.dataset.value = value;
+    for (const rest of [false, true]) {
+      const row = el('div', 'ingredient-row'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', `${name} ${rest ? 'rests' : 'notes'}`);
       for (const ingredient of ingredients.filter(i => i.event[0] === value && Boolean((i.event as RhythmEvent)[1]?.rest) === rest)) {
         const { label, input } = segmentedOption({ label: ingredient.label, content: renderRhythmSymbol(ingredient.event), type: 'checkbox', value: ingredient.id,
           checked: generation.ingredients.includes(ingredient.id), changed: () => {
@@ -167,13 +169,13 @@ export function createSettingsPage(callbacks: {
         label.classList.add('ingredient-toggle'); label.title = ingredient.label;
         row.append(label);
       }
-      group.append(row);
+      valueRow.append(row);
     }
-    vocabulary.append(group);
+    vocabulary.append(valueRow);
   }
   const patternFields = el('div', 'segmented-options pattern-toggles');
   for (const [key, id, title] of [
-    ['allowUnintuitiveNotation', 'unintuitive-notation', 'Weird Patterns'],
+    ['allowUnintuitiveNotation', 'unintuitive-notation', 'Unusual Notation'],
     ['ties', 'ties', 'Ties'],
     ['syncopation', 'syncopation', 'Syncopation'],
   ] as const) {
@@ -209,6 +211,7 @@ export function createSettingsPage(callbacks: {
   const teachingPickers = [select(levelOptions, chooseLevel), select(levelOptions, chooseLevel)];
   const [teachingPicker, customTeachingPicker] = teachingPickers as [HTMLSelectElement, HTMLSelectElement];
   teachingPickers.forEach(picker => { picker.dataset.setting = 'teaching-preset'; picker.value = generation.teachingPreset?.id ?? ''; });
+  customTeachingPicker.autofocus = true;
   const customLevelField = field('Level', customTeachingPicker); customLevelField.classList.add('custom-level-field');
   const customLevelStatus = el('p', 'setting-hint'); customLevelStatus.id = 'custom-level-status'; customLevelStatus.setAttribute('role', 'status');
   customTeachingPicker.setAttribute('aria-describedby', customLevelStatus.id);

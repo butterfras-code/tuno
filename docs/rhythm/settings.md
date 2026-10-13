@@ -60,6 +60,8 @@ Account dashboards, multiplayer, leaderboards, assignment reporting, and externa
 
 ## Implementation boundary
 
+The Customize dialog mirrors the header Level selector and applies the same pending configuration in either location. Measures is a single-choice segmented control; meters, notation ingredients, Unusual Notation, Ties and Syncopation are independent toggles with selection marks. Whole/half noteheads stay hollow on either background. Note variants and corresponding rests share compact, separated rows. Initial focus goes to Level; Escape returns focus to Customize. Generation errors remain visible without ready-state or instructional filler.
+
 - [settings-catalog.ts](../../src/apps/rhythm-walk/shared/settings-catalog.ts) is the review inventory with stable identifiers, grouping and source sections. It is not a settings persistence schema or a music model.
 - [settings.ts](../../src/apps/rhythm-walk/shared/settings.ts) renders available controls and inactive options with shared UI primitives.
 - [main.ts](../../src/apps/rhythm-walk/main.ts) coordinates generated passages and supported preferences; [editor.ts](../../src/apps/count-writing/editor.ts) owns each measure’s count/rest entry and feedback; [passage-lines.ts](../../src/apps/count-writing/passage-lines.ts) owns logical duration spans for tied exercises. The rest-parentheses explanation documents existing behavior without adding state or an alternate grading convention. Future controls have no callbacks that can change its state.
@@ -68,6 +70,8 @@ Account dashboards, multiplayer, leaderboards, assignment reporting, and externa
 When implementing a setting, replace its placeholder with a real state contract, connect it to the appropriate activity, and add behavior tests. Resolve open defaults before enabling them. Enforce starting⊆goal and valid generation only when that functionality exists; do not simulate a working generator by storing ineffective selections.
 
 ## Historical settings-slice validation
+
+The customization design refinement passed `npm run check` and [native customization scenarios](../../scripts/rhythm-customize-browser-scenarios.js): 31 assertions at desktop, 768px, 390px and 320px. These cover selected/unselected hollow heads, single versus multiple selection, preset synchronization, current-score retention, invalid-setting feedback, aligned rows, minimum 44px targets and horizontal overflow. Narrow checks use same-origin frames in the desktop preview, not physical mobile devices. Native keyboard checks also cover toggle focus and Escape focus restoration.
 
 The subsequent [ties/syncopation validation](ties-syncopation.md#original-slice-implementation-and-validation) covers the new controls and passage duration editor. Evidence below records the earlier settings slice.
 

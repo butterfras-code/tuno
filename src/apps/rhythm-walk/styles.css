@@ -76,11 +76,15 @@ main.rhythm-app {
 .feedback-snapshot p { margin: 8px 0 0; font-size: 13px; color: var(--color-muted); }
 .response-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 16px 0; }
 .response-controls .field { margin: 0; }
-.custom-exercise-dialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); box-sizing: border-box; overflow: auto; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-surface); background: var(--color-surface); color: var(--color-ink); }
+.custom-exercise-dialog { width: min(560px, calc(100vw - 24px)); max-width: calc(100vw - 24px); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow: auto; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-ink); }
 .custom-exercise-dialog::backdrop { background: #152b3b80; }
-.custom-exercise-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.custom-exercise-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 12px; background: var(--color-surface); }
 .custom-exercise-header h2 { margin: 0; font: 700 22px/1.3 var(--font-heading); }
-.custom-exercise-dialog .shared-exercise-settings { margin-top: 16px; }
+.custom-exercise-header .control { min-height: 44px; padding: 8px 16px; border-color: transparent; font-size: 14px; }
+.custom-exercise-dialog .shared-exercise-settings { margin-top: 4px; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.custom-exercise-dialog .field { margin: 0; }
+.shared-exercise-settings > [role=status] { grid-column: 1 / -1; margin: 0; }
+.custom-exercise-dialog legend { font-size: 14px; font-weight: 700; }
 .custom-level-field { grid-column: 1 / -1; }
 .shared-controls .field { margin: 0; }
 .shared-controls .control { width: 100%; }
@@ -100,27 +104,37 @@ main.rhythm-app {
 @media (max-width: 540px) { .calibration { padding: 12px; } .tap-response .field { max-width: 100%; } }
 .shared-exercise-settings input[type=checkbox] { width: 20px; height: 20px; }
 .shared-exercise-settings .setting-option { min-height: 44px; align-items: center; }
-.active-ingredients { display: grid; grid-template-columns: minmax(136px, 3fr) minmax(90px, 2fr); gap: 8px; grid-column: 1 / -1; align-items: start; }
-.ingredient-column { min-width: 0; margin: 12px 0 0; padding: 0; border: 0; }
-.ingredient-column legend { margin-bottom: 8px; }
-.ingredient-row { display: flex; align-items: center; gap: 2px; min-height: 72px; }
-.ingredient-toggle { box-sizing: border-box; flex: 0 0 44px; min-height: 64px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-tint); }
+.active-ingredients { grid-column: 1 / -1; min-width: 0; border: 0; padding: 0; }
+.ingredient-headings, .ingredient-value-row { display: grid; grid-template-columns: minmax(136px, 180px) minmax(90px, 1fr); gap: 8px; }
+.ingredient-headings { padding: 0 0 8px; }
+.ingredient-headings h3 { margin: 0; font: 700 14px/1.4 var(--font-heading); }
+.ingredient-value-row { padding: 6px 0; border-top: 1px solid var(--color-line); }
+.ingredient-value-row:nth-child(even) { background: color-mix(in srgb, var(--color-canvas) 45%, var(--color-surface)); }
+.ingredient-row { display: flex; align-items: center; gap: 2px; }
+.ingredient-toggle { box-sizing: border-box; flex: 0 0 44px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-tint); }
 .ingredient-toggle + .ingredient-toggle { border-left: 1px solid var(--color-line); }
-.rhythm-symbol-preview { width: 40px; height: 52px; color: inherit; pointer-events: none; }
-.segmented-field { min-width: 0; margin: 12px 0 0; padding: 0; border: 0; }
+.rhythm-symbol-preview { width: 40px; height: 44px; color: inherit; pointer-events: none; }
+.rhythm-symbol-preview [data-hollow=true] { stroke-width: 3.5; }
+.segmented-field { min-width: 0; margin: 0; padding: 0; border: 0; }
 .segmented-field legend { margin-bottom: 8px; }
 .segmented-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-tint); }
-.segmented-option { position: relative; display: grid; place-items: center; min-height: 76px; color: var(--color-ink); cursor: pointer; }
+.segmented-option { --notation-surface: var(--color-tint); position: relative; display: grid; place-items: center; min-height: 56px; color: var(--color-ink); cursor: pointer; }
 .segmented-option + .segmented-option { border-left: 1px solid var(--color-line); }
 .shared-exercise-settings .segmented-option input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.length-segment-number { font: 700 28px/1 var(--font-heading); }
-.time-signature-preview { width: 40px; height: 60px; pointer-events: none; }
-.segmented-option:has(input:checked) { background: var(--color-accent); color: var(--color-surface); }
+.length-segment-number { font: 700 22px/1 var(--font-heading); }
+.time-signature-preview { width: 28px; height: 42px; pointer-events: none; }
+.segmented-option:has(input:checked) { --notation-surface: var(--color-accent); background: var(--color-accent); color: var(--color-surface); }
+.custom-exercise-dialog .segmented-option:has(input[type=checkbox]:checked)::after { content: '✓'; position: absolute; top: 2px; right: 4px; font: 800 10px/1 var(--font-heading); pointer-events: none; }
+.segmented-option:has(input:not(:disabled)):hover { box-shadow: inset 0 0 0 1px var(--color-accent); }
 .segmented-option:has(input:focus-visible) { outline: 3px solid var(--color-ink); outline-offset: -4px; }
 .segmented-option:has(input:disabled) { opacity: .5; cursor: default; }
 .segmented-option input:disabled { cursor: default; }
 .pattern-toggles { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pattern-toggles .segmented-option { min-height: 48px; padding: 8px; text-align: center; font: 700 14px/1.3 var(--font-heading); }
+.custom-exercise-dialog .ingredient-toggle { min-height: 48px; }
+@media (min-width: 441px) { .ingredient-row { gap: 6px; } .ingredient-toggle { flex-basis: 48px; } }
+@media (max-width: 440px) { .custom-exercise-dialog .shared-exercise-settings { grid-template-columns: minmax(0, 1fr); } .custom-exercise-header h2 { font-size: 18px; } }
+@media (max-width: 380px) { .ingredient-headings, .ingredient-value-row { grid-template-columns: minmax(136px, 3fr) minmax(90px, 2fr); } }
 @media (min-width: 760px) { .shared-exercise-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .timing-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow: auto; border: 1px solid var(--color-line); border-radius: 18px; padding: 20px; background: var(--color-paper, white); color: var(--color-ink); }
 .timing-dialog::backdrop { background: #152b3b80; }

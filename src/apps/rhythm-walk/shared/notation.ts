@@ -34,7 +34,7 @@ function writtenSymbol(written: RhythmEvent, nx: number) {
   } else {
     const whole = written[0] === 'W';
     const hollow = whole || written[0] === 'H';
-    group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
+    group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--notation-surface, var(--color-surface))' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1, 'data-hollow': String(hollow) }));
     if (!whole) group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
   }
   if (written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
