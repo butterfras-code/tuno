@@ -1,0 +1,67 @@
+/** Native T3 preview. Controlled synthetic timestamps, real audio-clock lifecycle.
+ * Click Start once through the native browser to unlock audio before running. */
+window.__tripletPerformance = (async () => {
+  const checks=[], assert=(v,label)=>{if(!v)throw new Error(label);checks.push(label);};
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const wait=async f=>{const deadline=performance.now()+12000;while(!f()){if(performance.now()>deadline)throw new Error('timeout');await sleep(5);}};
+  const choose=(control,value)=>{control.value=value;control.dispatchEvent(new Event('change'));};
+  const button=name=>[...document.querySelectorAll('button')].find(n=>n.textContent===name);
+  const pad=document.querySelector('.pad'), status=()=>document.querySelector('.tap-response .status').textContent;
+  const mode=document.querySelector('.shared-controls select'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), play=document.querySelector('[data-setting="how-to-play"]');
+  const oldOsc=AudioContext.prototype.createOscillator, oldURL=URL.createObjectURL, oldPointer=pad.setPointerCapture;
+  let context,scheduled=[],evidence;
+  AudioContext.prototype.createOscillator=function(){context=this;const node=oldOsc.call(this),start=node.start.bind(node);node.start=t=>{scheduled.push(t);start(t);};return node;};
+  URL.createObjectURL=blob=>{evidence=blob.text().then(JSON.parse);return oldURL(blob);};
+  const prevent=e=>{if(e.target instanceof HTMLAnchorElement&&e.target.download)e.preventDefault();};document.addEventListener('click',prevent,true);
+  const raw=async()=>{button('Download timing evidence').click();return evidence;};
+  try {
+    button('Stop')?.click();choose(mode,'both');choose(tempo,'180');button('Reset timing').click();
+    document.querySelector('.calibration input[type=checkbox]').checked=false;
+    for(const [style,fixture,intervals] of [
+      ['tap','triplet-mixed',[[0,1/9],[1/9,2/9],[2/9,1/3],[1/3,.5],[.5,2/3],[2/3,7/9],[7/9,8/9],[8/9,1],[1,13/12],[13/12,7/6],[7/6,5/4],[5/4,4/3]]],
+      ['hold','triplet-rest-tie',[[0,1/9],[1/9,2/9],[2/9,1/3],[2/3,1],[1,4/3]]],
+    ]) {
+      choose(preset,'half');choose(preset,fixture);choose(play,style);
+      const score=[...document.querySelectorAll('.notation')],id=document.querySelector('.passage').dataset.exerciseId;
+      scheduled=[];pad.click();await wait(()=>status().startsWith('Count-in'));
+      assert(document.querySelector('.passage').classList.contains('counts-hidden') && !pad.disabled,'existing count-in score/pad behavior');
+      const start=scheduled[0]+document.querySelectorAll('.count-in-dot').length/3;
+      await wait(()=>context.currentTime>=start+.015);
+      pad.setPointerCapture=()=>{};
+      for(const [down,up] of intervals) for(const [action,time] of [['down',down],['up',up]]) {
+        const event=style==='hold'?new PointerEvent(action==='down'?'pointerdown':'pointerup',{pointerId:97,pointerType:'touch',button:0,bubbles:true,cancelable:true}):new KeyboardEvent(action==='down'?'keydown':'keyup',{key:' ',code:'Space',bubbles:true,cancelable:true});
+        Object.defineProperty(event,'timeStamp',{value:performance.now()+(start+time+(action==='down'?.025:.020)-context.currentTime)*1000});pad.dispatchEvent(event);
+      }
+      await wait(()=>status()==='Reviewing');const record=await raw();
+      assert(record.status==='completed'&&record.playStyle===style,'completed shared capture in '+style);
+      assert(record.plan.notes.length===intervals.length,'canonical attacks including tied chain');
+      assert(record.plan.notes.every((n,i)=>Math.abs(n.start-intervals[i][0])<1e-9&&Math.abs(n.end-intervals[i][1])<1e-9),'exact mixed triplet target timing');
+      assert(record.events.length===2*intervals.length,'raw edges retained');
+      assert(record.assessmentPolicy.version===2 && record.holdPolicy.version===4,'captured assessment policies retained');
+      assert(record.assessment.expectedAttacks===intervals.length && record.assessment.capturedAttacks===intervals.length,'assessment uses actual attack evidence');
+      if(style==='hold') assert(record.assessment.matches.filter(m=>m.expected<3).every(m=>m.holdCredit===null),'short triplet sounds retain hold exemptions');
+      const results=document.querySelector('.performance-results'),text=results.innerText;
+      const system=document.querySelector('[data-setting="count-system"]');choose(system,'syllables');choose(system,'numbers');
+      assert(document.querySelector('.performance-results')===results&&results.innerText===text&&JSON.stringify(await raw())===JSON.stringify(record),'system changes never alter completed performance evidence or results');
+      for(const response of ['tap','write','both']){choose(mode,response);assert(document.querySelector('.passage').dataset.exerciseId===id&&score.every((n,i)=>document.querySelectorAll('.notation')[i]===n),'completed modes preserve exercise and shared score');}
+      const timelines=[...document.querySelectorAll('.timing-timeline')];
+      assert(timelines.length===score.length,'timeline follows shared systems');
+      assert(timelines.every((n,i)=>Math.abs(n.getBoundingClientRect().width-score[i].getBoundingClientRect().width)<.1),'timeline aligned with notation width');
+      assert(timelines.reduce((s,n)=>s+n.querySelectorAll('.timeline-hit').length,0)===2*intervals.length,'one expected and received marker per sounding attack');
+      assert(timelines.some(n=>n.querySelector('.timeline-sustain'))===(style==='hold'),'actual sustain bars only in Hold');
+    }
+    // Retry reuses the canonical score; changing response mode cancels a live attempt.
+    const priorId=document.querySelector('.passage').dataset.exerciseId;
+    button('Try again').click();await wait(()=>status().startsWith('Count-in'));
+    assert(document.querySelector('.passage').dataset.exerciseId===priorId,'Retry retains exercise');
+    choose(mode,'write');assert(status()==='Interrupted','count-in response switch interrupts');
+    choose(mode,'both');scheduled=[];button('Try again').click();await wait(()=>status().startsWith('Count-in'));
+    const start=scheduled[0]+document.querySelectorAll('.count-in-dot').length/3;
+    await wait(()=>context.currentTime>=start+.015);
+    choose(mode,'tap');assert(status()==='Interrupted','capture response switch interrupts');
+    const canceled=await raw();assert(canceled.status==='interrupted','cancellation evidence is never graded');
+    document.querySelector('.performance-results .result-actions button:last-child').click();
+    assert(document.querySelector('.passage').dataset.exerciseId!==priorId && !document.querySelector('.performance-results'),'Next replaces exercise and clears result');
+    return {passed:checks.length,checks};
+  } finally {AudioContext.prototype.createOscillator=oldOsc;URL.createObjectURL=oldURL;pad.setPointerCapture=oldPointer;document.removeEventListener('click',prevent,true);}
+})();

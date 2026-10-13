@@ -23,7 +23,7 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
   }
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
-    const group = node('g', { 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
+    const group = node('g', { 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
     if (event.kind === 'rest') {
       if (event.written[0] === 'H') {
         group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
@@ -59,10 +59,15 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
       if (event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     }
     if (event.kind === 'rest' && event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
-    const title = node('title', {}); title.textContent = `${event.kind} ${index + 1}`; group.append(title);
+    const title = node('title', {}); title.textContent = `${event.kind} ${index + 1}${event.tupletGroup === null ? '' : ', eighth-note triplet, three in the time of two'}`; group.setAttribute('data-music-label', title.textContent!); group.append(title);
     svg.append(group);
 
   });
+  for (const event of grid.events.filter(e => e.tupletGroup === e.index)) {
+    const members = grid.events.filter(e => e.tupletGroup === event.index);
+    const text = node('text', { x: (x(event.startSlot) + x(members.at(-1)!.startSlot)) / 2 + 10, y: 28, 'font-size': 30, 'font-family': 'serif', 'font-style': 'italic', 'text-anchor': 'middle', 'data-tuplet': event.tupletGroup! });
+    text.textContent = '3'; svg.append(text);
+  }
   return svg;
 }
 

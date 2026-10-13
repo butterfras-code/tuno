@@ -3,7 +3,7 @@ import { countGrid } from './grid.ts';
 import { passageGrid } from './passage.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-export const alphabet = ['1', '2', '3', '4', '5', '6', '&', 'e', 'a', 'ta', 'te'] as const;
+export const alphabet = ['1', '2', '3', '4', '5', '6', '&', 'e', 'a', 'ta', 'te', 'la', 'li'] as const;
 export type CountSymbol = typeof alphabet[number] | '';
 export interface Span { start: number; end: number }
 export interface CountAnswer { symbols: CountSymbol[]; spans: Span[]; rests: Span[] }
