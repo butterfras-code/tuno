@@ -51,7 +51,7 @@ The [original handoff](reference/RHYTHM_GAME_HANDOFF.md), especially sections 3�
 | --- | --- |
 | Confirmed for this slice | Conventional static notation; read through mistakes; press/hold/release; keyboard and pad; silence for rests; one attack for a tied chain; finite capture; separate raw onset/release/rest evidence; completed versus interrupted; deliberate Retry/exercise change |
 | Implemented engineering choices | Pure capture and evaluator; scheduled audio-clock transport; monophonic input ownership; ordered bounded attack matching; in-memory raw records and JSON download; shared score, performance pad and calibrated Expected/Received timelines |
-| Provisional, replaceable | 40–180 pulse BPM controls, initial 80 BPM; 180 ms attack association window; 750 ms final-release tail; 120 ms scheduling lead; exact window/boundary and interruption policies below |
+| Provisional, replaceable | 40–180 pulse BPM controls, initial 80 BPM; 180 ms attack association window; 300 ms final-release tail plus positive fixed calibration offset; 120 ms scheduling lead; exact window/boundary and interruption policies below |
 | Unresolved / deferred | Approved teaching tolerances; hardware-specific latency validation; teaching approval of the provisional articulation/sustain policy; absolute versus relational assessments; pulse/tempo mastery and evidence minimums; scores, recovery claims, progression; meters beyond the supported four, passages beyond four generated bars, final production navigation, saved performance history, physical-device support |
 
 ## Original performance fixtures

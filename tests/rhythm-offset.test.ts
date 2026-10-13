@@ -57,13 +57,13 @@ test('corrected releases and rest overlaps use the same fixed offset; capture le
   const c = new Capture(exercises[1]!, 80, true, undefined, profile);
   const endingBeforeRest = c.plan.notes.find(n => n.end === 3.75)!;
   c.input('down', 'keyboard', endingBeforeRest.start + .25, 0); c.input('up', 'keyboard', endingBeforeRest.end + .25, 1);
-  c.input('down', 'keyboard', 5.5, 2); c.input('up', 'keyboard', 6.85, 3);
-  assert.equal(c.advance(6.9), null);
-  assert.equal(c.plan.captureEnd, 10);
+  c.input('down', 'keyboard', 5.5, 2); c.input('up', 'keyboard', 6.45, 3);
+  assert.equal(c.advance(6.54), null);
+  assert.equal(c.plan.captureEnd, 6.55);
   const record = c.advance(c.plan.captureEnd)!;
   assert.equal(evaluateAttempt(record).restOverlaps.length, 0);
   assert.ok(evaluateAttempt(record, null).restOverlaps.length > 0);
-  assert.ok(Math.abs(evaluateAttempt(record).matches.at(-1)!.releaseOffset! - .6) < 1e-9);
+  assert.ok(Math.abs(evaluateAttempt(record).matches.at(-1)!.releaseOffset! - .2) < 1e-9);
 });
 test('manual taps ignore warmup, reject duplicates/misses/noise, and support signed offsets', () => {
   for (const shift of [.25, -.15]) {

@@ -4,7 +4,7 @@ import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 export interface TimingPolicy { readonly attackWindow: number; readonly releaseGrace: number; readonly leadIn: number }
 /** Seconds, provisional engineering defaults, not teaching thresholds. */
-export const prototypeTiming: TimingPolicy = { attackWindow: 0.18, releaseGrace: 0.75, leadIn: 0.12 };
+export const prototypeTiming: TimingPolicy = { attackWindow: 0.18, releaseGrace: 0.30, leadIn: 0.12 };
 export const quarterPulse: Fraction = [1, 4];
 /** BPM is in units of pulse, independent of counting labels or measure.groups. */
 export function musicalSeconds(time: Fraction, bpm: number, pulse: Fraction = quarterPulse): number {

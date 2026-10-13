@@ -70,9 +70,14 @@ notes. Rest-only attempts have rest evidence but no rhythm/hold/tempo percentage
 Interrupted attempts are ungraded. Missing first notes and extra attacks retain their
 penalties; skipping alternating notes cannot produce a perfect interpretation.
 
-Capture retains the existing bounded slow tail: `1.5 × target duration + release grace
-+ positive fixed session correction`. Target scheduling, count-in, received coordinates
-and the 750 ms release grace remain intact. Out-of-bound tempos have no promised fit.
+Capture ends at `target duration + 300 ms + max(0, fixed session offset)`.
+The deadline never scales with performed tempo or the analytical search bounds.
+Final holds and rests retain their complete written duration; an unreleased input
+stays unreleased at the deadline. Slower unfinished attempts are completed and
+scored from captured evidence, including missing notes. Reliable slower-tempo
+assessment with missing trailing notes prompts “You fell behind the beat. Try a
+slower tempo.” Sparse or ambiguous evidence retains the existing neutral feedback.
+Saved attempts retain their captured deadline and timing policy.
 
 ## Rhythm and steadiness
 

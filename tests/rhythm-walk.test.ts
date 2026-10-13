@@ -69,8 +69,8 @@ test('count-in holds are separate, no synthetic onset across start, release then
   assert.ok(r.missing.includes(0)); assert.equal(r.extra.length, 0); assert.equal(r.matches[0]!.expected, 1);
 });
 test('capture bounds, final late release, and unreleased input complete within finite tail', () => {
-  const c = capture('quarters'); input(c, 'down', 5.25); assert.equal(c.advance(6), null); input(c, 'up', 6.5);
-  const r = evaluateAttempt(finish(c)); assert.equal(r.matches[0]!.releaseOffset, .5);
+  const c = capture('quarters'); input(c, 'down', 5.25); assert.equal(c.advance(6), null); input(c, 'up', 6.2);
+  const r = evaluateAttempt(finish(c)); assert.ok(Math.abs(r.matches[0]!.releaseOffset! - .2) < 1e-9);
   const stuck = capture('quarters'); input(stuck, 'down', 5.25); assert.equal(finish(stuck).status, 'completed');
   assert.equal(evaluateAttempt(finish(stuck)).matches[0]!.releaseOffset, null);
   const boundary = capture(); input(boundary, 'down', -boundary.plan.countIn - .01); input(boundary, 'down', -boundary.plan.countIn); input(boundary, 'up', -.1); input(boundary, 'down', 0); input(boundary, 'up', 1.5); input(boundary, 'down', boundary.plan.captureEnd - .01); input(boundary, 'up', boundary.plan.captureEnd);

@@ -47,9 +47,9 @@ export class Capture {
     this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
     this.plan = planPassage(this.exercise.measures, bpm, this.policy, sourcePolicy(this.exercise.measures[0]!).pulse);
-    // Bounded analysis permits slower performances; retain their final attack and
-    // release without changing target notation, click times or received evidence.
-    this.plan.captureEnd = this.plan.duration * this.assessmentPolicy.maximumScale + this.policy.releaseGrace + Math.max(0, timingOffset?.seconds ?? 0);
+    // Finish at the written ending plus a short release/calibration allowance.
+    // Analytical tempo fitting must never extend the recording deadline.
+    this.plan.captureEnd = this.plan.duration + this.policy.releaseGrace + Math.max(0, timingOffset?.seconds ?? 0);
   }
   setClockEvidence(clock: ClockEvidence) { this.clock = { ...clock }; }
   get heldBy() { return this.owner; }

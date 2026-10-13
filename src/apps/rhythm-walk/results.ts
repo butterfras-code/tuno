@@ -18,6 +18,9 @@ export function musicalFeedback(record: AttemptRecord, a: Assessment) {
   if (a.rhythm === null) return {summary:'We couldn’t clearly assess this attempt.',suggestion:'Try again with one tap for each note.'};
   if (!a.matchedNotes) return {summary:'We didn’t hear the written notes clearly.',suggestion:'Try tapping once when each note starts.'};
   if (a.basis === 'target') return {summary:'There are only a few notes to assess.',suggestion:(a.missing ?? 0)>0 ? 'Try tapping once for each note.' : null};
+  const lastMatched = Math.max(-1, ...a.matches.map(m => m.expected));
+  if (a.tempo && a.tempo.differencePercent < -a.policy.onTargetPercent && lastMatched < a.expectedAttacks - 1 && (a.missing ?? 0) > 0)
+    return { summary: 'You fell behind the beat.', suggestion: 'Try a slower tempo.' };
   const poorHolds = holdStyle ? a.matches.filter(m=>m.holdCredit !== null && m.holdCredit < .8) : [];
   let suggestion: string | null = null;
   const restAttack = a.restIntrusions.some(r=>r.attack);

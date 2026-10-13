@@ -116,13 +116,31 @@ test('every preset and generated supported meter/length uses the same assessment
   }
 });
 
-test('bounded capture retains a complete slower attempt and stops at its exact end', () => {
+test('capture ends after a short allowance and grades unfinished slower attempts', () => {
   const c=new Capture({id:'slow-capture',label:'',description:'',measures:quarters},120,false);
-  const downs=[0,.7,1.4,2.1,2.8,3.5,4.2,4.9];
+  const downs=[0,.7,1.4,2.1,2.8,3.5,4.2];
   downs.forEach(t=>{c.input('down','keyboard',t,t*1000);c.input('up','keyboard',t+.01,(t+.01)*1000);});
-  assert.equal(c.plan.captureEnd,6.75);assert.equal(c.advance(6.749),null);
-  const record=c.advance(6.75)!;assert.equal(record.events.filter(e=>e.action==='down' && e.accepted).length,8);
-  near(assessAttempt(record).rhythm,100);assert.equal(record.plan.duration,4);
+  assert.equal(c.plan.captureEnd,4.3);assert.equal(c.advance(4.299),null);
+  const record=c.advance(4.3)!;
+  c.input('down','keyboard',4.9,4900);
+  assert.equal(record.events.filter(e=>e.action==='down' && e.accepted).length,7);
+  const a=assessAttempt(record);
+  assert.equal(record.status,'completed');assert.equal(a.missing,1);assert.ok(a.rhythm!<100);
+  assert.deepEqual(musicalFeedback(record,a),{summary:'You fell behind the beat.',suggestion:'Try a slower tempo.'});
+});
+
+test('capture keeps the full final hold or rest, independent of pace and passage length', () => {
+  for (const style of ['tap','hold'] as const) for (const measures of [1,2,3,4]) for (const rest of [false,true]) {
+    const music: RhythmMeasure[]=Array.from({length:measures},()=>({meter:[4,4],events:[['H'],['H',{rest}]]}));
+    const c=new Capture({id:'ending',label:'',description:'',measures:music},120,false,undefined,undefined,style);
+    c.input('down','keyboard',0,0);
+    assert.equal(c.advance(measures*2),null);
+    if (!rest) c.input('up','keyboard',measures*2+.2,0);
+    assert.equal(c.advance(measures*2+.299),null);
+    const record=c.advance(measures*2+.3)!;
+    assert.equal(record.endedAt,measures*2+.3);assert.equal(record.status,'completed');
+    assert.equal(record.events.filter(e=>e.action==='up'&&e.accepted).length,rest?0:1);
+  }
 });
 
 test('tempo bounds and omitted alternating notes cannot become a perfect pattern', () => {
