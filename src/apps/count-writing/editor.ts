@@ -99,6 +99,10 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     if (event.pointerType === 'mouse' && !slots.includes(event.relatedTarget as HTMLButtonElement)) { hoveredRest = null; renderRestTargets(); }
   });
   const live = el('p', 'sr-only'); live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
+  const endpointPrompt = el('div', 'endpoint-prompt'); endpointPrompt.hidden = true;
+  const endpointMessage = el('span');
+  const cancelEndpoint = button('Cancel', () => { lineStart = null; lineEnd = null; restStart = null; restDraft = null; refresh(); });
+  endpointPrompt.append(endpointMessage, cancelEndpoint); card.append(endpointPrompt);
   function edit() { if (result) { changed = true; options.edited(); } refresh(); }
   function nearestSlot(index: number, min = 0, max = grid.slots.length - 1) {
     const candidates = grid.availableSlots.filter(tick => tick >= min && tick <= max);
@@ -123,7 +127,15 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te', 'la', 'li'],
     enabled: symbol => grid.policy.compound || (/^\d/.test(symbol) || ['la', 'li'].includes(symbol) || (system === 'syllables' ? ['ta', 'te'].includes(symbol) : ['&', 'e', 'a'].includes(symbol))),
     input: enterKey,
-    restActions: grid.fine ? { start: () => beginRest(selected), close: () => { closeRest(selected); countPopover.dismiss(true); }, remove: () => { const group = answer.rests.find(r => selected >= r.start && selected <= r.end); if (group) removeRest(group); countPopover.dismiss(true); } } : undefined,
+    markings: {
+      canRest: () => !activeRests().some(r => selected >= r.start && selected <= r.end),
+      rest: () => { beginRest(selected); slots[selected]!.focus({ preventScroll: true }); },
+      line: () => {
+        countPopover.dismiss();
+        if (options.externalLines) card.dispatchEvent(new CustomEvent('start-duration', { bubbles: true, detail: selected }));
+        else { restStart = null; restDraft = null; lineEnd = null; lineStart = selected; previewCursor = null; refresh(); slots[selected]!.focus({ preventScroll: true }); }
+      },
+    },
     select: tick => { selected = tick; refresh(); slots[tick]!.focus({ preventScroll: true }); },
     label: () => `Count for ${positionLabel(selected)}`,
     anchor: () => {
@@ -156,8 +168,8 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   listen(document, 'pointerdown', cancelKeyboardLine, true);
   function enterKey(event: KeyboardEvent): boolean {
     if (event.ctrlKey || event.metaKey || event.altKey) { buffer.clear(); return false; }
-    if (!grid.policy.compound && (event.key === 'l' || (system === 'syllables' && event.key === 't'))) {
-      event.preventDefault(); if (!event.repeat) buffer.key(event.key); live.textContent = event.key === 'l' ? 'Type a or i to complete la or li. Escape cancels.' : 'Type a or e to complete ta or te. Escape cancels.'; return true;
+    if (!grid.policy.compound && system === 'syllables' && event.key === 't') {
+      event.preventDefault(); if (!event.repeat) buffer.key(event.key); live.textContent = 'Type a or e to complete ta or te. Escape cancels.'; return true;
     }
     const symbol = !grid.policy.compound && (system === 'syllables' || buffer.active()) ? buffer.key(event.key) : countKey(event.key);
     if (symbol !== null) { event.preventDefault(); if (!event.repeat) countPopover.submit(symbol); return true; }
@@ -219,6 +231,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
   }
   function activateCount(tick: number, event: MouseEvent) {
     if (countPopover.consumeClick(event)) return;
+    if (restStart !== null) { closeRest(tick); return; }
     if (lineStart !== null || lineEnd !== null) { lineTap(tick); return; }
     const bounds = slots[tick]!.getBoundingClientRect();
     countPopover.open(tick, event.detail ? { x: event.clientX, y: event.clientY } : { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 });
@@ -289,7 +302,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
         else editDuration(index, tick);
       } else { lineStart = tick; refresh(); }
     }
-    else if (lineStart !== tick) {
+    else if (tick >= lineStart && tick <= durationLimit(lineStart)) {
       storeDuration({ start: Math.min(lineStart, tick), end: durationEndSlot(grid, Math.max(lineStart, tick)) });
       lineStart = null; edit(); renderLines();
     }
@@ -300,7 +313,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
       const slot = button('');
       slot.addEventListener('click', event => activateCount(tick, event));
       slot.addEventListener('pointerdown', event => {
-        if (!options.hidden() && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
+        if (!options.hidden() && restStart === null && lineStart === null && lineEnd === null) countPopover.startPointer(event, tick);
       });
       slot.setAttribute('aria-haspopup', 'dialog'); slot.setAttribute('aria-controls', `count-popover-${number}`);
       slot.hidden = !grid.slots[tick]!.available;
@@ -388,11 +401,19 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     });
   }
   function refresh() {
+    const choosingRest = restStart !== null;
+    const choosingLine = !keyboardLine && (lineStart !== null || lineEnd !== null);
+    endpointPrompt.hidden = !choosingRest && !choosingLine;
+    endpointMessage.textContent = choosingRest ? 'Tap where the rest ends' : 'Tap where the line ends';
     answerArea.dataset.placement = presentation.linePlacement;
     answerArea.dataset.appearance = presentation.sustainAppearance;
     answerArea.classList.toggle('line-selecting', lineStart !== null || lineEnd !== null);
     anchors.forEach((anchor, tick) => anchor.setAttribute('aria-pressed', String(lineStart === tick)));
     slots.forEach((slot, tick) => {
+      const start = lineStart ?? (lineEnd === null ? null : answer.spans[lineEnd]!.start);
+      const validRest = restStart !== null && tick >= restStart && !activeRests().some(r => r.start <= tick && r.end >= restStart!);
+      const validLine = start !== null && tick >= start && tick <= durationLimit(start, lineEnd ?? undefined);
+      slot.classList.toggle('endpoint-choice', grid.slots[tick]!.available && (choosingRest ? validRest : choosingLine && validLine));
       const symbol = displayCount(answer.symbols[tick]!, offbeat);
       slot.textContent = symbol || '·';
       slot.setAttribute('aria-label', `${positionLabel(tick)}, ${symbol || 'empty'}${activeRests().some(r => tick >= r.start && tick <= r.end) ? ', parenthesized' : ''}`);
@@ -477,6 +498,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     };
     activeRests().forEach(group => drawGroup(group));
     if (restDraft) drawGroup(restDraft, true);
+    else if (restStart !== null) drawGroup({ start: restStart, end: restStart }, true);
   }
   function renderFeedback() {
     feedback.replaceChildren();

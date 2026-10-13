@@ -14,19 +14,16 @@ window.__tripletCheck = (async () => {
     const s=slots(doc), score=doc.querySelector('.notation'),id=doc.querySelector('.passage').dataset.exerciseId;
     const positions=[0,4,8,12,18,24,28,32,36,39,42,45],tokens=['1','la','li','2','&','3','la','li','4','e','&','a'];
     assert(s.length===48 && s.filter(n=>!n.hidden).length===12,'exact mixed lattice with only local inputs');
-    positions.forEach((p,i)=>{s[p].focus();for(const c of tokens[i])key(s[p],c);});
+    positions.forEach((p,i)=>{s[p].focus();key(s[p],tokens[i]==='la'?'l':tokens[i]==='li'?'i':tokens[i]);});
     button(doc,'Check').click();assert(doc.querySelector('.dimension').classList.contains('correct'),'independent mixed numeric answer');
     choose(doc,'Counting system','syllables');
     assert(!doc.querySelector('.dimension') && s[4].textContent==='la' && s[8].textContent==='li','triplets retained and feedback invalidated');
     assert(s[18].textContent==='te' && s[39].textContent==='ta' && s[45].textContent==='ta','binary neighbors use selected system');
     button(doc,'Check').click();assert(doc.querySelector('.dimension').classList.contains('correct'),'independent mixed syllable answer');
     for(const system of ['numbers','syllables']) {
-      choose(doc,'Counting system',system);s[4].focus();key(s[4],'l');key(s[4],'a');s[4].focus();key(s[4],'l');assert(s[4].textContent==='la' && doc.activeElement===s[4],'l prefix never commits/advances');key(s[4],'Backspace');assert(s[4].textContent==='la','prefix backspace preserves saved answer');
-      key(s[4],'l');key(s[4],'i');assert(s[4].textContent==='li' && doc.activeElement===s[8],'atomic li commits and advances once');
+      choose(doc,'Counting system',system);s[4].focus();key(s[4],'l');assert(s[4].textContent==='la' && doc.activeElement===s[8],'single-key la commits and advances once');
+      s[4].focus();key(s[4],'i');assert(s[4].textContent==='li' && doc.activeElement===s[8],'single-key li commits and advances once');
       choose(doc,'Counting system',system==='numbers'?'syllables':'numbers');assert(s[4].textContent==='li','incorrect triplet token survives switching');
-      s[4].focus();key(s[4],'l');key(s[4],'ArrowRight');key(s[8],'a');assert(s[8].textContent==='a','navigation cancels incomplete l');
-      s[4].focus();key(s[4],'l');s[8].focus();key(s[8],'i');assert(s[8].textContent==='a','blur cancels incomplete l');
-      s[4].focus();key(s[4],'l');key(s[4],'Escape');key(s[4],'i');assert(s[4].textContent==='li','Escape cancels incomplete l');
     }
     s[4].click();const popup=doc.querySelector('#count-popover-1');
     assert(!popup.querySelector('[data-symbol="la"]').hidden && !popup.querySelector('[data-symbol="li"]').hidden,'touch choices expose both triplet tokens');

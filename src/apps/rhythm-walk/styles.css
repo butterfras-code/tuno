@@ -57,13 +57,30 @@ main.rhythm-app {
 .calibration .pad { margin-top: 12px; }
 .tap-response li { line-height: 1.5; margin-bottom: 10px; }
 .note { font-size: 14px; color: var(--color-muted); }
+.counting-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.counting-shortcut { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.counting-shortcut kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 24px; padding: 0 5px; border: 1px solid var(--color-line); border-bottom-width: 2px; border-radius: 5px; background: var(--color-surface); color: var(--color-ink); font: 600 12px var(--font-body); }
 [data-feedback=missing], [data-feedback=overlap] { color: var(--color-accent); }
 [data-feedback=matched], [data-feedback=silent] { color: var(--color-teal); }
 .counts-hidden .notation, .counts-readonly .notation { pointer-events: none; }
 .counts-readonly .answer-area { pointer-events: none; }
 .rhythm-app .activity-surface { padding: 24px; border: 0; border-radius: var(--radius-surface); }
 .shared-controls { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--color-line); }
-.shared-controls > .exercise-toolbar { display: grid; grid-template-columns: minmax(160px, 190px) minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.exercise-header-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); align-items: start; gap: 24px; }
+.exercise-toolbar { display: grid; gap: 12px; min-width: 0; }
+.preset-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.shared-controls .setup-actions .control { width: auto; }
+.feedback-snapshot { padding: 16px; border: 1px dashed var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
+.feedback-snapshot h2 { display: inline; margin: 0; font: 700 16px/1.3 var(--font-heading); }
+.feedback-placeholder-label { margin-left: 8px; font-size: 11px; color: var(--color-muted); }
+.feedback-snapshot p { margin: 8px 0 0; font-size: 13px; color: var(--color-muted); }
+.response-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 16px 0; }
+.response-controls .field { margin: 0; }
+.custom-exercise-dialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); box-sizing: border-box; overflow: auto; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-surface); background: var(--color-surface); color: var(--color-ink); }
+.custom-exercise-dialog::backdrop { background: #152b3b80; }
+.custom-exercise-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.custom-exercise-header h2 { margin: 0; font: 700 22px/1.3 var(--font-heading); }
+.custom-exercise-dialog .shared-exercise-settings { margin-top: 16px; }
 .shared-controls .field { margin: 0; }
 .shared-controls .control { width: 100%; }
 .shared-controls .setup-actions .control { white-space: nowrap; }
@@ -75,8 +92,8 @@ main.rhythm-app {
 .practice-help p, .performance-help p { font-size: 14px; color: var(--color-muted); }
 @media (max-width: 760px) {
   .rhythm-app .activity-surface { padding: 16px 12px; border-radius: var(--radius-card); }
-  .shared-controls > .exercise-toolbar { grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; }
-  .exercise-toolbar > .field:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .exercise-header-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .custom-exercise-dialog { padding: 16px; }
   .shared-controls .control { min-height: 44px; padding: 10px; font-size: 14px; }
 }
 @media (max-width: 540px) { .calibration { padding: 12px; } .tap-response .field { max-width: 100%; } }
@@ -206,15 +223,3 @@ main.rhythm-app {
   .rhythm-app .fine-grid .score-actions { position: static; pointer-events: auto; }
   .rhythm-app .fine-grid .score-actions > .control, .rhythm-app .fine-grid .write-actions { transform: none; }
 }
-
-/* Fine-grid rest editing has full-size popup actions. Keep bracket edges clear
-   of count centers, and avoid overlapping ghost targets in dense lanes. */
-.fine-grid .rest-targets { display: none; }
-.fine-grid .rest-existing-opening, .fine-grid .rest-existing-closing { width: 12px; }
-.fine-grid .rest-existing-opening { left: 0; }
-.fine-grid .rest-existing-closing { right: 0; }
-.fine-grid .rest-existing-opening .rest-opening { left: 0; width: 10px; }
-.fine-grid .rest-existing-closing .rest-closing { right: 0; width: 10px; }
-
-.count-popover-rest-actions { grid-template-columns: minmax(0, 1fr); margin-top: 8px; }
-.count-popover-rest { min-height: 44px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-canvas); color: var(--color-ink); font: 700 14px var(--font-heading); cursor: pointer; }

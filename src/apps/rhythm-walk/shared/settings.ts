@@ -82,9 +82,9 @@ export function createSettingsPage(callbacks: {
   convention: (value: DottedQuarterConvention) => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
-  const intro = el('p', 'settings-intro', 'Choose exercise ingredients, performance settings and writing preferences for Uno234.');
-  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on Next exercise. New Exercise clears both responses and returns to practice.');
-  const newExercise = button('New Exercise', callbacks.newExercise, true);
+  const intro = el('p', 'settings-intro', 'Use Custom in the exercise header for rhythm ingredients. Choose performance settings and writing preferences here.');
+  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on New exercise. New exercise clears both responses and returns to practice.');
+  const newExercise = button('New exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
   const heading = el('h2', '', 'Available now'); heading.id = 'available-settings';
@@ -97,7 +97,7 @@ export function createSettingsPage(callbacks: {
   system.dataset.setting = 'count-system';
   const systemField = field('Counting system', system);
   systemField.append(field('Offbeat symbol · 1 e & a', offbeat));
-  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for ta/te. Triplets use 1 la li in both systems; type l then a/i. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
+  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for ta/te. Triplets use 1 la li in both systems; type l for la and i for li. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
   const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
   convention.dataset.setting = 'dotted-quarter-convention';
   const conventionField = field('Dotted-quarter internal &', convention);
@@ -135,7 +135,7 @@ export function createSettingsPage(callbacks: {
   }
   meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. Sixteenth notes/rests, dotted eighth notes and triplet eighths are retained but omitted in 6/8. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
   const lengthField = field('Exercise length', length);
-  lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on Next exercise; keeps the current answer.'));
+  lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on New exercise; keeps the current answer.'));
   const vocabulary = el('fieldset', 'settings-options active-ingredients');
   vocabulary.append(el('legend', '', 'Allowed rhythm ingredients · next exercise'));
   for (const ingredient of ingredients) {
@@ -146,7 +146,7 @@ export function createSettingsPage(callbacks: {
   const notationOption = el('label', 'setting-option');
   const notationToggle = el('input'); notationToggle.type = 'checkbox'; notationToggle.checked = generation.allowUnintuitiveNotation; notationToggle.dataset.setting = 'unintuitive-notation';
   notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
-  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters are used only when this option and their ingredient checkbox are enabled. Applies on Next exercise; keeps your answer.'));
+  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters are used only when this option and their ingredient checkbox are enabled. Applies on New exercise; keeps your answer.'));
   notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
   const patternFields = el('div');
   for (const [key, label, hint] of [
@@ -155,7 +155,7 @@ export function createSettingsPage(callbacks: {
   ] as const) {
     const option = el('label', 'setting-option'); const toggle = el('input'); toggle.type = 'checkbox'; toggle.checked = Boolean(generation[key]); toggle.dataset.setting = key;
     option.append(toggle, el('span', '', label));
-    patternFields.append(option, el('p', 'setting-hint', `${hint} Off by default; applies on Next and keeps the current answer.`));
+    patternFields.append(option, el('p', 'setting-hint', `${hint} Off by default; applies on New exercise and keeps the current answer.`));
     toggle.addEventListener('change', () => { generation = { ...generation, [key]: toggle.checked }; generationChanged(); });
   }
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
@@ -163,11 +163,11 @@ export function createSettingsPage(callbacks: {
     if (customize) generation = customizeTeachingPreset(generation);
     const issue = generationIssue(generation);
     newExercise.disabled = Boolean(issue);
-    generationStatus.textContent = issue ?? 'Ready for Next exercise. Only compatible checked ingredients are used; each exercise uses one selected time signature.';
+    generationStatus.textContent = issue ?? 'Ready for New exercise. Only compatible checked ingredients are used; each exercise uses one selected time signature.';
     callbacks.generation(structuredClone(generation));
     renderTeachingPreset();
   }
-  generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on Next exercise.';
+  generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on New exercise.';
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
   const teachingPicker = select([{ value: '', label: 'Inspect a teaching preset' }, ...teachingPresets.map(p => ({ value: p.id, label: `${p.label}${resolveTeachingPreset(p).supported ? ' · note-only practice' : ' · unavailable'}` }))], () => renderTeachingPreset());
   teachingPicker.dataset.setting = 'teaching-preset';
@@ -194,7 +194,7 @@ export function createSettingsPage(callbacks: {
     teachingAttribution.textContent = active ? `${active.label}${generation.teachingPreset?.customized ? ' · customized' : ' · note-only practice'} · pending settings · source: ${active.source.revision}.` : 'Free practice. Teaching presets are separate from fixed review exercises.';
     const definition = teachingPresets.find(p => p.id === teachingPicker.value);
     teachingEvidence.replaceChildren();
-    if (!definition) { teachingStatus.textContent = 'Inspect any level. Applying an available preset changes pending settings; Next replaces the exercise.'; applyPreset.disabled = true; return; }
+    if (!definition) { teachingStatus.textContent = 'Inspect any level. Applying an available preset changes pending settings; New exercise replaces the exercise.'; applyPreset.disabled = true; return; }
     const result = resolveTeachingPreset(definition);
     applyPreset.disabled = !result.supported;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
@@ -222,7 +222,7 @@ export function createSettingsPage(callbacks: {
   restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
   const performanceControls = el('div', 'settings-live-controls performance-settings');
   performanceControls.append(callbacks.playField, callbacks.metronomeField);
-  available.append(activeHeader, el('h3', '', 'Exercise settings'), exerciseControls, el('h3', '', 'Performance'), performanceControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
+  available.append(activeHeader, el('h3', '', 'Performance'), performanceControls, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];
@@ -249,13 +249,15 @@ export function createSettingsPage(callbacks: {
   }
   const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
-  generationStatus.textContent = generationIssue(generation) ?? 'Ready for Next exercise.'; newExercise.disabled = Boolean(generationIssue(generation));
+  generationStatus.textContent = generationIssue(generation) ?? 'Ready for New exercise.'; newExercise.disabled = Boolean(generationIssue(generation));
   let locked = false;
   return {
     page,
+    exerciseControls,
     setLocked: (active: boolean) => {
       locked = active;
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
+      exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
       if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
     },
     sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false, countingSystem: CountingSystem = 'numbers') => {

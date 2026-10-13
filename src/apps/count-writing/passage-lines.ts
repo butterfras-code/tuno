@@ -12,6 +12,15 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
   let draft: (Span & { editing?: number; keyboard?: boolean }) | null = null;
   const label = (position: number) => `measure ${grid.slots[position]!.measure + 1}, ${grid.slots[position]!.label}`;
   const status = el('span', 'sr-only'); status.setAttribute('role', 'status'); root.append(status);
+  const prompt = el('div', 'endpoint-prompt'); prompt.hidden = true;
+  const message = el('span', '', 'Tap where the line ends');
+  prompt.append(message, button('Cancel', () => { draft = null; render(); })); root.append(prompt);
+  root.addEventListener('start-duration', event => {
+    const card = event.target as HTMLElement;
+    const position = grid.offsets[Number(card.dataset.measure) - 1]! + (event as CustomEvent<number>).detail;
+    editors.forEach(e => e.suspend());
+    draft = { start: position, end: position }; render();
+  }, { signal: lifecycle.signal });
   function removeSaved(index: number) {
     spans.splice(index, 1); draft = null; editors.forEach(editor => editor.markEdited()); render();
   }
@@ -29,7 +38,7 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
     return (tick < 0 && count < 0) ? null : grid.offsets[Number(card.dataset.measure) - 1]! + Math.max(tick, count);
   }
   function tap(position: number) {
-    if (draft) { draft.end = position; commit(); }
+    if (draft) { if (position < draft.start) return; draft.end = position; commit(); }
     else {
       const editing = spans.findIndex(span => span.start <= position && span.end >= position);
       draft = editing < 0 ? { start: position, end: position } : { ...spans[editing]!, end: lastAvailable(spans[editing]!.end), editing };
@@ -146,7 +155,12 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
         layer.append(track);
       }));
       editor.resume();
+      editor.card.querySelectorAll<HTMLButtonElement>('.count-slot').forEach((slot, index) => {
+        if (draft && !draft.keyboard) slot.classList.toggle('endpoint-choice', !slot.hidden && grid.offsets[measure]! + index >= draft.start);
+        else if (!editor.editingRest()) slot.classList.remove('endpoint-choice');
+      });
     });
+    prompt.hidden = !draft || Boolean(draft.keyboard);
     status.textContent = draft ? `Line from ${label(draft.start)} to ${label(draft.end)}. Choose an endpoint to save; Escape cancels. Delete removes a selected saved line.` : '';
   }
   render();
@@ -154,6 +168,6 @@ export function createPassageLines(root: HTMLElement, grid: PassageGrid, editors
     spans: () => spans,
     cancel: () => { draft = null; render(); },
     reset: () => { spans = []; draft = null; render(); },
-    destroy: () => { lifecycle.abort(); status.remove(); },
+    destroy: () => { lifecycle.abort(); status.remove(); prompt.remove(); },
   };
 }

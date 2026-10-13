@@ -91,11 +91,11 @@ test('review boundary rejects deferred tuplets and incoming barline ties', () =>
   assert.throws(()=>countGrid(shifted),/quarter beats/);
   assert.throws(()=>passageGrid([{meter:[2,4],events:[['Q'],['Q',{tieNext:true}]]},f]),/ties involving/);
 });
-test('triplet prefix is atomic and cancelable, with incorrect answers retained across systems', () => {
-  const b=syllableBuffer();assert.equal(b.key('l'),null);assert.ok(b.active());assert.equal(b.key('a'),'la');assert.ok(!b.active());
-  b.key('l');assert.equal(b.key('i'),'li');
-  for(const key of ['Backspace','Delete','Tab','ArrowLeft','Escape']) {b.key('l');assert.equal(b.key(key),null);assert.ok(!b.active());}
-  b.key('l');b.clear();assert.equal(b.key('i'),null);
+test('single-key triplet entry is atomic, with incorrect answers retained across systems', () => {
+  const b=syllableBuffer();assert.equal(b.key('l'),'la');assert.ok(!b.active());
+  assert.equal(b.key('i'),'li');assert.ok(!b.active());
+  b.key('t');assert.equal(b.key('l'),'la');assert.ok(!b.active());
+  b.key('t');assert.equal(b.key('i'),'li');assert.ok(!b.active());
   for(const p of [fraction(0),fraction(1,12),fraction(1,6),fraction(1,8)]) for(const token of ['la','li'] as const) {
     assert.equal(translateCount(token,p,'numbers','syllables',true),token);
     assert.equal(translateCount(token,p,'syllables','numbers',true),token);

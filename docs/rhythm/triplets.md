@@ -16,7 +16,7 @@ Both counting systems use `1 la li`, `2 la li`, etc. These are atomic stored tok
 
 Measures containing triplets derive a 1/48-whole-note presentation lattice: twelve positions per quarter, accommodating exact thirds, eighths and sixteenths. This is answer storage/layout, never authored time. Each triplet beat exposes only its three positions; neighboring beats derive their own available positions from written values. Other measures retain their previous eighth/sixteenth grids. Passage offsets, rest ranges, tied sounding spans, duration endpoints, navigation and timeline mapping use these derived sizes. Hidden fractional positions have no count token and are never required. Duration lines elsewhere retain trailing hidden positions through release.
 
-Type `l`, then `a` or `i`, in either simple-meter counting system. `l` only starts transient input and announces the completion keys. The second letter commits once and advances once. Backspace/Delete cancel the prefix without deleting a saved answer; arrows/Tab, Escape, blur, pointer entry, mode/system changes and editor suspension clear it. Touch choices expose `la` and `li` alongside the selected binary system without filtering choices by correct answer.
+Type `l` for `la` or `i` for `li` in either simple-meter counting system. Each key commits the complete syllable and advances once. Touch choices expose `la` and `li` alongside the selected binary system without filtering choices by correct answer.
 
 ## Engraving and performance
 

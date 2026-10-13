@@ -33,6 +33,7 @@ let presentation = preferences.presentation;
 let dottedConvention: DottedQuarterConvention = preferences.convention;
 let generation = preferences.generation;
 let fixtureId = preferences.preset;
+let pendingFixtureId = fixtureId;
 const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
 function persist() {
   Object.assign(preferences, { countingSystem, offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
@@ -54,10 +55,30 @@ const mode = select(modeOptions, value => switchMode(value as Mode)); mode.value
 const modeField = field('Mode', mode);
 const practiceView = el('section'); practiceView.id = 'practice-view';
 const banner = el('p', 'counting-hint');
+banner.append(el('span', '', 'Click a box to add counting symbols or use your keyboard.'));
+const lineShortcut = el('span', 'counting-shortcut');
+const leftKey = el('kbd', '', '←'); leftKey.setAttribute('aria-label', 'Left arrow');
+const rightKey = el('kbd', '', '→'); rightKey.setAttribute('aria-label', 'Right arrow');
+lineShortcut.append(el('kbd', '', 'Shift'), ' + ', leftKey, ' / ', rightKey, ' — add duration line');
+const restShortcut = el('span', 'counting-shortcut'); restShortcut.append(el('kbd', '', '('), ' — start rest pair');
+banner.append(lineShortcut, restShortcut);
 const exerciseSummary = el('p', 'exercise-summary'); exerciseSummary.setAttribute('role', 'status');
 const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId; picker.dataset.preset = '';
-const setup = el('div', 'setup exercise-toolbar'); setup.append(modeField, field('Exercise preset', picker));
+const customDialog = el('dialog', 'custom-exercise-dialog'); customDialog.id = 'custom-exercise';
+customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
+const customTitle = el('h2', '', 'Custom exercise'); customTitle.id = 'custom-exercise-title';
+const customButton = button('Custom…', () => { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
+customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute('aria-controls', customDialog.id);
+const customClose = button('Done', () => customDialog.close()); customClose.autofocus = true;
+customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
+const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
+customDialog.append(customHeader, el('p', 'setting-hint', 'Choose what to include. Changes apply when you select New exercise.'));
+const presetRow = el('div', 'preset-row'); presetRow.append(field('Preset', picker), customButton);
+const setup = el('div', 'setup exercise-toolbar'); setup.append(presetRow);
+const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');
+const snapshotTitle = el('h2', '', 'Recent feedback'); snapshotTitle.id = 'feedback-snapshot-title';
+feedbackSnapshot.append(snapshotTitle, el('span', 'feedback-placeholder-label', 'Placeholder'), el('p', '', 'Your latest counting and performance feedback will appear here.'));
 const activitySurface = el('section', 'card activity-surface'); activitySurface.setAttribute('aria-label', 'Uno234 activity');
 const passage = el('section', 'passage'); passage.setAttribute('aria-label', 'Exercise passage');
 const passageScroll = el('div', 'score-scroll passage-scroll');
@@ -77,11 +98,11 @@ helpButton.popoverTargetElement = help; helpButton.setAttribute('aria-controls',
 helpButton.setAttribute('aria-expanded', 'false');
 help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
 help.append(el('h2', '', 'Practice help'),
-  el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. Next exercise starts a new score and clears both responses.'),
+  el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. New exercise starts a new score and clears both responses.'),
   el('p', '', 'Measures fit the available width. Counts restart at each barline. Use one pair of parentheses per written rest, and duration lines for sustained notes and rests.'),
   el('p', '', 'Duration lines: tap a start anchor, then the last covered count. Use Shift + arrows on the keyboard. Select a saved line to change its endpoint or delete it with × or Delete. Escape cancels an edit.'),
   el('p', '', 'In 6/8, write every eighth count: 1 2 3 | 4 5 6. Performance follows two dotted-quarter pulses.'),
-  el('p', '', 'Preferences are saved in this browser. Exercise settings apply on Next exercise. Reloading starts with blank responses.'));
+  el('p', '', 'Preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
@@ -92,10 +113,10 @@ const showCountsField = field('Show written counts during performance', showCoun
 let performing = false;
 const performance = createPerformance({ exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
-    performing = active; picker.disabled = next.disabled = active;
+    performing = active; picker.disabled = next.disabled = customButton.disabled = active;
     settings.setLocked(active);
     settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
-    if (!active) next.disabled = Boolean(generationIssue(generation));
+    if (!active) next.disabled = pendingFixtureId === 'generated' && Boolean(generationIssue(generation));
     if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
     updateResponseView();
     if (active) {
@@ -105,27 +126,33 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
   },
   decorate: decoratePerformance,
   next: () => newExercise(),
-  nextIssue: () => generationIssue(generation),
+  nextIssue: () => pendingFixtureId === 'generated' ? generationIssue(generation) : null,
 });
 function evaluateAnswer() {
   lineEditor?.cancel(); editors.forEach(e => e.suspend());
   const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans(), countingSystem);
   editors.forEach((editor, index) => editor.showResult(results[index]!));
   const dimensions = results.flatMap(result => Object.values(result));
-  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or Next exercise.' : 'All measures match. Choose Next exercise to keep practicing.';
+  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or New exercise.' : 'All measures match. Choose New exercise to keep practicing.';
   retry.hidden = false;
 }
 const check = button('Check', evaluateAnswer, true);
 const retry = button('Retry', () => { lineEditor?.cancel(); editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
 function newExercise(returnToPractice = false) {
-  const issue = generationIssue(generation);
+  const issue = pendingFixtureId === 'generated' ? generationIssue(generation) : null;
   if (issue) { summary.textContent = issue; return; }
   performance.cancel('New exercise');
-  activity.preferences.generation = generation; activity.next();
-  fixtureId = 'generated'; picker.value = fixtureId; loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
+  fixtureId = pendingFixtureId; picker.value = fixtureId;
+  if (fixtureId === 'generated') {
+    activity.preferences.generation = generation; activity.next();
+    loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
+  } else {
+    loadExercise(practiceFixtures.find(f => f.id === fixtureId)!.measures, !returnToPractice);
+  }
+  if (customDialog.open) customDialog.close();
   if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
 }
-const next = button('Next exercise', () => newExercise(Boolean(practiceView.hidden)));
+const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
 const reset = button('Clear', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
 actions.append(check);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
@@ -134,7 +161,8 @@ writeResponse.append(retry, summary, passageFeedback);
 help.append(performance.help);
 passage.prepend(performance.tempoField);
 passageScroll.after(performance.section);
-practiceView.append(banner, showCountsField, passage, writeResponse);
+const responseControls = el('div', 'response-controls'); responseControls.append(modeField, showCountsField);
+practiceView.append(banner, passage, responseControls, writeResponse);
 const settings = createSettingsPage({
   initialGeneration: generation,
   metronomeField: performance.metronomeField,
@@ -151,31 +179,31 @@ const settings = createSettingsPage({
   appearance: value => { presentation = { ...presentation, sustainAppearance: value }; updateEditors(); },
   convention: value => { dottedConvention = value; updateEditors(); },
   generation: value => {
-    generation = value; persist();
+    generation = value; pendingFixtureId = 'generated'; picker.value = pendingFixtureId; persist();
     const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
-    exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; Next exercise uses these settings.';
+    exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; New exercise uses these settings.';
   },
 });
+customDialog.append(settings.exerciseControls);
 const exerciseMeta = el('div', 'exercise-meta'); exerciseMeta.append(exerciseSummary, helpButton);
-const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls'); sharedControls.append(setup, exerciseMeta);
+const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls');
+const headerLayout = el('div', 'exercise-header-layout'); headerLayout.append(setup, feedbackSnapshot);
+sharedControls.append(headerLayout, exerciseMeta);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(nav);
 activitySurface.append(pageTitle, sharedControls, practiceView, settings.page);
-main.append(header, activitySurface, help); app.append(main);
+main.append(header, activitySurface, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
-  if (id === fixtureId) return;
-  if (id === 'generated' && generationIssue(generation)) { picker.value = fixtureId; settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem); return; }
-  performance.cancel('Exercise changed');
-  fixtureId = id; picker.value = id;
-  focusNewRhythm = Boolean(practiceView.hidden);
-  loadExercise(id === 'generated' ? generateExercise(generation) : practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
+  pendingFixtureId = id;
+  next.disabled = id === 'generated' && Boolean(generationIssue(generation));
+  exerciseSummary.textContent = 'Preset selected. Choose New exercise to start it; your current answer is kept.';
 }
 function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true) {
   performance.cancel('Exercise changed');
   if (replace) { activity.preferences.preset = fixtureId; activity.replace(measures); }
-  performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
+  performance.reset(); persist(); next.disabled = pendingFixtureId === 'generated' && Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
   lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
@@ -206,8 +234,6 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
   exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
   summary.textContent = ''; retry.hidden = true;
-  const compound = measures[0]!.meter[1] === 8;
-  banner.textContent = compound ? 'Count 1 2 3 | 4 5 6 · Two dotted-quarter pulses per bar.' : 'Count written onsets and sustained quarter beats · Restart at each barline.';
   updateEditors(); updateResponseView();
   if (focus && preferences.mode !== 'tap') editors[0]?.focus();
 }

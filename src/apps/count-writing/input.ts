@@ -6,7 +6,9 @@ import type { CountSymbol } from './evaluation.ts';
 // Input aliases and displayed syllables belong to the counting system, not musical time.
 export type OffbeatSymbol = '&' | '+';
 export function countKey(key: string): CountSymbol | null {
-  if (key === '+') return '&';
+  if (key === '+' || key === '=') return '&';
+  if (key === 'l') return 'la';
+  if (key === 'i') return 'li';
   return (alphabet as readonly string[]).includes(key) ? key as CountSymbol : null;
 }
 export function displayCount(symbol: CountSymbol, offbeat: OffbeatSymbol): string {
@@ -41,14 +43,13 @@ export function translateCount(token: CountSymbol, position: Fraction, from: Cou
 }
 /** Incomplete syllables are transient editor state, never saved answer tokens. */
 export function syllableBuffer() {
-  let pending: 't' | 'l' | null = null;
+  let pending: 't' | null = null;
   return {
     clear: () => { pending = null; },
     active: () => pending !== null,
     key: (key: string): CountSymbol | null => {
-      if (key === 't' || key === 'l') { pending = key; return null; }
+      if (key === 't') { pending = key; return null; }
       if (pending === 't' && (key === 'a' || key === 'e')) { pending = null; return key === 'a' ? 'ta' : 'te'; }
-      if (pending === 'l' && (key === 'a' || key === 'i')) { pending = null; return key === 'a' ? 'la' : 'li'; }
       pending = null; return countKey(key);
     },
   };

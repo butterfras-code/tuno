@@ -8,7 +8,7 @@ export function createCountPopover(actions: {
   symbols?: readonly CountSymbol[];
   enabled?: (symbol: CountSymbol) => boolean;
   input?: (event: KeyboardEvent) => boolean;
-  restActions?: { start: () => void; close: () => void; remove: () => void };
+  markings: { rest: () => void; line: () => void; canRest: () => boolean };
   display: (symbol: CountSymbol) => string;
   keydown: (event: KeyboardEvent) => boolean;
   select: (tick: number) => void;
@@ -42,19 +42,19 @@ export function createCountPopover(actions: {
     (/^\d+$/.test(symbol) ? beats : subdivisions).append(choice);
   }
   popup.append(header, beats, subdivisions);
-  if (actions.restActions) {
-    const row = el('div', 'count-popover-row count-popover-rest-actions'); row.setAttribute('aria-label', 'Rest parentheses');
-    for (const [label, action] of [['Start rest pair', actions.restActions.start], ['Close rest pair', actions.restActions.close], ['Remove rest pair', actions.restActions.remove]] as const) {
-      const control = button(label, action); control.className = 'count-popover-rest'; row.append(control);
-    }
-    popup.append(row);
-  }
+  const markings = el('div', 'count-popover-markings');
+  const rest = button('(  Start rest pair', actions.markings.rest);
+  const line = button('—  Start duration line', actions.markings.line);
+  rest.className = line.className = 'count-popover-marking';
+  rest.setAttribute('aria-label', 'Start rest pair'); line.setAttribute('aria-label', 'Start duration line');
+  markings.append(rest, line); popup.append(markings);
   document.body.append(popup);
   let offsetX = 0;
   let gesture: { id: number; target: Element; choice: HTMLButtonElement | null } | null = null;
   let ignoredClick: { target: Element; until: number } | null = null;
   function update() {
     heading.textContent = actions.label();
+    rest.disabled = !actions.markings.canRest();
     popup.querySelectorAll<HTMLButtonElement>('[data-symbol]').forEach(choice => {
       choice.hidden = actions.enabled ? !actions.enabled(choice.dataset.symbol as CountSymbol) : false;
       const label = actions.display(choice.dataset.symbol as CountSymbol);
