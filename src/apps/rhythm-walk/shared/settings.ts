@@ -8,12 +8,23 @@ import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
+import { teachingPresets, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
 
 export const dottedConventionOptions = [
   { value: 'review', label: 'Teacher review — accept both provisionally' },
   { value: 'required', label: 'Require internal &' },
   { value: 'optional', label: 'Internal & is optional' },
 ] as const;
+
+function unavailableReason(reason: string): string {
+  if (/Missing pattern support(?: in [\d/]+)?: uil-\d-figures\./.test(reason)) return 'The exact rhythm figures for this level are not enforced yet.';
+  if (reason.includes('uil-rest-and-tie-policy')) return 'Rest and tie permissions still need review.';
+  if (reason.includes('triplet-eighth')) return 'Eighth-note triplets are not available yet.';
+  if (reason.includes('cut-time')) return 'Cut time is not supported yet.';
+  if (reason.includes('paired-eighths')) return 'Complete eighth-note pairs are not supported in this configuration.';
+  if (reason.includes('no-quarter-rest-beat-one')) return 'The downbeat quarter-rest restriction is not supported in this configuration.';
+  return reason;
+}
 
 function placeholder(setting: Setting): HTMLElement {
   const row = el('div', 'setting-row');
@@ -105,7 +116,7 @@ export function createSettingsPage(callbacks: {
   appearanceHint.id = 'settings-appearance-hint';
   appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
   let generation = structuredClone(callbacks.initialGeneration);
-  const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(); });
+  const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(false); });
   length.value = String(generation.measures); length.dataset.setting = 'exercise-length';
   const meterField = el('fieldset', 'settings-options active-meters');
   meterField.append(el('legend', '', 'Time signatures · next exercise'));
@@ -148,15 +159,59 @@ export function createSettingsPage(callbacks: {
     toggle.addEventListener('change', () => { generation = { ...generation, [key]: toggle.checked }; generationChanged(); });
   }
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
-  function generationChanged() {
+  function generationChanged(customize = true) {
+    if (customize) generation = customizeTeachingPreset(generation);
     const issue = generationIssue(generation);
     newExercise.disabled = Boolean(issue);
     generationStatus.textContent = issue ?? 'Ready for Next exercise. Only compatible checked ingredients are used; each exercise uses one selected time signature.';
     callbacks.generation(structuredClone(generation));
+    renderTeachingPreset();
   }
   generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on Next exercise.';
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
-  exerciseControls.append(meterField, lengthField, vocabulary, notationField, patternFields, generationStatus);
+  const teachingPicker = select([{ value: '', label: 'Inspect a teaching preset' }, ...teachingPresets.map(p => ({ value: p.id, label: `${p.label}${resolveTeachingPreset(p).supported ? ' · note-only practice' : ' · unavailable'}` }))], () => renderTeachingPreset());
+  teachingPicker.dataset.setting = 'teaching-preset';
+  const teachingStatus = el('p', 'setting-hint'); teachingStatus.setAttribute('role', 'status');
+  const teachingAttribution = el('p', 'setting-hint');
+  const teachingDetails = el('details'); teachingDetails.append(el('summary', '', 'Source and pattern requirements'));
+  const teachingEvidence = el('div', 'setting-hint'); teachingDetails.append(teachingEvidence);
+  const applyPreset = button('Apply teaching preset', () => {
+    const definition = teachingPresets.find(p => p.id === teachingPicker.value);
+    if (!definition) return;
+    const result = applyTeachingPreset(generation, definition);
+    if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
+    generation = result.settings;
+    length.value = String(generation.measures);
+    meterField.querySelectorAll<HTMLInputElement>('[data-meter]').forEach(input => { input.checked = (generation.meters ?? []).includes(input.dataset.meter as typeof meters[number]); });
+    vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(input => { input.checked = generation.ingredients.includes(input.dataset.ingredient as typeof generation.ingredients[number]); });
+    notationToggle.checked = generation.allowUnintuitiveNotation;
+    patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.setting as 'ties' | 'syncopation']); });
+    generationChanged(false);
+  });
+  applyPreset.dataset.setting = 'apply-teaching-preset';
+  function renderTeachingPreset() {
+    const active = teachingPresets.find(p => p.id === generation.teachingPreset?.id);
+    teachingAttribution.textContent = active ? `${active.label}${generation.teachingPreset?.customized ? ' · customized' : ' · note-only practice'} · pending settings · source: ${active.source.revision}.` : 'Free practice. Teaching presets are separate from fixed review exercises.';
+    const definition = teachingPresets.find(p => p.id === teachingPicker.value);
+    teachingEvidence.replaceChildren();
+    if (!definition) { teachingStatus.textContent = 'Inspect any level. Applying an available preset changes pending settings; Next replaces the exercise.'; applyPreset.disabled = true; return; }
+    const result = resolveTeachingPreset(definition);
+    applyPreset.disabled = !result.supported;
+    const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
+    teachingStatus.textContent = result.supported ? 'Available: general note figures only, no rests, ties or percussion-specific figures. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    const source = el('a', '', `Official criteria · ${definition.source.revision} · retrieved ${definition.source.retrieved}`); source.href = definition.source.url;
+    teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice uses one meter and preserves your chosen length.`));
+    for (const figure of definition.figures) {
+      const link = el('a', '', `${figure.events.join(' ')} (${figure.scope})`); link.href = figure.url;
+      const row = el('p'); row.append(link); teachingEvidence.append(row);
+    }
+    teachingEvidence.append(el('p', '', definition.restrictions.join(' ')));
+    if (!result.supported) teachingEvidence.append(el('p', '', unavailable.join(' ')));
+  }
+  const teachingField = field('Teaching preset · next exercise', teachingPicker);
+  teachingField.append(teachingStatus, applyPreset, teachingAttribution, teachingDetails, el('p', 'setting-hint', 'UIL-derived rhythm practice, not a complete composition validator or UIL endorsement. Meters remain editable. No requirement that every allowed figure appear.'));
+  renderTeachingPreset();
+  exerciseControls.append(teachingField, meterField, lengthField, vocabulary, notationField, patternFields, generationStatus);
   activeControls.append(systemField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
@@ -201,7 +256,7 @@ export function createSettingsPage(callbacks: {
     setLocked: (active: boolean) => {
       locked = active;
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
-      if (!active) newExercise.disabled = Boolean(generationIssue(generation));
+      if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
     },
     sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false, countingSystem: CountingSystem = 'numbers') => {
       system.disabled = convention.disabled = locked || compound;

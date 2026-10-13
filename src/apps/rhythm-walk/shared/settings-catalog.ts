@@ -42,7 +42,7 @@ export const settingsGroups: readonly SettingsGroup[] = [
       choice('session-format', 'Uno234 session format', ['Short challenges', 'Rhythm Walk (continuous gameplay)', 'Progressive journey'], undefined, 'Rhythm Walk is reserved for an eventual continuous gameplay mode. All three formats are planned. No default format has been selected.'),
       number('passage-length', 'Passage length (measures)', 'Short and longer passages will be configurable. Suggested lengths in the handoff were examples, not defaults.'),
       choice('exercise-source', 'Exercise source', ['Curated passages', 'External authored content'], undefined, 'Generated practice and built-in review fixtures work in the active exercise selector above. A curated/imported-content workflow remains future work.'),
-      choice('preset', 'Starting preset', ['Beginning Band Midyear', 'Beginning Band End of Year', 'Non-Varsity', 'Varsity', 'UIL I', 'UIL II', 'UIL III', 'UIL IV', 'UIL V', 'UIL VI'], undefined, 'Presets will be editable. Their contents need review; UIL presets will not lock meter choices.'),
+      choice('preset', 'Developmental starting preset', ['Beginning Band Midyear', 'Beginning Band End of Year', 'Non-Varsity', 'Varsity'], undefined, 'Developmental preset contents need review. Inspect UIL teaching presets in the available exercise settings above.'),
       { id: 'save-preset', label: 'Save a custom preset', kind: 'action', availability: 'decision', hint: 'Named presets, editing, sharing and import/export behavior are still to be decided.' },
       undecided('quick-start', 'Quick-start defaults and instructions', 'Choose a starting preset and how first-visit instructions are presented.'),
     ],

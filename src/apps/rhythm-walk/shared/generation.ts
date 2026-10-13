@@ -19,9 +19,14 @@ export const ingredients = [
   { id: 'sixteenth-rest', label: 'Sixteenth rests', event: ['S', { rest: true }] },
   { id: 'dotted-eighth', label: 'Dotted eighth notes', event: ['E', { dots: 1 }] },
   { id: 'triplet-eighth', label: 'Triplet eighth notes', event: ['E', { tuplet: [3, 2] }] },
+  { id: 'whole', label: 'Whole notes', event: ['W'] },
+  { id: 'dotted-half', label: 'Dotted half notes', event: ['H', { dots: 1 }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
 export interface GenerationSettings {
+  teachingPreset?: { id: string; version: number; customized: boolean };
+  /** Narrow shared figure hooks; values are validated before generation. */
+  restrictions?: { pairedEighths: boolean; noQuarterRestBeatOne: boolean };
   meters?: CountMeter[];
   /** Legacy single-meter input; shared preferences migrate it to meters. */
   meter?: CountMeter;
@@ -31,21 +36,21 @@ export interface GenerationSettings {
   ties?: boolean;
   syncopation?: boolean;
 }
-export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth', 'whole', 'dotted-half'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
 
 /** Shared UI/generation boundary; pattern IDs describe complete supported atoms.
  * UIL resolution may query this without changing definitions or active settings. */
 export interface RhythmCapabilities {
   readonly meter: CountMeter;
   readonly ingredients: readonly IngredientId[];
-  readonly patterns: readonly 'triplet-eighth'[];
+  readonly patterns: readonly string[];
 }
 export function rhythmCapabilities(meter: CountMeter): RhythmCapabilities {
   const compound = meterPolicy(meter).compound;
   return {
     meter,
-    ingredients: ingredients.filter(i => !compound || (i.event[0] !== 'H' && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id))).map(i => i.id),
-    patterns: compound ? [] : ['triplet-eighth'] as const,
+    ingredients: ingredients.filter(i => compound ? !['H', 'W'].includes(i.event[0]) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (i.id !== 'whole' || meter === '4/4') && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
+    patterns: compound ? ['no-quarter-rest-beat-one'] : ['triplet-eighth', 'paired-eighths', 'no-quarter-rest-beat-one'],
   };
 }
 // A triplet is an atomic quarter-beat choice, emitted as ordinary written events.
@@ -68,6 +73,8 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
   if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
   if (settings.ingredients.some(id => !ingredients.some(i => i.id === id))) throw new Error('Unknown rhythm ingredient.');
   if (!settings.ingredients.length) throw new Error('Select at least one rhythm ingredient.');
+  if (settings.restrictions && (typeof settings.restrictions.pairedEighths !== 'boolean' || typeof settings.restrictions.noQuarterRestBeatOne !== 'boolean')) throw new Error('Invalid rhythm pattern restrictions.');
+  if (settings.restrictions?.pairedEighths && (policy.compound || settings.ties || settings.syncopation || settings.ingredients.some(id => !['quarter', 'half', 'whole', 'dotted-half', 'eighth', 'quarter-rest', 'half-rest'].includes(id)))) throw new Error('Paired-eighth practice requires simple meters, basic values, and ties/syncopation off.');
   // Retain selections across meters; only generate the supported, readable subset.
   const supported = rhythmCapabilities(meter).ingredients;
   const pool = ingredients.filter(i => settings.ingredients.includes(i.id) &&
@@ -79,6 +86,9 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
   const quarterEnd = (position: Fraction) => { const beat = divide(position, fraction(1, 4)); return multiply(fraction(Math.floor(beat[0] / beat[1]) + 1), fraction(1, 4)); };
   const allowedAt = (ingredient: typeof pool[number], position: Fraction, used = 0) =>
     (ingredient.id !== 'triplet-eighth' || divide(position, fraction(1, 4))[1] === 1) &&
+    // Eighths form complete beat-aligned pairs: an offbeat can only finish the pair.
+    (!settings.restrictions?.pairedEighths || divide(position, fraction(1, 4))[1] === 1 || ingredient.id === 'eighth') &&
+    (!settings.restrictions?.noQuarterRestBeatOne || ingredient.id !== 'quarter-rest' || compare(position, fraction(0)) !== 0) &&
     // Readable short values stay inside quarter groups; dotted eighths start on a beat.
     (policy.compound || settings.allowUnintuitiveNotation || compare(atomDuration(ingredient), fraction(1, 4)) >= 0 ||
       (compare(add(position, atomDuration(ingredient)), quarterEnd(position)) <= 0 &&

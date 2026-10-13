@@ -42,8 +42,8 @@ for (const [id, [positions, numbers, syllables]] of Object.entries(onsets)) test
 });
 test('triplet atom capability, defaults and independent meter validation', () => {
   for (const meter of meters) assert.equal(rhythmCapabilities(meter).ingredients.includes('triplet-eighth'),meter !== '6/8');
-  assert.deepEqual(rhythmCapabilities('4/4').patterns,['triplet-eighth']);
-  assert.deepEqual(rhythmCapabilities('6/8').patterns,[]);
+  assert.ok(rhythmCapabilities('4/4').patterns.includes('triplet-eighth'));
+  assert.ok(!rhythmCapabilities('6/8').patterns.includes('triplet-eighth'));
   assert.ok(!defaultGeneration().ingredients.includes('triplet-eighth'));
   const config = {...defaultGeneration(),ingredients:['triplet-eighth'] as IngredientId[]};
   assert.equal(generationIssue(config),null);

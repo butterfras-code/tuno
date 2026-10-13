@@ -33,9 +33,10 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
       } else
       group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
     } else {
-      const hollow = event.written[0] === 'H';
-      group.append(node('ellipse', { cx: nx, cy: 100, rx: 11, ry: 7.5, transform: `rotate(-20 ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
-      group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
+      const whole = event.written[0] === 'W';
+      const hollow = whole || event.written[0] === 'H';
+      group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
+      if (!whole) group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
       if (short(event)) {
         // Primary beams connect short-note groups, including intervening written rests.
         const members = grid.events.filter(e => short(e) && groupOf(e) === groupOf(event));
