@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Native T3 preview_evaluate expression. Set window.__playScenario to tap,
  * hold, compound, geometry, evidence, rest-boundary, barline or lifecycle.
  * For rest-boundary, set __boundaryStyle to tap or hold.
@@ -15,7 +16,7 @@ window.__playCheck = (async () => {
   const status = () => document.querySelector('.tap-response .status').textContent;
   const button = name => [...document.querySelectorAll('button')].find(n => n.textContent === name || n.getAttribute('aria-label') === name);
   const play = document.querySelector('[data-setting="how-to-play"]');
-  const mode = document.querySelector('.shared-controls select');
+  const mode = document.querySelector('.response-controls select');
   const preset = document.querySelector('[data-preset]');
   const tempo = document.querySelector('.score-tempo input');
   const choose = (control, value) => { control.value = value; control.dispatchEvent(new Event('change')); };

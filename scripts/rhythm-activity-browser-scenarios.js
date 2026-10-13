@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Native T3 preview_evaluate expression, after a trusted Start click unlocks audio.
  * Runs in a normal document or a same-origin 320px preview iframe. Inputs are
  * synthetic; hardware latency and native touch capture remain device checks. */
@@ -31,7 +32,7 @@ window.__rhythmActivityCheck = (async () => {
   const begin = async () => { scheduled = []; button('Start count-in').click(); await wait(() => status().startsWith('Count-in')); return scheduled[0] + document.querySelectorAll('.count-in-dot').length / 3; };
   try {
     if (!button('Start count-in').disabled) { /* ready */ } else button('Stop / Cancel').click();
-    mode('write'); choose('Exercise preset', 'six-eighths');
+    mode('write'); choose('Testing fixture', 'six-eighths');
     const visibility = field('Show written counts during performance'); visibility.checked = false; visibility.dispatchEvent(new Event('change'));
     const identity = id(), glyphs = notes(), written = notation();
     for (let i = 0; i < 6; i++) { const slot = document.querySelectorAll('.count-slot')[i]; slot.focus(); key(slot, 'keydown', String(i + 1)); }
@@ -82,7 +83,7 @@ window.__rhythmActivityCheck = (async () => {
     const modal = document.querySelector('.timing-dialog'); assert(modal.open, 'Calibrate opens timing modal');
     button('Tap-along calibration').click(); await sleep(100);
     button('Close timing setup').click();
-    assert(!modal.open && !document.querySelector('.tap-response').classList.contains('calibrating') && !field('Exercise preset').disabled, 'closing modal cancels calibration and unlocks exercise');
+    assert(!modal.open && !document.querySelector('.tap-response').classList.contains('calibrating') && !field('Testing fixture').disabled, 'closing modal cancels calibration and unlocks exercise');
     checks.push('score-aligned expected/received timelines, count/pad ordering, modal calibration cancellation');
     mode('write'); assert(feedback() === countFeedback && answer().join() === symbols.join(), 'performance preserves written response');
     mode('tap'); assert(review() === performed, 'return restores completed tapping review');
@@ -90,7 +91,7 @@ window.__rhythmActivityCheck = (async () => {
     mode('both'); await begin(); assert([...document.querySelectorAll('.answer-area')].every(n => n.hidden), 'Both hides written counts during performance by default'); button('Stop / Cancel').click();
     const show = field('Show written counts during performance'); show.checked = true; show.dispatchEvent(new Event('change'));
     await begin(); assert([...document.querySelectorAll('.answer-area')].every(n => !n.hidden && n.inert), 'Both explicitly shows read-only counts'); button('Stop / Cancel').click();
-    button('Next exercise').click();
+    button('New exercise').click();
     assert(id() !== identity && document.querySelectorAll('.passage-measure').length === 4, 'Next uses pending shared configuration exactly once');
     assert(answer().every(s => s === '·') && !review() && !document.querySelectorAll('.dimension').length, 'Next clears both old responses and results');
     for (const response of ['write', 'tap', 'both']) {
@@ -121,7 +122,7 @@ window.__rhythmActivityCheck = (async () => {
       checks.push('mode switch during pending audio activation rejects the stale asynchronous start');
     } finally { AudioContext.prototype.resume = originalResume; }
 
-    mode('tap'); choose('Exercise preset', 'quarters');
+    mode('tap'); choose('Testing fixture', 'quarters');
     scheduled = []; button('Start count-in').click(); await wait(() => status().startsWith('Count-in'));
     const quarterStart = scheduled[0] + 4 / 3;
     for (let i = 0; i < 8; i++) {

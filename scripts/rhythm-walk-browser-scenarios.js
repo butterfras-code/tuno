@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Execute this expression with T3 preview_evaluate on the built prototype, after one
  * trusted Start click has unlocked audio. Uses synthetic DOM events and real audio
  * clock waiting; verifies lifecycle, never physical latency or timing accuracy. */
@@ -100,7 +101,7 @@
     choose('quarters'); tempo.value = '180';
     await begin(); window.dispatchEvent(new Event('blur')); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Window lost focus', 'window blur interrupted');
-    await begin(); document.querySelector('.shared-controls select').focus(); await wait(() => status() === 'Interrupted');
+    await begin(); document.querySelector('.response-controls select').focus(); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Performance pad lost focus', 'pad focus loss interrupted');
     await begin(); await context.suspend(); await wait(() => status() === 'Interrupted'); await context.resume();
     assert((await raw()).reason === 'Audio clock interrupted', 'audio suspension interrupted');

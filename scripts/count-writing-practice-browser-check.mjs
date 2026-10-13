@@ -50,15 +50,15 @@ try {
   await page.locator('[data-ingredient="dotted-quarter-rest"]').check();
   await practice(); assert.deepEqual(await snapshot(), beforePolicy, 'notation policy changes keep the current exercise and answer');
   await page.evaluate(() => { Math.random = () => .99; });
-  await control('Next exercise').click();
+  await control('New exercise').click();
   await page.evaluate(() => { let seed = 53; Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; });
   assert.ok(await bars.locator('g[data-kind="rest"] circle').count() > 0, 'explicit opt-in includes dotted quarter rests');
   await settings(); await page.getByLabel('Allow unintuitive notation', { exact: true }).uncheck();
-  await practice(); assert.equal(await control('Next exercise').isDisabled(), false, 'incompatible dotted rests do not block generation');
-  await control('Next exercise').click();
+  await practice(); assert.equal(await control('New exercise').isDisabled(), false, 'incompatible dotted rests do not block generation');
+  await control('New exercise').click();
   assert.equal(await bars.locator('g[data-kind="rest"] circle').count(), 0, 'simple-meter dotted rests skipped without advanced notation');
   await settings(); await page.locator('[data-ingredient="dotted-quarter-rest"]').uncheck(); await practice();
-  assert.equal(await control('Next exercise').isDisabled(), false);
+  assert.equal(await control('New exercise').isDisabled(), false);
   report.checks.push('Continuous staff and shared scrolling; beginner rest spelling; explicit advanced opt-in preserves current answers and validates dotted-rest choices');
 
   async function solve() {
@@ -89,7 +89,7 @@ try {
     for (const length of [1, 2, 3, 4]) {
       await settings(); await page.getByLabel('Exercise length', { exact: true }).selectOption(String(length));
       await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice();
-      await control('Next exercise').tap(); assert.equal(await bars.count(), length);
+      await control('New exercise').tap(); assert.equal(await bars.count(), length);
       assert.ok((await bars.locator('.count-slot').allTextContents()).every(text => text === '·'));
       const barBounds = await bars.evaluateAll(nodes => nodes.map(n => { const b = n.getBoundingClientRect(); return { x: b.x, y: b.y, right: b.right }; }));
       for (let index = 1; index < barBounds.length; index++) {
@@ -122,7 +122,7 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `no page overflow at ${width}, length ${length}: ${await page.evaluate(() => JSON.stringify([...document.querySelectorAll('body *')].filter(n => n.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(n).position === 'absolute').map(n => ({ tag: n.tagName, class: n.className, x: n.getBoundingClientRect().x }))))}`);
       await page.locator('.passage-scroll').evaluate(n => { n.scrollLeft = 0; });
       await page.screenshot({ path: `${output}/${width}-${length}.png`, fullPage: true });
-      await control('Next exercise').tap(); assert.equal(await bars.count(), length);
+      await control('New exercise').tap(); assert.equal(await bars.count(), length);
       assert.equal(await page.locator('.dimension').count(), 0);
       assert.equal(await page.locator('.count-popover').count(), length, 'previous editor popovers are disposed');
     }
@@ -131,15 +131,15 @@ try {
   await settings();
   for (const ingredient of await page.locator('[data-ingredient]').all()) await ingredient.uncheck();
   assert.match(await page.locator('main').innerText(), /Select at least one/);
-  await practice(); assert.equal(await control('Next exercise').isDisabled(), true);
+  await practice(); assert.equal(await control('New exercise').isDisabled(), true);
   const unchanged = await snapshot();
   await settings(); await page.locator('.active-ingredients').getByLabel('Dotted quarter notes', { exact: true }).check();
   assert.match(await page.locator('main').innerText(), /cannot fill/);
   await page.locator('.active-ingredients').getByLabel('Half notes', { exact: true }).check();
   assert.equal(await control('New Exercise').isDisabled(), false, 'half notes fill bars while unavailable dotted quarters are skipped');
   await page.locator('.active-ingredients').getByLabel('Quarter notes', { exact: true }).check(); await page.locator('.active-ingredients').getByLabel('Eighth notes', { exact: true }).check(); await practice();
-  assert.deepEqual(await snapshot(), unchanged); assert.equal(await control('Next exercise').isDisabled(), false);
-  await control('Next exercise').tap();
+  assert.deepEqual(await snapshot(), unchanged); assert.equal(await control('New exercise').isDisabled(), false);
+  await control('New exercise').tap();
   const generatedKinds = await bars.locator('g[data-start]').evaluateAll(nodes => nodes.map(n => [n.dataset.duration, n.dataset.kind]));
   assert.ok(generatedKinds.every(([duration, kind]) => ['1', '2', '3', '4'].includes(duration) && kind === 'note'));
   report.checks.push('Empty and impossible configurations explain and block Next; unavailable selected ingredients are skipped');
@@ -204,7 +204,7 @@ try {
   assert.equal(await page.locator('.passage-line-controls').count(), 0);
   assert.equal(await control('Check').evaluate(n => n.closest('[data-measure]').dataset.measure), '2');
   report.checks.push('Idle pad starts/retries with keyboard and touch; starting gestures excluded from evidence; new count-in presses captured; consolidated help and first/last measure action placement');
-  await page.getByLabel('Exercise preset', { exact: true }).selectOption('generated');
+  await page.getByRole('button', { name: 'New exercise', exact: true }).first().click();
   for (const [width, height] of [[1366,650],[1280,600],[390,844],[320,667]]) {
     await page.setViewportSize({ width, height });
     for (const mode of ['write','tap','both']) {

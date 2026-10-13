@@ -1,4 +1,4 @@
-import { defaultGeneration, generateExercise, ingredients } from './shared/generation.ts';
+import { defaultGeneration, generateExercise, generationIssue, ingredients } from './shared/generation.ts';
 import type { GenerationSettings } from './shared/generation.ts';
 import type { PassageFixture } from './shared/fixtures.ts';
 import { practiceFixtures } from './shared/fixtures.ts';
@@ -23,6 +23,11 @@ export const presets: readonly PassageFixture[] = [
   ...practiceFixtures,
   ...exercises.map(e => ({ ...e, measures: structuredClone(e.measures) as RhythmMeasure[] })),
 ];
+export function fixtureAccess(search: string) {
+  const params = new URLSearchParams(search);
+  const fixture = presets.find(f => f.id === params.get('fixture'));
+  return { enabled: params.get('testing') === '1' || Boolean(fixture), fixture };
+}
 export interface Preferences {
   version: 1; mode: Mode; generation: GenerationSettings; preset: string;
   countingSystem: CountingSystem; offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
@@ -38,7 +43,7 @@ export function readPreferences(raw: string | null): Preferences {
     if (!p || p.version !== 1) return defaults;
     if (modes.includes(p.mode!)) defaults.mode = p.mode!;
     if (playStyles.includes(p.playStyle!)) defaults.playStyle = p.playStyle!;
-    if (p.preset === 'generated' || presets.some(f => f.id === p.preset)) defaults.preset = p.preset!;
+    // Fixed fixture access requires an explicit URL opt-in, never saved preferences.
     if (p.countingSystem === 'numbers' || p.countingSystem === 'syllables') defaults.countingSystem = p.countingSystem;
     if (p.offbeat === '&' || p.offbeat === '+') defaults.offbeat = p.offbeat;
     if (['review', 'required', 'optional'].includes(p.convention!)) defaults.convention = p.convention!;
@@ -64,11 +69,14 @@ export function readPreferences(raw: string | null): Preferences {
 /** Exercise identity changes only on replacement, never on response-mode changes. */
 export class Activity {
   exercise: Exercise;
+  /** Configuration captured at replacement, distinct from pending preferences. */
+  exerciseGeneration!: GenerationSettings;
   private serial = 0;
   preferences: Preferences;
   constructor(preferences: Preferences, measures: readonly RhythmMeasure[]) { this.preferences = preferences; this.exercise = this.create(measures); }
   private create(measures: readonly RhythmMeasure[]): Exercise {
     derivePassage(measures);
+    this.exerciseGeneration = structuredClone(generationIssue(this.preferences.generation) ? defaultGeneration() : this.preferences.generation);
     return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', measures: structuredClone(measures) };
   }
   setMode(mode: Mode) { this.preferences.mode = mode; }

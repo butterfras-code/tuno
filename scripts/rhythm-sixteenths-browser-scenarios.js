@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Run through native T3 preview_evaluate. Synthetic keyboard/pointer events;
  * actual hit-testing and 320px CSS layout, not physical-device timing. */
 window.__sixteenthCheck = (async () => {
@@ -10,7 +11,7 @@ window.__sixteenthCheck = (async () => {
   const slots = doc => [...doc.querySelectorAll('.count-slot')];
   const run = async doc => {
     const w = doc.defaultView;
-    choose(doc,'Mode','write'); choose(doc,'Exercise preset','eighth-two-sixteenths'); choose(doc,'Exercise preset','four-sixteenths'); choose(doc,'Counting system','numbers');
+    choose(doc,'Mode','write'); choose(doc,'Testing fixture','eighth-two-sixteenths'); choose(doc,'Testing fixture','four-sixteenths'); choose(doc,'Counting system','numbers');
     const s=slots(doc), score=doc.querySelector('.notation'), id=doc.querySelector('.passage').dataset.exerciseId;
     s[0].focus(); key(s[0],'1'); key(s[1],'e'); key(s[2],'+'); key(s[3],'a');
     key(s[4],'2'); key(s[8],'3'); key(s[12],'4');
@@ -47,10 +48,10 @@ window.__sixteenthCheck = (async () => {
     for(const mode of ['tap','both','write']) { choose(doc,'Mode',mode); assert(doc.querySelector('.notation')===score && s.map(n=>n.textContent).join()===answer,'mode preserves shared notation and responses'); }
     choose(doc,'Offbeat symbol · 1 e & a','+'); choose(doc,'Counting system','numbers');
     assert(field(doc,'Offbeat symbol · 1 e & a').value==='+','syllables retain separate offbeat preference');
-    choose(doc,'Exercise preset','six-eighths');
+    choose(doc,'Testing fixture','six-eighths');
     assert(field(doc,'Counting system').disabled && field(doc,'Offbeat symbol · 1 e & a').disabled,'6/8 disables simple-meter controls');
     assert(slots(doc).length===6,'6/8 six-number grid unchanged');
-    choose(doc,'Exercise preset','dense-sixteenths'); await pause();
+    choose(doc,'Testing fixture','dense-sixteenths'); await pause();
     assert(doc.documentElement.scrollWidth<=w.innerWidth+1,'dense page has no horizontal overflow');
     assert([...doc.querySelectorAll('.passage-scroll')].every(n=>n.scrollWidth<=n.clientWidth+1),'dense score has no horizontal overflow');
     for(const card of doc.querySelectorAll('.passage-measure')) {
@@ -65,22 +66,22 @@ window.__sixteenthCheck = (async () => {
     const bounds=dense[15].getBoundingClientRect();
     assert(doc.elementFromPoint(bounds.x+bounds.width/2,bounds.y+bounds.height/2)===dense[15],'last subdivision is actually hittable');
     dense[15].click(); doc.querySelector('#count-popover-1 [data-symbol="a"]').click(); assert(dense[15].textContent==='a','dense final subdivision entry works');
-    choose(doc,'Exercise preset','sixteenth-rests');
+    choose(doc,'Testing fixture','sixteenth-rests');
     for(const i of [0,5,10,15]) { const slot=slots(doc)[i]; slot.focus(); key(slot,'('); key(slot,')'); }
     assert(doc.querySelectorAll('.rest-group').length===4,'one rest pair per written sixteenth rest');
     const pairs=[...doc.querySelectorAll('.rest-group')].map(n=>[n.dataset.start,n.dataset.end]); choose(doc,'Counting system','syllables');
     assert(JSON.stringify([...doc.querySelectorAll('.rest-group')].map(n=>[n.dataset.start,n.dataset.end]))===JSON.stringify(pairs),'system preserves each saved rest range'); choose(doc,'Counting system','numbers');
-    choose(doc,'Exercise preset','sixteenth-all-rests');
+    choose(doc,'Testing fixture','sixteenth-all-rests');
     for(const slot of slots(doc)) { slot.click(); const menu=doc.querySelector('#count-popover-1'); [...menu.querySelectorAll('button')].find(n=>n.textContent==='Start rest pair').click(); slot.click(); [...menu.querySelectorAll('button')].find(n=>n.textContent==='Close rest pair').click(); }
     assert(doc.querySelectorAll('.rest-group').length===16,'adjacent sixteenth rests can be marked through touch menu');
     const restSlot=slots(doc)[5]; restSlot.scrollIntoView({block:'center'}); await pause();
     const rb=restSlot.getBoundingClientRect(); assert(doc.elementFromPoint(rb.x+rb.width/2,rb.y+rb.height/2)===restSlot,'rest parentheses keep count center hittable');
     restSlot.click(); doc.querySelector('#count-popover-1 [data-symbol="e"]').click(); assert(restSlot.textContent==='e','count entry remains usable inside completed rest pair');
-    choose(doc,'Exercise preset','sixteenth-bar-tie'); await pause();
+    choose(doc,'Testing fixture','sixteenth-bar-tie'); await pause();
     assert(doc.querySelectorAll('[data-tie]').length===2,'barline tie retains both wrapped hooks');
     const anchors=[...doc.querySelectorAll('.duration-anchor')]; anchors[7].click(); anchors[8].click();
     assert(doc.querySelectorAll('.passage-duration').length===2,'one logical tie duration renders both bar pieces');
-    choose(doc,'Exercise preset','dotted-eighth-sixteenth');
+    choose(doc,'Testing fixture','dotted-eighth-sixteenth');
     assert(doc.querySelector('[data-dots="1"] circle') && doc.querySelector('[data-beam="partial"]'),'dotted eighth dot and partial secondary beam');
     const currentScore=doc.querySelector('.notation'),currentId=doc.querySelector('.passage').dataset.exerciseId;
     const ingredient=doc.querySelector('[data-ingredient="sixteenth"]');ingredient.checked=true;ingredient.dispatchEvent(new w.Event('change'));
@@ -88,7 +89,7 @@ window.__sixteenthCheck = (async () => {
     const dottedIngredient=doc.querySelector('[data-ingredient="dotted-eighth"]');dottedIngredient.checked=true;dottedIngredient.dispatchEvent(new w.Event('change'));
     assert(doc.querySelector('.notation')===currentScore&&doc.querySelector('.passage').dataset.exerciseId===currentId,'new ingredient preferences stay pending without replacing passage');
     for(const mode of ['tap','both','write']) {choose(doc,'Mode',mode);assert(doc.querySelector('.notation')===currentScore,'pending new vocabulary does not regenerate on mode switch');}
-    button(doc,'Next exercise').click();assert(doc.querySelector('.passage').dataset.exerciseId!==currentId,'new vocabulary applies through shared Next lifecycle');
+    button(doc,'New exercise').click();assert(doc.querySelector('.passage').dataset.exerciseId!==currentId,'new vocabulary applies through shared Next lifecycle');
   };
   await run(document);
   const frame=document.createElement('iframe'); frame.style.cssText='width:320px;height:800px;border:0'; document.body.append(frame);

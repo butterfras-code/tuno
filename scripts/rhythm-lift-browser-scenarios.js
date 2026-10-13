@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Native T3 preview_evaluate expression. Set __liftInput to keyboard or pointer.
  * Synthetic timestamps, invented pointer capture and background-focus stub verify
  * UI/policy only; physical keyboard/touch latency and audio remain unverified. */
@@ -6,7 +7,7 @@ window.__liftCheck = (async () => {
   const wait=async predicate=>{const end=performance.now()+14000;while(!predicate()){if(performance.now()>end)throw new Error('Lift scenario timed out');await new Promise(r=>setTimeout(r,10));}};
   const choose=(node,value)=>{node.value=value;node.dispatchEvent(new Event('change'));};
   const button=name=>[...document.querySelectorAll('button')].find(n=>n.textContent===name);
-  const mode=document.querySelector('.shared-controls select'),preset=document.querySelector('[data-preset]'),style=document.querySelector('[data-setting=how-to-play]'),pad=document.querySelector('.tap-response .pad');
+  const mode=document.querySelector('.response-controls select'),preset=document.querySelector('[data-preset]'),style=document.querySelector('[data-setting=how-to-play]'),pad=document.querySelector('.tap-response .pad');
   const originalFocus=document.hasFocus,originalOsc=AudioContext.prototype.createOscillator,originalCapture=pad.setPointerCapture,originalURL=URL.createObjectURL;
   let context,scheduled=[],evidence;
   document.hasFocus=()=>true;pad.setPointerCapture=()=>{};

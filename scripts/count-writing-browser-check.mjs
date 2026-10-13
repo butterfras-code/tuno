@@ -16,7 +16,8 @@ try {
   await page.goto(`${url}${url.includes('?') ? '&' : '?'}fixture=half`); await page.evaluate(() => document.fonts.ready);
   const slots = page.locator('.count-slot');
   const control = name => page.getByRole('button', { name, exact: true });
-  const fixture = page.getByLabel('Exercise preset', { exact: true });
+  await page.locator('.testing-fixtures').evaluate(n => { n.open = true; });
+  const fixture = page.getByLabel('Testing fixture', { exact: true });
   const choices = page.getByRole('dialog', { name: 'Enter a count', exact: true });
   const dimensions = () => page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className.split(' ').at(-1)));
   const enter = async (tick, symbol) => { await slots.nth(tick).focus(); await page.keyboard.press(symbol); };
@@ -174,7 +175,7 @@ try {
 
   await settings(); assert.equal(await page.locator('.dimension').isVisible().catch(()=>false),false);
   await page.keyboard.press('Enter'); assert.equal(await page.getByLabel('Rhythm settings',{exact:true}).isVisible(),true);
-  await page.getByLabel('Exercise preset',{exact:true}).selectOption('dotted-quarter');
+  await page.getByLabel('Testing fixture',{exact:true}).selectOption('dotted-quarter');
   await page.getByLabel('Dotted-quarter internal &',{exact:true}).selectOption('required'); await practice();
   assert.equal(await slots.nth(0).evaluate(n=>n===document.activeElement),true,'rhythm selected in Settings activates first input on return');
   for(const [i,symbol] of ['1','','2','&','3','','4',''].entries()) if(symbol) await enter(i,symbol);

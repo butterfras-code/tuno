@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Evaluate in the native T3 preview after loading the current bundle.
  * Pass an iframe's contentWindow when inspecting an inline fresh build.
  * Native click first to unlock audio. Capture is real-clock, with no synthetic taps.
@@ -11,7 +12,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   const button = name => [...d.querySelectorAll('button')].find(control => control.textContent === name);
   const stored = () => JSON.parse(w.localStorage.getItem('tuno.rhythm-walk.preferences.v1'));
   const generation = () => stored().generation;
-  const mode = d.querySelector('.shared-controls select');
+  const mode = d.querySelector('.response-controls select');
   choose(mode, 'both'); choose(d.querySelector('[data-preset]'), 'half'); choose(d.querySelector('[data-preset]'), 'whole');
   choose(d.querySelector('.score-tempo input'), '180');
   choose(d.querySelector('[data-setting="count-system"]'), 'syllables');
@@ -41,7 +42,7 @@ window.runUilBrowserScenarios = async function (w = window) {
     assert(d.querySelector('.passage').dataset.exerciseId === exerciseId && slot.textContent === '1' && results.textContent === resultText, `${id} preserves both responses`);
   }
   for (const id of ['uil-1', 'uil-2']) {
-    choose(picker, id); assert(!apply.disabled, `${id} note-only practice available`); apply.click();
+    choose(picker, id); assert(!apply.disabled, `${id} note-only practice available`);
     assert(generation().teachingPreset.id === id && !generation().teachingPreset.customized, `${id} pending attribution`);
     assert(generation().measures === 3, `${id} preserves chosen passage length`);
     assert(d.querySelector('.notation') === score && d.querySelector('.passage').dataset.exerciseId === exerciseId, `${id} preserves current score identity`);
@@ -51,7 +52,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   }
   const six = d.querySelector('[data-meter="6/8"]'); six.checked = true; six.dispatchEvent(new w.Event('change'));
   assert(generation().meters.includes('6/8') && generation().teachingPreset.customized && !generation().restrictions, 'independent 6/8 override customizes and removes template hooks');
-  assert(!button('Next exercise').disabled, 'custom meter pool validates');
+  assert(!button('New exercise').disabled, 'custom meter pool validates');
   choose(picker, 'uil-1'); apply.click();
   assert(generation().meters.join(',') === '4/4' && !generation().teachingPreset.customized, 'deliberate reapplication restores controlled fields');
   const ingredient = d.querySelector('[data-ingredient="sixteenth"]'); ingredient.checked = true; ingredient.dispatchEvent(new w.Event('change'));
@@ -64,7 +65,7 @@ window.runUilBrowserScenarios = async function (w = window) {
     assert(d.querySelector('.notation') === score && d.querySelector('.passage').dataset.exerciseId === exerciseId, `${response} uses identical current score`);
     assert(slot.textContent === '1' && results.textContent === resultText, `${response} retains both responses after preset application`);
   }
-  button('Next exercise').click();
+  button('New exercise').click();
   assert(d.querySelector('.passage').dataset.exerciseId !== exerciseId, 'Next replaces exercise identity');
   assert(d.querySelectorAll('.passage-measure').length === 2, 'Next uses pending passage length');
   assert([...d.querySelectorAll('.count-slot:not([hidden])')].every(s => s.textContent === '·'), 'Next clears writing');
@@ -73,7 +74,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   w.location.hash = '#settings'; await sleep(30);
   for (const id of ['uil-1', 'uil-6']) {
     choose(picker, id);
-    const details = picker.closest('.field')?.querySelector('details') ?? d.querySelector('.shared-exercise-settings details');
+    const details = picker.closest('.level-configuration')?.querySelector('details') ?? d.querySelector('.shared-exercise-settings details');
     details.open = true; await sleep(30);
     assert(d.documentElement.scrollWidth <= w.innerWidth + 1, `${w.innerWidth}px ${id} source details have no page overflow`);
     const box = picker.getBoundingClientRect();
@@ -98,16 +99,16 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     const expected = JSON.parse(saved);
     await reload();
     let d = frame.contentDocument, w = frame.contentWindow;
-    const field = d.querySelector('[data-setting="teaching-preset"]').closest('.field');
-    assert(field.textContent.includes('UIL I · note-only practice · pending settings'), 'fresh load restores qualified exact attribution');
+    const field = d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration');
+    assert(field.textContent.includes('UIL I · note-only practice · next exercise'), 'fresh load restores qualified exact attribution');
     assert(d.querySelector('[data-setting="exercise-length"]').value === String(expected.generation.measures), 'fresh load restores chosen length');
     assert(d.querySelector('[data-ingredient="whole"]').checked && d.querySelector('[data-ingredient="dotted-half"]').checked, 'fresh load restores whole/dotted-half selections');
-    assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('.shared-controls select').value === expected.mode, 'fresh load restores independent mode/system');
+    assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('.response-controls select').value === expected.mode, 'fresh load restores independent mode/system');
     assert(d.querySelector('.score-tempo input').value === String(expected.bpm), 'fresh load restores tempo');
     assert([...d.querySelectorAll('.count-slot:not([hidden])')].every(slot => slot.textContent === '·'), 'fresh load does not persist writing responses');
     localStorage.setItem(key, JSON.stringify({ ...expected, generation: { ...expected.generation, teachingPreset: { id: 'uil-unknown', version: 1, customized: false }, restrictions: { pairedEighths: 'yes', noQuarterRestBeatOne: true } } }));
     await reload(); d = frame.contentDocument; w = frame.contentWindow;
-    assert(d.querySelector('[data-setting="teaching-preset"]').closest('.field').textContent.includes('Free practice.'), 'malformed attribution safely migrates to free practice');
+    assert(d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration').textContent.includes('Custom · pending settings.'), 'malformed attribution safely migrates to free practice');
     const length = d.querySelector('[data-setting="exercise-length"]'); length.dispatchEvent(new w.Event('change'));
     const restored = JSON.parse(localStorage.getItem(key));
     assert(!restored.generation.teachingPreset && !restored.generation.restrictions, 'malformed restrictions and attribution never reach persisted active settings');

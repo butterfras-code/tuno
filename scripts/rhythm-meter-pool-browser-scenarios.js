@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Run with native T3 preview_evaluate in the page or a same-origin 320px frame. */
 window.__rhythmMeterPoolCheck = (() => {
   const assert = (condition, label) => { if (!condition) throw new Error(label); };
@@ -9,10 +10,10 @@ window.__rhythmMeterPoolCheck = (() => {
   const id = () => document.querySelector('.passage').dataset.exerciseId;
   const originalRandom = Math.random;
   try {
-    choose('Mode', 'tap'); choose('Exercise preset', 'generated'); choose('Exercise length', '4');
+    choose('Mode', 'tap'); choose('Exercise length', '4');
     const identity = id(), glyphs = [...document.querySelectorAll('.notation')].map(n => n.outerHTML);
     document.querySelectorAll('[data-meter]').forEach(control => check(control, false));
-    assert(button('Next exercise').disabled, 'empty meter pool blocks Next with a useful message');
+    assert(button('New exercise').disabled, 'empty meter pool blocks Next with a useful message');
     document.querySelectorAll('[data-ingredient]').forEach(control => check(control, control.dataset.ingredient === 'half'));
     check(input('3/4'), true);
     assert(document.querySelector('[data-ingredient="quarter"]').checked, 'enabling simple meter enables quarter notes');
@@ -23,13 +24,13 @@ window.__rhythmMeterPoolCheck = (() => {
     assert(document.querySelector('[data-ingredient="half"]').checked, 'other selected ingredients retained');
     check(document.querySelector('[data-ingredient="dotted-quarter-rest"]'), true);
     check(document.querySelector('[data-setting="unintuitive-notation"]'), false);
-    assert(!button('Next exercise').disabled, 'incompatible selected ingredients do not block any enabled meter');
+    assert(!button('New exercise').disabled, 'incompatible selected ingredients do not block any enabled meter');
     assert(id() === identity && JSON.stringify([...document.querySelectorAll('.notation')].map(n => n.outerHTML)) === JSON.stringify(glyphs), 'pending meter pool preserves current score and identity');
     const pool = prefs().generation.meters;
     assert(pool.length === 4, 'every enabled meter persisted');
     for (let i = 0; i < pool.length; i++) {
       Math.random = () => (i + .5) / pool.length;
-      button('Next exercise').click();
+      button('New exercise').click();
       const bars = [...document.querySelectorAll('.notation')];
       assert(bars.length === 4 && bars.every(bar => bar.getAttribute('aria-label').startsWith(pool[i])), 'each exercise uses exactly one selected meter');
       if (pool[i] === '6/8') assert(bars.every(bar => !bar.querySelector('[data-value="H"]')), 'half notes retained in settings but skipped in 6/8');

@@ -223,3 +223,16 @@ main.rhythm-app {
   .rhythm-app .fine-grid .score-actions { position: static; pointer-events: auto; }
   .rhythm-app .fine-grid .score-actions > .control, .rhythm-app .fine-grid .write-actions { transform: none; }
 }
+
+/* Shared level configuration, preserving the existing score/layout surface. */
+.preset-row { align-items: start; }
+.preset-row > .control { margin-top: 24px; }
+.preset-row .field { min-width: 0; }
+.preset-row select { width: 100%; min-width: 0; }
+.preset-row .setting-hint, .testing-fixtures .setting-hint { overflow-wrap: anywhere; }
+.preset-row details > summary, .testing-fixtures > summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+.testing-fixtures { grid-column: 1 / -1; min-width: 0; }
+@media (max-width: 540px) {
+  .preset-row { grid-template-columns: minmax(0, 1fr); }
+  .preset-row > .control { margin-top: 0; justify-self: start; }
+}

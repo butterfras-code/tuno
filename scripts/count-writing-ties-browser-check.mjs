@@ -129,7 +129,7 @@ try {
     await page.locator('[data-setting="syncopation"]').setChecked(sync);
     await page.getByLabel('Exercise length', { exact: true }).selectOption(String(length));
     const before = await snapshot(); await practice(); assert.deepEqual(await snapshot(), before);
-    await button('Next exercise').tap(); assert.equal(await bars.count(), length);
+    await button('New exercise').tap(); assert.equal(await bars.count(), length);
     assert.equal(await page.locator('.dimension').count(), 0);
     if (!ties) assert.equal(await page.locator('[data-tie]').count(), 0);
     await solveGenerated(); const solved = await snapshot();
@@ -137,7 +137,7 @@ try {
     assert.ok((await page.locator('.dimension').evaluateAll(nodes => nodes.map(n => n.className))).every(name => name === 'dimension correct'), await page.locator('.feedback').allTextContents());
     assert.deepEqual(await snapshot(), solved);
     await button('Retry').tap(); assert.deepEqual(await snapshot(), solved);
-    await button('Next exercise').tap(); assert.equal(await bars.count(), length);
+    await button('New exercise').tap(); assert.equal(await bars.count(), length);
     assert.ok((await slots.allTextContents()).every(s => s === '·'));
   }
   }

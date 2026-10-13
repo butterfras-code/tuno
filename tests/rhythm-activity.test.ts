@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Activity, defaultPreferences, modes, presets, readPreferences } from '../src/apps/rhythm-walk/activity.ts';
+import { Activity, defaultPreferences, modes, presets, readPreferences, fixtureAccess } from '../src/apps/rhythm-walk/activity.ts';
 import { defaultGeneration, generateExercise, generationIssue, ingredients, enableMeter } from '../src/apps/rhythm-walk/shared/generation.ts';
 import type { GenerationSettings } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
@@ -39,10 +39,13 @@ test('mode switching retains the canonical exercise object, identity and pending
   const activity = new Activity(preferences, presets[0]!.measures);
   const exercise = activity.exercise;
   preferences.generation.measures = 4;
+  assert.equal(activity.exerciseGeneration.measures, 2, "current configuration is captured separately from pending settings");
   for (const mode of [...modes, ...modes].reverse()) { activity.setMode(mode); assert.strictEqual(activity.exercise, exercise); assert.equal(activity.preferences.generation.measures, 4); }
   const next = activity.next(() => .4);
   assert.notEqual(next.id, exercise.id); assert.equal(next.measures.length, 4); assert.equal(preferences.preset, 'generated');
+  assert.equal(activity.exerciseGeneration.measures, 4);
   preferences.generation.ingredients = [];
+  assert.notDeepEqual(activity.exerciseGeneration.ingredients, []);
   assert.throws(() => activity.next()); assert.strictEqual(activity.exercise, next);
 });
 
@@ -69,7 +72,7 @@ test('6/8 capture uses two dotted-quarter pulses and six independent written cou
 test('saved shared and mode preferences validate independently and preserve editable invalid pools', () => {
   const prefs = defaultPreferences(); Object.assign(prefs, { mode: 'both', preset: 'six-bar-tie', offbeat: '+', bpm: 123, showCounts: true });
   prefs.generation = { ...defaultGeneration(), meters: ['6/8'], measures: 4, ingredients: ['eighth'], ties: true };
-  assert.deepEqual(readPreferences(JSON.stringify(prefs)), prefs);
+  assert.deepEqual(readPreferences(JSON.stringify(prefs)), { ...prefs, preset: 'generated' });
   assert.deepEqual(readPreferences('{bad'), defaultPreferences());
   const restored = readPreferences(JSON.stringify({ ...prefs, bpm: Infinity, generation: { ...prefs.generation, ingredients: [] } }));
   assert.equal(restored.bpm, 80); assert.equal(restored.mode, 'both'); assert.deepEqual(restored.generation.ingredients, []);
@@ -127,4 +130,15 @@ test('saved meter pool takes precedence and legacy single-meter preferences migr
   assert.equal(restored.generation.meter, undefined);
   assert.deepEqual(readPreferences(JSON.stringify({ ...pool, generation: { ...pool.generation, meters: ['7/8'] } })).generation, defaultGeneration());
   assert.deepEqual(readPreferences(JSON.stringify({ ...pool, generation: { ...pool.generation, meters: [] } })).generation.meters, []);
+});
+
+test('fixture access is explicit and saved fixture selections migrate to generated Custom practice', () => {
+  const prefs = defaultPreferences(); prefs.preset = 'whole'; prefs.generation.measures = 4;
+  const restored = readPreferences(JSON.stringify(prefs));
+  assert.equal(restored.preset, 'generated'); assert.deepEqual(restored.generation, prefs.generation);
+  assert.equal(restored.generation.teachingPreset, undefined);
+  assert.equal(fixtureAccess('').enabled, false);
+  assert.equal(fixtureAccess('?fixture=unknown').enabled, false);
+  assert.equal(fixtureAccess('?testing=1').enabled, true);
+  for (const fixture of presets) assert.equal(fixtureAccess('?fixture=' + fixture.id).fixture?.id, fixture.id);
 });

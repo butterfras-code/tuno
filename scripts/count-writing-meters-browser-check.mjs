@@ -105,7 +105,7 @@ try {
       assert.equal(await slots.count(), length * (meter === '2/4' ? 4 : meter === '4/4' ? 8 : 6));
       if (meter !== '6/8') { await settings(); await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice(); }
       await solve(source); const answer = await snapshot(); await check(); await button('Retry').tap(); assert.deepEqual(await snapshot(), answer);
-      await button('Next exercise').tap(); assert.ok((await slots.allTextContents()).every(s => s === '·'));
+      await button('New exercise').tap(); assert.ok((await slots.allTextContents()).every(s => s === '·'));
     }
   }
   report.checks.push('Explicit meter fixtures; 123/456 beams; touch 5/6; all meters/lengths/pattern modes at 1280/320; pending settings, Check/Retry/Next, saved rest cancellation, wraps and navigation');

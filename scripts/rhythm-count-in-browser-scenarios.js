@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Run in native T3 preview after a trusted Start click unlocks audio.
  * Also run in a same-origin 320px iframe with its Start button activated. */
 window.__rhythmCountInCheck = (async () => {
@@ -12,9 +13,9 @@ window.__rhythmCountInCheck = (async () => {
   try {
     if (button('Start count-in').disabled) button('Stop / Cancel').click();
     document.querySelectorAll('[data-ingredient]').forEach(input => { input.checked = ['quarter', 'eighth'].includes(input.dataset.ingredient); input.dispatchEvent(new Event('change')); });
-    choose('Mode', 'tap'); choose('Exercise preset', 'generated'); choose('Exercise length', '4');
+    choose('Mode', 'tap'); choose('Exercise length', '4');
     for (const [meter, numbers] of [['2/4', '1212'], ['3/4', '123123'], ['4/4', '1234'], ['6/8', '1212']]) {
-      document.querySelectorAll('[data-meter]').forEach(input => { input.checked = input.dataset.meter === meter; input.dispatchEvent(new Event('change')); }); button('Next exercise').click();
+      document.querySelectorAll('[data-meter]').forEach(input => { input.checked = input.dataset.meter === meter; input.dispatchEvent(new Event('change')); }); button('New exercise').click();
       const display = document.querySelector('.count-in-display');
       assert([...display.querySelectorAll('.count-in-dot')].map(n => n.textContent).join('') === numbers, `${meter}: correct count-in bars and numbers`);
       assert([...display.querySelectorAll('.count-in-cue')].map(n => n.textContent).join(' ') .trim() === 'Ready Go', `${meter}: final Ready and Go`);

@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Native T3 preview. Controlled synthetic timestamps, real audio-clock lifecycle.
  * Click Start once through the native browser to unlock audio before running. */
 window.__sixteenthPerformance = (async () => {
@@ -7,7 +8,7 @@ window.__sixteenthPerformance = (async () => {
   const choose=(control,value)=>{control.value=value;control.dispatchEvent(new Event('change'));};
   const button=name=>[...document.querySelectorAll('button')].find(n=>n.textContent===name);
   const pad=document.querySelector('.pad'), status=()=>document.querySelector('.tap-response .status').textContent;
-  const mode=document.querySelector('.shared-controls select'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), play=document.querySelector('[data-setting="how-to-play"]');
+  const mode=document.querySelector('.response-controls select'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), play=document.querySelector('[data-setting="how-to-play"]');
   const oldOsc=AudioContext.prototype.createOscillator, oldURL=URL.createObjectURL, oldPointer=pad.setPointerCapture;
   let context,scheduled=[],evidence;
   AudioContext.prototype.createOscillator=function(){context=this;const node=oldOsc.call(this),start=node.start.bind(node);node.start=t=>{scheduled.push(t);start(t);};return node;};

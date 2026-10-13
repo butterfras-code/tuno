@@ -1,6 +1,8 @@
 # UIL teaching presets
 
-Uno234 offers **UIL I / UIL II · note-only practice**. Levels III–VI can be inspected but cannot be applied. These are editable rhythm teaching templates, not complete composition validators or claims of UIL endorsement. Short passages do not reproduce contest compositions.
+Uno234 offers **UIL I / UIL II · note-only practice**. Levels III–VI can be inspected but cannot be applied. The shared **Level** selector applies these generation configurations immediately to pending settings. **Customize…** edits their musical fields; **Custom** retains free-form settings without assigning a UIL level. Fixed rhythms are separate testing fixtures, exposed only by `?testing=1` or valid `?fixture=` links. Saved fixtures never enable testing on ordinary visits.
+
+These are editable rhythm teaching templates, not complete composition validators or claims of UIL endorsement. Short passages do not reproduce contest compositions.
 
 ## Reviewed source matrix
 
@@ -67,9 +69,9 @@ Shared edits: `generation.ts` adds the two ingredients, optional attribution and
 
 `applyTeachingPreset(current, definition)` is a pure pending-settings operation. It preserves chosen length; UI application does not replace the current exercise or clear either response. Next/New Exercise performs replacement through the existing lifecycle. Mode, counting convention/system, Tap/Hold, tempo and calibration are independent. Default length remains two, adjustable 1–4.
 
-Changing a preset-controlled field retains source attribution as **customized** and drops the preset restrictions so teachers can choose 6/8 or another supported configuration. Changing length alone preserves the template status. Reapplication deliberately restores its controlled fields. A selected unavailable level changes only inspection, and Apply remains disabled, including after controls unlock. Pending settings still undergo the normal complete-bar validation.
+Changing a preset-controlled field retains source attribution as **customized** and drops the preset restrictions so teachers can choose 6/8 or another supported configuration. Changing length alone preserves the template status. Reapplication deliberately restores its controlled fields. A selected unavailable level changes only inspection, and Apply level remains disabled, including after controls unlock. Pending settings still undergo the normal complete-bar validation.
 
-Preference storage remains version 1. Old records preserve their valid settings. Restriction flags require booleans; unknown IDs/versions or malformed attribution are dropped. An exact saved label is restored only when controlled fields match a currently supported definition; otherwise attribution becomes customized. Unknown stored fields are not carried into active settings. Responses remain transient and calibration retains its separate store.
+Preference storage remains version 1. Old records preserve their valid settings; saved fixture IDs are ignored on ordinary visits. Restriction flags require booleans; unknown IDs/versions or malformed attribution are dropped. An exact saved label is restored only when controlled fields match a currently supported definition; otherwise attribution becomes customized. Unknown stored fields are not carried into active settings. Responses remain transient and calibration retains its separate store.
 
 ## Validation
 
@@ -88,3 +90,11 @@ The environment's new server port could not be reached by the native browser. Th
 PR #39 is rebased onto PR #38 (`958dd49`). The generator's `rhythmCapabilities(meter)` is the single support policy; `generationCapabilities()` is only its aggregate view for presets. Whole/dotted-half meter limits, triplet exclusion from 6/8, complete triplet atoms, paired-eighth restrictions and unchanged defaults are retained. A regression test rejects UIL I when ingredients exist globally but are absent in its selected meter. Higher levels remain blocked by their independent figure/policy requirements.
 
 Node 24.21.0 with npm ci: npm run check passed all **328 tests**, type checking and hosted/portable builds. Native T3 UIL checks passed **52 assertions at 1280px and 52 at 320px**, retaining interrupted performance evidence. The preview was unfocused: audio correctly interrupted, and the full triplet keyboard suite stopped at a focus-dependent syllable-advance assertion; no completed audio or full keyboard acceptance is claimed for this integration. Combined triplet/whole fixtures and mode identity were additionally inspected. The preview served an older bundle, so the newly built JS/CSS were injected explicitly (font payload omitted); this is not deployed-preview or physical-device acceptance.
+
+## Level selection follow-up
+
+The header now owns one Level selector across all response modes. Supported selection applies pending generation configuration immediately; Source and pattern requirements retains inspection and deliberate reapplication. Customize… contains ingredients, meters, patterns, rest spelling and independent length. The current-exercise summary uses the configuration captured by the shared Activity at replacement, while the selector identifies the next exercise. Generated practice is no longer a selectable fixture/preset option. Explicit testing access exposes the separate fixed-fixture catalogue, with all historical IDs intact.
+
+Node 24.21.0, `npm ci`, and `npm run check` passed (330 tests, TypeScript and builds). Local documentation links and `git diff --check` passed. Native T3 [level scenarios](../../scripts/rhythm-level-browser-scenarios.js) passed 43 assertions and [UIL scenarios](../../scripts/rhythm-uil-browser-scenarios.js) passed 52 assertions at desktop (1265px document) and narrow (305px document inside a 320px preview). Coverage includes lengths 1–4, independent preferences, customized source attribution, pending score/response retention, mode switching, blocked application, fresh-document persistence/migration and explicit fixture access. Layout review found no level/source-detail overflow; keyboard Tab/Enter opened Customize…, and Escape closed it and restored focus.
+
+Loopback navigation initially worked, then returned connection failures. Later checks used the complete local JS/CSS in same-origin inline review documents through the native preview; fixture-query inputs were supplied explicitly to those documents. This does not validate server routing. The hidden preview interrupted real-clock performance, so response retention covered interruption evidence rather than newly completed graded performances. Physical devices, assistive technology and the full release/browser suite were not verified in this follow-up. No publication is included.

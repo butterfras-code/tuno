@@ -1,3 +1,4 @@
+// Fixture scenarios require ?testing=1 or a valid ?fixture= link.
 /** Run with native preview_evaluate after trusted audio activation.
  * For manual calibration, start this expression without awaiting, then await
  * window.__offsetCheck in a later call (the calibration lasts about 12 seconds).
@@ -28,7 +29,7 @@ window.__offsetCheck = (async () => {
     return pad.dispatchEvent(new KeyboardEvent(action, { key: ' ', code: 'Space', bubbles: true, cancelable: true }));
   };
   try {
-    const mode = document.querySelector('.shared-controls select'); mode.value = 'tap'; mode.dispatchEvent(new Event('change'));
+    const mode = document.querySelector('.response-controls select'); mode.value = 'tap'; mode.dispatchEvent(new Event('change'));
     if (scenario === 'automatic' || scenario === 'reuse') {
       if (scenario === 'automatic') { button('Reset timing').click(); panel.querySelector('input[type=checkbox]').checked = true; }
       const before = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));

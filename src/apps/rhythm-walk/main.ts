@@ -4,7 +4,7 @@ import '../../shared/ui/fonts.css';
 import '../count-writing/styles.css';
 import './styles.css';
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { Activity, presets as practiceFixtures, modeOptions, readPreferences, preferenceKey } from './activity.ts';
+import { Activity, presets as practiceFixtures, modeOptions, readPreferences, preferenceKey, fixtureAccess } from './activity.ts';
 import type { Mode } from './activity.ts';
 import { createPerformance } from './performance.ts';
 import type { AttemptRecord } from './capture.ts';
@@ -20,20 +20,20 @@ import { passageGrid } from '../count-writing/passage.ts';
 import { renderPassageTies } from './shared/notation.ts';
 import { createPassageLines } from '../count-writing/passage-lines.ts';
 import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
+import { teachingPresets } from './shared/teaching-presets.ts';
 import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
 const preferences = readPreferences(saved);
-const requestedFixture = new URLSearchParams(location.search).get('fixture');
-if (requestedFixture && practiceFixtures.some(f => f.id === requestedFixture)) preferences.preset = requestedFixture;
+const testing = fixtureAccess(location.search);
+if (testing.fixture) preferences.preset = testing.fixture.id;
 let countingSystem: CountingSystem = preferences.countingSystem;
 let offbeat: OffbeatSymbol = preferences.offbeat;
 let presentation = preferences.presentation;
 let dottedConvention: DottedQuarterConvention = preferences.convention;
 let generation = preferences.generation;
 let fixtureId = preferences.preset;
-let pendingFixtureId = fixtureId;
 const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
 function persist() {
   Object.assign(preferences, { countingSystem, offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
@@ -63,18 +63,18 @@ lineShortcut.append(el('kbd', '', 'Shift'), ' + ', leftKey, ' / ', rightKey, ' �
 const restShortcut = el('span', 'counting-shortcut'); restShortcut.append(el('kbd', '', '('), ' — start rest pair');
 banner.append(lineShortcut, restShortcut);
 const exerciseSummary = el('p', 'exercise-summary'); exerciseSummary.setAttribute('role', 'status');
-const picker = select([{ value: 'generated', label: 'Generated practice' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
+const picker = select([{ value: '', label: 'Choose a testing fixture…' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId; picker.dataset.preset = '';
 const customDialog = el('dialog', 'custom-exercise-dialog'); customDialog.id = 'custom-exercise';
 customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
-const customTitle = el('h2', '', 'Custom exercise'); customTitle.id = 'custom-exercise-title';
-const customButton = button('Custom…', () => { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
+const customTitle = el('h2', '', 'Customize next exercise'); customTitle.id = 'custom-exercise-title';
+const customButton = button('Customize…', () => { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
 customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute('aria-controls', customDialog.id);
 const customClose = button('Done', () => customDialog.close()); customClose.autofocus = true;
 customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
 const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
 customDialog.append(customHeader, el('p', 'setting-hint', 'Choose what to include. Changes apply when you select New exercise.'));
-const presetRow = el('div', 'preset-row'); presetRow.append(field('Preset', picker), customButton);
+const presetRow = el('div', 'preset-row'); presetRow.append(customButton);
 const setup = el('div', 'setup exercise-toolbar'); setup.append(presetRow);
 const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');
 const snapshotTitle = el('h2', '', 'Recent feedback'); snapshotTitle.id = 'feedback-snapshot-title';
@@ -116,7 +116,7 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
     performing = active; picker.disabled = next.disabled = customButton.disabled = active;
     settings.setLocked(active);
     settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
-    if (!active) next.disabled = pendingFixtureId === 'generated' && Boolean(generationIssue(generation));
+    if (!active) next.disabled = Boolean(generationIssue(generation));
     if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
     updateResponseView();
     if (active) {
@@ -126,7 +126,7 @@ const performance = createPerformance({ exercise: () => activity.exercise, prefe
   },
   decorate: decoratePerformance,
   next: () => newExercise(),
-  nextIssue: () => pendingFixtureId === 'generated' ? generationIssue(generation) : null,
+  nextIssue: () => generationIssue(generation),
 });
 function evaluateAnswer() {
   lineEditor?.cancel(); editors.forEach(e => e.suspend());
@@ -139,16 +139,12 @@ function evaluateAnswer() {
 const check = button('Check', evaluateAnswer, true);
 const retry = button('Retry', () => { lineEditor?.cancel(); editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
 function newExercise(returnToPractice = false) {
-  const issue = pendingFixtureId === 'generated' ? generationIssue(generation) : null;
+  const issue = generationIssue(generation);
   if (issue) { summary.textContent = issue; return; }
   performance.cancel('New exercise');
-  fixtureId = pendingFixtureId; picker.value = fixtureId;
-  if (fixtureId === 'generated') {
-    activity.preferences.generation = generation; activity.next();
-    loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
-  } else {
-    loadExercise(practiceFixtures.find(f => f.id === fixtureId)!.measures, !returnToPractice);
-  }
+  fixtureId = 'generated'; picker.value = '';
+  activity.preferences.generation = generation; activity.next();
+  loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
   if (customDialog.open) customDialog.close();
   if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
 }
@@ -179,12 +175,18 @@ const settings = createSettingsPage({
   appearance: value => { presentation = { ...presentation, sustainAppearance: value }; updateEditors(); },
   convention: value => { dottedConvention = value; updateEditors(); },
   generation: value => {
-    generation = value; pendingFixtureId = 'generated'; picker.value = pendingFixtureId; persist();
+    generation = value; persist();
     const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
-    exerciseSummary.textContent = issue ?? 'Length and ingredients updated. Your current answer is kept; New exercise uses these settings.';
+    updateExerciseSummary();
   },
 });
 customDialog.append(settings.exerciseControls);
+presetRow.prepend(settings.levelField);
+if (testing.enabled) {
+  const fixtures = el('details', 'testing-fixtures');
+  fixtures.append(el('summary', '', 'Developer / testing fixtures'), el('p', 'setting-hint', 'Testing access enabled. Selecting a fixed fixture replaces the exercise and clears both responses. New exercise returns to generated practice.'), field('Testing fixture', picker));
+  setup.append(fixtures);
+}
 const exerciseMeta = el('div', 'exercise-meta'); exerciseMeta.append(exerciseSummary, helpButton);
 const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls');
 const headerLayout = el('div', 'exercise-header-layout'); headerLayout.append(setup, feedbackSnapshot);
@@ -196,14 +198,14 @@ header.append(nav);
 activitySurface.append(pageTitle, sharedControls, practiceView, settings.page);
 main.append(header, activitySurface, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
-  pendingFixtureId = id;
-  next.disabled = id === 'generated' && Boolean(generationIssue(generation));
-  exerciseSummary.textContent = 'Preset selected. Choose New exercise to start it; your current answer is kept.';
+  if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;
+  fixtureId = id; picker.value = id;
+  loadExercise(practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
 }
 function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true) {
   performance.cancel('Exercise changed');
   if (replace) { activity.preferences.preset = fixtureId; activity.replace(measures); }
-  performance.reset(); persist(); next.disabled = pendingFixtureId === 'generated' && Boolean(generationIssue(generation));
+  performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
   lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
@@ -232,10 +234,18 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   });
   tieNotation = renderPassageTies(measures, passageStrip);
   if (tied) lineEditor = createPassageLines(passageScroll, grid, editors);
-  exerciseSummary.textContent = `${fixtureId === 'generated' ? 'Generated practice' : 'Review fixture'} · ${measures.length} ${measures.length === 1 ? 'measure' : 'measures'} · ${measures[0]!.meter.join("/")}`;
+  updateExerciseSummary();
   summary.textContent = ''; retry.hidden = true;
   updateEditors(); updateResponseView();
   if (focus && preferences.mode !== 'tap') editors[0]?.focus();
+}
+function updateExerciseSummary() {
+  const source = activity.exerciseGeneration.teachingPreset;
+  const label = source ? `${teachingPresets.find(p => p.id === source.id)!.label}${source.customized ? ' · customized' : ' · note-only practice'}` : 'Custom';
+  exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
+  if (fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
+  const issue = generationIssue(generation);
+  if (issue) exerciseSummary.textContent += ` New exercise unavailable: ${issue}`;
 }
 function updateEditors() {
   persist();
