@@ -2,7 +2,7 @@
 window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
   const d = w.document, checks = [], key = 'tuno.rhythm-walk.preferences.v1';
   const assert = (ok, name) => { if (!ok) throw Error(name); checks.push(name); };
-  const choose = (control, value) => { control.value = value; control.dispatchEvent(new w.Event('change')); };
+  const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new w.Event('change')); };
   const stored = () => JSON.parse(w.localStorage.getItem(key));
   const picker = d.querySelector('[data-setting="teaching-preset"]');
   const mode = d.querySelector('.response-controls select');

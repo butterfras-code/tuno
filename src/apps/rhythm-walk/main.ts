@@ -73,7 +73,7 @@ customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute(
 const customClose = button('Done', () => customDialog.close()); customClose.autofocus = true;
 customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
 const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
-customDialog.append(customHeader, el('p', 'setting-hint', 'Choose what to include. Changes apply when you select New exercise.'));
+customDialog.append(customHeader);
 const presetRow = el('div', 'preset-row'); presetRow.append(customButton);
 const setup = el('div', 'setup exercise-toolbar'); setup.append(presetRow);
 const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');

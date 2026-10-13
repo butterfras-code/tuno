@@ -5,7 +5,7 @@ window.__rhythmMeterPoolCheck = (() => {
   const button = name => [...document.querySelectorAll('button')].find(n => n.textContent === name);
   const input = meter => document.querySelector(`[data-meter="${meter}"]`);
   const check = (control, checked) => { control.checked = checked; control.dispatchEvent(new Event('change')); };
-  const choose = (name, value) => { const control = [...document.querySelectorAll('label')].find(n => n.querySelector('.field-label')?.textContent === name).querySelector('select'); control.value = value; control.dispatchEvent(new Event('change')); };
+  const choose = (name, value) => { if (name === 'Exercise length') { document.querySelector(`[data-setting="exercise-length"] input[value="${value}"]`).click(); return; } const control = [...document.querySelectorAll('label')].find(n => n.querySelector('.field-label')?.textContent === name).querySelector('select'); control.value = value; control.dispatchEvent(new Event('change')); };
   const prefs = () => JSON.parse(localStorage.getItem('tuno.rhythm-walk.preferences.v1'));
   const id = () => document.querySelector('.passage').dataset.exerciseId;
   const originalRandom = Math.random;

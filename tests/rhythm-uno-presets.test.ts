@@ -11,7 +11,7 @@ import { countGrid } from '../src/apps/count-writing/grid.ts';
 const base = ['whole', 'half', 'quarter', 'eighth', 'quarter-rest', 'half-rest'];
 const second = [...base, 'dotted-half', 'dotted-quarter'];
 const third = [...second, 'sixteenth', 'eighth-rest', 'triplet-eighth', 'dotted-eighth'];
-const all = [...third, 'dotted-quarter-rest', 'sixteenth-rest'];
+const all = [...third, 'dotted-quarter-rest', 'sixteenth-rest', 'whole-rest'];
 const expected = [
   { meters: ['4/4'], ingredients: base, ties: false, syncopation: false, notation: false },
   { meters: ['4/4', '2/4', '3/4'], ingredients: second, ties: true, syncopation: false, notation: false },

@@ -1,3 +1,4 @@
+import { selectExerciseLength } from './rhythm-browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';
@@ -36,7 +37,7 @@ try {
   assert.equal(await metronome.isVisible(), false, 'exercise metronome belongs to settings');
   assert.deepEqual(await snapshot(), before, 'performance preference preserves exercise and answer');
   await settings(); assert.equal(await metronome.isChecked(), false); await metronome.check(); await practice();
-  await settings(); await page.getByLabel('Exercise length', { exact: true }).selectOption('4'); await practice();
+  await settings(); await selectExerciseLength(page, '4'); await practice();
   assert.deepEqual(await snapshot(), before, 'length setting preserves exercise and entered answer');
   await control('Check').click(); assert.deepEqual(await snapshot(), before, 'Check preserves answer');
   assert.match(await feedback().nth(1).innerText(), /Measure 2.*Count symbols/s);
@@ -87,7 +88,7 @@ try {
   for (const width of [1280, 320]) {
     await page.setViewportSize({ width, height: 900 });
     for (const length of [1, 2, 3, 4]) {
-      await settings(); await page.getByLabel('Exercise length', { exact: true }).selectOption(String(length));
+      await settings(); await selectExerciseLength(page, String(length));
       await page.getByLabel('Dotted-quarter internal &', { exact: true }).selectOption('required'); await practice();
       await control('New exercise').tap(); assert.equal(await bars.count(), length);
       assert.ok((await bars.locator('.count-slot').allTextContents()).every(text => text === '·'));

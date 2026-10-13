@@ -13,8 +13,8 @@ export function countGrid(source: RhythmMeasure, system: CountingSystem = 'numbe
   const policy = sourcePolicy(source);
   const measure = deriveMeasure(source);
   if (measure.beats.some(b => compare(b.duration, policy.pulse)) ||
-      source.events.some(([value, m]) => !['H', 'Q', 'E', ...(policy.compound ? [] : ['S', 'W'])].includes(value) || (value === 'W' && (m?.rest || m?.dots)) || (m?.tuplet && (policy.compound || value !== 'E' || m.tuplet[0] !== 3 || m.tuplet[1] !== 2 || m.rest || m.dots || m.tieNext)) || (m?.dots ?? 0) > 1 || (value === 'S' && m?.dots) || (value === 'E' && m?.dots && (policy.compound || m.rest)) || (m?.rest && value === 'H' && m.dots))) {
-    throw new Error('Uno234 currently supports 2/4, 3/4, 4/4 and 6/8 reviewed whole/half/quarter/eighth/sixteenth material; only sounded eighth triplets; no whole rests, dotted wholes, dotted sixteenths or dotted-eighth rests.');
+      source.events.some(([value, m]) => !['H', 'Q', 'E', ...(policy.compound ? [] : ['S', 'W'])].includes(value) || (value === 'W' && m?.dots) || (m?.tuplet && (policy.compound || value !== 'E' || m.tuplet[0] !== 3 || m.tuplet[1] !== 2 || m.rest || m.dots || m.tieNext)) || (m?.dots ?? 0) > 1 || (value === 'S' && m?.dots) || (value === 'E' && m?.dots && (policy.compound || m.rest)) || (m?.rest && value === 'H' && m.dots))) {
+    throw new Error('Uno234 currently supports 2/4, 3/4, 4/4 and 6/8 reviewed whole/half/quarter/eighth/sixteenth material; only sounded eighth triplets; no dotted wholes, dotted sixteenths or dotted-eighth rests.');
   }
   const triplets = measure.events.some(e => e.tupletGroup !== null);
   if (measure.events.some(e => e.tupletGroup !== null && (divide(measure.events[e.tupletGroup]!.start, fraction(1, 4))[1] !== 1 || source.events[e.index - 1]?.[1]?.tieNext))) throw new Error('Triplet groups must start on quarter beats, without ties to/from members.');

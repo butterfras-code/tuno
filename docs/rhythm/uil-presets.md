@@ -48,7 +48,7 @@ I–II deliberately practice **general note figures only** in 4/4: Q, H, H., W a
 
 The shared hooks `restrictions.pairedEighths` and `restrictions.noQuarterRestBeatOne` are independent of UIL. The first restricts basic simple-meter practice and forces the second eighth before another value can begin. The second excludes an initial quarter rest. Complete-bar feasibility uses those same rules, without retrying or inventing fill notes. Test-only quarter-rest generation exercises the second hook even though the live note-only presets omit all rests.
 
-Whole notes were added at the owner's explicit request: an opt-in `whole` ingredient, a hollow stemless head, four numbered counts and one complete duration line in 4/4. Whole rests and dotted wholes remain unsupported. Existing dotted-half engraving/counting is now exposed as the opt-in `dotted-half` ingredient. Defaults are preserved. Both values stay out of 6/8 generation; whole-only selections cannot fill 2/4, 3/4 or 6/8. Other compatible selected ingredients may fill those meters.
+Whole notes were added at the owner's explicit request: an opt-in `whole` ingredient, a hollow stemless head, four numbered counts and one complete duration line in 4/4. The customization follow-up adds opt-in whole rests in 4/4; dotted wholes remain unsupported. UIL note-only configurations still exclude rests. Existing dotted-half engraving/counting is now exposed as the opt-in `dotted-half` ingredient. Defaults are preserved. Both values stay out of 6/8 generation; whole-only selections cannot fill 2/4, 3/4 or 6/8. Other compatible selected ingredients may fill those meters.
 
 | Levels | Application | Remaining work |
 | --- | --- | --- |

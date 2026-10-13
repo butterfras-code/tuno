@@ -129,7 +129,34 @@ test('whole notes have independent counts, duration endpoint and shared performa
   assert.equal(result.matches[0]!.releaseOffset, 0);
   assert.deepEqual(generateExercise({ ...defaultGeneration(), ingredients: ['whole'] }, () => 0).map(m => m.events), [[['W']], [['W']]]);
   for (const meter of ['2/4', '3/4', '6/8'] as const) assert.ok(generationIssue({ ...defaultGeneration(), meters: [meter], ingredients: ['whole'] }));
-  assert.throws(() => countGrid({ meter: [4, 4], events: [['W', { rest: true }]] }));
+});
+
+test('whole rests generate only in 4/4, require one full count/rest span, and permit silent performance', () => {
+  const settings = { ...defaultGeneration(), ingredients: ['whole-rest' as const] };
+  assert.ok(!defaultGeneration().ingredients.includes('whole-rest'));
+  const measures = generateExercise(settings, () => 0);
+  assert.deepEqual(measures.map(m => m.events), [[['W', { rest: true }]], [['W', { rest: true }]]]);
+  for (const meter of ['2/4', '3/4', '6/8'] as const) {
+    assert.ok(!rhythmCapabilities(meter).ingredients.includes('whole-rest'));
+    assert.ok(generationIssue({ ...settings, meters: [meter] }));
+  }
+  const measure = measures[0]!;
+  const answer = blankAnswer(measure);
+  answer.symbols = ['1', '', '2', '', '3', '', '4', ''];
+  answer.spans = [{ start: 0, end: 7 }]; answer.rests = [{ start: 0, end: 6 }];
+  const result = evaluatePassage([measure], [answer])[0]!;
+  assert.equal(result.counts.verdict, 'correct'); assert.equal(result.spans.verdict, 'correct'); assert.equal(result.rests.verdict, 'correct');
+  answer.rests = [{ start: 0, end: 2 }, { start: 4, end: 6 }];
+  assert.equal(evaluatePassage([measure], [answer])[0]!.rests.verdict, 'revise');
+  for (const style of ['tap', 'hold'] as const) {
+    const capture = new Capture({ id: 'whole-rest', label: 'Whole rest', description: '', measures: [measure] }, 60, true, undefined, undefined, style);
+    assert.deepEqual(capture.plan.notes, []);
+    assert.equal(capture.plan.rests[0]!.end - capture.plan.rests[0]!.start, 4);
+    const evaluation = evaluateAttempt(capture.advance(capture.plan.captureEnd)!);
+    assert.deepEqual(evaluation.missing, []); assert.deepEqual(evaluation.extra, []);
+  }
+  const preferences = defaultPreferences(); preferences.generation = settings;
+  assert.deepEqual(readPreferences(JSON.stringify(preferences)).generation.ingredients, ['whole-rest']);
 });
 
 /** Test-only teaching template that the unmodified engine really can enforce. Not a UIL level. */

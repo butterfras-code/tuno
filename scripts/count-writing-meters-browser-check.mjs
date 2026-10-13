@@ -1,3 +1,4 @@
+import { selectExerciseLength } from './rhythm-browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';
@@ -95,7 +96,7 @@ try {
     for (const meter of ['2/4','3/4','4/4','6/8']) for (const ties of [false, true]) for (const syncopation of [false, true]) for (const length of [1,2,3,4]) {
       await settings(); const saved = await snapshot();
       for (const choice of await page.locator('[data-meter]').all()) await choice.setChecked(await choice.getAttribute('data-meter') === meter);
-      await page.getByLabel('Exercise length', { exact: true }).selectOption(String(length));
+      await selectExerciseLength(page, String(length));
       for (const ingredient of await page.locator('[data-ingredient]').all()) await ingredient.uncheck();
       for (const id of ['quarter','eighth','dotted-quarter','quarter-rest','eighth-rest', ...(meter === '6/8' ? ['dotted-quarter-rest'] : [])]) await page.locator(`[data-ingredient="${id}"]`).check();
       await page.locator('[data-setting="ties"]').setChecked(ties); await page.locator('[data-setting="syncopation"]').setChecked(syncopation);

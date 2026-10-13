@@ -5,7 +5,7 @@ window.__rhythmCountInCheck = (async () => {
   const assert = (condition, label) => { if (!condition) throw new Error(label); };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const button = name => [...document.querySelectorAll('button')].find(n => n.textContent === name);
-  const choose = (name, value) => { const input = [...document.querySelectorAll('label')].find(n => n.querySelector('.field-label')?.textContent === name).querySelector('select'); input.value = value; input.dispatchEvent(new Event('change')); };
+  const choose = (name, value) => { if (name === 'Exercise length') { document.querySelector(`[data-setting="exercise-length"] input[value="${value}"]`).click(); return; } const input = [...document.querySelectorAll('label')].find(n => n.querySelector('.field-label')?.textContent === name).querySelector('select'); input.value = value; input.dispatchEvent(new Event('change')); };
   const original = AudioContext.prototype.createOscillator;
   let context, clicks = [];
   AudioContext.prototype.createOscillator = function () { context = this; const node = original.call(this), start = node.start.bind(node); node.start = time => { clicks.push(time); start(time); }; return node; };

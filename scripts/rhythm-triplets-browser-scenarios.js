@@ -53,7 +53,7 @@ window.__tripletCheck = (async () => {
       for(const control of doc.querySelectorAll('[data-meter]')) if(control!==meterControl){control.checked=false;control.dispatchEvent(new w.Event('change'));}
       for(const control of doc.querySelectorAll('[data-ingredient]')) {control.checked=control.dataset.ingredient==='triplet-eighth';control.dispatchEvent(new w.Event('change'));}
       for(const length of [1,2,3,4]) {
-        const control=doc.querySelector('[data-setting="exercise-length"]');control.value=String(length);control.dispatchEvent(new w.Event('change'));button(doc,'New exercise').click();
+        doc.querySelector(`[data-setting="exercise-length"] input[value="${length}"]`).click();button(doc,'New exercise').click();
         assert(doc.querySelector('[data-preset]').value==='' && doc.querySelectorAll('.notation').length===length,'shared generated length '+meter+' '+length);
         assert(doc.querySelectorAll('[data-tuplet]').length===Number(meter[0])*length,'selected triplet-only generation '+meter+' '+length);
         const generatedScore=doc.querySelector('.notation'),generatedId=doc.querySelector('.passage').dataset.exerciseId;

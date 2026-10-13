@@ -1,12 +1,67 @@
 import { divide } from '../../../music/fraction.ts';
 import { derivePassage } from '../../../music/measure.ts';
-import type { RhythmMeasure } from '../../../music/measure.ts';
+import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
 import { countGrid, slotX } from '../../count-writing/grid.ts';
 const ns = 'http://www.w3.org/2000/svg';
 function node(tag: string, attrs: Record<string, string | number>) {
   const element = document.createElementNS(ns, tag);
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
   return element;
+}
+function timeSignatureDigits(meter: RhythmMeasure['meter'], x: number, top: number, gap: number) {
+  return meter.map((value, index) => {
+    const text = node('text', { x, y: top + index * gap, 'font-size': 34, 'font-family': 'serif', 'font-weight': 'bold', 'text-anchor': 'middle', fill: 'currentColor' });
+    text.textContent = String(value);
+    return text;
+  });
+}
+/** Decorative preview; the enclosing control supplies the accessible meter label. */
+export function renderTimeSignature(meter: RhythmMeasure['meter']) {
+  const svg = node('svg', { viewBox: '0 0 48 72', class: 'time-signature-preview', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(...timeSignatureDigits(meter, 24, 30, 30));
+  return svg;
+}
+function writtenSymbol(written: RhythmEvent, nx: number) {
+  const group = node('g', {});
+  if (written[1]?.rest) {
+    if (['W', 'H'].includes(written[0])) {
+      group.append(node('rect', { x: nx - 12, y: written[0] === 'W' ? 100 : 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': written[0] === 'W' ? 'whole' : 'half' }));
+    } else if (['E', 'S'].includes(written[0])) {
+      if (written[0] === 'S') group.append(node('path', { d: 'M -9 7 C -20 17 -24 1 -13 1 C -5 1 -5 7 -9 7 Z M -8 30 L 8 -18', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'sixteenth' }));
+      group.append(node('path', { d: 'M -6 20 L 8 -18 M 6 -12 C -8 -2 -14 -18 -3 -18 C 5 -18 7 -12 6 -12 Z', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'eighth' }));
+    } else
+    group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
+  } else {
+    const whole = written[0] === 'W';
+    const hollow = whole || written[0] === 'H';
+    group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
+    if (!whole) group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
+  }
+  if (written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
+  return group;
+}
+function appendFlags(group: Element, written: RhythmEvent, nx: number) {
+  for (let level = 0; level < (written[0] === 'S' ? 2 : 1); level++) {
+    const y = 42 + level * 12;
+    group.append(node('path', { d: `M ${nx + 10} ${y} C ${nx + 12} ${y + 13} ${nx + 33} ${y + 14} ${nx + 23} ${y + 38} C ${nx + 25} ${y + 22} ${nx + 13} ${y + 22} ${nx + 10} ${y + 19} Z`, fill: 'currentColor', 'data-flag': level + 1 }));
+  }
+}
+/** Ingredient previews reuse the score glyphs; enclosing labels provide their names. */
+export function renderRhythmSymbol(written: RhythmEvent) {
+  const triplet = Boolean(written[1]?.tuplet);
+  const svg = node('svg', { viewBox: triplet ? '0 0 136 136' : '0 24 72 112', class: 'rhythm-symbol-preview', 'aria-hidden': 'true', focusable: 'false' });
+  for (const x of triplet ? [22, 62, 102] : [26]) {
+    const group = writtenSymbol(written, x);
+    if (!triplet && !written[1]?.rest && ['E', 'S'].includes(written[0])) appendFlags(group, written, x);
+    if (written[1]?.rest && ['W', 'H'].includes(written[0])) group.append(node('line', { x1: x - 16, x2: x + 16, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
+    svg.append(group);
+  }
+  if (triplet) {
+    svg.append(node('line', { x1: 32, x2: 112, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7 }));
+    const number = node('text', { x: 72, y: 28, 'font-size': 30, 'font-family': 'serif', 'font-style': 'italic', 'text-anchor': 'middle', fill: 'currentColor' });
+    number.textContent = '3'; svg.append(number);
+  }
+  return svg;
 }
 export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage: { first: boolean; last: boolean } = { first: true, last: true }) {
   const grid = countGrid(measure);
@@ -17,26 +72,12 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
   svg.append(node('line', { x1: passage.first ? 80 : 0, x2: passage.last ? 798 : 800, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of passage.first ? [80, passage.last ? 798 : 800] : [passage.last ? 798 : 800]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': passage.last && bx !== 80 ? 4 : 2 }));
   if (passage.last) svg.append(node('line', { x1: 790, x2: 790, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': 2 }));
-  if (passage.first) for (const y of [94, 122]) {
-    const text = node('text', { x: 46, y, 'font-size': 34, 'font-family': 'serif', 'font-weight': 'bold', 'text-anchor': 'middle' });
-    text.textContent = String(measure.meter[y === 94 ? 0 : 1]); svg.append(text);
-  }
+  if (passage.first) svg.append(...timeSignatureDigits(measure.meter, 46, 94, 28));
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
     const group = node('g', { 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
-    if (event.kind === 'rest') {
-      if (event.written[0] === 'H') {
-        group.append(node('rect', { x: nx - 12, y: 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': 'half' }));
-      } else if (['E', 'S'].includes(event.written[0])) {
-        if (event.written[0] === 'S') group.append(node('path', { d: 'M -9 7 C -20 17 -24 1 -13 1 C -5 1 -5 7 -9 7 Z M -8 30 L 8 -18', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'sixteenth' }));
-        group.append(node('path', { d: 'M -6 20 L 8 -18 M 6 -12 C -8 -2 -14 -18 -3 -18 C 5 -18 7 -12 6 -12 Z', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'eighth' }));
-      } else
-      group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
-    } else {
-      const whole = event.written[0] === 'W';
-      const hollow = whole || event.written[0] === 'H';
-      group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--color-surface)' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1 }));
-      if (!whole) group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
+    group.append(...writtenSymbol(event.written, nx).childNodes);
+    if (event.kind === 'note') {
       if (short(event)) {
         // Primary beams connect short-note groups, including intervening written rests.
         const members = grid.events.filter(e => short(e) && groupOf(e) === groupOf(event));
@@ -52,14 +93,9 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
             group.append(node('line', { x1: nx + 10, x2: end, y1: 54, y2: 54, stroke: 'currentColor', 'stroke-width': 6, 'data-beam': joinedNext ? 'secondary' : 'partial' }));
           }
         }
-        if (notes.length === 1) for (let level = 0; level < (event.written[0] === 'S' ? 2 : 1); level++) {
-          const y = 42 + level * 12;
-          group.append(node('path', { d: `M ${nx + 10} ${y} C ${nx + 12} ${y + 13} ${nx + 33} ${y + 14} ${nx + 23} ${y + 38} C ${nx + 25} ${y + 22} ${nx + 13} ${y + 22} ${nx + 10} ${y + 19} Z`, fill: 'currentColor', 'data-flag': level + 1 }));
-        }
+        if (notes.length === 1) appendFlags(group, event.written, nx);
       }
-      if (event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     }
-    if (event.kind === 'rest' && event.written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
     const title = node('title', {}); title.textContent = `${event.kind} ${index + 1}${event.tupletGroup === null ? '' : ', eighth-note triplet, three in the time of two'}`; group.setAttribute('data-music-label', title.textContent!); group.append(title);
     svg.append(group);
 

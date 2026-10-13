@@ -1,5 +1,7 @@
-import { meters } from './meter.ts';
-import { button, el, field, select } from '../../../shared/ui/components.ts';
+import { meters, meterPolicy } from './meter.ts';
+import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
+import type { RhythmEvent } from '../../../music/measure.ts';
+import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
 import type { DottedQuarterConvention } from '../../count-writing/evaluation.ts';
 import { linePlacementOptions, sustainAppearanceOptions } from '../../count-writing/presentation.ts';
 import type { CountPresentation, LinePlacement, SustainAppearance } from '../../count-writing/presentation.ts';
@@ -116,13 +118,26 @@ export function createSettingsPage(callbacks: {
   appearanceHint.id = 'settings-appearance-hint';
   appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
   let generation = structuredClone(callbacks.initialGeneration);
-  const length = select([1, 2, 3, 4].map(n => ({ value: String(n), label: `${n} ${n === 1 ? 'measure' : 'measures'}` })), value => { generation = { ...generation, measures: Number(value) }; generationChanged(false); });
-  length.value = String(generation.measures); length.dataset.setting = 'exercise-length';
-  const meterField = el('fieldset', 'settings-options active-meters');
-  meterField.append(el('legend', '', 'Time signatures · next exercise'));
+  const lengthField = el('fieldset', 'exercise-length segmented-field');
+  lengthField.dataset.setting = 'exercise-length';
+  lengthField.append(el('legend', '', 'Exercise length'));
+  const lengthSegments = el('div', 'segmented-options');
+  for (const measures of [1, 2, 3, 4]) {
+    const { label } = segmentedOption({
+      label: `${measures} ${measures === 1 ? 'measure' : 'measures'}`,
+      content: el('span', 'length-segment-number', String(measures)),
+      type: 'radio', name: 'exercise-length', value: String(measures), checked: generation.measures === measures,
+      changed: input => { generation = { ...generation, measures: Number(input.value) }; generationChanged(false); },
+    });
+    lengthSegments.append(label);
+  }
+  lengthField.append(lengthSegments);
+  const meterField = el('fieldset', 'active-meters segmented-field');
+  meterField.append(el('legend', '', 'Allowed Time Signatures'));
+  const meterSegments = el('div', 'segmented-options');
   for (const meter of meters) {
-    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = (generation.meters ?? [generation.meter ?? '4/4']).includes(meter); input.dataset.meter = meter;
-    input.addEventListener('change', () => {
+    const { label, input } = segmentedOption({ label: meter, content: renderTimeSignature(meterPolicy(meter).meter), type: 'checkbox', value: meter,
+      checked: (generation.meters ?? [generation.meter ?? '4/4']).includes(meter), changed: input => {
       if (input.checked) generation = enableMeter(generation, meter);
       else {
         const { meter: _legacy, ...current } = generation;
@@ -130,86 +145,108 @@ export function createSettingsPage(callbacks: {
       }
       vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(control => { control.checked = generation.ingredients.includes(control.dataset.ingredient as typeof generation.ingredients[number]); });
       generationChanged();
-    });
-    label.append(input, el('span', '', meter)); meterField.append(label);
+    } });
+    input.dataset.meter = meter;
+    meterSegments.append(label);
   }
-  meterField.append(el('p', 'setting-hint', 'Each new exercise uses one selected time signature for all measures. Enabling a time signature enables quarter notes in simple meters or eighth notes in 6/8. Selected ingredients that do not fit that meter are skipped. Sixteenth notes/rests, dotted eighth notes and triplet eighths are retained but omitted in 6/8. In 6/8, count 1–6 on eighths with two dotted-quarter performance beats.'));
-  const lengthField = field('Exercise length', length);
-  lengthField.append(el('p', 'setting-hint', 'Default: 2 measures. Applies on New exercise; keeps the current answer.'));
-  const vocabulary = el('fieldset', 'settings-options active-ingredients');
-  vocabulary.append(el('legend', '', 'Allowed rhythm ingredients · next exercise'));
-  for (const ingredient of ingredients) {
-    const label = el('label', 'setting-option'); const input = el('input'); input.type = 'checkbox'; input.checked = generation.ingredients.includes(ingredient.id); input.dataset.ingredient = ingredient.id;
-    input.addEventListener('change', () => { generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) }; generationChanged(); });
-    label.append(input, el('span', '', ingredient.label)); vocabulary.append(label);
+  meterField.append(meterSegments);
+  const vocabulary = el('div', 'active-ingredients');
+  for (const [rest, title] of [[false, 'Allowed Notes'], [true, 'Allowed Rests']] as const) {
+    const group = el('fieldset', 'ingredient-column');
+    group.append(el('legend', '', title));
+    for (const value of ['W', 'H', 'Q', 'E', 'S']) {
+      const row = el('div', 'ingredient-row');
+      for (const ingredient of ingredients.filter(i => i.event[0] === value && Boolean((i.event as RhythmEvent)[1]?.rest) === rest)) {
+        const { label, input } = segmentedOption({ label: ingredient.label, content: renderRhythmSymbol(ingredient.event), type: 'checkbox', value: ingredient.id,
+          checked: generation.ingredients.includes(ingredient.id), changed: () => {
+            generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) };
+            generationChanged();
+          },
+        });
+        input.dataset.ingredient = ingredient.id;
+        label.classList.add('ingredient-toggle'); label.title = ingredient.label;
+        row.append(label);
+      }
+      group.append(row);
+    }
+    vocabulary.append(group);
   }
-  const notationOption = el('label', 'setting-option');
-  const notationToggle = el('input'); notationToggle.type = 'checkbox'; notationToggle.checked = generation.allowUnintuitiveNotation; notationToggle.dataset.setting = 'unintuitive-notation';
-  notationOption.append(notationToggle, el('span', '', 'Allow unintuitive notation'));
-  const notationField = el('div'); notationField.append(notationOption, el('p', 'setting-hint', 'Off by default. Quarter and half rests start on whole beats. Dotted quarter rests in simple meters are used only when this option and their ingredient checkbox are enabled. Applies on New exercise; keeps your answer.'));
-  notationToggle.addEventListener('change', () => { generation = { ...generation, allowUnintuitiveNotation: notationToggle.checked }; generationChanged(); });
-  const patternFields = el('div');
-  for (const [key, label, hint] of [
-    ['ties', 'Ties', 'Permit one chain of 2–3 enabled written note segments, including across barlines. Continuations are not attacks.'],
-    ['syncopation', 'Syncopation', 'Permit at most one off-pulse attack per measure sustained across the next pulse: a quarter in simple meters, a dotted quarter in 6/8. Sounds ending at that pulse remain available when off.'],
+  const patternFields = el('div', 'segmented-options pattern-toggles');
+  for (const [key, id, title] of [
+    ['allowUnintuitiveNotation', 'unintuitive-notation', 'Weird Patterns'],
+    ['ties', 'ties', 'Ties'],
+    ['syncopation', 'syncopation', 'Syncopation'],
   ] as const) {
-    const option = el('label', 'setting-option'); const toggle = el('input'); toggle.type = 'checkbox'; toggle.checked = Boolean(generation[key]); toggle.dataset.setting = key;
-    option.append(toggle, el('span', '', label));
-    patternFields.append(option, el('p', 'setting-hint', `${hint} Off by default; applies on New exercise and keeps the current answer.`));
-    toggle.addEventListener('change', () => { generation = { ...generation, [key]: toggle.checked }; generationChanged(); });
+    const { label, input } = segmentedOption({ label: title, content: el('span', '', title), type: 'checkbox', value: id,
+      checked: Boolean(generation[key]), changed: input => { generation = { ...generation, [key]: input.checked }; generationChanged(); },
+    });
+    input.dataset.setting = id; input.dataset.generationKey = key;
+    patternFields.append(label);
   }
   const generationStatus = el('p', 'setting-hint'); generationStatus.setAttribute('role', 'status');
+  function updateGenerationStatus() {
+    const issue = generationIssue(generation);
+    generationStatus.textContent = issue ?? '';
+    generationStatus.hidden = !issue;
+    newExercise.disabled = Boolean(issue);
+  }
   function generationChanged(customize = true) {
     if (customize) generation = customizeTeachingPreset(generation);
-    const issue = generationIssue(generation);
-    newExercise.disabled = Boolean(issue);
-    generationStatus.textContent = issue ?? 'Ready for New exercise. Only compatible checked ingredients are used; each exercise uses one selected time signature.';
+    updateGenerationStatus();
     callbacks.generation(structuredClone(generation));
-    teachingPicker.value = generation.teachingPreset?.id ?? '';
+    teachingPickers.forEach(picker => { picker.value = generation.teachingPreset?.id ?? ''; });
     renderTeachingPreset();
   }
-  generationStatus.textContent = '4/4 by default. Only compatible checked ingredients are used; each exercise uses one selected time signature. Changes apply on New exercise.';
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
-  const teachingPicker = select([{ value: '', label: 'Custom' }, ...generationLevels.map(p => ({ value: p.id, label: resolveTeachingPreset(p).supported ? teachingPresetLabel({ id: p.id, version: p.version, customized: false }) : `${p.label} · unavailable` }))], value => {
+  const levelOptions = [{ value: '', label: 'Custom' }, ...generationLevels.map(p => ({ value: p.id, label: resolveTeachingPreset(p).supported ? teachingPresetLabel({ id: p.id, version: p.version, customized: false }) : `${p.label} · unavailable` }))];
+  function chooseLevel(value: string) {
+    teachingPickers.forEach(picker => { picker.value = value; });
     if (!value) {
       const { teachingPreset: _source, restrictions: _restrictions, ...custom } = generation;
       generation = custom; generationChanged(false);
-    } else { applySelectedLevel(); renderTeachingPreset(); }
-  });
-  teachingPicker.dataset.setting = 'teaching-preset';
+    } else { applySelectedLevel(value); renderTeachingPreset(); }
+  }
+  const teachingPickers = [select(levelOptions, chooseLevel), select(levelOptions, chooseLevel)];
+  const [teachingPicker, customTeachingPicker] = teachingPickers as [HTMLSelectElement, HTMLSelectElement];
+  teachingPickers.forEach(picker => { picker.dataset.setting = 'teaching-preset'; picker.value = generation.teachingPreset?.id ?? ''; });
+  const customLevelField = field('Level', customTeachingPicker); customLevelField.classList.add('custom-level-field');
+  const customLevelStatus = el('p', 'setting-hint'); customLevelStatus.id = 'custom-level-status'; customLevelStatus.setAttribute('role', 'status');
+  customTeachingPicker.setAttribute('aria-describedby', customLevelStatus.id);
+  customLevelField.append(customLevelStatus);
   const teachingStatus = el('p', 'setting-hint'); teachingStatus.setAttribute('role', 'status');
   const teachingAttribution = el('p', 'setting-hint');
   const teachingDetails = el('details'); teachingDetails.append(el('summary', '', 'Source and pattern requirements'));
   const teachingEvidence = el('div', 'setting-hint'); teachingDetails.append(teachingEvidence);
-  function applySelectedLevel() {
-    const definition = generationLevels.find(p => p.id === teachingPicker.value);
+  function applySelectedLevel(value: string) {
+    const definition = generationLevels.find(p => p.id === value);
     if (!definition) return;
     const result = applyTeachingPreset(generation, definition);
     if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
     generation = result.settings;
-    length.value = String(generation.measures);
+    lengthField.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Number(input.value) === generation.measures; });
     meterField.querySelectorAll<HTMLInputElement>('[data-meter]').forEach(input => { input.checked = (generation.meters ?? []).includes(input.dataset.meter as typeof meters[number]); });
     vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(input => { input.checked = generation.ingredients.includes(input.dataset.ingredient as typeof generation.ingredients[number]); });
-    notationToggle.checked = generation.allowUnintuitiveNotation;
-    patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.setting as 'ties' | 'syncopation']); });
+    patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.generationKey as 'allowUnintuitiveNotation' | 'ties' | 'syncopation']); });
     generationChanged(false);
   }
-  const applyPreset = button('Apply level', applySelectedLevel);
+  const applyPreset = button('Apply level', () => applySelectedLevel(teachingPicker.value));
   applyPreset.dataset.setting = 'apply-teaching-preset';
   function renderTeachingPreset() {
     for (const definition of generationLevels) {
-      const option = [...teachingPicker.options].find(o => o.value === definition.id)!;
-      option.textContent = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
+      const label = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
+      teachingPickers.forEach(picker => { [...picker.options].find(o => o.value === definition.id)!.textContent = label; });
     }
     const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
     teachingAttribution.textContent = active ? `${teachingPresetLabel(generation.teachingPreset)} · next exercise.` : 'Custom · pending settings. New exercise generates from these settings.';
     const definition = generationLevels.find(p => p.id === teachingPicker.value);
+    customLevelStatus.hidden = true; customLevelStatus.textContent = '';
     teachingEvidence.replaceChildren();
     if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
     const result = resolveTeachingPreset(definition);
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
+    if (!result.supported) { customLevelStatus.hidden = false; customLevelStatus.textContent = `Unavailable: ${unavailable.join(' ')}`; }
     teachingStatus.textContent = result.supported ? 'Available: general note figures only, no rests, ties or percussion-specific figures. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
       teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
@@ -237,7 +274,7 @@ export function createSettingsPage(callbacks: {
   teachingPicker.setAttribute('aria-describedby', teachingAttribution.id);
   teachingField.append(teachingAttribution, teachingDetails);
   renderTeachingPreset();
-  exerciseControls.append(meterField, lengthField, vocabulary, notationField, patternFields, generationStatus);
+  exerciseControls.append(customLevelField, meterField, lengthField, vocabulary, patternFields, generationStatus);
   activeControls.append(systemField, conventionField, placementField, appearanceField);
   const restRule = el('section', 'setting-row');
   restRule.dataset.setting = 'rest-grouping';
@@ -275,7 +312,7 @@ export function createSettingsPage(callbacks: {
   }
   const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
-  generationStatus.textContent = generationIssue(generation) ?? 'Ready for New exercise.'; newExercise.disabled = Boolean(generationIssue(generation));
+  updateGenerationStatus();
   let locked = false;
   return {
     page,

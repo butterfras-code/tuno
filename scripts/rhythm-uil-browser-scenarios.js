@@ -8,7 +8,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   const assert = (value, label) => { if (!value) throw new Error(label); checks.push(label); };
   const sleep = ms => new Promise(resolve => w.setTimeout(resolve, ms));
   const wait = async predicate => { const end = Date.now() + 12000; while (!predicate()) { if (Date.now() > end) throw new Error('Browser wait timed out'); await sleep(20); } };
-  const choose = (control, value) => { control.value = value; control.dispatchEvent(new w.Event('change')); };
+  const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new w.Event('change')); };
   const button = name => [...d.querySelectorAll('button')].find(control => control.textContent === name);
   const stored = () => JSON.parse(w.localStorage.getItem('tuno.rhythm-walk.preferences.v1'));
   const generation = () => stored().generation;
@@ -101,7 +101,7 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     let d = frame.contentDocument, w = frame.contentWindow;
     const field = d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration');
     assert(field.textContent.includes('UIL I · note-only practice · next exercise'), 'fresh load restores qualified exact attribution');
-    assert(d.querySelector('[data-setting="exercise-length"]').value === String(expected.generation.measures), 'fresh load restores chosen length');
+    assert(d.querySelector('[data-setting="exercise-length"] input:checked').value === String(expected.generation.measures), 'fresh load restores chosen length');
     assert(d.querySelector('[data-ingredient="whole"]').checked && d.querySelector('[data-ingredient="dotted-half"]').checked, 'fresh load restores whole/dotted-half selections');
     assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('.response-controls select').value === expected.mode, 'fresh load restores independent mode/system');
     assert(d.querySelector('.score-tempo input').value === String(expected.bpm), 'fresh load restores tempo');
@@ -109,7 +109,7 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     localStorage.setItem(key, JSON.stringify({ ...expected, generation: { ...expected.generation, teachingPreset: { id: 'uil-unknown', version: 1, customized: false }, restrictions: { pairedEighths: 'yes', noQuarterRestBeatOne: true } } }));
     await reload(); d = frame.contentDocument; w = frame.contentWindow;
     assert(d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration').textContent.includes('Custom · pending settings.'), 'malformed attribution safely migrates to free practice');
-    const length = d.querySelector('[data-setting="exercise-length"]'); length.dispatchEvent(new w.Event('change'));
+    const length = d.querySelector('[data-setting="exercise-length"] input:checked'); length.dispatchEvent(new w.Event('change'));
     const restored = JSON.parse(localStorage.getItem(key));
     assert(!restored.generation.teachingPreset && !restored.generation.restrictions, 'malformed restrictions and attribution never reach persisted active settings');
     assert(restored.bpm === expected.bpm && restored.mode === expected.mode && restored.countingSystem === expected.countingSystem, 'migration preserves independent preferences');

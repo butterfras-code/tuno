@@ -7,7 +7,7 @@ window.runLevelBrowserScenarios = async function (w = window, loadFresh) {
   const checks = [], key = 'tuno.rhythm-walk.preferences.v1';
   const assert = (ok, label) => { if (!ok) throw Error(label); checks.push(label); };
   const stored = () => JSON.parse(localStorage.getItem(key));
-  const choose = (control, value) => { control.value = value; control.dispatchEvent(new Event('change')); };
+  const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new Event('change')); };
   const level = document.querySelector('[data-setting="teaching-preset"]');
   const length = document.querySelector('[data-setting="exercise-length"]');
   const mode = document.querySelector('.response-controls select');

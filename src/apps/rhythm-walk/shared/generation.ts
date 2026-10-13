@@ -20,6 +20,7 @@ export const ingredients = [
   { id: 'dotted-eighth', label: 'Dotted eighth notes', event: ['E', { dots: 1 }] },
   { id: 'triplet-eighth', label: 'Triplet eighth notes', event: ['E', { tuplet: [3, 2] }] },
   { id: 'whole', label: 'Whole notes', event: ['W'] },
+  { id: 'whole-rest', label: 'Whole rests', event: ['W', { rest: true }] },
   { id: 'dotted-half', label: 'Dotted half notes', event: ['H', { dots: 1 }] },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
@@ -36,7 +37,7 @@ export interface GenerationSettings {
   ties?: boolean;
   syncopation?: boolean;
 }
-export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth', 'whole', 'dotted-half'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
+export const defaultGeneration = (): GenerationSettings => ({ meters: ['4/4'], measures: 2, ingredients: ingredients.filter(i => !['dotted-quarter-rest', 'sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth', 'whole', 'whole-rest', 'dotted-half'].includes(i.id)).map(i => i.id), allowUnintuitiveNotation: false, ties: false, syncopation: false });
 
 /** Shared UI/generation boundary; pattern IDs describe complete supported atoms.
  * UIL resolution may query this without changing definitions or active settings. */
@@ -49,7 +50,7 @@ export function rhythmCapabilities(meter: CountMeter): RhythmCapabilities {
   const compound = meterPolicy(meter).compound;
   return {
     meter,
-    ingredients: ingredients.filter(i => compound ? !['H', 'W'].includes(i.event[0]) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (i.id !== 'whole' || meter === '4/4') && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
+    ingredients: ingredients.filter(i => compound ? !['H', 'W'].includes(i.event[0]) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (i.event[0] !== 'W' || meter === '4/4') && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
     patterns: compound ? ['no-quarter-rest-beat-one'] : ['triplet-eighth', 'paired-eighths', 'no-quarter-rest-beat-one'],
   };
 }

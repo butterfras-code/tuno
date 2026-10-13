@@ -1,3 +1,4 @@
+import { selectExerciseLength } from './rhythm-browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';
@@ -127,7 +128,7 @@ try {
     await settings();
     await page.locator('[data-setting="ties"]').setChecked(ties);
     await page.locator('[data-setting="syncopation"]').setChecked(sync);
-    await page.getByLabel('Exercise length', { exact: true }).selectOption(String(length));
+    await selectExerciseLength(page, String(length));
     const before = await snapshot(); await practice(); assert.deepEqual(await snapshot(), before);
     await button('New exercise').tap(); assert.equal(await bars.count(), length);
     assert.equal(await page.locator('.dimension').count(), 0);
@@ -147,7 +148,7 @@ try {
     await settings();
     assert.match(await page.locator('#settings-view').innerText(), /Preferences are saved automatically in this browser/);
     const previous = await snapshot();
-    await page.getByLabel('Exercise length', { exact: true }).selectOption('3');
+    await selectExerciseLength(page, '3');
     await page.locator('[data-setting="ties"]').uncheck(); await page.locator('[data-setting="syncopation"]').uncheck();
     for (const ingredient of await page.locator('[data-ingredient]').all()) await ingredient.uncheck();
     assert.equal(await button('New Exercise').isDisabled(), true);
@@ -168,7 +169,7 @@ try {
   await page.evaluate(() => localStorage.removeItem('tuno.rhythm-walk.preferences.v1')); await page.reload(); await settings();
   assert.equal(await page.locator('[data-setting="ties"]').isChecked(), false);
   assert.equal(await page.locator('[data-setting="syncopation"]').isChecked(), false);
-  assert.equal(await page.getByLabel('Exercise length', { exact: true }).inputValue(), '2');
+  assert.equal(await page.locator('[data-setting="exercise-length"] input:checked').inputValue(), '2');
   assert.deepEqual(errors, []); report.passed = true;
   console.log(`${engine}: Count Writing ties and syncopation checks passed.`);
 } finally {

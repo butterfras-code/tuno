@@ -9,7 +9,7 @@ window.__rhythmActivityCheck = (async () => {
   const wait = async condition => { const limit = performance.now() + 15000; while (!condition()) { if (performance.now() > limit) throw new Error('Timed out'); await sleep(5); } };
   const button = name => [...document.querySelectorAll('button')].find(n => n.textContent === name);
   const field = name => [...document.querySelectorAll('label')].find(n => n.querySelector('.field-label')?.textContent === name)?.querySelector('select, input');
-  const choose = (name, value) => { const input = field(name); input.value = value; input.dispatchEvent(new Event('change')); };
+  const choose = (name, value) => { if (name === 'Exercise length') { document.querySelector(`[data-setting="exercise-length"] input[value="${value}"]`).click(); return; } const input = field(name); input.value = value; input.dispatchEvent(new Event('change')); };
   const mode = value => choose('Mode', value);
   const id = () => document.querySelector('.passage').dataset.exerciseId;
   const notes = () => [...document.querySelectorAll('.notation g[data-event]')];
