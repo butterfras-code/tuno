@@ -2,9 +2,9 @@ import { countAt } from '../../music/counting/vocabulary.ts';
 import type { CountingSystem } from '../../music/counting/vocabulary.ts';
 export { countAt } from '../../music/counting/vocabulary.ts';
 export type { CountingSystem } from '../../music/counting/vocabulary.ts';
-import { alphabet } from './evaluation.ts';
+import { alphabet } from '../../music/counting/vocabulary.ts';
 import type { Fraction } from '../../music/fraction.ts';
-import type { CountSymbol } from './evaluation.ts';
+import type { CountToken as CountSymbol } from '../../music/counting/vocabulary.ts';
 
 // Input aliases and displayed syllables belong to the counting system, not musical time.
 export type OffbeatSymbol = '&' | '+';

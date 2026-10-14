@@ -25,6 +25,9 @@ export const tieFixtures: readonly PassageFixture[] = [
   { id: 'tie-wrap', label: 'Barline tie across a wrapped system', wrap: true, measures: [{ meter: [4, 4], events: [['H'], ['Q'], ['Q', { tieNext: true }]] }, { meter: [4, 4], events: [['Q'], ['H'], ['Q']] }] },
 ];
 export const meterFixtures: readonly PassageFixture[] = [
+  { id: 'six-dotted-half', label: '6/8 · written dotted half', measures: [{ meter: [6, 8], events: [['H', { dots: 1 }]] }] },
+  { id: 'six-dotted-tie', label: '6/8 · two tied written dotted quarters', measures: [{ meter: [6, 8], events: [['Q', { dots: 1, tieNext: true }], ['Q', { dots: 1 }]] }] },
+  { id: 'all-rests', label: 'All rests · optional empty counting surface', measures: [{ meter: [4, 4], events: [['H', { rest: true }], ['H', { rest: true }]] }] },
   { id: 'meter-2', label: '2/4 · quarter and eighths', measures: [{ meter: [2, 4], events: [['Q'], ['E'], ['E']] }] },
   { id: 'meter-3', label: '3/4 · quarters and eighths', measures: [{ meter: [3, 4], events: [['Q'], ['E'], ['E'], ['Q']] }] },
   { id: 'six-eighths', label: '6/8 · six eighths in two groups', measures: [{ meter: [6, 8], events: [['E'], ['E'], ['E'], ['E'], ['E'], ['E']] }] },

@@ -1,11 +1,12 @@
-import type { CountingSystem } from './input.ts';
-import { countGrid } from './grid.ts';
-import { passageGrid } from './passage.ts';
-import { derivePassage } from '../../music/measure.ts';
-import type { RhythmMeasure } from '../../music/measure.ts';
-export { alphabet } from '../../music/counting/vocabulary.ts';
-export type { CountToken as CountSymbol } from '../../music/counting/vocabulary.ts';
-import type { CountToken as CountSymbol } from '../../music/counting/vocabulary.ts';
+/** Historical counting contract regression helper; never imported by the application. */
+import type { CountingSystem } from '../../src/apps/count-writing/input.ts';
+import { countGrid } from '../../src/apps/count-writing/grid.ts';
+import { passageGrid } from './count-passage.ts';
+import { derivePassage } from '../../src/music/measure.ts';
+import type { RhythmMeasure } from '../../src/music/measure.ts';
+export { alphabet } from '../../src/music/counting/vocabulary.ts';
+export type { CountToken as CountSymbol } from '../../src/music/counting/vocabulary.ts';
+import type { CountToken as CountSymbol } from '../../src/music/counting/vocabulary.ts';
 export interface Span { start: number; end: number }
 export interface CountAnswer { symbols: CountSymbol[]; spans: Span[]; rests: Span[] }
 export type Verdict = 'correct' | 'revise' | 'provisional';

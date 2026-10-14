@@ -1,4 +1,4 @@
-import type { CountSymbol } from './evaluation.ts';
+import type { CountToken as CountSymbol } from '../../music/counting/vocabulary.ts';
 import type { CountingSystem } from './input.ts';
 
 /** Palette vocabulary follows the active exercise, independently of grading. */

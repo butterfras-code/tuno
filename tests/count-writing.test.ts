@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { deriveMeasure, validateMeasure } from '../src/music/measure.ts';
 import { countWritingFixtures } from '../src/apps/count-writing/fixtures.ts';
 import { toNumber } from '../src/music/fraction.ts';
-import { blankAnswer, evaluate } from '../src/apps/count-writing/evaluation.ts';
-import type { CountAnswer } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluate } from './legacy/count-evaluation.ts';
+import type { CountAnswer } from './legacy/count-evaluation.ts';
 const solutions: CountAnswer[] = [
   { symbols: ['1', '', '2', '', '3', '', '4', '&'], spans: [{ start: 0, end: 3 }], rests: [] },
   { symbols: ['1', '', '2', '&', '3', '', '4', ''], spans: [{ start: 0, end: 2 }, { start: 4, end: 7 }], rests: [] },

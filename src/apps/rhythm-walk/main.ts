@@ -10,40 +10,32 @@ import { createPerformance } from './performance.ts';
 import type { AttemptRecord } from './capture.ts';
 import { timingTimelines, renderTimingTimeline } from './timeline.ts';
 import { evaluateAttempt } from './evaluation.ts';
-import { createMeasureEditor } from '../count-writing/editor.ts';
+import { createPlanEditor } from '../count-writing/plan-editor.ts';
+import { evaluateAnswer as evaluateCountingAnswer, initializeAnswer } from '../../music/counting/answer.ts';
 import { createSettingsPage } from './shared/settings.ts';
-import { withLinePlacement } from '../count-writing/presentation.ts';
 import { defaultGeneration, generateExercise, generationIssue } from './shared/generation.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-import { evaluatePassage } from '../count-writing/evaluation.ts';
-import { passageGrid } from '../count-writing/passage.ts';
 import { renderPassageTies } from './shared/notation.ts';
-import { createPassageLines } from '../count-writing/passage-lines.ts';
-import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
 import { teachingPresetLabel } from './shared/teaching-presets.ts';
-import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
 const preferences = readPreferences(saved);
+let migratedCounting = false;
+try { migratedCounting = Boolean(saved && !JSON.parse(saved)?.counting); } catch { /* malformed preferences use defaults */ }
 const testing = fixtureAccess(location.search);
 if (testing.fixture) preferences.preset = testing.fixture.id;
-let countingSystem: CountingSystem = preferences.countingSystem;
-let offbeat: OffbeatSymbol = preferences.offbeat;
-let presentation = preferences.presentation;
-let dottedConvention: DottedQuarterConvention = preferences.convention;
 let generation = preferences.generation;
 let fixtureId = preferences.preset;
 const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
 function persist() {
-  Object.assign(preferences, { countingSystem, offbeat, presentation, convention: dottedConvention, generation, preset: fixtureId });
-  try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Memory fallback. */ }
+  Object.assign(preferences, { generation, preset: fixtureId });
+  try { localStorage.setItem(preferenceKey, JSON.stringify({ ...preferences, countingSystem: undefined, offbeat: undefined, presentation: undefined, convention: undefined })); } catch { /* Memory fallback. */ }
 }
-let editors: ReturnType<typeof createMeasureEditor>[] = [];
+let editors: ReturnType<typeof createPlanEditor>[] = [];
 let focusNewRhythm = false;
 let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
 let currentMeasures: RhythmMeasure[] = [];
-let lineEditor: ReturnType<typeof createPassageLines> | null = null;
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
 const header = el('header', 'app-header');
@@ -57,10 +49,8 @@ const practiceView = el('section'); practiceView.id = 'practice-view';
 const banner = el('p', 'counting-hint');
 banner.append(el('span', '', 'Click a box to add counting symbols or use your keyboard.'));
 const lineShortcut = el('span', 'counting-shortcut');
-const leftKey = el('kbd', '', '←'); leftKey.setAttribute('aria-label', 'Left arrow');
-const rightKey = el('kbd', '', '→'); rightKey.setAttribute('aria-label', 'Right arrow');
-lineShortcut.append(el('kbd', '', 'Shift'), ' + ', leftKey, ' / ', rightKey, ' — add duration line');
-const restShortcut = el('span', 'counting-shortcut'); restShortcut.append(el('kbd', '', '('), ' — start rest pair');
+lineShortcut.append(el('kbd', '', 'D'), ' — toggle duration');
+const restShortcut = el('span', 'counting-shortcut'); restShortcut.append(el('kbd', '', 'R'), ' — toggle rest');
 banner.append(lineShortcut, restShortcut);
 const exerciseSummary = el('p', 'exercise-summary'); exerciseSummary.setAttribute('role', 'status');
 const picker = select([{ value: '', label: 'Choose a testing fixture…' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
@@ -68,7 +58,7 @@ picker.value = fixtureId; picker.dataset.preset = '';
 const customDialog = el('dialog', 'custom-exercise-dialog'); customDialog.id = 'custom-exercise';
 customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
 const customTitle = el('h2', '', 'Customize next exercise'); customTitle.id = 'custom-exercise-title';
-const customButton = button('Customize…', () => { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
+const customButton = button('Customize…', () => { editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
 customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute('aria-controls', customDialog.id);
 const customClose = button('Done', () => customDialog.close());
 customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
@@ -98,9 +88,9 @@ helpButton.setAttribute('aria-expanded', 'false');
 help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
 help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. New exercise starts a new score and clears both responses.'),
-  el('p', '', 'Measures fit the available width. Counts restart at each barline. Use one pair of parentheses per written rest, and duration lines for sustained notes and rests.'),
-  el('p', '', 'Select a count box and choose Start duration line in the palette, then tap the last covered count. Use Shift + arrows on the keyboard. Select a saved line to change its endpoint or delete it with × or Delete. Escape cancels an edit.'),
-  el('p', '', 'In 6/8, write every eighth count: 1 2 3 | 4 5 6. Performance follows two dotted-quarter pulses.'),
+  el('p', '', 'Measures fit the available width. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Duration when appropriate.'),
+  el('p', '', 'Select any count in a group. Rest (R) and Duration (D) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
+  el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
   el('p', '', 'Preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
@@ -119,16 +109,16 @@ panelSelector.append(countsButton, performButton);
 const interactionBody = el('div', 'interaction-body');
 const countPalette = el('section', 'count-palette-host'); countPalette.id = 'count-palette'; countPalette.setAttribute('aria-label', 'Counting input palette');
 countsButton.setAttribute('aria-controls', countPalette.id);
-const paletteEmpty = el('p', 'palette-empty', 'Select a count box above to enter counting symbols, start a rest pair, or draw a duration line.'); countPalette.append(paletteEmpty);
+const paletteEmpty = el('p', 'palette-empty', 'Select a count box above to enter counts or toggle Rest and Duration for its group.'); countPalette.append(paletteEmpty);
 const performanceSetup = el('div', 'performance-setup');
 
 const performance = createPerformance({ treatBag: feedbackSnapshot, exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
     performing = active; picker.disabled = next.disabled = customButton.disabled = active;
     settings.setLocked(active);
-    settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
+    settings.sync(preferences.counting);
     if (!active) next.disabled = Boolean(generationIssue(generation));
-    if (active) { lineEditor?.cancel(); editors.forEach(e => e.suspend()); }
+    if (active) { editors.forEach(e => e.suspend()); }
     updateResponseView();
     if (active) {
       // Settle the entire score/pad into view once, before count-in. No playback scrolling.
@@ -139,17 +129,18 @@ const performance = createPerformance({ treatBag: feedbackSnapshot, exercise: ()
   next: () => newExercise(),
   nextIssue: () => generationIssue(generation),
 });
+function focusCounts() { const first = activity.countingPlan.counts[0]; if (first) editors[first.measure]?.focusPosition(first.id); }
 function evaluateAnswer() {
-  lineEditor?.cancel(); editors.forEach(e => e.suspend());
-  const results = evaluatePassage(currentMeasures, editors.map(e => e.getAnswer()), dottedConvention, lineEditor?.spans(), countingSystem);
-  editors.forEach((editor, index) => editor.showResult(results[index]!));
-  const dimensions = results.flatMap(result => Object.values(result));
-  summary.textContent = dimensions.some(d => d.verdict === 'revise') ? 'Some answers need correction. Review the measure feedback below the passage, then Retry.' : dimensions.some(d => d.verdict === 'provisional') ? 'Your answer matches with teacher-review items. Review the feedback, then Retry or New exercise.' : 'All measures match. Choose New exercise to keep practicing.';
+  editors.forEach(e => e.suspend());
+  const result = evaluateCountingAnswer(activity.countingPlan, activity.countingAnswer);
+  activity.countingResult = result; editors.forEach(editor => editor.refresh());
+  summary.textContent = Object.values(result).some(d => d.verdict === 'incorrect') ? 'Some answers need correction. Review counts, rests and duration separately below, then Retry.' : 'All applicable answers are correct. Choose New exercise to keep practicing.';
   retry.hidden = false;
 }
 const check = button('Check', evaluateAnswer, true);
-const retry = button('Retry', () => { lineEditor?.cancel(); editors.forEach(editor => { editor.suspend(); editor.retry(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; editors[0]?.focus(); }); retry.hidden = true;
+const retry = button('Retry', () => { activity.countingResult = null; editors.forEach(editor => { editor.suspend(); editor.refresh(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; focusCounts(); }); retry.hidden = true;
 function newExercise(returnToPractice = false) {
+  migratedCounting = false;
   const issue = generationIssue(generation);
   if (issue) { summary.textContent = issue; return; }
   performance.cancel('New exercise');
@@ -160,7 +151,7 @@ function newExercise(returnToPractice = false) {
   if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
 }
 const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
-const reset = button('Clear', () => { editors.forEach(editor => editor.reset()); lineEditor?.reset(); summary.textContent = ''; retry.hidden = true; editors[0]?.focus(); });
+const reset = button('Clear', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); activity.countingResult = null; editors.forEach(editor => editor.refresh()); summary.textContent = ''; retry.hidden = true; focusCounts(); });
 actions.append(check);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 setup.append(sharedActions);
@@ -175,16 +166,8 @@ practiceView.append(banner, passage, responseControls, interaction, writeRespons
 const settings = createSettingsPage({
   initialGeneration: generation,
   newExercise: () => newExercise(true),
-  system: value => {
-    countingSystem = value; updateEditors();
-    const cleared = editors.reduce((sum, editor) => sum + Number(editor.card.dataset.clearedCounts ?? 0), 0);
-    summary.textContent = cleared ? `${cleared} ambiguous count token(s) cleared to avoid guessing their subdivision. Other answers are kept. Check again.` : 'Counting system changed. Your answer positions and markings are kept. Check again.';
-    retry.hidden = true;
-  },
-  offbeat: value => { offbeat = value; updateEditors(); },
-  placement: value => { presentation = withLinePlacement(presentation, value); updateEditors(); },
-  appearance: value => { presentation = { ...presentation, sustainAppearance: value }; updateEditors(); },
-  convention: value => { dottedConvention = value; updateEditors(); },
+  initialCounting: preferences.counting,
+  counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
   generation: value => {
     generation = value; persist();
     const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
@@ -219,34 +202,29 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
-  lineEditor?.destroy(); lineEditor = null; currentMeasures = activity.exercise.measures as RhythmMeasure[];
+  currentMeasures = activity.exercise.measures as RhythmMeasure[];
   measures = currentMeasures;
-  const grid = passageGrid(measures, countingSystem);
   passageStrip.dataset.measures = String(measures.length);
-  const tied = measures.some(m => m.events.some(e => e[1]?.tieNext));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
   editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
+  countPalette.onkeydown = null;
+  countPalette.replaceChildren(el('p', 'palette-empty', activity.countingPlan.counts.length ? 'Select a count box to enter counts or toggle its unit.' : 'This exercise has no count inputs with the current settings.'));
   measures.forEach((measure, index) => {
-    const editor = createMeasureEditor(measure, index + 1, {
-      paletteVocabulary: fixtureId === 'generated' ? {
-        sixteenths: activity.exerciseGeneration.ingredients.some(id => ['sixteenth', 'sixteenth-rest', 'dotted-eighth'].includes(id)),
-        triplets: activity.exerciseGeneration.ingredients.includes('triplet-eighth'),
-      } : {
-        sixteenths: measures.some(m => m.events.some(event => event[0] === 'S' || event[0] === 'E' && Boolean(event[1]?.dots))),
-        triplets: measures.some(m => m.events.some(event => Boolean(event[1]?.tuplet))),
-      },
-      palette: countPalette, paletteSelected: () => {
+    const editor = createPlanEditor(measure, index, {
+      plan: activity.countingPlan, answer: () => activity.countingAnswer, result: () => activity.countingResult,
+      palette: countPalette, activated: () => {
         editors.forEach((other, otherIndex) => { other.card.classList.toggle('active-count-measure', otherIndex === index); if (otherIndex !== index) other.suspend(); });
         selectResponsePanel('counts');
       },
-      scroller: passageScroll, lastMeasure: index === measures.length - 1,
-      grid: grid.grids[index], externalLines: tied,
-      system: countingSystem, offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
-      edited: () => { summary.textContent = 'Answer or counting rule changed. Check again for updated feedback.'; },
+      hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
+      change: answer => { activity.countingAnswer = answer; activity.countingResult = null; editors.forEach(e => e.refresh()); summary.textContent = 'Answer edited. Check when ready.'; },
       check: evaluateAnswer,
-      navigate: (delta, clear) => { const target = editors[index + delta]; if (!target) return false; if (clear) target.backspace(); else target.focus(delta < 0); return true; },
+      navigate: (id, delta) => {
+        const counts = activity.countingPlan.counts, target = counts[counts.findIndex(c => c.id === id) + delta];
+        if (target) editors[target.measure]!.focusPosition(target.id);
+      },
     });
-    editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback); editor.mount();
+    editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback);
   });
   editors.forEach((editor, index) => {
     const row = el('div', 'score-actions');
@@ -255,28 +233,25 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
     editor.card.querySelector('.answer-area')!.append(row);
   });
   tieNotation = renderPassageTies(measures, passageStrip);
-  if (tied) lineEditor = createPassageLines(passageScroll, grid, editors, countPalette);
   updateExerciseSummary();
   summary.textContent = ''; retry.hidden = true;
   updateEditors(); updateResponseView();
-  if (focus && preferences.mode !== 'tap') editors[0]?.focus();
+  if (focus && preferences.mode !== 'tap') focusCounts();
 }
 function updateExerciseSummary() {
   const source = activity.exerciseGeneration.teachingPreset;
   const label = teachingPresetLabel(source);
   exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
-  if (fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
+  if (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) || fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
   const issue = generationIssue(generation);
+  if (migratedCounting) exerciseSummary.textContent += ' Counting updated: groups are inferred; long-note subdivision is on and dotted subdivision is off. Review Settings.';
   if (issue) exerciseSummary.textContent += ` New exercise unavailable: ${issue}`;
 }
 function updateEditors() {
   persist();
-  lineEditor?.cancel();
-  editors.forEach(editor => editor.update(offbeat, presentation, dottedConvention, countingSystem));
-  settings.sync(dottedConvention, presentation, offbeat, currentMeasures[0]?.meter[1] === 8, countingSystem);
+  settings.sync(preferences.counting);
 }
 function showPage(focus = true) {
-  lineEditor?.cancel();
   editors.forEach(editor => editor.suspend());
   performance.cancel('Page changed');
   const isSettings = location.hash === '#settings';
@@ -288,7 +263,7 @@ function showPage(focus = true) {
   pageTitle.classList.toggle('sr-only', !isSettings); helpButton.hidden = isSettings;
   document.title = `${pageTitle.textContent} — Uno234`;
   updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
-  if (!isSettings && focusNewRhythm && preferences.mode !== 'tap') { focusNewRhythm = false; editors[0]?.focus(); }
+  if (!isSettings && focusNewRhythm && preferences.mode !== 'tap') { focusNewRhythm = false; focusCounts(); }
   else if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
 }
 window.addEventListener('hashchange', () => { if (['', '#settings', '#practice'].includes(location.hash)) showPage(); });
@@ -300,16 +275,16 @@ document.addEventListener('keydown', event => {
 
 function switchMode(value: Mode) {
   performance.cancel('Mode changed');
-  lineEditor?.cancel(); editors.forEach(e => e.suspend());
+  editors.forEach(e => e.suspend());
   responsePanel = value === 'tap' ? 'perform' : 'counts';
   activity.setMode(value); persist(); updateResponseView();
   editors.forEach(e => e.resume()); tieNotation?.refresh();
 }
 function selectResponsePanel(panel: 'counts' | 'perform', focus = false) {
   if (performing && panel === 'counts') return;
-  if (panel === 'perform') { lineEditor?.cancel(); editors.forEach(editor => editor.suspend()); }
+  if (panel === 'perform') { editors.forEach(editor => editor.suspend()); }
   responsePanel = panel; updateResponseView();
-  if (focus && panel === 'counts') editors[0]?.focus();
+  if (focus && panel === 'counts') focusCounts();
 }
 function updateResponseView() {
   const writing = preferences.mode !== 'tap';
@@ -327,8 +302,8 @@ function updateResponseView() {
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', performing);
   passageStrip.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
-    glyph.setAttribute('role', writing && !performing ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing ? '0' : '-1');
-    if (writing && !performing) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.removeAttribute('aria-haspopup'); glyph.setAttribute('aria-controls', countPalette.id); }
+    glyph.setAttribute('role', writing && !performing && glyph.dataset.entryLabel ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing && glyph.dataset.entryLabel ? '0' : '-1');
+    if (writing && !performing && glyph.dataset.entryLabel) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.removeAttribute('aria-haspopup'); glyph.setAttribute('aria-controls', countPalette.id); }
     else { glyph.setAttribute('aria-label', glyph.dataset.musicLabel ?? `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
   });
   passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing; });
@@ -338,7 +313,7 @@ function updateResponseView() {
 function decoratePerformance(record: AttemptRecord | null) {
   passage.querySelectorAll('.timing-timeline').forEach(node => node.remove());
   if (record && record.status === 'completed' && preferences.mode !== 'write') {
-    timingTimelines(record).forEach((data, index) => editors[index]?.card.append(renderTimingTimeline(data, Boolean(record.timingOffset), index === 0)));
+    timingTimelines(record).forEach((data, index) => editors[index]?.card.querySelector('.measure')!.append(renderTimingTimeline(data, Boolean(record.timingOffset), index === 0)));
   }
   passageStrip.querySelectorAll<SVGElement>('g[data-event]').forEach(glyph => { glyph.removeAttribute('data-feedback'); glyph.removeAttribute('aria-describedby'); glyph.querySelector('title')!.textContent = `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`; });
   if (!record || record.status !== 'completed' || preferences.mode === 'write') return;
@@ -360,4 +335,4 @@ function decoratePerformance(record: AttemptRecord | null) {
 }
 loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);
 showPage(false);
-if (!practiceView.hidden && preferences.mode !== 'tap') editors[0]?.focus();
+if (!practiceView.hidden && preferences.mode !== 'tap') focusCounts();

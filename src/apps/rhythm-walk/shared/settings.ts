@@ -2,21 +2,13 @@ import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
 import type { RhythmEvent } from '../../../music/measure.ts';
 import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
-import type { DottedQuarterConvention } from '../../count-writing/evaluation.ts';
-import { linePlacementOptions, sustainAppearanceOptions } from '../../count-writing/presentation.ts';
-import type { CountPresentation, LinePlacement, SustainAppearance } from '../../count-writing/presentation.ts';
-import type { OffbeatSymbol, CountingSystem } from '../../count-writing/input.ts';
+import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
+import type { CountingPreferences } from '../../../music/counting/preferences.ts';
 import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
 import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
-
-export const dottedConventionOptions = [
-  { value: 'review', label: 'Teacher review — accept both provisionally' },
-  { value: 'required', label: 'Require internal &' },
-  { value: 'optional', label: 'Internal & is optional' },
-] as const;
 
 function unavailableReason(reason: string): string {
   if (/Missing pattern support(?: in [\d/]+)?: uil-\d-figures\./.test(reason)) return 'The exact rhythm figures for this level are not enforced yet.';
@@ -75,11 +67,8 @@ export function createSettingsPage(callbacks: {
   initialGeneration: GenerationSettings;
   newExercise: () => void;
   generation: (value: GenerationSettings) => void;
-  system: (value: CountingSystem) => void;
-  offbeat: (value: OffbeatSymbol) => void;
-  placement: (value: LinePlacement) => void;
-  appearance: (value: SustainAppearance) => void;
-  convention: (value: DottedQuarterConvention) => void;
+  initialCounting: CountingPreferences;
+  counting: (value: CountingPreferences) => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
   const intro = el('p', 'settings-intro', 'Use Customize… in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
@@ -91,30 +80,22 @@ export function createSettingsPage(callbacks: {
   const activeBadge = el('span', 'availability availability--active', 'Working controls');
   const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
   const activeControls = el('div', 'settings-live-controls');
-  const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
-  offbeat.dataset.setting = 'offbeat-symbol';
-  const system = select([{ value: 'numbers', label: '1 e & a' }, { value: 'syllables', label: '1 ta-te-ta' }], value => callbacks.system(value as CountingSystem));
-  system.dataset.setting = 'count-system';
-  const systemField = field('Counting system', system);
-  systemField.append(field('Offbeat symbol · 1 e & a', offbeat));
-  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for ta/te. Triplets use 1 la li in both systems; type l for la and i for li. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
-  const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
-  convention.dataset.setting = 'dotted-quarter-convention';
-  const conventionField = field('Dotted-quarter internal &', convention);
-  const conventionHint = el('p', 'setting-hint', 'Applies to dotted-quarter sounding durations in simple meters. In 6/8 all six numbers are required; this preference has no effect. Your answer stays intact; check again after changing the rule.');
-  conventionHint.id = 'settings-convention-hint'; convention.setAttribute('aria-describedby', conventionHint.id); conventionField.append(conventionHint);
-  const placement = select(linePlacementOptions, value => callbacks.placement(value as LinePlacement));
-  placement.dataset.setting = 'line-anchor';
-  const placementField = field('Duration-line placement', placement);
-  const placementHint = el('p', 'setting-hint', 'Switching to beside counts defaults sustained counts to raised and smaller. You can then choose any appearance.');
-  placementHint.id = 'settings-placement-hint';
-  placement.setAttribute('aria-describedby', placementHint.id); placementField.append(placementHint);
-  const appearance = select(sustainAppearanceOptions, value => callbacks.appearance(value as SustainAppearance));
-  appearance.dataset.setting = 'sustain-style';
-  const appearanceField = field('Sustained-count appearance', appearance);
-  const appearanceHint = el('p', 'setting-hint', 'Applies to counts inside your duration lines; the onset stays full-size. Unchanged allows lines beside counts to cross through them.');
-  appearanceHint.id = 'settings-appearance-hint';
-  appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
+  let counting = callbacks.initialCounting;
+  const countingControls = new Map<keyof CountingPreferences, HTMLInputElement | HTMLSelectElement>();
+  const labels = { longNotes: 'Long-note subdivision', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show duration line', linePlacement: 'Line placement', internalAppearance: 'Internal-count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
+  function change(key: keyof CountingPreferences, value: string | boolean) {
+    counting = captureCountingPreferences({ ...counting, [key]: value }); callbacks.counting(counting);
+    savedNote.textContent = 'Counting changes apply on New exercise. Current music, answers and results are kept. Preferences are saved in this browser.';
+  }
+  for (const key of ['longNotes', 'dotted', 'includeRests', 'showDurationLine'] as const) {
+    const input = el('input'); input.type = 'checkbox'; input.checked = counting[key]; input.dataset.countingPreference = key;
+    input.addEventListener('change', () => change(key, input.checked)); countingControls.set(key, input); activeControls.append(field(labels[key], input));
+  }
+  for (const key of ['linePlacement', 'internalAppearance', 'restAppearance', 'vocabulary', 'offbeat'] as const) {
+    const input = select(countingPreferenceOptions[key].map(value => ({ value, label: value === 'numbers' ? '1 e & a' : value === 'syllables' ? '1 ta-te-ta' : value[0]!.toUpperCase() + value.slice(1) })), value => change(key, value));
+    input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); activeControls.append(field(labels[key], input));
+  }
+  activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and D toggles Duration for the selected unit. Hidden lines with unchanged internal counts disable duration entry and assessment. Type t then a/e for ta/te; l and i enter la and li.'));
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';
@@ -276,15 +257,7 @@ export function createSettingsPage(callbacks: {
   teachingField.append(teachingAttribution, teachingDetails);
   renderTeachingPreset();
   exerciseControls.append(customLevelField, meterField, lengthField, vocabulary, patternFields, generationStatus);
-  activeControls.append(systemField, conventionField, placementField, appearanceField);
-  const restRule = el('section', 'setting-row');
-  restRule.dataset.setting = 'rest-grouping';
-  restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
-  const restHeading = el('div', 'setting-heading');
-  const restTitle = el('h3', '', 'Rest parentheses'); restTitle.id = 'setting-rest-grouping';
-  restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
-  restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
-  available.append(activeHeader, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
+  available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];
@@ -325,11 +298,9 @@ export function createSettingsPage(callbacks: {
       exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
       if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
     },
-    sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false, countingSystem: CountingSystem = 'numbers') => {
-      system.disabled = convention.disabled = locked || compound;
-      system.value = countingSystem; offbeat.disabled = locked || compound || countingSystem === 'syllables';
-      offbeat.value = symbol; convention.value = value;
-      placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance;
+    sync: (value: CountingPreferences) => {
+      counting = value;
+      countingControls.forEach((control, key) => { if (control instanceof HTMLInputElement) control.checked = Boolean(value[key]); else control.value = String(value[key]); control.disabled = locked; });
     },
   };
 }

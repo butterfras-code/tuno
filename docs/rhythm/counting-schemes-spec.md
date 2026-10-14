@@ -1,12 +1,12 @@
 # Configurable counting schemes and inferred notation groups
 
-Status: foundational source/counting core implemented; editor and settings replacement pending. Written 2026-10-14 from the owner's design decisions. This document specifies a replacement for the current count-entry and evaluation architecture; it is not a description of shipped behavior or authorization to publish.
+Status: foundational core and coordinated editor/settings migration implemented locally; URL/session preferences and musical-source ownership migration remain pending. Written 2026-10-14 from the owner's design decisions. This document specifies a replacement for the current count-entry and evaluation architecture; it is not a description of shipped behavior or authorization to publish.
 
 ## Purpose and authority
 
 Support different teaching conventions through one meter-aware counting plan shared by settings, entry, rendering, and evaluation. Use a deliberately supported MusicXML subset for musical representation, with an application-specific subdivision marker. Preserve individual written notes and derive sounding relationships, exact time, and count positions centrally.
 
-The current implementation remains documented in [the music model](music-model.md), [settings](settings.md), [ties and syncopation](ties-syncopation.md), and [the unified activity contract](unified-activity.md). Where this spec differs, it defines the intended replacement, not an assertion that the old documentation has already become false. Update those contracts when implementation lands.
+Current integration is documented in [the music model](music-model.md), [settings](settings.md), [ties and syncopation](ties-syncopation.md), and [the unified activity contract](unified-activity.md). The coordinated migration below identifies implemented behavior and remaining work. Older slice tables are retained as historical records and do not override the implemented counting contract.
 
 Product decisions below are settled unless explicitly marked as engineering proposals or implementation gates. Names and illustrative shapes are not mandatory TypeScript declarations. Follow [repository instructions](../../AGENTS.md) for branches, validation, and publication.
 
@@ -46,7 +46,7 @@ No new pedagogical choices are encoded into generation levels. Length, level, re
 
 ## Changes from the current implementation
 
-| Concern | Current behavior | Replacement |
+| Concern | Before migration | Replacement (core/editor/settings implemented) |
 | --- | --- | --- |
 | Music source | Compact `RhythmEvent` tuples in `RhythmMeasure` | Supported MusicXML-based source with typed access; one authoritative musical representation |
 | Input positions | Dense eighth/sixteenth/triplet storage lattice; available and required positions differ | Exact, sparse required count positions; all exposed positions are required |
@@ -259,7 +259,7 @@ The current eighth-grid answer for the second bar uses symbols `['1', '', '2', '
 
 These are not unresolved teaching preferences:
 
-- **6/8 dotted half:** the examples require counting/engraving support, but the current adapter rejects half values in compound meter and generation skips dotted halves there. Add explicit fixture/render/evaluation support for the accepted case. Do not silently broaden default level ingredients or generation pools; decide and document any generation exposure separately.
+- **6/8 dotted half:** the examples require counting/engraving support, but the old adapter already accepts sounded half values, including dotted halves, in compound meter; generation skips them there. The coordinated editor slice adds an explicit dotted-half engraving/entry fixture. Do not silently broaden default level ingredients or generation pools; decide and document any generation exposure separately.
 - **Mixed-meter chains:** current generated exercises use one meter. Do not invent pulse-change semantics for a tied unit across different meters in this overhaul; retain a clear unsupported boundary until separately specified.
 - **Tuplets and double dots:** retain current UI repertoire unless explicitly extended. MusicXML representation is not permission to expose every model feature. Preserve existing sounded simple-meter triplets and their exact thirds.
 - **Duration presentation:** retain full derived musical extent for line geometry, but validate only indication state. No endpoint tolerance needs to survive.
@@ -310,7 +310,7 @@ For application implementation use Node 24, `npm ci`, `npm run check`, and relev
 
 ## Foundational implementation (2026-10-14)
 
-This slice implements the replacement's pure contract without switching the running editor to it. Existing current-behavior documents and tests continue to describe the shipped runtime. The new acceptance tests explicitly target the replacement; no existing grading assertions were rewritten.
+Historical foundation handoff at `2d323a00ac142d7a8c755445061a5ff0345a9558`: this slice implemented the replacement's pure contract without switching the running editor to it. The coordinated migration below supersedes its runtime/pending statements. Existing current-behavior documents and tests continue to describe the shipped runtime. The new acceptance tests explicitly target the replacement; no existing grading assertions were rewritten.
 
 ### Concrete modules and ownership
 
@@ -350,7 +350,7 @@ The six [golden XML fixtures](../../tests/fixtures/musicxml/README.md) cover bin
 
 ### Capability boundary and migration
 
-The typed source can preserve double dots and duplets, but the counting plan deliberately rejects them. The counting boundary retains the current reviewed sounded, beat-aligned eighth triplets, with no tied/rest/dotted tuplet members. It also retains the restrictions on dotted wholes/sixteenths/eighth rests and simple-meter dotted-half rests. The accepted 6/8 written dotted half is supported in the new pure core (including its rest counterpart), tested independently of generation and current engraving. Its dot never triggers finer counts. Generation pools, levels, fixture selectors and the current UI's half-note restriction in compound meter are unchanged.
+The typed source can preserve double dots and duplets, but the counting plan deliberately rejects them. The counting boundary retains the current reviewed sounded, beat-aligned eighth triplets, with no tied/rest/dotted tuplet members. It also retains the restrictions on dotted wholes/sixteenths/eighth rests and simple-meter dotted-half rests. The accepted 6/8 written dotted half is supported in the new pure core (including its rest counterpart), tested independently of generation and current engraving. Its dot never triggers finer counts. Generation pools and levels were unchanged by the foundation. Correction: the old grid accepted sounded half values in compound meter; the coordinated slice below adds explicit fixture coverage.
 
 Mixed-meter written passages can be represented, and source derivation preserves ties across meter changes. Counting rejects a tied unit that crosses a meter change before interpreting rules. Separate units may use different supported meters. No pulse-change teaching policy is inferred.
 
@@ -365,3 +365,19 @@ Foundation tests are [`counting-plan.test.ts`](../../tests/counting-plan.test.ts
 Validation passed on Node 24.21.0: `npm ci`, `npm run check` (421 tests, TypeScript and application builds), independent MusicXML XSD validation, local documentation-link review, and `git diff --check`. Native T3 browser smoke checks ran the exact local built bundle in a same-origin inline frame because the preview's loopback URL returned a different bundle hash. The existing Uno browser scenarios passed 46 assertions at both 1280px and 320px, checking generation, count entry, pending level changes and mode retention. Physical-device checks, completed performance capture, fresh-load browser scenarios and full release verification were not performed. XSD validation was an independent check using Python/lxml and the official v4.0 schema, not a new runtime or `npm check` dependency.
 
 Next, migrate the one-bar and passage editor together to `CountingPlan` and `CountingAnswer`: render only plan counts, connect all rest/duration actions to `toggleUnit`, project one unit across barlines/wraps, and remove endpoint/merge/provisional grading paths. Add the compound dotted-half engraving fixture at that coordinated boundary. Then wire the versioned counting contract into active/pending exercise snapshots, settings controls, URL/session precedence and explicit save-default behavior. Replace source producers/consumers and remove the temporary adapter as one ownership migration. The current persistence/UI semantics have not been partially switched in this slice.
+
+## Coordinated editor/settings migration (2026-10-14)
+
+Write Counts and Both now use `Activity.countingPlan`, `countingAnswer` and `countingResult`. Every replacement creates one plan through `scoreFromLegacy` → `buildCountingPlan`, initializes blank evidence, and clears both response lifecycles. Single measures and passages use the same `createPlanEditor` view, `enterToken`, `toggleUnit` and `evaluateAnswer`. Arrow navigation follows the passage's ordered count IDs, including across empty measures. Zero-input exercises remain checkable with not-applicable dimensions excluded.
+
+`plan-editor.ts` stores only transient focus/composition state. It projects immutable unit extents into measure pieces, so ties retain one answer across bars and systems. Rest and Duration palette buttons expose pressed state and R/D shortcuts. These keys do not conflict with atomic counts, t+a/e composition, l/i aliases, &/+ input, arrows, Delete/Backspace or Enter. Parentheses/slashes render student rest state, including incorrectly marked sounds. Duration styling is conditional on entered indication; the first unit count stays full size. Hidden lines retain raised/lowered feedback. Hidden lines plus unchanged internal appearance suppress duration controls and assessment.
+
+All nine counting dimensions are working settings, validated and defaulted by the shared version-1 contract. They remain pending until replacement; Check reads the captured plan, and existing results remain intact. Browser persistence keeps the existing outer v1 key with a nested versioned `counting` object. Migration preserves valid old vocabulary, offbeat, line placement and internal appearance; long-note/dotted/include-rest defaults come from the new contract, not the obsolete dotted convention. The first migrated visit explains the changed behavior. Saves omit old counting fields and never overwrite unrelated performance/generation preferences. Reload restores preferences, not answers. URL overrides, sharing and explicit save-default/session isolation remain out of scope.
+
+Source ownership is deliberately temporary: `Activity` retains the frozen legacy passage for engraving and performance and the detached immutable score inside the counting plan. Neither is editable, and no synchronization or reverse adapter exists. Generation and fixture producers are unchanged except for explicit `six-dotted-half`, `six-dotted-tie` and `all-rests` review examples; levels/pools have not expanded. `countGrid`/`positions` still supply engraving geometry and performance timeline layout, never requirements or answer identities. Dense writing measures scroll notation/answers together to keep 44px targets disjoint; hidden-count performance keeps its compact layout. Tie arcs refresh on measure scrolling.
+
+The runtime endpoint editors/popover were deleted. Legacy counting evaluation and passage-answer derivation were moved into `tests/legacy/` solely to preserve independent historical regressions; the application no longer imports them. Existing legacy tests retain their expectations and are explicitly separate from new-core/runtime tests. Remove the core-owned one-way source adapter after generation/fixtures construct typed scores and engraving/performance consume their derived views directly. No PR #40, additional UIL, cut-time or mixed-meter work is included.
+
+Validation: Node 24.21.0, `npm ci`, `npm run check`, documentation-link review and `git diff --check`. The native T3 preview could not reach workspace loopback (connection refused), so browser scenarios used the exact local built JS/CSS in a same-origin frame with isolated in-memory browser storage. [Coordinated browser scenarios](../../scripts/counting-plan-browser-scenarios.js) cover desktop/narrow entry, toggles, compound cases, pending settings, mode retention, Check/Retry/New, suppression, zero inputs and reload migration. Physical touch hardware, assistive-technology testing and full release verification remain separate. The final `npm run check` passed 430 tests, TypeScript and application/portable builds. Native scenarios passed 48 assertions each at 1536px and 320px, plus four fresh-document persistence assertions and native keyboard entry/toggling. Synthetic touch routing was checked; real touch capture was not. An attempted browser performance capture was interrupted by focus loss; its record survived mode changes, but a completed capture was not verified. The standalone Chromium/Firefox runner was authored and syntax-checked, not executed in this session; browser execution used T3 as required. `test:counts:browser` and the count portion of `verify` now select this coordinated suite; the four old endpoint browser scripts remain explicitly historical records.
+
+Next slice: add counting-only URL/session precedence and explicit Save as my defaults without accidental persistence of overrides; then migrate remaining musical source producers/consumers and remove the one-way adapter. Performance scoring and reward policy must remain unchanged.

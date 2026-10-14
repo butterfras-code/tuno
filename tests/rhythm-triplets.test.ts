@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { countGrid, durationEndSlot, slotX } from '../src/apps/count-writing/grid.ts';
-import { passageGrid } from '../src/apps/count-writing/passage.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import type { CountSymbol } from '../src/apps/count-writing/evaluation.ts';
+import { passageGrid } from './legacy/count-passage.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import type { CountSymbol } from './legacy/count-evaluation.ts';
 import { syllableBuffer, translateCount } from '../src/apps/count-writing/input.ts';
 import { tripletFixtures } from '../src/apps/rhythm-walk/shared/fixtures.ts';
 import { defaultGeneration, generateExercise, generationIssue, ingredients, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';

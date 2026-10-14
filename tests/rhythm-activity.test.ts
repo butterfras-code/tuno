@@ -6,10 +6,10 @@ import type { GenerationSettings } from '../src/apps/rhythm-walk/shared/generati
 import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import { passageGrid } from '../src/apps/count-writing/passage.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import { passageGrid } from './legacy/count-passage.ts';
 import type { RhythmMeasure } from '../src/music/measure.ts';
-import type { CountSymbol } from '../src/apps/count-writing/evaluation.ts';
+import type { CountSymbol } from './legacy/count-evaluation.ts';
 
 function exerciseWorks(measures: readonly RhythmMeasure[]) {
   const grid = passageGrid(measures);

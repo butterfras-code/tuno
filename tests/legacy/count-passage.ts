@@ -1,9 +1,10 @@
-import type { CountingSystem } from './input.ts';
-import { derivePassage } from '../../music/measure.ts';
-import type { RhythmMeasure } from '../../music/measure.ts';
-import { compare, divide, fraction } from '../../music/fraction.ts';
-import { countGrid } from './grid.ts';
-import type { Span } from './evaluation.ts';
+/** Historical counting contract regression helper; never imported by the application. */
+import type { CountingSystem } from '../../src/apps/count-writing/input.ts';
+import { derivePassage } from '../../src/music/measure.ts';
+import type { RhythmMeasure } from '../../src/music/measure.ts';
+import { compare, divide, fraction } from '../../src/music/fraction.ts';
+import { countGrid } from '../../src/apps/count-writing/grid.ts';
+import type { Span } from './count-evaluation.ts';
 
 /** Derived answer coordinates only. Authored music stays in RhythmMeasure. */
 export function passageGrid(source: readonly RhythmMeasure[], system: CountingSystem = 'numbers') {

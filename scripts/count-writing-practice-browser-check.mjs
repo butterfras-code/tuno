@@ -1,3 +1,4 @@
+// Historical endpoint-editor acceptance record. The active check is counting-plan-browser-check.mjs.
 import { selectExerciseLength } from './rhythm-browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';

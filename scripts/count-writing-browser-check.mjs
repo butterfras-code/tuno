@@ -1,3 +1,4 @@
+// Historical endpoint-editor acceptance record. The active check is counting-plan-browser-check.mjs.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';

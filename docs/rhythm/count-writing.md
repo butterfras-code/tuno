@@ -1,5 +1,7 @@
 Current activity contract: [Rhythm Walk now unifies Write Counts, Tap Rhythms and Both](unified-activity.md). This record preserves earlier implementation decisions; descriptions of separate activities, fixed performance-only repertoire, reset-on-reload preferences and old naming are superseded. Musical counting and notation rules remain applicable.
 
+**Counting migration, 2026-10-14:** the running editor now follows the [counting-schemes specification](counting-schemes-spec.md#coordinated-editorsettings-migration-2026-10-14). Sparse plan counts replace grid answer slots; R/D toggle inferred units; all counting settings are pending until New exercise. There are no optional counts, range endpoints or immediate token translations. 6/8 inputs follow enabled rules, not an every-eighth requirement. The counting/editor tables and validation below record the earlier slice; written notation, generation restrictions and performance timing remain applicable unless explicitly updated.
+
 Current implementation supports [2/4, 3/4, 4/4 and 6/8](meters.md), including fixed six-number 6/8 counting and separate dotted-quarter pulses. This supersedes earlier meter-support limitations in this planning record.
 
 # Write Counts: original first-release plan

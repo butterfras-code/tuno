@@ -4,7 +4,7 @@ import { add, compare, divide, fraction, multiply } from '../src/music/fraction.
 import { beatCoordinate, deriveMeasure, derivePassage, duration } from '../src/music/measure.ts';
 import type { RhythmEvent, RhythmMeasure } from '../src/music/measure.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { blankAnswer, evaluate } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluate } from './legacy/count-evaluation.ts';
 
 const bar = (events: readonly RhythmEvent[]): RhythmMeasure => ({ meter: [4, 4], events });
 test('exact arithmetic normalizes thirds and rejects unsafe quantities', () => {

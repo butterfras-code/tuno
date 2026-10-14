@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { meterFixtures } from '../src/apps/count-writing/fixtures.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import type { CountSymbol, Span } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import type { CountSymbol, Span } from './legacy/count-evaluation.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { passageGrid, spanPieces } from '../src/apps/count-writing/passage.ts';
+import { passageGrid, spanPieces } from './legacy/count-passage.ts';
 import { defaultGeneration, generateExercise, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
 import { meterPolicy, meters, syncopated } from '../src/apps/count-writing/meter.ts';
 import { readableRestPlacement } from '../src/apps/count-writing/notation-policy.ts';

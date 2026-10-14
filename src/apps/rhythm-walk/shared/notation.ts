@@ -135,7 +135,11 @@ export function renderPassageTies(source: readonly RhythmMeasure[], strip: HTMLE
       if (!event.written[1]?.tieNext) return;
       const next = events[index + 1]!;
       const from = head(event.bar, event.index), to = head(next.bar, next.index);
-      const x1 = from.x + from.width / 2 + 2 - origin.x, x2 = to.x + to.width / 2 - 2 - origin.x;
+      const fromCard = cards[event.bar]!.getBoundingClientRect(), toCard = cards[next.bar]!.getBoundingClientRect();
+      const rawFrom = from.x + from.width / 2 + 2, rawTo = to.x + to.width / 2 - 2;
+      if (event.bar === next.bar && (rawTo < fromCard.left || rawFrom > fromCard.right)) return;
+      const x1 = Math.max(fromCard.left + 2, Math.min(fromCard.right - 2, rawFrom)) - origin.x;
+      const x2 = Math.max(toCard.left + 2, Math.min(toCard.right - 2, rawTo)) - origin.x;
       const y1 = from.bottom + 3 - origin.y, y2 = to.bottom + 3 - origin.y;
       const wrapped = Math.abs(cards[event.bar]!.getBoundingClientRect().top - cards[next.bar]!.getBoundingClientRect().top) > 1;
       if (wrapped) {
@@ -147,6 +151,7 @@ export function renderPassageTies(source: readonly RhythmMeasure[], strip: HTMLE
   }
   const observer = new ResizeObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); });
   observer.observe(strip); cards.forEach(card => observer.observe(card));
+  strip.addEventListener('scroll', refresh, true);
   refresh();
-  return { refresh, destroy: () => { cancelAnimationFrame(frame); observer.disconnect(); overlay.remove(); } };
+  return { refresh, destroy: () => { cancelAnimationFrame(frame); observer.disconnect(); strip.removeEventListener('scroll', refresh, true); overlay.remove(); } };
 }

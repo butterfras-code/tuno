@@ -28,10 +28,8 @@ export const settingsGroups: readonly SettingsGroup[] = [
     description: 'Counting conventions and how students enter and mark their answers.',
     settings: [
       choice('count-system', 'Counting system', ['1 e & a', '1 ta-te-ta'], '1 e & a', 'Simple-meter syllables and the independent &/+ display preference are available above. 6/8 retains six numbered counts.'),
-      undecided('count-assistance', 'Guided symbol entry', 'Open entry with keyboard and touch already works. Guided entry would filter symbols, including keyboard input, without constraining lines or parentheses.'),
-      undecided('count-positions', 'Additional count subdivisions', 'Note onsets and required internal beats already work. Rules for accepting additional subdivisions remain subject to teacher review.'),
-      undecided('line-endpoints', 'Duration-line endpoint rules', 'Duration-line editing and snapping already work. The teaching rule for endings at the last covered count or note boundary remains provisional.'),
-      undecided('count-hints', 'Hints and answer reveal', 'Both already offers Show written counts during performance. Hint timing, answer reveal, optional input positions and recording corrections remain open.'),
+      undecided('count-assistance', 'Guided symbol entry', 'Open entry with keyboard and touch already works. Guided entry would filter symbols, including keyboard input, without changing inferred groups.'),
+      undecided('count-hints', 'Hints and answer reveal', 'Both already offers Show written counts during performance. Hint timing, answer reveal, and recording corrections remain open.'),
     ],
   },
   {

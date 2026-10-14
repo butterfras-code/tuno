@@ -1,3 +1,11 @@
+import { buildCountingPlan } from '../../music/counting/plan.ts';
+import type { CountingPlan } from '../../music/counting/plan.ts';
+import { initializeAnswer } from '../../music/counting/answer.ts';
+import type { CountingAnswer, CountingEvaluation } from '../../music/counting/answer.ts';
+import { defaultCountingPreferences, captureCountingPreferences } from '../../music/counting/preferences.ts';
+import type { CountingPreferences } from '../../music/counting/preferences.ts';
+import { scoreFromLegacy } from '../../music/legacy-score.ts';
+import { immutable } from '../../music/written.ts';
 import { defaultGeneration, generateExercise, generationIssue, ingredients } from './shared/generation.ts';
 import type { GenerationSettings } from './shared/generation.ts';
 import type { PassageFixture } from './shared/fixtures.ts';
@@ -6,7 +14,8 @@ import { exercises } from './fixtures.ts';
 import type { Exercise } from './fixtures.ts';
 import { defaultPresentation, linePlacementOptions, sustainAppearanceOptions } from '../count-writing/presentation.ts';
 import type { CountPresentation } from '../count-writing/presentation.ts';
-import type { DottedQuarterConvention } from '../count-writing/evaluation.ts';
+// Legacy preference fields below exist only for v1 browser migration and historical tests.
+type DottedQuarterConvention = 'review' | 'required' | 'optional';
 import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 import { meters } from './shared/meter.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
@@ -29,12 +38,13 @@ export function fixtureAccess(search: string) {
   return { enabled: params.get('testing') === '1' || Boolean(fixture), fixture };
 }
 export interface Preferences {
+  counting: CountingPreferences;
   version: 1; mode: Mode; generation: GenerationSettings; preset: string;
   countingSystem: CountingSystem; offbeat: OffbeatSymbol; presentation: CountPresentation; convention: DottedQuarterConvention;
   bpm: number; metronome: boolean; showCounts: boolean; wrapped: boolean; playStyle: PlayStyle;
 }
 export const preferenceKey = 'tuno.rhythm-walk.preferences.v1';
-export const defaultPreferences = (): Preferences => ({ version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', countingSystem: 'numbers', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
+export const defaultPreferences = (): Preferences => ({ counting: defaultCountingPreferences, version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', countingSystem: 'numbers', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
 /** Restore known, structurally valid fields; keep invalid ingredient combinations editable. */
 export function readPreferences(raw: string | null): Preferences {
   const defaults = defaultPreferences();
@@ -50,6 +60,13 @@ export function readPreferences(raw: string | null): Preferences {
     if (linePlacementOptions.some(o => o.value === p.presentation?.linePlacement) && sustainAppearanceOptions.some(o => o.value === p.presentation?.sustainAppearance)) defaults.presentation = { ...p.presentation! };
     if (Number.isFinite(p.bpm) && p.bpm! >= 40 && p.bpm! <= 180) defaults.bpm = p.bpm!;
     for (const key of ['metronome', 'showCounts', 'wrapped'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]!;
+    // Legacy fields are read only for migration; rules with no exact equivalent use shared defaults.
+    defaults.counting = captureCountingPreferences({ ...defaultCountingPreferences,
+      vocabulary: defaults.countingSystem, offbeat: defaults.offbeat,
+      ...(linePlacementOptions.some(o => o.value === p.presentation?.linePlacement) ? { linePlacement: p.presentation!.linePlacement } : {}),
+      ...(sustainAppearanceOptions.some(o => o.value === p.presentation?.sustainAppearance) ? { internalAppearance: p.presentation!.sustainAppearance } : {}),
+    });
+    if (p.counting) { try { defaults.counting = captureCountingPreferences(p.counting); } catch { /* Invalid nested version uses migrated defaults. */ } }
     const g = p.generation;
     const selected = g?.meters ?? (g?.meter ? [g.meter] : undefined);
     if (g && Array.isArray(selected) && selected.every(meter => meters.includes(meter)) && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) {
@@ -69,6 +86,9 @@ export function readPreferences(raw: string | null): Preferences {
 /** Exercise identity changes only on replacement, never on response-mode changes. */
 export class Activity {
   exercise: Exercise;
+  countingPlan!: CountingPlan;
+  countingAnswer!: CountingAnswer;
+  countingResult: CountingEvaluation | null = null;
   /** Configuration captured at replacement, distinct from pending preferences. */
   exerciseGeneration!: GenerationSettings;
   private serial = 0;
@@ -76,8 +96,11 @@ export class Activity {
   constructor(preferences: Preferences, measures: readonly RhythmMeasure[]) { this.preferences = preferences; this.exercise = this.create(measures); }
   private create(measures: readonly RhythmMeasure[]): Exercise {
     derivePassage(measures);
+    this.countingPlan = buildCountingPlan(scoreFromLegacy(measures), this.preferences.counting);
+    this.countingAnswer = initializeAnswer(this.countingPlan);
+    this.countingResult = null;
     this.exerciseGeneration = structuredClone(generationIssue(this.preferences.generation) ? defaultGeneration() : this.preferences.generation);
-    return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', measures: structuredClone(measures) };
+    return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', measures: immutable(structuredClone(measures)) };
   }
   setMode(mode: Mode) { this.preferences.mode = mode; }
   replace(measures: readonly RhythmMeasure[]) { this.exercise = this.create(measures); return this.exercise; }

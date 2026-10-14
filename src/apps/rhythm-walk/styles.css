@@ -309,3 +309,37 @@ main.rhythm-app {
 
 .rhythm-app .passage-measure:not(.active-count-measure) .count-slot[aria-pressed="true"] { background: var(--color-canvas); border-color: var(--color-line); }
 .performance-setup input[type="checkbox"], .response-controls input[type="checkbox"] { width: 22px; height: 22px; }
+
+/* CountingPlan editor: musical identities and unit state are independent of these pieces. */
+.plan-answer { min-height: 150px; }
+.plan-answer .counts { position: relative; height: 100px; }
+.plan-answer .count-slot { position: absolute; top: 28px; min-width: 40px; min-height: 44px; transform: translateX(-50%); z-index: 2; }
+.plan-answer[data-appearance="raised"] .count-slot.sustained { top: 8px; font-size: .8em; }
+.plan-answer[data-appearance="lowered"] .count-slot.sustained { top: 48px; font-size: .8em; }
+.plan-answer[data-appearance="unchanged"] .count-slot.sustained { top: 28px; }
+.unit-marks { position: absolute; inset: 0; pointer-events: none; }
+.inferred-duration { position: absolute; top: 88px; border-top: 2px solid currentColor; }
+.plan-answer[data-placement="above"] .inferred-duration { top: 2px; }
+.plan-answer[data-placement="beside"] .inferred-duration { top: 54px; }
+.inferred-duration[data-continues-before="true"]::before { content: '‹'; position: absolute; left: 0; top: -14px; }
+.inferred-duration[data-continues-after="true"]::after { content: '›'; position: absolute; right: 0; top: -14px; }
+.inferred-rest { position: absolute; top: 1px; height: 98px; display: flex; justify-content: space-between; align-items: center; font-size: 64px; font-weight: 300; }
+.rest-slashed::after { content: ''; position: absolute; width: 85%; border-top: 2px solid currentColor; transform: rotate(-55deg); left: 7%; top: 50%; pointer-events: none; }
+.plan-token-palette, .plan-unit-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.plan-token-palette button, .plan-unit-controls button { min-width: 44px; min-height: 44px; }
+.plan-unit-controls [aria-pressed="true"] { outline: 2px solid currentColor; }
+.count-slot[data-verdict="incorrect"] { border-color: var(--color-danger, #b34343); border-style: dashed; }
+.no-counts { padding: 20px; font-size: .85rem; }
+
+.plan-measure .measure-editor { overflow-x: auto; max-width: 100%; overscroll-behavior-x: contain; }
+.passage .plan-measure .measure { min-width: 280px; }
+.passage .plan-measure .count-slot { width: 44px; min-width: 44px; touch-action: pan-x pan-y; top: 28px; font-size: 25px; }
+.passage .plan-measure .counts { height: 100px; }
+.passage .plan-measure .answer-area[data-appearance="raised"] .count-slot.sustained { top: 8px; font-size: 19px; }
+.passage .plan-measure .answer-area[data-appearance="lowered"] .count-slot.sustained { top: 48px; font-size: 19px; }
+.passage .plan-measure .answer-area[data-appearance="unchanged"] .count-slot.sustained { top: 28px; }
+.plan-measure .score-actions { position: static; display: flex; justify-content: space-between; pointer-events: auto; padding: 6px; }
+.rhythm-app .plan-measure .score-actions > .control, .rhythm-app .plan-measure .write-actions { transform: none; }
+
+/* Performance keeps its compact score; writing restores disjoint count targets. */
+.counts-hidden .plan-measure .measure { min-width: 0 !important; }

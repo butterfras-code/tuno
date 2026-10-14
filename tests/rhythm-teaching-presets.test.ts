@@ -6,7 +6,7 @@ import { generationCapabilities } from '../src/apps/rhythm-walk/shared/capabilit
 import { defaultGeneration, generateExercise, generationIssue, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { Activity, defaultPreferences, modes, presets, readPreferences } from '../src/apps/rhythm-walk/activity.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
 import { deriveMeasure } from '../src/music/measure.ts';
