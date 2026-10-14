@@ -1,3 +1,5 @@
+import { writtenDuration } from './written.ts';
+import type { WrittenType } from './written.ts';
 import { add, compare, divide, fraction, multiply, subtract } from './fraction.ts';
 import type { Fraction } from './fraction.ts';
 
@@ -32,23 +34,15 @@ export interface DerivedMeasure {
   readonly beats: readonly { start: Fraction; duration: Fraction }[];
   readonly events: readonly DerivedEvent[];
 }
-const denominators: Record<NoteValue, number> = { W: 1, H: 2, Q: 4, E: 8, S: 16 };
+const writtenTypes: Record<NoteValue, WrittenType> = { W: 'whole', H: 'half', Q: 'quarter', E: 'eighth', S: '16th' };
 
 /** Written duration in whole-note units, independent of meter and counting convention. */
 export function duration([value, options = {}]: RhythmEvent): Fraction {
-  if (!Object.hasOwn(denominators, value)) throw new Error('Unsupported written value.');
-  const dots = options.dots ?? 0;
-  if (![0, 1, 2].includes(dots)) throw new Error('Only zero, one or two dots are supported.');
+  if (!Object.hasOwn(writtenTypes, value)) throw new Error('Unsupported written value.');
   if ((options.rest !== undefined && typeof options.rest !== 'boolean') ||
       (options.tieNext !== undefined && typeof options.tieNext !== 'boolean')) throw new Error('Invalid event modifier.');
   if (options.rest && options.tieNext) throw new Error('A rest cannot start a tie.');
-  let result = multiply(fraction(1, denominators[value]), fraction(2 ** (dots + 1) - 1, 2 ** dots));
-  if (options.tuplet) {
-    const [actual, normal] = options.tuplet;
-    if (!((actual === 3 && normal === 2) || (actual === 2 && normal === 3))) throw new Error('Only triplet 3:2 and duplet 2:3 groups are supported.');
-    result = multiply(result, fraction(normal, actual));
-  }
-  return result;
+  return writtenDuration(writtenTypes[value], options.dots ?? 0, options.tuplet);
 }
 
 function meterGroups(measure: RhythmMeasure): readonly number[] {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rhythm</part-name></score-part></part-list><part id="P1">
+<measure number="1"><attributes><divisions>12</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+<note id="m1n1"><unpitched/><duration>4</duration><voice>1</voice><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+<note id="m1n2"><unpitched/><duration>4</duration><voice>1</voice><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+<note id="m1n3"><unpitched/><duration>4</duration><voice>1</voice><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+<note id="m1n4"><unpitched/><duration>3</duration><voice>1</voice><type>16th</type></note>
+<note id="m1n5"><unpitched/><duration>3</duration><voice>1</voice><type>16th</type></note>
+<note id="m1n6"><unpitched/><duration>6</duration><voice>1</voice><type>eighth</type></note>
+<note id="m1n7"><unpitched/><duration>24</duration><voice>1</voice><type>half</type></note>
+</measure>
+</part></score-partwise>

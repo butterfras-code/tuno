@@ -41,6 +41,8 @@ The refined [musical assessment slice](assessment.md) now reports rhythm accurac
 
 ## Document authority
 
+The [counting-schemes overhaul specification](counting-schemes-spec.md) records the agreed replacement design for configurable counting, MusicXML-based source access, inferred duration/rest groups, and shareable preferences. It is not yet implemented. Its current-versus-proposed comparison identifies intentional changes to the contracts below; those contracts continue to describe the running implementation until migration lands.
+
 Use this page and the [unified activity contract](unified-activity.md) for product scope and lifecycle; [music-model.md](music-model.md) for canonical musical data; [meters.md](meters.md) and [ties-syncopation.md](ties-syncopation.md) for counting/notation policy; [settings.md](settings.md) for settings ownership and inventory; and [assessment.md](assessment.md), [performance-prototype.md](performance-prototype.md) plus [timing-calibration.md](timing-calibration.md) for performance behavior. Numerical timing thresholds remain provisional. When extending the activity, update the relevant contract and shared fixtures/tests together.
 
 The original handoff and first-release plans preserve provenance, not additional approved requirements. Historical validation counts describe their named slice, not the current suite; see the [reviewed baseline](unified-activity.md#reviewed-baseline).
