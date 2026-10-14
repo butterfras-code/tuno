@@ -28,7 +28,7 @@ export function passageGrid(source: readonly RhythmMeasure[], system: CountingSy
     const position = offsets[measure]! + index;
     const sound = sounding.find(s => s.start <= position && s.end >= position)!;
     const attack = sound.start === position;
-    const dottedInternal = compare(sound.duration, fraction(3, 8)) === 0 && !slot.onCount && divide(slot.position, fraction(1, 8))[1] === 1 && !attack;
+    const dottedInternal = compare(sound.duration, fraction(3, grid.policy.cut ? 4 : 8)) === 0 && !slot.onCount && divide(slot.position, fraction(1, grid.policy.cut ? 4 : 8))[1] === 1 && !attack;
     return { ...slot, measure, index, sound, attack, dottedInternal, available: slot.available || dottedInternal };
   }));
   grids.forEach((grid, measure) => {

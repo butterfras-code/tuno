@@ -41,7 +41,7 @@ for (const [id, [positions, numbers, syllables]] of Object.entries(onsets)) test
   }
 });
 test('triplet atom capability, defaults and independent meter validation', () => {
-  for (const meter of meters) assert.equal(rhythmCapabilities(meter).ingredients.includes('triplet-eighth'),meter !== '6/8');
+  for (const meter of meters) assert.equal(rhythmCapabilities(meter).ingredients.includes('triplet-eighth'),meter !== '6/8' && meter !== '2/2');
   assert.ok(rhythmCapabilities('4/4').patterns.includes('triplet-eighth'));
   assert.ok(!rhythmCapabilities('6/8').patterns.includes('triplet-eighth'));
   assert.ok(!defaultGeneration().ingredients.includes('triplet-eighth'));
@@ -61,7 +61,7 @@ test('bounded deterministic generation emits only selected complete groups, no 6
     let draws=0;const passage=generateExercise(settings,()=>{assert.ok(++draws<=66);return random();});
     const derived=derivePassage(passage); assert.equal(passage.length,measures);
     for (const [barIndex,bar] of passage.entries()) {
-      assert.deepEqual(derived.measures[barIndex]!.length,fraction(meter==='6/8'?6:Number(meter[0]),meter==='6/8'?8:4));
+      assert.deepEqual(derived.measures[barIndex]!.length,fraction(meter==='6/8'?6:Number(meter[0]),Number(meter[2])));
       const events=deriveMeasure(bar).events;
       for (const [i,event] of events.entries()) {
         const options=event.written[1];

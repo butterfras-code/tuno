@@ -1,6 +1,6 @@
 # Rhythm Walk generated practice loop
 
-Current meter support: [2/4, 3/4, 4/4 and 6/8 rules, defaults and examples](meters.md).
+Current meter support: [2/4, 3/4, 4/4, 6/8 and 2/2 rules, defaults and examples](meters.md).
 
 Current behavior, reconciled 2026-10-11 with `99046ee`. Read alongside the [unified Rhythm Walk contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
@@ -8,13 +8,13 @@ Implemented 2026-10-10 on `feature/count-writing-practice`. This extends the rev
 
 ## Practice behavior
 
-With no saved preferences, the activity starts with **two generated 4/4 measures**. Reload restores saved level/custom configuration; saved fixture selections are ignored, with blank responses; generated passages are drawn again. Settings offers lengths **1–4** and eight independent allowed ingredients: quarter, eighth, half, and dotted-quarter notes, plus the corresponding rests. Seven are enabled by default; dotted-quarter rests remain unchecked and in simple meters require the explicit **Allow unintuitive notation** option. In 6/8, dotted-quarter rests fit a normal three-eighth group; half rests require the opt-in instead. The shared generator supports 2/4, 3/4, 4/4 and 6/8 in all response modes. Additional supported opt-in ingredients include whole and dotted-half notes, simple-meter sixteenths/dotted eighths and complete sounded eighth triplets. Broader progression remains unavailable.
+With no saved preferences, the activity starts with **two generated 4/4 measures**. Reload restores saved level/custom configuration; saved fixture selections are ignored, with blank responses; generated passages are drawn again. Settings offers lengths **1–4** and eight baseline independent ingredients: quarter, eighth, half, and dotted-quarter notes, plus the corresponding rests. Seven are enabled by default; dotted-quarter rests remain unchecked and in simple meters require the explicit **Allow unintuitive notation** option. In 6/8, dotted-quarter rests fit a normal three-eighth group; half rests remain excluded from compound generation. The shared generator supports 2/4, 3/4, 4/4, 6/8 and scaled-counting 2/2 in all response modes. Additional supported opt-in ingredients include whole and dotted-half notes, quarter-meter sixteenths/dotted eighths and complete sounded eighth triplets. Broader progression remains unavailable.
 
 Length, ingredient and notation-policy changes apply when **Next exercise** generates a new passage. They preserve the current music, answer and feedback. Counting-rule changes apply immediately, preserve the answer and mark checked feedback stale. Offbeat display and duration-line presentation changes preserve both answers and grading. Preferences persist in localStorage. Answers/results live only in the current exercise and survive mode switches, but reset on reload.
 
 **Check** evaluates all measures without changing the answer. Feedback sits below the passage, labeled by measure, with independent count, duration-line and rest-pair results and beat-specific correction guidance. **Retry** dismisses checked feedback and focuses the first count so the learner can correct the same answer. Direct correction after Check also works, with an explicit stale-feedback message. **Next exercise** starts a blank generated passage using the latest valid settings. **Reset answer** clears the current passage's answer while retaining its music.
 
-Measures appear consecutively on one continuous staff in a single passage card, with a time signature only at the beginning, shared barlines, a final double barline and small measure numbers. Count positions and markings sit beneath their corresponding bar. On narrow screens or longer exercises, the entire passage scrolls horizontally as one unit; the page itself does not overflow. Desktop space accommodates the default two bars side by side. Feedback remains below the score, outside the horizontal scroller. Beat numbers restart at 1. Accessible labels identify both measure and beat. Count entry, arrows, Tab/Shift+Tab and Backspace cross measure boundaries; Home/End stay within a measure. Entry advances into the next measure, while rest placement stays inside the current measure. Duration placement in tied exercises follows the subsequent passage-wide [ties rules](ties-syncopation.md). At the passage ends, Tab exits the count row. Touch count popovers and duration/rest endpoint entry remain available.
+Measures appear consecutively on one continuous staff in a single passage card, with a time signature at the beginning and at each meter change, shared barlines, a final double barline and small measure numbers. Count positions and markings sit beneath their corresponding bar. On narrow screens or longer exercises, the entire passage scrolls horizontally as one unit; the page itself does not overflow. Desktop space accommodates the default two bars side by side. Feedback remains below the score, outside the horizontal scroller. Beat numbers restart at 1. Accessible labels identify both measure and beat. Count entry, arrows, Tab/Shift+Tab and Backspace cross measure boundaries; Home/End stay within a measure. Entry advances into the next measure, while rest placement stays inside the current measure. Duration placement in tied exercises follows the subsequent passage-wide [ties rules](ties-syncopation.md). At the passage ends, Tab exits the count row. Touch count popovers and duration/rest endpoint entry remain available.
 
 Saved rest pairs are retained while an endpoint edit is pending. Escape, changing views or switching placement commands cancels the draft and restores the original group. Closing the edit replaces it; removing the opening explicitly deletes it. Check cancels pending placements before evaluating the saved answer. Every written rest still requires its own complete pair, including adjacent eighth or quarter rests. A sustained rest encloses its required or entered counts and its duration line.
 
@@ -30,7 +30,7 @@ Enabling **Allow unintuitive notation** permits offbeat quarter/half rests and d
 
 The [count grid](../../src/apps/count-writing/grid.ts) derives positions from each written measure and the existing availability policy. [Evaluation](../../src/apps/count-writing/evaluation.ts) derives onset/internal-beat counts, sustained duration lines, dotted-quarter conventions and written-rest pairs. Answer indices remain measure-local presentation positions, separate from exact music time. Rest ranges cannot cross bars; tied duration spans are explicitly passage-wide under the subsequent slice; out-of-range answers fail evaluation. Eighth-rest engraving and dotted-quarter-rest dots extend the existing renderer. Dotted-half notes are an opt-in generated ingredient as well as a testing fixture.
 
-Teacher-review, required and optional dotted-quarter internal offbeat policies remain available, including for rests and dotted quarters beginning on an offbeat (the internal offbeat is then the final count within the written event). The reviewed duration endpoint policy and provisional acceptance of alternative endpoints within the same sustained event are preserved. Open entry still offers `e`/`a`, which are incorrect in this eighth-spaced exercise repertoire. There is no automatic answer reveal, mastery scoring or account system. Shared preference persistence and Tap Rhythms audio timing are implemented under the [unified activity contract](unified-activity.md).
+Teacher-review, required and optional dotted-quarter internal offbeat policies remain available, including for rests and dotted quarters beginning on an offbeat (the internal offbeat is then the final count within the written event). The reviewed duration endpoint policy and provisional acceptance of alternative endpoints within the same sustained event are preserved. The palette offers `e`/`a` for supported sixteenth subdivisions, or scaled eighth subdivisions in cut time. There is no automatic answer reveal, mastery scoring or account system. Shared preference persistence and Tap Rhythms audio timing are implemented under the [unified activity contract](unified-activity.md).
 
 ## Regression fixtures and historical verification
 
@@ -43,3 +43,20 @@ The six earlier reviewed fixtures remain in [fixtures.ts](../../src/apps/rhythm-
 Validation for this slice uses Node 24.21.0 and `npm ci`. `npm run check` passes all 130 tests and hosted/portable build checks. Count Writing fixture and generated practice browser checks pass in Chromium and Firefox, including the complete loop for lengths 1–4 at 1280px and 320px, keyboard navigation across measures, touch marking entry, invalid settings, answer retention, rest-edit cancellation, expanded settings layout, consecutive-bar geometry, a single time signature/scroller, beginner rest placement and advanced opt-in validation. Reports and screenshots are under `dist/validation/count-writing-{chromium,firefox}` and `dist/validation/count-practice-{chromium,firefox}`.
 
 The T3 preview initially loaded, but subsequent collaborative browser interaction/resize calls failed and reopening returned an invisible tab. Browser evidence above comes from the repository's regression checks. Physical-device checks, full release-candidate verification and Cloudflare candidate review remain pending; this feature work does not authorize a production release.
+
+## Verified figure profiles
+
+[UIL I–VI](uil-presets.md) select versioned General/Percussion note-only figure
+profiles. Their planner draws complete canonical event sequences with exact
+durations and meter-specific placements; feasibility and generation share the
+same choices. It never inserts filler or falls back to unrestricted ingredients.
+The advertised ingredient display is derived from the profile; inconsistent
+profile/ingredient configurations fail validation rather than ignoring edits.
+Every eligible figure is reachable, without requiring all figures in every draw.
+
+IV–VI may opt into bounded meter changes (1/2/3, capped by length minus one),
+default off. BPM follows each meter's performance pulse; the initial meter sets
+the count-in. No generated figure or tie crosses a change. Musical customization
+removes the verified figure profile and change budget, retains customized source
+attribution and uses the historical unrestricted generator. Uno configurations
+and default Custom selections are unchanged.

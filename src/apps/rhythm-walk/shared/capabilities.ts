@@ -7,7 +7,7 @@ export interface GenerationCapabilities {
   ingredients: readonly string[];
   patterns: readonly string[];
   meters: readonly CountMeter[];
-  byMeter?: Partial<Record<CountMeter, { ingredients: readonly string[]; patterns: readonly string[] }>>;
+  byMeter?: Partial<Record<CountMeter, { ingredients: readonly string[]; patterns: readonly string[]; figures?: readonly string[] }>>;
 }
 /** Aggregate view of the same meter policy used by generation; no duplicate support lists. */
 export function generationCapabilities(): GenerationCapabilities {

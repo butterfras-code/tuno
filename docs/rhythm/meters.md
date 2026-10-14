@@ -1,10 +1,27 @@
+## Cut-time and meter-change extension (2026-10-14)
+
+Cut time is real 2/2: half-note counts 1–2 and half-note performance pulses.
+The owner chose scaled counting: quarters use & (or te), eighths use
+1 e & a / 1 ta te ta, exactly as sixteenths do in quarter-note meters.
+The owner explicitly chose to omit sixteenth, dotted-eighth and eighth-triplet
+figures from 2/2 while retaining them in quarter-note meters. No new finer
+syllables are invented. The existing dotted-quarter count convention scales
+to dotted halves in 2/2; duration lines require internal half-note counts.
+6/8 retains six numbered eighths and dotted-quarter performance pulses.
+Across optional meter changes, BPM means the local performance pulse: quarter,
+dotted quarter, or half respectively. Count-in uses whole bars of the first meter,
+with at least four pulses. No generated ties cross a meter change.
+
 # Rhythm Walk meters
 
 Current simple-meter sixteenth vocabulary, both counting systems and adaptive grid policy are specified in [sixteenths](sixteenths.md). 6/8 vocabulary and numbered counting are unchanged.
 
 Current behavior, reconciled 2026-10-11 with `99046ee`. Read alongside the [unified Rhythm Walk contract](unified-activity.md). Validation sections explicitly marked historical describe the original slice.
 
-Implemented slice: 2/4, 3/4, 4/4 and 6/8, one meter drawn from the checked time signatures throughout each exercise. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Preferences survive reloads; responses/results do not. Both response modes use the same exercise and meter policy.
+Implemented meters: 2/4, 3/4, 4/4, 6/8 and 2/2. By default one meter is drawn from the checked signatures for the exercise; UIL IV–VI may opt into bounded changes. Default is 4/4 and two measures; length is configurable from 1–4. Meter, ingredients, notation policy, ties and syncopation apply only on Next/New Exercise, retaining the current exercise and answer until then. Presentation/view changes retain the answer. Preferences survive reloads; responses/results do not. Both response modes use the same exercise and meter policy.
+
+For UIL figure-specific compound placements, see the [scope matrix](uil-presets.md).
+Custom ingredient placement below retains its historical policy.
 
 ## Four separate concepts
 
@@ -15,6 +32,7 @@ Written values and their exact fractions remain in the [canonical model](music-m
 | 2/4 | Quarter numbers 1–2, eighth offbeats & or + | Two quarter groups | Quarter, twice per bar | 4 |
 | 3/4 | Quarter numbers 1–3, eighth offbeats & or + | Three quarter groups | Quarter, three times per bar | 6 |
 | 4/4 | Quarter numbers 1–4, eighth offbeats & or + | Four quarter groups | Quarter, four times per bar | 8 |
+| 2/2 | Half-note numbers 1–2; quarters &/te, eighths e & a / ta te ta | Two half-note groups | Half, twice per bar | 8 |
 | 6/8 | Six numbered eighth positions: 1 2 3 4 5 6 | Two groups of three: 123 / 456 | Dotted quarter, twice per bar | 6 |
 
 Numbers reset each measure. In 6/8 **every position requires its number**, even inside a note, tie or rest. No alternative compound syllables or internal offbeats apply. The &/+ and dotted-quarter teacher preference remain saved for simple meters and are disabled while reviewing a 6/8 exercise. Changing pending meter settings does not alter the current exercise's convention.
@@ -60,9 +78,9 @@ Controls permit patterns rather than guaranteeing each draw. Empty, unfillable, 
 
 Open the fixtures in Review fixture or `?fixture=<id>`. [Explicit-answer and generated invariant tests](../../tests/count-meters.test.ts) cover these expectations independently of generated grids, all ingredient subsets, all meters and lengths, numbering resets, exact totals, selected-only values, rest placement, pulse restrictions, and independent grading. [Browser checks](../../scripts/count-writing-meters-browser-check.mjs) cover consecutive/wrapped desktop and narrow mobile layouts, numeric touch entry, keyboard navigation and the practice loop.
 
-## Limits and validation
+## Historical meter-slice validation
 
-Mixed meters, additional meters, tuplets, sixteenths/smaller values, alternative compound counting, audio/performance input and saved settings are outside this slice. The earlier dotted-half review fixture remains supported. Cross-system duration editing uses anchors, Shift/arrows and selectors; dragging across systems remains unavailable. Narrow notation uses the existing shared horizontal scroller.
+The original meter slice excluded mixed meters, additional meters, tuplets, sixteenths, audio and persistence. Subsequent shared work supplies these where documented above and in the current README; the following is historical evidence. The earlier dotted-half review fixture remains supported. Cross-system duration editing uses anchors, Shift/arrows and selectors; dragging across systems remains unavailable. Narrow notation uses the existing shared horizontal scroller.
 
 Physical-device, Safari, Chromebook, classroom/teacher review and release acceptance remain separate from automated browser validation. This feature does not publish production.
 

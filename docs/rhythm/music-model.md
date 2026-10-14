@@ -68,9 +68,9 @@ Numerical [musical assessment](assessment.md) derives the same sounding chains a
 
 ## Count Writing integration
 
-The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to 2/4, 3/4, 4/4 and 6/8, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests, plus simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets (3:2). The supported counting/engraving boundary is detailed in [sixteenths](sixteenths.md) and [triplets](triplets.md). Tied notes are now supported in this repertoire; [passageGrid](../../src/apps/count-writing/passage.ts) derives sounding attacks, chain durations and answer coordinates from `derivePassage`. Generated practice uses 1–4 consecutive measures in one staff passage; rest pairs stay measure-local while tied duration lines use passage-wide derived answer positions; see [practice loop](practice-loop.md). Beginner rest-placement policy lives in the generator’s [notation policy](../../src/apps/rhythm-walk/shared/notation-policy.ts), keeping uncommon but valid written music available through an explicit practice opt-in. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
+The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to 2/4, 3/4, 4/4, 6/8 and scaled-counting 2/2, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests, plus simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets (3:2). The supported counting/engraving boundary is detailed in [sixteenths](sixteenths.md) and [triplets](triplets.md). Tied notes are now supported in this repertoire; [passageGrid](../../src/apps/count-writing/passage.ts) derives sounding attacks, chain durations and answer coordinates from `derivePassage`. Generated practice uses 1–4 consecutive measures in one staff passage, with optional bounded meter changes in UIL IV–VI; rest pairs stay measure-local while tied duration lines use passage-wide derived answer positions; see [practice loop](practice-loop.md). Beginner rest-placement policy lives in the generator’s [notation policy](../../src/apps/rhythm-walk/shared/notation-policy.ts), keeping uncommon but valid written music available through an explicit practice opt-in. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
 
-The [UIL preset slice](uil-presets.md) adds reviewed whole-note counting/engraving in 4/4 and opt-in whole/dotted-half generation. Whole notes use numbered quarter counts and one complete sounding duration line. Opt-in whole rests in 4/4 use the same numbered quarter counts and duration line, enclosed in one rest pair. Dotted wholes remain unsupported by the UI. This changes the adapter boundary, not the canonical duration model.
+The [UIL preset slice](uil-presets.md) adds reviewed whole-note counting/engraving in 4/4 and 2/2 and opt-in whole/dotted-half generation. Whole notes use numbered quarter counts in 4/4 or half counts in 2/2 and one complete sounding duration line. Opt-in whole rests in 4/4 use the same numbered quarter counts and duration line, enclosed in one rest pair. Dotted wholes remain unsupported by the UI. This changes the adapter boundary, not the canonical duration model.
 
 Its derived eighth-, sixteenth- or twelve-subdivision-quarter answer storage is a **counting/presentation policy**, not the music clock. Slot indices in student symbols, rest markings and duration spans refer to this generated grid. Do not pass them to performance timing as musical coordinates. The renderer and editor use the same slot geometry; answer size and navigation limits come from the grid. Dotted-quarter policy is identified from total sounding durations and positions for notes, and written durations for rests, not fixture IDs. See the [ties and syncopation rules](ties-syncopation.md).
 
@@ -87,3 +87,18 @@ To expose new material: extend the counting convention, input positions, engravi
 [Domain tests](../../tests/rhythm-model.test.ts) cover exact durations, dots, sixteenths, tuplets, compound/additive grouping, fractional beat coordinates, rests, exact bar totals, tie chains across changing meters, invalid cases and the UI support boundary. [Count Writing tests](../../tests/count-writing.test.ts) preserve the four existing answers and independent feedback dimensions.
 
 Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/rhythm-walk/shared/generation.ts) now uses this model and validates complete passages. This model does not own notation UI, audio scheduling or preference persistence; their current implementation is documented in the [unified activity contract](unified-activity.md). Follow normal feature-to-dev staging and explicit production-publication rules.
+
+## UIL figure generation and changing meters
+
+The [declarative figure planner](../../src/apps/rhythm-walk/shared/figures.ts) emits
+only canonical written events; figure identity, scope and source evidence stay in
+generation configuration, never musical event modifiers. Figures have exact summed
+durations, meter-specific placements and a shared feasibility/generation search.
+The [UIL scope matrix](uil-presets.md) separates source rules from teaching limits.
+
+2/2 counts half-note beats 1–2, with quarter/eighth subdivisions scaled from the
+existing systems. Sixteenths, dotted eighths and eighth triplets are intentionally
+excluded there. 6/8 remains six numbered eighths with dotted-quarter pulses.
+Optional mixed-meter exercises use piecewise exact-position-to-seconds conversion
+at constant local-pulse BPM, with the first meter supplying the count-in. This does
+not modify authored durations or the musical model.

@@ -66,7 +66,14 @@ export const tripletFixtures: readonly PassageFixture[] = [
   ...[2, 3, 4].map(length => ({ id: `triplet-mixed-${length}`, label: `Mixed triplets · ${length} bars`, measures: Array.from({ length }, mixedTripletBar) })),
 ];
 
+export const uilFixtures: readonly PassageFixture[] = [
+  { id: 'uil-percussion', label: 'UIL percussion · E S S / four sixteenths', measures: [{ meter: [4, 4], events: [['E'], ['S'], ['S'], ['S'], ['S'], ['S'], ['S'], ['H']] }] },
+  { id: 'uil-figures', label: 'UIL IV · dotted and syncopated figures', measures: [{ meter: [4, 4], events: [['Q', { dots: 1 }], ['E'], ['E'], ['Q'], ['E']] }, { meter: [4, 4], events: [['E', { dots: 1 }], ['S'], ['S'], ['S'], ['E'], ...triplet(), ['Q']] }] },
+  { id: 'uil-cut', label: 'Cut time · half-note counts 1–2', measures: [{ meter: [2, 2], events: [['Q'], ['Q'], ['E'], ['E'], ['E'], ['E']] }] },
+  { id: 'uil-mixed', label: 'UIL teaching adaptation · changing pulses', measures: [{ meter: [2, 2], events: [['Q'], ['Q'], ['E'], ['E'], ['E'], ['E']] }, { meter: [6, 8], events: [['Q', { dots: 1 }], ['E'], ['E'], ['E']] }, { meter: [3, 4], events: [...triplet(), ['H']] }, { meter: [4, 4], events: [['W']] }] },
+];
+
 export const practiceFixtures: readonly PassageFixture[] = [
-  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures, ...tripletFixtures,
+  ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, measures: [f] })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures, ...tripletFixtures, ...uilFixtures,
 ];
 practiceFixtures.forEach(f => derivePassage(f.measures));

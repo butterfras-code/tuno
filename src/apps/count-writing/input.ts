@@ -16,7 +16,8 @@ export function displayCount(symbol: CountSymbol, offbeat: OffbeatSymbol): strin
 }
 
 export type CountingSystem = 'numbers' | 'syllables';
-export function countAt(position: Fraction, compound: boolean, system: CountingSystem = 'numbers', triplet = false): CountSymbol {
+export function countAt(position: Fraction, compound: boolean, system: CountingSystem = 'numbers', triplet = false, cut = false): CountSymbol {
+  if (cut) position = divide(position, fraction(2));
   if (triplet) {
     const thirds = divide(position, fraction(1, 12));
     if (thirds[1] !== 1) return '';
@@ -30,7 +31,8 @@ export function countAt(position: Fraction, compound: boolean, system: CountingS
     (system === 'syllables' ? ['','ta','te','ta'] : ['','e','&','a'])[phase] as CountSymbol;
 }
 /** Translate meaning, never substitute the expected answer for an incorrect token. */
-export function translateCount(token: CountSymbol, position: Fraction, from: CountingSystem, to: CountingSystem, triplet = false): CountSymbol {
+export function translateCount(token: CountSymbol, position: Fraction, from: CountingSystem, to: CountingSystem, triplet = false, cut = false): CountSymbol {
+  if (cut) position = divide(position, fraction(2));
   if (from === to || !token || token === 'la' || token === 'li' || /^\d$/.test(token)) return token;
   if (to === 'syllables' && (token === 'e' || token === 'a') && countAt(position, false, 'numbers', triplet) !== token && countAt(position, false, 'syllables', triplet) === 'ta') return '';
   if (to === 'syllables') return ({ e: 'ta', '&': 'te', a: 'ta' } as Partial<Record<CountSymbol, CountSymbol>>)[token] ?? '';

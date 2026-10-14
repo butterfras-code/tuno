@@ -36,9 +36,9 @@ window.runUilBrowserScenarios = async function (w = window) {
   const apply = d.querySelector('[data-setting="apply-teaching-preset"]');
   assert(picker.options.length === 11, 'four Uno and six UIL levels are inspectable');
   for (const id of ['uil-3', 'uil-4', 'uil-5', 'uil-6']) {
-    const before = JSON.stringify(generation()); choose(picker, id);
-    assert(apply.disabled, `${id} application blocked`); apply.click();
-    assert(JSON.stringify(generation()) === before, `${id} leaves pending settings intact`);
+    choose(picker, id);
+    assert(!apply.disabled, `${id} note-only application available`); apply.click();
+    assert(generation().teachingPreset.id === id && generation().figureProfile, `${id} applies verified pending figure profile`);
     assert(d.querySelector('.passage').dataset.exerciseId === exerciseId && slot.textContent === '1' && results.textContent === resultText, `${id} preserves both responses`);
   }
   for (const id of ['uil-1', 'uil-2']) {
@@ -57,7 +57,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   assert(generation().meters.join(',') === '4/4' && !generation().teachingPreset.customized, 'deliberate reapplication restores controlled fields');
   const ingredient = d.querySelector('[data-ingredient="sixteenth"]'); ingredient.checked = true; ingredient.dispatchEvent(new w.Event('change'));
   assert(generation().teachingPreset.customized && !generation().restrictions, 'ingredient override retains customized source');
-  apply.click(); assert(!ingredient.checked && generation().restrictions.pairedEighths, 'reapplication resynchronizes ingredient controls');
+  apply.click(); assert(!ingredient.checked && generation().figureProfile.level === 1, 'reapplication resynchronizes ingredient controls');
   choose(d.querySelector('[data-setting="exercise-length"]'), '2');
   assert(!generation().teachingPreset.customized, 'length is independent of template attribution');
   for (const response of ['tap', 'write', 'both']) {

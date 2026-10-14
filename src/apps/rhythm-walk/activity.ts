@@ -56,12 +56,18 @@ export function readPreferences(raw: string | null): Preferences {
       defaults.generation = { meters: [...new Set(selected)], measures: g.measures, ingredients: [...g.ingredients], allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: g.ties, syncopation: g.syncopation };
       if (g.restrictions && typeof g.restrictions.pairedEighths === 'boolean' && typeof g.restrictions.noQuarterRestBeatOne === 'boolean') defaults.generation.restrictions = { pairedEighths: g.restrictions.pairedEighths, noQuarterRestBeatOne: g.restrictions.noQuarterRestBeatOne };
       const identity = g.teachingPreset;
-      const definition = generationLevels.find(p => p.id === identity?.id && p.version === identity?.version);
-      if (definition && typeof identity?.customized === 'boolean') {
-        // Exact attribution requires both engine support and matching controlled fields.
-        defaults.generation.teachingPreset = { id: definition.id, version: definition.version, customized: identity.customized || !resolveTeachingPreset(definition).supported || !matchesTeachingPreset(defaults.generation, definition) };
+      const definition = generationLevels.find(p => p.id === identity?.id);
+      if (definition && typeof identity?.customized === 'boolean' && (identity.version === definition.version || definition.source && identity.version === 1)) {
+        const scope = identity.scope === 'percussion' ? 'percussion' : 'general';
+        if (identity.version === definition.version && g.figureProfile?.version === 1 && g.figureProfile.level === Number(definition.id.slice(4)) && g.figureProfile.scope === scope) {
+          defaults.generation.figureProfile = { version: 1, level: g.figureProfile.level, scope };
+          defaults.generation.meterChanges = Number.isInteger(g.meterChanges) && g.meterChanges! >= 0 && g.meterChanges! <= definition.meterChanges ? g.meterChanges : 0;
+        }
+        defaults.generation.teachingPreset = { id: definition.id, version: definition.version, customized: identity.customized || identity.version !== definition.version || Boolean(definition.source && !['general', 'percussion'].includes(identity.scope!)) || (g.meterChanges !== undefined && (!Number.isInteger(g.meterChanges) || g.meterChanges < 0 || g.meterChanges > definition.meterChanges)), ...(definition.source ? { scope } : {}) };
+        defaults.generation.teachingPreset.customized ||= !resolveTeachingPreset(definition, undefined, scope).supported || !matchesTeachingPreset(defaults.generation, definition);
+        if (defaults.generation.teachingPreset.customized) { delete defaults.generation.figureProfile; delete defaults.generation.meterChanges; }
       }
-      if (!defaults.generation.teachingPreset || defaults.generation.teachingPreset.customized) delete defaults.generation.restrictions;
+
     }
   } catch { /* Missing, malformed or unavailable storage uses defaults. */ }
   return defaults;

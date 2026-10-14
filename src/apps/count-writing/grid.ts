@@ -13,8 +13,8 @@ export function countGrid(source: RhythmMeasure, system: CountingSystem = 'numbe
   const policy = sourcePolicy(source);
   const measure = deriveMeasure(source);
   if (measure.beats.some(b => compare(b.duration, policy.pulse)) ||
-      source.events.some(([value, m]) => !['H', 'Q', 'E', ...(policy.compound ? [] : ['S', 'W'])].includes(value) || (value === 'W' && m?.dots) || (m?.tuplet && (policy.compound || value !== 'E' || m.tuplet[0] !== 3 || m.tuplet[1] !== 2 || m.rest || m.dots || m.tieNext)) || (m?.dots ?? 0) > 1 || (value === 'S' && m?.dots) || (value === 'E' && m?.dots && (policy.compound || m.rest)) || (m?.rest && value === 'H' && m.dots))) {
-    throw new Error('Uno234 currently supports 2/4, 3/4, 4/4 and 6/8 reviewed whole/half/quarter/eighth/sixteenth material; only sounded eighth triplets; no dotted wholes, dotted sixteenths or dotted-eighth rests.');
+      source.events.some(([value, m]) => (policy.cut && (value === 'S' || m?.tuplet || value === 'E' && m?.dots)) || !['H', 'Q', 'E', ...(policy.compound ? [] : ['S', 'W'])].includes(value) || (value === 'W' && m?.dots) || (m?.tuplet && (policy.compound || value !== 'E' || m.tuplet[0] !== 3 || m.tuplet[1] !== 2 || m.rest || m.dots || m.tieNext)) || (m?.dots ?? 0) > 1 || (value === 'S' && m?.dots) || (value === 'E' && m?.dots && (policy.compound || m.rest)) || (m?.rest && value === 'H' && m.dots))) {
+    throw new Error('Uno234 currently supports 2/4, 3/4, 4/4, 6/8 and 2/2 reviewed whole/half/quarter/eighth/sixteenth material; only sounded eighth triplets; no sixteenths, dotted eighths or triplets in 2/2; no dotted wholes, dotted sixteenths or dotted-eighth rests.');
   }
   const triplets = measure.events.some(e => e.tupletGroup !== null);
   if (measure.events.some(e => e.tupletGroup !== null && (divide(measure.events[e.tupletGroup]!.start, fraction(1, 4))[1] !== 1 || source.events[e.index - 1]?.[1]?.tieNext))) throw new Error('Triplet groups must start on quarter beats, without ties to/from members.');
@@ -33,13 +33,13 @@ export function countGrid(source: RhythmMeasure, system: CountingSystem = 'numbe
     const beat = measure.beats.findIndex(b => !compare(b.start, position));
     const beatIndex = measure.beats.filter(b => compare(b.start, position) <= 0).length - 1;
     const triplet = event.tupletGroup !== null;
-    const units = divide(position, fraction(1, triplet ? 12 : 16));
+    const units = divide(position, fraction(1, policy.cut ? 8 : triplet ? 12 : 16));
     const subdivision = policy.compound || units[1] !== 1 ? 0 : units[0] % (triplet ? 3 : 4);
     return { position, event, available: policy.compound || available.some(p => !compare(p, position)), onCount: divide(position, policy.countingUnit)[1] === 1, onPulse: beat >= 0, onset: !compare(position, event.start),
       subdivision, triplet,
-      symbol: units[1] === 1 || policy.compound ? countAt(position, policy.compound, system, triplet) : '',
-      label: policy.compound ? `count ${index + 1}` : `beat ${beatIndex + 1}${beat >= 0 ? '' : !fine ? ' offbeat' : ` ${triplet ? 'triplet' : 'subdivision'} ${subdivision + 1}`}`,
-      dottedInternal: !policy.compound && event.written[0] === 'Q' && event.written[1]?.dots === 1 && beat < 0 && divide(position, fraction(1, 8))[1] === 1 && compare(position, event.start) > 0,
+      symbol: units[1] === 1 || policy.compound ? countAt(position, policy.compound, system, triplet, policy.cut) : '',
+      label: policy.compound ? `count ${index + 1}` : `beat ${beatIndex + 1}${beat >= 0 ? '' : !fine && !policy.cut ? ' offbeat' : ` ${triplet ? 'triplet' : 'subdivision'} ${subdivision + 1}`}`,
+      dottedInternal: !policy.compound && event.written[0] === (policy.cut ? 'H' : 'Q') && event.written[1]?.dots === 1 && beat < 0 && divide(position, fraction(1, policy.cut ? 4 : 8))[1] === 1 && compare(position, event.start) > 0,
     };
   });
   return { slots, events, measure, policy, step, fine, triplets, availableSlots: slots.flatMap((slot, i) => slot.available ? [i] : []) };
