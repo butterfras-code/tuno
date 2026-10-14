@@ -11,7 +11,7 @@ import { createCountPopover } from './count-popover.ts';
 import type { CountPresentation } from './presentation.ts';
 
 export function createMeasureEditor(source: RhythmMeasure, number: number, options: {
-  scroller: HTMLElement; lastMeasure: boolean;
+  scroller: HTMLElement; lastMeasure: boolean; showTimeSignature?: boolean;
   paletteVocabulary?: { sixteenths: boolean; triplets: boolean };
   palette?: HTMLElement; paletteSelected?: () => void;
   grid?: ReturnType<typeof countGrid>; externalLines?: boolean;
@@ -133,7 +133,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     id: `count-popover-${number}`,
     dock: options.palette, activated: options.paletteSelected,
     symbols: grid.policy.compound ? ['1', '2', '3', '4', '5', '6'] : ['1', '2', '3', '4', '&', 'e', 'a', 'ta', 'te', 'la', 'li'],
-    enabled: symbol => paletteSymbols(fixture.meter[0], grid.policy.compound, system, paletteVocabulary).includes(symbol),
+    enabled: symbol => paletteSymbols(fixture.meter[0], grid.policy.compound, system, { ...paletteVocabulary, sixteenths: paletteVocabulary.sixteenths || grid.policy.cut, triplets: paletteVocabulary.triplets && !grid.policy.cut }).includes(symbol),
     input: enterKey,
     markings: {
       canRest: () => !activeRests().some(r => selected >= r.start && selected <= r.end),
@@ -367,7 +367,7 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
     countPopover.dismiss();
     keyboardLine = null;
     grid = options.grid ?? countGrid(fixture, system); answer = blankAnswer(fixture); selected = 0; hoveredRest = null; lineStart = null; lineEnd = null; restStart = null; restDraft = null; result = null; changed = false;
-    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1, last: options.lastMeasure }));
+    renderSlots(); notation.replaceChildren(renderMeasure(fixture, `Measure ${number}`, { first: number === 1 || Boolean(options.showTimeSignature), last: options.lastMeasure }));
     notation.querySelectorAll<SVGGElement>('g[data-start]').forEach(mark => {
       const tick = Number(mark.dataset.start);
       const bounds = mark.getBBox();
@@ -621,12 +621,12 @@ export function createMeasureEditor(source: RhythmMeasure, number: number, optio
         buffer.clear(); countPopover.dismiss();
         let cleared = 0;
         if (!grid.policy.compound) answer.symbols = answer.symbols.map((token, i) => {
-          const translated = translateCount(token, grid.slots[i]!.position, system, nextSystem, grid.slots[i]!.triplet);
+          const translated = translateCount(token, grid.slots[i]!.position, system, nextSystem, grid.slots[i]!.triplet, grid.policy.cut);
           if (token && !translated) cleared++;
           return translated;
         });
         system = nextSystem;
-        grid.slots.forEach(slot => { slot.symbol = slot.symbol ? countAt(slot.position, grid.policy.compound, system, slot.triplet) : ''; });
+        grid.slots.forEach(slot => { slot.symbol = slot.symbol ? countAt(slot.position, grid.policy.compound, system, slot.triplet, grid.policy.cut) : ''; });
         result = null; changed = false; options.edited();
         announcement = cleared ? `${cleared} ambiguous count token(s) cleared. Check again.` : 'Counting system changed. Check again.';
         card.dataset.clearedCounts = String(cleared);

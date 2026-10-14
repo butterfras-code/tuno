@@ -31,7 +31,7 @@ test('Uno levels match the requested cumulative configurations without changing 
     assert.equal(definition.recommended.allowUnintuitiveNotation, wanted.notation);
     assert.equal(definition.recommended.restrictions, undefined);
   }
-  for (const definition of teachingPresets.slice(2)) assert.equal(resolveTeachingPreset(definition).supported, false);
+  for (const definition of teachingPresets.slice(2)) assert.equal(resolveTeachingPreset(definition).supported, true);
   const capabilities = generationCapabilities();
   assert.equal(resolveTeachingPreset(unoPresets[2]!, { ...capabilities, ingredients: capabilities.ingredients.filter(id => id !== 'sixteenth') }).supported, false);
 });

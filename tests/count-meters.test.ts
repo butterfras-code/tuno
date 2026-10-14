@@ -93,7 +93,7 @@ test('all meters, lengths, ingredient subsets and pattern modes are bounded and 
     const source = generateExercise(settings, seeded(mask + measures));
     assert.deepEqual(source, generateExercise(settings, seeded(mask + measures)));
     const policy = meterPolicy(meter), derived = derivePassage(source), grid = passageGrid(source);
-    const size = meter === '2/4' ? 4 : meter === '4/4' ? 8 : 6;
+    const size = meter === '2/4' ? 4 : (meter === '4/4' || meter === '2/2') ? 8 : 6;
     assert.deepEqual(grid.offsets, Array.from({ length: measures }, (_, i) => i * size));
     assert.equal(grid.slots.length, size * measures);
     source.forEach((bar, i) => {

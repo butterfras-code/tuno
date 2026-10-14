@@ -252,16 +252,18 @@ export function createPerformance(options: { treatBag: HTMLElement; exercise: ()
   document.addEventListener('visibilitychange', () => { if (document.hidden) { startCancelled = true; transport?.interrupt('Page backgrounded'); } });
   window.addEventListener('pagehide', () => transport?.interrupt('Page left'));
 
-  function pulseLabel() { return sourcePolicy(options.exercise().measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
+  function pulseLabel() { const policy = sourcePolicy(options.exercise().measures[0]!); return policy.cut ? 'half-note' : policy.compound ? 'dotted-quarter' : 'quarter-note'; }
   function refreshExercise() {
-    tempoField.querySelector('.field-label')!.textContent = `Tempo (${pulseLabel()} BPM)`;
-    tempo.setAttribute('aria-label', `Tempo (${pulseLabel()} BPM)`);
-    tempoUnit.textContent = pulseLabel() === 'dotted-quarter' ? '♩. =' : '♩ =';
+    const changing = new Set(options.exercise().measures.map(m => m.meter.join('/'))).size > 1;
+    const tempoLabel = changing ? 'Tempo (BPM · follows each meter)' : `Tempo (${pulseLabel()} BPM)`;
+    tempoField.querySelector('.field-label')!.textContent = tempoLabel;
+    tempo.setAttribute('aria-label', tempoLabel);
+    tempoUnit.textContent = changing ? 'Beat =' : pulseLabel() === 'dotted-quarter' ? '♩. =' : pulseLabel() === 'half-note' ? '𝅗𝅥 =' : '♩ =';
     const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
     playHint.textContent = playInstructions[options.preferences.playStyle];
-    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
+    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. BPM follows each meter’s pulse (quarter / dotted quarter / half); the count-in uses the first meter. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
   }
   function cancel(reason: string) {
     timing.cancel();

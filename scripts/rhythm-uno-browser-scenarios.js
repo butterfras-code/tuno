@@ -41,9 +41,9 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
       assert(fresh.querySelector('[data-setting="teaching-preset"]').value === id && fresh.querySelector('.exercise-summary').textContent.includes(`Uno${index + 1}`), `${id} restores after fresh load`);
     }
   }
-  const before = JSON.stringify(stored().generation);
+  const before = d.querySelector('.passage').dataset.exerciseId;
   choose(picker, 'uil-6');
-  assert(d.querySelector('[data-setting="apply-teaching-preset"]').disabled && JSON.stringify(stored().generation) === before, 'Uno availability does not unblock UIL VI');
+  assert(!d.querySelector('[data-setting="apply-teaching-preset"]').disabled && stored().generation.figureProfile.level === 6 && d.querySelector('.passage').dataset.exerciseId === before, 'UIL VI uses its own pending atomic figure profile without replacing the Uno exercise');
   choose(picker, 'uno-4');
   return { passed: checks.length, width: w.innerWidth, checks };
 };

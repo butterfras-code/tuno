@@ -239,6 +239,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
         editors.forEach((other, otherIndex) => { other.card.classList.toggle('active-count-measure', otherIndex === index); if (otherIndex !== index) other.suspend(); });
         selectResponsePanel('counts');
       },
+      showTimeSignature: index > 0 && measures[index - 1]!.meter.join('/') !== measure.meter.join('/'),
       scroller: passageScroll, lastMeasure: index === measures.length - 1,
       grid: grid.grids[index], externalLines: tied,
       system: countingSystem, offbeat, presentation, convention: dottedConvention, hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
@@ -264,7 +265,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
 function updateExerciseSummary() {
   const source = activity.exerciseGeneration.teachingPreset;
   const label = teachingPresetLabel(source);
-  exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
+  exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures.map(m => m.meter.join('/')).filter((meter, i, all) => !i || meter !== all[i - 1]).join(' → ')}.`;
   if (fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
   const issue = generationIssue(generation);
   if (issue) exerciseSummary.textContent += ` New exercise unavailable: ${issue}`;
