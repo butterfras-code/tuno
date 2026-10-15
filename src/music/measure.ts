@@ -1,44 +1,71 @@
-/** Symbolic score time: integer eighth-note ticks, independent of playback and UI. */
-export interface RhythmEvent {
+/** Derived bar/beat views of the typed score, never a second authored model. */
+import { noteDuration, deriveScore, createScore } from './score.ts';
+import type { WrittenNote, ScoreMeasure } from './score.ts';
+import { add, compare, divide, fraction, multiply, subtract } from './fraction.ts';
+import type { Fraction } from './fraction.ts';
+import type { WrittenType } from './written.ts';
+export type RhythmEvent = WrittenNote;
+export type RhythmMeasure = ScoreMeasure;
+export type NoteValue = WrittenType;
+export const duration = noteDuration;
+/** Authoring/generation template. score() assigns deterministic passage-wide IDs. */
+export function note(type: WrittenType, options: Partial<Omit<WrittenNote, 'id' | 'type'>> = {}): WrittenNote {
+  return { id: 'draft', kind: 'note', type, dots: 0, tieNext: false, ...options };
+}
+/** Finish construction once; consumers retain this immutable score and its IDs. */
+export function score(measures: readonly ScoreMeasure[]) {
+  return createScore({ measures: measures.map((bar, mi) => ({ meter: bar.meter, notes: bar.notes.map((n, ni) => ({ ...n, id: `m${mi + 1}n${ni + 1}` })) })) });
+}
+export interface DerivedEvent {
+  readonly written: WrittenNote;
+  readonly index: number;
+  readonly start: Fraction;
+  readonly duration: Fraction;
+  readonly end: Fraction;
   readonly kind: 'note' | 'rest';
-  readonly start: number;
-  readonly value: 'half' | 'quarter' | 'eighth';
-  readonly dotted?: boolean;
+  readonly tupletGroup: number | null;
 }
-export interface RhythmMeasure {
-  readonly id: string;
-  readonly label: string;
-  readonly meter: readonly [4, 4];
-  readonly events: readonly RhythmEvent[];
+export interface DerivedMeasure {
+  readonly length: Fraction;
+  readonly beats: readonly { start: Fraction; duration: Fraction }[];
+  readonly events: readonly DerivedEvent[];
 }
-export function duration(event: RhythmEvent): number {
-  const ticks = { half: 4, quarter: 2, eighth: 1 }[event.value];
-  return ticks * (event.dotted ? 1.5 : 1);
+/** Layout/generator view; complete-score validation owns IDs and cross-bar ties. */
+export function deriveMeasure(measure: ScoreMeasure): DerivedMeasure {
+  const [n, d] = measure.meter;
+  if (!['2/4', '3/4', '4/4', '6/8'].includes(measure.meter.join('/'))) throw new Error('Unsupported profile meter.');
+  const groups = d === 8 ? [3, 3] : Array<number>(n).fill(1);
+  const length = fraction(n, d);
+  let position = fraction(0);
+  const beats = groups.map(group => {
+    const beat = { start: position, duration: fraction(group, d) };
+    position = add(position, beat.duration); return beat;
+  });
+  position = fraction(0);
+  let remaining = 0, groupStart: number | null = null, signature = '';
+  const events = measure.notes.map((written, index): DerivedEvent => {
+    const value = duration(written);
+    const nextSignature = JSON.stringify([written.type, written.dots, written.timeModification]);
+    if (remaining && signature !== nextSignature) throw new Error('Incomplete or mixed-value tuplet group.');
+    if (!remaining && written.timeModification) { remaining = written.timeModification[0]; groupStart = index; signature = nextSignature; }
+    const event = { written, index, start: position, duration: value, end: add(position, value), kind: written.kind, tupletGroup: remaining ? groupStart : null };
+    if (remaining) remaining--;
+    if (written.kind === 'rest' && (written.tieNext || measure.notes[index - 1]?.tieNext)) throw new Error('Rests cannot tie.');
+    position = event.end; return event;
+  });
+  if (remaining) throw new Error('Incomplete tuplet group at barline.');
+  if (compare(position, length)) throw new Error('Written notes must fill the measure exactly.');
+  return { length, beats, events };
 }
-export function validateMeasure(measure: RhythmMeasure): void {
-  let end = 0;
-  for (const event of measure.events) {
-    if (event.start !== end || !Number.isInteger(duration(event))) throw new Error('Events must fill a contiguous eighth-note timeline.');
-    end += duration(event);
-  }
-  if (end !== 8) throw new Error('A 4/4 measure must contain eight eighth-note ticks.');
+export function validateMeasure(measure: ScoreMeasure) { deriveMeasure(measure); }
+export function beatCoordinate(measure: DerivedMeasure, position: Fraction): Fraction {
+  if (compare(position, fraction(0)) < 0 || compare(position, measure.length) > 0) throw new Error('Position outside measure.');
+  if (!compare(position, measure.length)) return fraction(measure.beats.length * 12);
+  const index = measure.beats.findIndex(b => compare(position, add(b.start, b.duration)) < 0);
+  const beat = measure.beats[index]!;
+  return add(fraction(index * 12), multiply(divide(subtract(position, beat.start), beat.duration), fraction(12)));
 }
-export const countWritingFixtures: readonly RhythmMeasure[] = [
-  { id: 'half', label: 'Half • quarter • two eighths', meter: [4, 4], events: [
-    { kind: 'note', start: 0, value: 'half' }, { kind: 'note', start: 4, value: 'quarter' },
-    { kind: 'note', start: 6, value: 'eighth' }, { kind: 'note', start: 7, value: 'eighth' },
-  ] },
-  { id: 'dotted-quarter', label: 'Dotted quarter • eighth • half', meter: [4, 4], events: [
-    { kind: 'note', start: 0, value: 'quarter', dotted: true }, { kind: 'note', start: 3, value: 'eighth' },
-    { kind: 'note', start: 4, value: 'half' },
-  ] },
-  { id: 'rest', label: 'Quarter • quarter rest • two eighths • quarter', meter: [4, 4], events: [
-    { kind: 'note', start: 0, value: 'quarter' }, { kind: 'rest', start: 2, value: 'quarter' },
-    { kind: 'note', start: 4, value: 'eighth' }, { kind: 'note', start: 5, value: 'eighth' },
-    { kind: 'note', start: 6, value: 'quarter' },
-  ] },
-  { id: 'dotted-half', label: 'Dotted half • quarter', meter: [4, 4], events: [
-    { kind: 'note', start: 0, value: 'half', dotted: true }, { kind: 'note', start: 6, value: 'quarter' },
-  ] },
-];
-countWritingFixtures.forEach(validateMeasure);
+export function derivePassage(source: readonly ScoreMeasure[]) {
+  const derived = deriveScore({ measures: source });
+  return { measures: source.map(deriveMeasure), attacks: derived.attacks.map(a => ({ start: a.start, duration: a.duration, sources: a.sources.map(s => ({ measure: s.measure, event: s.event })) })), length: derived.length };
+}
