@@ -331,7 +331,11 @@ main.rhythm-app {
 .count-slot[data-verdict="incorrect"] { border-color: var(--color-danger, #b34343); border-style: dashed; }
 .no-counts { padding: 20px; font-size: .85rem; }
 
-.plan-measure .measure-editor { overflow-x: auto; max-width: 100%; overscroll-behavior-x: contain; }
+.plan-measure .measure-editor { overflow: visible; }
+.passage:not(.counts-hidden) .passage-strip { display: flex; flex-wrap: nowrap; }
+.passage:not(.counts-hidden) .plan-measure { flex: 1 0 var(--count-measure-width, 280px); min-width: var(--count-measure-width, 280px); width: auto; }
+.passage:not(.counts-hidden) .passage-strip.wrapped { flex-wrap: wrap; }
+.passage:not(.counts-hidden) .passage-strip.wrapped .plan-measure { flex-basis: 100%; }
 .passage .plan-measure .measure { min-width: 280px; }
 .passage .plan-measure .count-slot { width: 44px; min-width: 44px; touch-action: pan-x pan-y; top: 28px; font-size: 25px; }
 .passage .plan-measure .counts { height: 100px; }

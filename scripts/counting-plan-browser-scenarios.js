@@ -114,6 +114,14 @@ async function countingPlanScenarios(w = window) {
   assert(counts().length === 64, 'Four-bar dense exercise renders exact count IDs');
   const rectangles=counts().slice(0,16).map(c=>c.getBoundingClientRect());
   assert(rectangles.every((r,i)=>i===0||r.left>=rectangles[i-1].right), 'Dense count touch targets do not overlap');
+  assert(all('.measure-editor').every(m=>m.scrollWidth<=m.clientWidth+1 && w.getComputedStyle(m).overflowX==='visible'), 'Dense measures fit their contents without independent scroll containers');
+  const strip = q('.passage-strip'), wasWrapped = strip.classList.contains('wrapped');
+  strip.classList.add('wrapped');
+  const bars = all('.plan-measure').map(m=>m.getBoundingClientRect());
+  assert(bars.every((r,i)=>i===0||r.top>=bars[i-1].bottom), 'Wrapped measures occupy separate rows');
+  assert(all('.measure-editor').every(m=>m.scrollWidth<=m.clientWidth+1), 'Wrapped measures retain full input width');
+  assert(d.documentElement.scrollWidth<=w.innerWidth+1, 'Wide wrapped measures overflow only inside the passage');
+  strip.classList.toggle('wrapped', wasWrapped);
   activate(0); key('r'); activate(1); key('r'); checkParentheses('Dense counts');
   activate(15); key('ArrowRight'); assert(d.activeElement===counts()[16], 'Dense navigation crosses measures');
   choose('select[aria-label="Mode"]','tap');

@@ -50,9 +50,9 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   const edgeWidths = parentheses && counts.length
     ? [100 * restExtent / x(counts[0]!.localPosition), 100 * restExtent / (100 - x(counts.at(-1)!.localPosition))]
     : [];
-  // Keep targets disjoint at every density; scroll notation and answers together on narrow screens.
+  // Size the entire measure so the passage owns scrolling, not individual bars.
   const minimumWidth = Math.ceil(Math.max(280, ...spacing, ...edgeWidths));
-  measure.style.minWidth = `${minimumWidth}px`;
+  card.style.setProperty('--count-measure-width', `${minimumWidth}px`);
   const notation = renderMeasure(source, `Measure ${measureIndex + 1}`, { first: measureIndex === 0, last: measureIndex === plan.source.measures.length - 1 });
   const area = el('div', 'answer-area plan-answer'); area.dataset.placement = prefs.linePlacement; area.dataset.appearance = prefs.internalAppearance;
   const positions = el('div', 'counts'); positions.setAttribute('role', 'group'); positions.setAttribute('aria-label', 'Count positions');
