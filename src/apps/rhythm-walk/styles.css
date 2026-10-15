@@ -150,8 +150,8 @@ main.rhythm-app {
 .timeline-sustain.attention { stroke-dasharray: 5 2; }
 .timeline-sustain.incomplete { stroke-dasharray: 2 4; }
 
-/* Stable systems: use the viewport, never a horizontally scrolling score. */
-.passage-scroll { overflow: visible; container-type: inline-size; }
+/* The passage is the only score scroll container. Measures never scroll independently. */
+.passage-scroll { min-width: 0; max-width: 100%; overflow-x: auto; container-type: inline-size; }
 .passage-strip { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; row-gap: 12px; }
 .passage-measure { min-width: 0; width: 100%; }
 .passage .measure { min-width: 0; }
@@ -163,7 +163,8 @@ main.rhythm-app {
   .passage-strip[data-measures="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .passage-strip[data-measures="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.passage-strip[data-measures="1"], .passage-strip.wrapped { grid-template-columns: minmax(0, 1fr); }
+.passage-strip[data-measures="1"], .passage-strip.wrapped,
+.counts-hidden .passage-strip:has(.fine-grid) { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 540px) {
   .passage { padding: 12px; }
   .passage-strip { row-gap: 8px; }
@@ -188,20 +189,12 @@ main.rhythm-app {
 @keyframes count-in-pulse { from { box-shadow: 0 0 0 4px var(--color-tint); transform: scale(1.12); } to { box-shadow: 0 0 0 0 var(--color-tint); transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .count-in-beat.lit .count-in-dot { animation: none; } }
 
-/* Keep actions alongside counts when there is room for a separate end gutter. */
+/* Keep actions in normal flow inside their measure at every viewport size. */
 .rhythm-app .score-actions { display: flex; justify-content: space-between; gap: 8px; min-height: 44px; }
 .rhythm-app .score-actions:empty { display: none; }
 .rhythm-app .score-actions .write-actions { margin: 0 0 0 auto; flex-wrap: nowrap; }
 .rhythm-app .score-actions .control { min-height: 44px; padding: 8px 10px; font-size: 13px; }
-@container (min-width: 960px) {
-  .passage-strip { margin-left: 20px; margin-right: 72px; }
-  .rhythm-app .score-actions { position: absolute; top: 42px; left: 0; right: -72px; min-height: 0; pointer-events: none; }
-  .rhythm-app .score-actions .control { pointer-events: auto; }
-  .rhythm-app .score-actions > .control { width: 44px; padding: 8px 4px; transform: translateX(-40px); }
-  .passage-strip[data-measures="1"] .score-actions > .control { transform: none; }
-  .rhythm-app .score-actions .write-actions { transform: translateX(-36px); }
-  .answer-area:has(.count-slot:nth-child(8):not([hidden])) .score-actions .write-actions { transform: none; }
-}
+
 .rhythm-app .setup-actions { display: flex; align-items: center; gap: 8px; }
 .rhythm-app .setup-actions .practice-help-trigger { width: 44px; flex: 0 0 44px; padding: 8px; }
 .rhythm-app .practice-help-popover { position: fixed; inset: auto; margin: 0; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #302a292e; }
@@ -244,20 +237,6 @@ main.rhythm-app {
 .performance-surface[hidden] { display: none; }
 
 .timeline-lift-window { stroke: var(--color-teal); stroke-width: 2; stroke-dasharray: 2 3; opacity: .65; }
-
-/* A dense bar takes a full system. On compact systems, subdivision lanes keep
-   count and duration targets at usable sizes without changing musical x/time. */
-.passage-strip:has(.fine-grid) { grid-template-columns: minmax(0, 1fr); }
-@container (max-width: 900px) {
-  .fine-grid .answer-area { --subdivision-row: 56px; --anchor-y: 302px; --anchor-x: 0px; }
-  .fine-grid .counts { height: 500px; }
-  .passage .fine-grid .count-slot { width: 44px; font-size: 22px; top: calc(42px + var(--subdivision) * 56px); }
-  .fine-grid .answer-area[data-appearance="raised"] .count-slot.sustained { top: calc(30px + var(--subdivision) * 56px); font-size: 19px; }
-  .fine-grid .answer-area[data-appearance="lowered"] .count-slot.sustained { top: calc(54px + var(--subdivision) * 56px); font-size: 19px; }
-  .passage .fine-grid .duration-anchor { width: 44px; top: calc(var(--anchor-y) + var(--subdivision) * 56px); }
-  .rhythm-app .fine-grid .score-actions { position: static; pointer-events: auto; }
-  .rhythm-app .fine-grid .score-actions > .control, .rhythm-app .fine-grid .write-actions { transform: none; }
-}
 
 /* Shared level configuration, preserving the existing score/layout surface. */
 .preset-row { align-items: start; }
@@ -332,10 +311,15 @@ main.rhythm-app {
 .no-counts { padding: 20px; font-size: .85rem; }
 
 .plan-measure .measure-editor { overflow: visible; }
-.passage:not(.counts-hidden) .passage-strip { display: flex; flex-wrap: nowrap; }
-.passage:not(.counts-hidden) .plan-measure { flex: 1 0 var(--count-measure-width, 280px); min-width: var(--count-measure-width, 280px); width: auto; }
-.passage:not(.counts-hidden) .passage-strip.wrapped { flex-wrap: wrap; }
-.passage:not(.counts-hidden) .passage-strip.wrapped .plan-measure { flex-basis: 100%; }
+/* One shared minimum gives every bar the same SVG scale and count baseline.
+   Wrap complete bars first; scroll only when one bar cannot fit. */
+.passage:not(.counts-hidden) .passage-strip {
+  grid-template-columns: repeat(auto-fit, minmax(var(--passage-measure-width, 280px), 1fr));
+}
+.passage:not(.counts-hidden) .passage-strip.wrapped {
+  grid-template-columns: minmax(var(--passage-measure-width, 280px), 1fr);
+}
+.passage:not(.counts-hidden) .plan-measure { min-width: 0; width: 100%; }
 .passage .plan-measure .measure { min-width: 280px; }
 .passage .plan-measure .count-slot { width: 44px; min-width: 44px; touch-action: pan-x pan-y; top: 28px; font-size: 25px; }
 .passage .plan-measure .counts { height: 100px; }

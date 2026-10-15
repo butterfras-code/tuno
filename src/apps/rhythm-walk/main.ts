@@ -230,6 +230,11 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
     });
     editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback);
   });
+  // Use the densest bar's required width throughout the passage. Independent
+  // minima scale the notation differently and misalign adjacent staffs/inputs.
+  const measureWidth = Math.max(280, ...editors.map(editor =>
+    Number.parseFloat(editor.card.style.getPropertyValue('--count-measure-width'))));
+  passageStrip.style.setProperty('--passage-measure-width', `${measureWidth}px`);
   editors.forEach((editor, index) => {
     const row = el('div', 'score-actions');
     if (index === 0) row.append(reset);

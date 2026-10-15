@@ -15,6 +15,27 @@ async function countingPlanScenarios(w = window) {
   const unit = control => q(`[data-unit-control="${control}"]`);
   const activate = i => counts()[i].click();
   const defaults = () => { for (const [k,v] of Object.entries({ longNotes:true,dotted:false,includeRests:true,showDurationLine:true,linePlacement:'beside',internalAppearance:'raised',restAppearance:'parentheses',vocabulary:'numbers',offbeat:'&' })) setting(k,v); };
+  defaults();
+  // Mixed-density bars exposed independently scaled notation and escaping actions.
+  for (const id of ['tie-across-bar', 'six-wrap', 'dense-sixteenths', 'triplet-mixed-3']) {
+    fixture(id);
+    const bars = all('.plan-measure');
+    const rects = bars.map(bar => bar.getBoundingClientRect());
+    const notation = all('.plan-measure .notation').map(svg => svg.getBoundingClientRect());
+    assert(rects.every(r => Math.abs(r.width - rects[0].width) < 1), id + ': equal measure widths');
+    assert(notation.every(r => Math.abs(r.height - notation[0].height) < 1), id + ': consistent notation scale');
+    assert(bars.every(bar => {
+      const editor = bar.querySelector('.measure-editor');
+      return editor.scrollWidth <= editor.clientWidth + 1;
+    }), id + ': no measure-local overflow');
+    assert(all('.score-actions').every(row => {
+      const r = row.getBoundingClientRect(), bar = row.closest('.plan-measure').getBoundingClientRect();
+      return r.left >= bar.left - 1 && r.right <= bar.right + 1 && w.getComputedStyle(row).position === 'static';
+    }), id + ': actions stay in their measure');
+    assert(w.getComputedStyle(q('.passage-scroll')).overflowX === 'auto', id + ': passage contains horizontal scrolling');
+    assert(d.documentElement.scrollWidth <= w.innerWidth + 1, id + ': no document overflow');
+    if (id === 'six-wrap') assert(rects[1].top >= rects[0].bottom, 'Explicit wrap preserves whole measures');
+  }
   defaults(); fixture('half');
   activate(0); key('1'); activate(0);
   const clearCount = all('button').find(b => b.textContent === 'Clear count');
