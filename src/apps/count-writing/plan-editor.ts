@@ -39,9 +39,19 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   card.classList.toggle('fine-grid', grid.fine); card.setAttribute('aria-label', `Editable measure ${measureIndex + 1}`);
   const heading = el('h2', 'measure-heading', String(measureIndex + 1)); heading.setAttribute('aria-label', `Measure ${measureIndex + 1}`);
   const measure = el('div', 'measure'); const score = el('div', 'measure-editor');
-  const spacing = counts.slice(1).map((c, i) => x(c.localPosition) - x(counts[i]!.localPosition));
+  const parentheses = prefs.includeRests && prefs.restAppearance === 'parentheses';
+  // A 44px input plus a 16px parenthesis and 2px gutter on each side.
+  const restExtent = 40;
+  const spacing = counts.slice(1).map((c, i) => {
+    const previous = counts[i]!;
+    const pixels = parentheses && previous.unitId !== c.unitId ? 2 * restExtent + 4 : 48;
+    return Math.ceil(100 * pixels / (x(c.localPosition) - x(previous.localPosition)));
+  });
+  const edgeWidths = parentheses && counts.length
+    ? [100 * restExtent / x(counts[0]!.localPosition), 100 * restExtent / (100 - x(counts.at(-1)!.localPosition))]
+    : [];
   // Keep targets disjoint at every density; scroll notation and answers together on narrow screens.
-  const minimumWidth = Math.max(280, ...spacing.map(gap => Math.ceil(4800 / gap)));
+  const minimumWidth = Math.ceil(Math.max(280, ...spacing, ...edgeWidths));
   measure.style.minWidth = `${minimumWidth}px`;
   const notation = renderMeasure(source, `Measure ${measureIndex + 1}`, { first: measureIndex === 0, last: measureIndex === plan.source.measures.length - 1 });
   const area = el('div', 'answer-area plan-answer'); area.dataset.placement = prefs.linePlacement; area.dataset.appearance = prefs.internalAppearance;
@@ -95,7 +105,11 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
       b.dataset.unitControl = control; b.setAttribute('aria-pressed', String(state[control])); b.setAttribute('aria-keyshortcuts', shortcut); b.setAttribute('aria-label', `${name} for entire unit at ${unit.counts[0]!.label}`); controls.append(b);
     }
     const clear = button('Clear count', () => { if (selected) options.change(enterToken(plan, options.answer(), selected, '')); }); controls.append(clear);
+    const restoreFocus = options.palette.contains(options.palette.ownerDocument.activeElement);
     options.palette.replaceChildren(title, row, controls, el('p', 'setting-hint', 'Rest (R) and Duration (D) affect the whole written unit, including tied notes.'));
+    // Refresh removes palette buttons. Keep keyboard entry alive, including at
+    // the last count where commit has no next position to focus.
+    if (restoreFocus) buttons.get(selected)?.focus({ preventScroll: true });
     options.palette.onkeydown = event => {
       // Space/Enter activate the focused palette button normally.
       if (event.key !== 'Enter' && event.key !== ' ') key(event);
@@ -145,7 +159,10 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
       }
       if (state.restMarked && prefs.restAppearance === 'parentheses') {
         const rest = el('div', 'inferred-rest'); rest.dataset.unitId = piece.unit.id;
-        rest.style.left = `${Math.max(0, left - 5)}%`; rest.style.width = `${Math.min(100, right + 3) - Math.max(0, left - 5)}%`;
+        const members = counts.filter(c => c.unitId === piece.unit.id);
+        const first = members[0], last = members.at(-1);
+        rest.style.left = piece.continuesBefore || !first ? '0%' : `calc(${x(first.localPosition)}% - ${restExtent}px)`;
+        rest.style.right = piece.continuesAfter || !last ? '0%' : `calc(${100 - x(last.localPosition)}% - ${restExtent}px)`;
         rest.append(el('span', '', piece.continuesBefore ? '⋯' : '('), el('span', '', piece.continuesAfter ? '⋯' : ')')); marks.append(rest);
       }
     });

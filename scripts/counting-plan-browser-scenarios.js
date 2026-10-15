@@ -16,6 +16,22 @@ async function countingPlanScenarios(w = window) {
   const activate = i => counts()[i].click();
   const defaults = () => { for (const [k,v] of Object.entries({ longNotes:true,dotted:false,includeRests:true,showDurationLine:true,linePlacement:'beside',internalAppearance:'raised',restAppearance:'parentheses',vocabulary:'numbers',offbeat:'&' })) setting(k,v); };
   defaults(); fixture('half');
+  activate(0); key('1'); activate(0);
+  const clearCount = all('button').find(b => b.textContent === 'Clear count');
+  clearCount.focus(); clearCount.click();
+  assert(d.activeElement === counts()[0] && counts()[0].textContent === '·', 'Clearing from palette restores count focus');
+  unit('restMarked').focus(); key('r');
+  assert(d.activeElement === counts()[0], 'Rest shortcut from palette restores count focus');
+  key('r');
+  unit('durationIndicated').focus(); key('d');
+  assert(d.activeElement === counts()[0], 'Duration shortcut from palette restores count focus');
+  key('ArrowRight');
+  assert(d.activeElement === counts()[1], 'Keyboard navigation works after palette replacement');
+  activate(counts().length - 1);
+  const tokenButton = q('.plan-token-palette button');
+  tokenButton.focus(); tokenButton.click();
+  assert(d.activeElement === counts().at(-1), 'Last palette token retains focus when there is no next count');
+  defaults(); fixture('half');
   assert(counts().length === 5, 'One-bar editor renders only plan counts');
   assert(!q('.line-handle, .endpoint-prompt, .rest-target'), 'No endpoint controls remain');
   activate(1); key('d');
@@ -59,6 +75,25 @@ async function countingPlanScenarios(w = window) {
   click('Check'); assert(q('.passage-feedback').textContent.includes('Duration indication: Not applicable'), 'Suppressed duration is excluded from assessment');
   defaults(); fixture('two-rests'); activate(0); key('r'); activate(1); key('r');
   assert(all('.inferred-rest').length === 2, 'Adjacent written rests stay separate');
+  function checkParentheses(label) {
+    const localCounts = counts();
+    for (const rest of all('.inferred-rest')) {
+      const members = localCounts.filter(c => c.dataset.unitId === rest.dataset.unitId);
+      if (!members.length) continue;
+      const open = rest.firstElementChild.getBoundingClientRect(), close = rest.lastElementChild.getBoundingClientRect();
+      const first = members[0].getBoundingClientRect(), last = members.at(-1).getBoundingClientRect();
+      assert(open.right <= first.left + 1 && close.left >= last.right - 1, label + ': parentheses enclose their counts');
+      const next = localCounts[localCounts.indexOf(members.at(-1)) + 1];
+      if (next && next.closest('.plan-measure') === rest.closest('.plan-measure')) {
+        assert(close.right <= next.getBoundingClientRect().left, label + ': closing parenthesis clears next input');
+      }
+    }
+  }
+  checkParentheses('Adjacent rests');
+  defaults(); fixture('half-rest'); activate(0); key('r');
+  checkParentheses('Subdivided rest');
+  key('d'); checkParentheses('Subdivided rest with duration');
+
   defaults(); setting('includeRests',false); fixture('all-rests');
   assert(counts().length === 0, 'All-rest exercise permits zero inputs');
   assert(!unit('restMarked') && !unit('durationIndicated'), 'Empty exercise has no stale unit controls');
@@ -79,6 +114,7 @@ async function countingPlanScenarios(w = window) {
   assert(counts().length === 64, 'Four-bar dense exercise renders exact count IDs');
   const rectangles=counts().slice(0,16).map(c=>c.getBoundingClientRect());
   assert(rectangles.every((r,i)=>i===0||r.left>=rectangles[i-1].right), 'Dense count touch targets do not overlap');
+  activate(0); key('r'); activate(1); key('r'); checkParentheses('Dense counts');
   activate(15); key('ArrowRight'); assert(d.activeElement===counts()[16], 'Dense navigation crosses measures');
   choose('select[aria-label="Mode"]','tap');
   assert(all('.measure-editor').every(m=>m.scrollWidth<=m.clientWidth+1), 'Hidden-count performance retains compact notation');
