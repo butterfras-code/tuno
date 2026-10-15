@@ -5,7 +5,6 @@ import { encodeCountingPreferences as encode, decodeCountingPreferences as decod
 import { createPreferenceSession } from '../src/apps/rhythm-walk/counting-session.ts';
 import { Activity, defaultPreferences, readPreferences, presets } from '../src/apps/rhythm-walk/activity.ts';
 import { enterToken, evaluateAnswer } from '../src/music/counting/answer.ts';
-const payload = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const linked = { ...defaults, longNotes: false, dotted: true, includeRests: false, showDurationLine: false, linePlacement: 'above' as const, internalAppearance: 'lowered' as const, restAppearance: 'slashes' as const, vocabulary: 'syllables' as const, offbeat: '+' as const };
 
 test('all nine dimensions round trip through the canonical versioned contract', () => {
@@ -17,23 +16,28 @@ test('all nine dimensions round trip through the canonical versioned contract', 
 test('encoding is deterministic regardless of property order', () => {
   const reversed = Object.fromEntries(Object.entries(linked).reverse()) as typeof linked;
   assert.equal(encode(linked), encode(reversed));
-  assert.match(encode(linked), /^[A-Za-z0-9_-]+$/);
+  assert.match(encode(linked), /counting=1&counting.longNotes=false&counting.dotted=true/);
   assert.ok(encode(linked).length < maximumCountingPayloadLength);
 });
 test('malformed, oversized, unsupported and invalid fields reject the whole link', () => {
-  const bad = ['', 'a', '%%%','e30=', 'a'.repeat(maximumCountingPayloadLength + 1), payload(null), payload([]), payload({ ...linked, version: 2 }), payload({ ...linked, longNotes: 'true' }), payload({ ...linked, linePlacement: 'sideways' }), payload({ ...linked, dotted: undefined }), payload({ ...linked, extra: 1 }), Buffer.from('{broken').toString('base64url')];
-  for (const key of Object.keys(countingPreferenceOptions)) bad.push(payload({ ...linked, [key]: 'invalid' }));
+  const changed = (key: string, value: string | null) => {
+    const params = new URLSearchParams(encode(linked));
+    if (value === null) params.delete(key); else params.set(key, value);
+    return params.toString();
+  };
+  const bad = [encode(linked).replace('counting=1', 'counting.version=1'), '', 'counting=invalid', 'counting=1', 'counting.longNotes=true', changed('counting', '2'), changed('counting', '01'), changed('counting.longNotes', 'yes'), changed('counting.dotted', null), changed('counting.extra', 'true'), changed('counting.vocabulary', 'a'.repeat(maximumCountingPayloadLength + 1)), encode(linked) + '&counting=1', encode(linked) + '&counting.dotted=true'];
+  for (const key of Object.keys(countingPreferenceOptions)) bad.push(changed(`counting.${key}`, 'invalid'));
   for (const value of bad) {
     assert.throws(() => decode(value));
-    const result = readCountingLink(`?counting=${value}`);
+    if (!value) continue;
+    const result = readCountingLink(`?${value}`);
     assert.equal(result.counting, undefined); assert.match(result.notice, /could not be loaded/);
   }
-  assert.match(readCountingLink(`?counting=${encode(linked)}&counting=${encode(linked)}`).notice, /could not/);
   assert.deepEqual(readCountingLink('?unrelated=yes'), { notice: '' });
 });
 test('URL overrides saved counting before initial exercise, preserving unrelated preferences', () => {
   const saved = { ...defaultPreferences(), bpm: 123, mode: 'both', playStyle: 'hold' };
-  const session = createPreferenceSession(JSON.stringify(saved), `?counting=${encode(linked)}`);
+  const session = createPreferenceSession(JSON.stringify(saved), `?${encode(linked)}`);
   assert.deepEqual(session.preferences, { ...saved, counting: linked });
   const activity = new Activity(session.preferences, presets.find(p => p.id === 'half')!.measures);
   assert.deepEqual(activity.countingPlan.preferences, linked);
@@ -42,7 +46,7 @@ test('URL overrides saved counting before initial exercise, preserving unrelated
   assert.deepEqual(createPreferenceSession(JSON.stringify(saved), '?counting=broken').preferences, saved);
 });
 test('linked edits and unrelated saves remain isolated until successful explicit adoption', () => {
-  const session = createPreferenceSession(null, `?counting=${encode(linked)}`);
+  const session = createPreferenceSession(null, `?${encode(linked)}`);
   session.preferences.counting = { ...linked, dotted: false };
   session.preferences.bpm = 110; session.preferences.mode = 'tap';
   let saved = session.serialize();
@@ -59,7 +63,7 @@ test('linked edits and unrelated saves remain isolated until successful explicit
 test('ordinary sessions save edits; linked pending edits preserve exercise, answers and evaluation until replacement', () => {
   const normal = createPreferenceSession(null, ''); normal.preferences.counting = linked;
   assert.deepEqual(readPreferences(normal.serialize()).counting, linked);
-  const session = createPreferenceSession(null, `?counting=${encode(linked)}`);
+  const session = createPreferenceSession(null, `?${encode(linked)}`);
   const measures = presets.find(p => p.id === 'half')!.measures;
   const a = new Activity(session.preferences, measures), plan = a.countingPlan, exercise = a.exercise;
   a.countingAnswer = enterToken(plan, a.countingAnswer, plan.counts[0]!.id, '1');
@@ -72,11 +76,12 @@ test('ordinary sessions save edits; linked pending edits preserve exercise, answ
   a.replace(measures); assert.deepEqual(a.countingPlan.preferences, defaults); assert.equal(a.countingResult, null);
 });
 test('share URL replaces duplicates, strips fixture access, retains unrelated parameters and view deterministically', () => {
-  const url = new URL(countingPreferencesUrl('https://tuno.cc/prototypes/count-writing/?z=1&counting=old&fixture=half&testing=1&counting=other&a=2#settings', linked));
+  const url = new URL(countingPreferencesUrl('https://tuno.cc/prototypes/count-writing/?z=1&counting=old&fixture=half&testing=1&counting=other&counting.dotted=old&counting.unknown=old&a=2#settings', linked));
   assert.equal(url.pathname, '/prototypes/count-writing/'); assert.equal(url.hash, '#settings');
   assert.equal(url.searchParams.get('z'), '1'); assert.equal(url.searchParams.get('a'), '2');
   assert.equal(url.searchParams.has('fixture'), false); assert.equal(url.searchParams.has('testing'), false);
-  assert.deepEqual(url.searchParams.getAll('counting'), [encode(linked)]);
+  assert.deepEqual(url.searchParams.getAll('counting'), ['1']);
+  assert.deepEqual(decode(url.search), linked);
   assert.equal(countingPreferencesUrl(url.href, linked), url.href);
   assert.equal(new URL(countingPreferencesUrl('https://tuno.cc/developer/', linked)).pathname, '/prototypes/rhythm-walk/');
 });

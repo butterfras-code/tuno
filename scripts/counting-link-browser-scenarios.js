@@ -4,9 +4,9 @@ async function countingLinkScenarios(load, storage) {
   const assert = (ok, message) => { if (!ok) throw new Error(message); results.push(message); };
   const defaults = {version:1,longNotes:true,dotted:false,includeRests:true,showDurationLine:true,linePlacement:'beside',internalAppearance:'raised',restAppearance:'parentheses',vocabulary:'numbers',offbeat:'&'};
   const linked = {...defaults,longNotes:false,dotted:true,includeRests:false,showDurationLine:false,linePlacement:'above',internalAppearance:'lowered',restAppearance:'slashes',vocabulary:'syllables',offbeat:'+'};
-  const encoded = btoa(JSON.stringify(linked)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+  const encoded = new URLSearchParams(Object.entries(linked).map(([k,v]) => [k==='version'?'counting':`counting.${k}`,String(v)])).toString();
   storage.setItem(key, JSON.stringify({version:1,counting:defaults,bpm:123,mode:'write',metronome:false}));
-  let w = await load(`?fixture=half&testing=1&unrelated=kept&counting=${encoded}`), d = w.document;
+  let w = await load(`?fixture=half&testing=1&unrelated=kept&${encoded}`), d = w.document;
   const q = s => d.querySelector(s), all = s => [...d.querySelectorAll(s)];
   const click = text => { const b = all('button').find(b=>b.textContent===text && !b.closest('[hidden]')); if (!b) throw Error(`Missing ${text}`); b.click(); };
   const settings = async () => { w.location.hash = '#settings'; await new Promise(r=>setTimeout(r,20)); };
@@ -24,8 +24,8 @@ async function countingLinkScenarios(load, storage) {
   assert(JSON.parse(storage.getItem(key)).counting.longNotes===true && JSON.parse(storage.getItem(key)).counting.dotted===false, 'Session edits preserve saved defaults');
   let copied=''; Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
   click('Copy counting preferences link'); await new Promise(r=>setTimeout(r,0));
-  const url=new URL(copied), value=JSON.parse(atob(url.searchParams.get('counting').replaceAll('-','+').replaceAll('_','/')));
-  assert(value.longNotes===true && value.offbeat==='&' && value.dotted===true, 'Copy uses pending Settings choices');
+  const url=new URL(copied), value=Object.fromEntries([...url.searchParams].map(([k,v])=>[k.replace('counting.',''),v]));
+  assert(value.longNotes==='true' && value.offbeat==='&' && value.dotted==='true', 'Copy uses pending Settings choices');
   assert(url.searchParams.getAll('counting').length===1, 'Copy replaces existing counting parameter');
   assert(!url.searchParams.has('fixture')&&!url.searchParams.has('testing')&&url.searchParams.get('unrelated')==='kept', 'Copy removes developer access and retains unrelated query');
   assert(url.pathname==='/prototypes/rhythm-walk/' && url.hash==='#settings', 'Copy retains normal Uno route and settings view');
