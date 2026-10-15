@@ -1,11 +1,12 @@
+import { score } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { unoPresets, teachingPresets, generationLevels, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset, teachingPresetLabel } from '../src/apps/rhythm-walk/shared/teaching-presets.ts';
 import { defaultPreferences, readPreferences, Activity } from '../src/apps/rhythm-walk/activity.ts';
-import { generateExercise, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { generateExercise as generateScore, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { generationCapabilities } from '../src/apps/rhythm-walk/shared/capabilities.ts';
-import type { RhythmEvent } from '../src/music/measure.ts';
-import { derivePassage } from '../src/music/measure.ts';
+import type { RhythmEvent } from './score-test-support.ts';
+import { derivePassage } from './score-test-support.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
 
 const base = ['whole', 'half', 'quarter', 'eighth', 'quarter-rest', 'half-rest'];
@@ -42,7 +43,7 @@ test('Uno application, customization and reload preserve independent preferences
     Object.assign(preferences, { mode: 'both', bpm: 123, countingSystem: 'syllables', playStyle: 'hold' });
     preferences.generation.measures = length;
     const before = structuredClone(preferences);
-    const activity = new Activity(preferences, generateExercise(preferences.generation, () => .4));
+    const activity = new Activity(preferences, score(generateExercise(preferences.generation, () => .4)));
     const exercise = activity.exercise;
     const result = applyTeachingPreset(preferences.generation, definition);
     assert.equal(result.supported, true); if (!result.supported) continue;
@@ -57,7 +58,7 @@ test('Uno application, customization and reload preserve independent preferences
     assert.equal(teachingPresetLabel(custom.teachingPreset), `${definition.label} · customized`);
     preferences.generation = custom;
     assert.deepEqual(readPreferences(JSON.stringify(preferences)).generation, custom);
-    assert.equal(activity.next(() => .4).measures.length, length);
+    assert.equal(activity.next(() => .4).score.measures.length, length);
   }
 });
 
@@ -71,14 +72,16 @@ test('Uno generation stays within selected written vocabulary and supported mete
     for (const bar of passage) {
       countGrid(bar);
       assert.equal(bar.meter.join('/'), meter);
-      for (const event of bar.events) {
+      for (const event of bar.notes) {
         assert.ok(ingredients.some(i => {
           const allowed: RhythmEvent = i.event;
-          return settings.ingredients.includes(i.id) && allowed[0] === event[0] && Boolean(allowed[1]?.rest) === Boolean(event[1]?.rest) && (allowed[1]?.dots ?? 0) === (event[1]?.dots ?? 0) && JSON.stringify(allowed[1]?.tuplet) === JSON.stringify(event[1]?.tuplet);
+          return settings.ingredients.includes(i.id) && allowed.type === event.type && Boolean((allowed.kind === 'rest')) === Boolean((event.kind === 'rest')) && (allowed.dots ?? 0) === (event.dots ?? 0) && JSON.stringify(allowed.timeModification) === JSON.stringify(event.timeModification);
         }));
-        if (!settings.ties) assert.equal(event[1]?.tieNext, undefined);
-        if (meter === '6/8') assert.ok(!['W', 'H', 'S'].includes(event[0]) && !event[1]?.tuplet);
+        if (!settings.ties) assert.equal(event.tieNext, false);
+        if (meter === '6/8') assert.ok(!['whole', 'half', '16th'].includes(event.type) && !event.timeModification);
       }
     }
   }
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

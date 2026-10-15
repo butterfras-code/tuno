@@ -17,7 +17,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   choose(d.querySelector('.score-tempo input'), '180');
   choose(d.querySelector('[data-setting="count-system"]'), 'syllables');
   choose(d.querySelector('[data-setting="how-to-play"]'), 'hold');
-  const whole = d.querySelector('g[data-value="W"]');
+  const whole = d.querySelector('g[data-value="whole"]');
   assert(whole && whole.querySelector('ellipse') && !whole.querySelector('line'), 'whole head is hollow and stemless');
   assert(whole.querySelector('ellipse').getAttribute('fill') === 'var(--color-surface)', 'whole head is hollow');
   const slot = d.querySelector('.count-slot:not([hidden])'); slot.focus();

@@ -71,7 +71,7 @@ function fit(expected: number[], actual: number[], beat: number, p: AssessmentPo
  * raw events, calibration or target-relative review. Replaying uses the attempt policy. */
 export function assessLegacyAttempt(record: AttemptRecord) {
   const policy = record.assessmentPolicy ?? assessmentPolicy;
-  const target = planPassage(record.exercise.measures, record.bpm, record.policy, sourcePolicy(record.exercise.measures[0]!).pulse);
+  const target = planPassage(record.exercise.score.measures, record.bpm, record.policy, sourcePolicy(record.exercise.score.measures[0]!).pulse);
   const holds = capturedHolds(record).filter(h => !h.countIn);
   const expected = target.notes.map(n => n.start), actual = holds.map(h => h.down);
   const base = { version: 1 as const, policy, targetBpm: record.bpm, expectedAttacks: expected.length, capturedAttacks: actual.length };

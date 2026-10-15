@@ -41,7 +41,7 @@ The refined [musical assessment slice](assessment.md) now reports rhythm accurac
 
 ## Document authority
 
-The [counting-schemes overhaul specification](counting-schemes-spec.md) records the agreed replacement design for configurable counting, MusicXML-based source access, inferred duration/rest groups, and shareable preferences. Its core, editor, browser-settings and counting URL/session contracts are implemented in the current feature branch. Versioned links override counting for a session; Settings shares pending selections and offers explicit Save as my defaults. Remaining generation/engraving/performance source ownership is the next slice. Historical counting tables in older slice records are superseded by this specification.
+The [counting-schemes overhaul specification](counting-schemes-spec.md) records the agreed replacement design for configurable counting, MusicXML-based source access, inferred duration/rest groups, and shareable preferences. Its core, editor, browser-settings and counting URL/session contracts are implemented in the current feature branch. Versioned links override counting for a session; Settings shares pending selections and offers explicit Save as my defaults. Generation, fixtures, counting, engraving and performance now share the typed score; the temporary source adapter is removed. Historical counting tables in older slice records are superseded by this specification.
 
 Use this page and the [unified activity contract](unified-activity.md) for product scope and lifecycle; [music-model.md](music-model.md) for canonical musical data; [meters.md](meters.md) and [ties-syncopation.md](ties-syncopation.md) for counting/notation policy; [settings.md](settings.md) for settings ownership and inventory; and [assessment.md](assessment.md), [performance-prototype.md](performance-prototype.md) plus [timing-calibration.md](timing-calibration.md) for performance behavior. Numerical timing thresholds remain provisional. When extending the activity, update the relevant contract and shared fixtures/tests together.
 
@@ -72,4 +72,8 @@ The counting-editor/settings migration passed Node 24.21.0, `npm ci` and `npm ru
 
 ## Counting sharing validation
 
-The [URL/session slice](counting-schemes-spec.md#counting-urlsession-slice-implemented-2026-10-15) passed Node 24 checks (437 tests plus TypeScript/builds). Native T3 scenarios passed 20 sharing/session and 65 editor assertions at both 1536px and 320px. Workspace loopback was unavailable; checks used the full local bundle in fresh same-origin frames, isolated storage and simulated clipboard success/failure. Real OS clipboard permissions, physical-device and full release verification remain unperformed. Source ownership migration remains separate.
+The [URL/session slice](counting-schemes-spec.md#counting-urlsession-slice-implemented-2026-10-15) passed Node 24 checks (437 tests plus TypeScript/builds). Native T3 scenarios passed 20 sharing/session and 65 editor assertions at both 1536px and 320px. Workspace loopback was unavailable; checks used the full local bundle in fresh same-origin frames, isolated storage and simulated clipboard success/failure. Real OS clipboard permissions, physical-device and full release verification remain unperformed. This historical check preceded the source migration described below.
+
+## Typed source migration
+
+Generation, fixtures, counting, notation and performance now use the same immutable typed score. The temporary adapter is removed, and empty input names no longer disclose expected answers. Scoring policies are unchanged. See [migration validation](source-migration-validation.md) for regression, completed-attempt and cross-browser checks, plus the outstanding physical touch and screen-reader acceptance.

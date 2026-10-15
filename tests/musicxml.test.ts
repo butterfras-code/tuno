@@ -1,12 +1,13 @@
+import { note } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { parseMusicXML, serializeMusicXML, serializeCountingExercise } from '../src/music/musicxml.ts';
 import { deriveScore, createScore } from '../src/music/score.ts';
-import { derivePassage } from '../src/music/measure.ts';
-import { scoreFromLegacy } from '../src/music/legacy-score.ts';
+import { derivePassage } from './score-test-support.ts';
+import { score as makeScore } from './score-test-support.ts';
 import { practiceFixtures } from '../src/apps/rhythm-walk/shared/fixtures.ts';
-import { planPassage, musicalSeconds } from '../src/apps/rhythm-walk/timing.ts';
+import { planPassage, musicalSeconds } from './score-test-support.ts';
 import { buildCountingPlan } from '../src/music/counting/plan.ts';
 import { defaultCountingPreferences } from '../src/music/counting/preferences.ts';
 import { add } from '../src/music/fraction.ts';
@@ -19,10 +20,10 @@ for (const file of readdirSync(dir).filter(f => f.endsWith('.musicxml'))) test(`
   if (file === 'derived-exercise.musicxml') assert.equal(serializeCountingExercise(buildCountingPlan(source)), xml);
   else assert.equal(serializeMusicXML(source), xml);
 });
-test('all legacy fixtures: exact attack/duration/source and performance-time equivalence through XML', () => {
+test('all typed fixtures: exact attack/duration/source and performance-time equivalence through XML', () => {
   for (const fixture of practiceFixtures) {
-    const old = derivePassage(fixture.measures);
-    const source = parseMusicXML(serializeMusicXML(scoreFromLegacy(fixture.measures)));
+    const old = derivePassage(fixture.score.measures);
+    const source = parseMusicXML(serializeMusicXML(makeScore(fixture.score.measures)));
     const current = deriveScore(source);
     assert.deepEqual(current.length, old.length);
     assert.deepEqual(current.attacks.map(a => ({ start: a.start, duration: a.duration, sources: a.sources.map(s => ({ measure: s.measure, event: s.event })) })), old.attacks, fixture.id);
@@ -31,10 +32,10 @@ test('all legacy fixtures: exact attack/duration/source and performance-time equ
       assert.deepEqual(symbol.localStart, previous.start); assert.deepEqual(symbol.duration, previous.duration);
     }
     for (const bpm of [60, 103, 180]) {
-      const pulse = fixture.measures[0]!.meter[1] === 8 ? [3, 8] as const : [1, 4] as const;
-      const legacy = planPassage(fixture.measures, bpm, undefined, pulse);
+      const pulse = fixture.score.measures[0]!.meter[1] === 8 ? [3, 8] as const : [1, 4] as const;
+      const original = planPassage(fixture.score.measures, bpm, undefined, pulse);
       const notes = current.attacks.map(a => ({ start: musicalSeconds(a.start, bpm, pulse), end: musicalSeconds(add(a.start, a.duration), bpm, pulse), sources: a.sources.map(s => ({ measure: s.measure, event: s.event })), finalSegmentDuration: musicalSeconds(a.sources.at(-1)!.duration, bpm, pulse) }));
-      assert.deepEqual(notes, legacy.notes, fixture.id);
+      assert.deepEqual(notes, original.notes, fixture.id);
     }
   }
 });
@@ -102,7 +103,7 @@ for (const [name, xml] of rejects) test(`reject MusicXML: ${name}`, () => {
   assert.throws(() => parseMusicXML(xml));
 });
 test('typed source validation rejects incomplete tuplets, rest tie destinations and final ties', () => {
-  assert.throws(() => scoreFromLegacy([{ meter: [4, 4], events: [['Q', { tieNext: true }], ['Q', { rest: true }], ['H']] }]), /rest/);
+  assert.throws(() => makeScore([{ meter: [4, 4], notes: [note('quarter', { tieNext: true }), note('quarter', { kind: 'rest' }), note('half')] }]), /rest/i);
   const valid = parseMusicXML(binary), notes = valid.measures[0]!.notes;
   assert.throws(() => createScore({ measures: [{ meter: [4, 4], notes: notes.map((n, i) => i === 2 ? { ...n, tieNext: true } : n) }] }), /final tie/);
   assert.throws(() => createScore({ measures: [] }), /Empty/);
@@ -119,14 +120,14 @@ test('authored source refuses duplicate duration, incoming-tie, and teaching-mar
   assert.deepEqual(parseMusicXML(serializeMusicXML(collision)), collision);
 });
 test('deterministic generated passages retain attacks after the one-way conversion', async () => {
-  const { generateExercise, ingredients } = await import('../src/apps/rhythm-walk/shared/generation.ts');
+  const { generateExercise: generateScore, ingredients } = await import('../src/apps/rhythm-walk/shared/generation.ts');
   let seed = 714;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
   for (const meter of ['2/4', '3/4', '4/4', '6/8'] as const) for (const measures of [1, 2, 3, 4]) for (let sample = 0; sample < 8; sample++) {
-    const legacy = generateExercise({ meters: [meter], measures, ingredients: ingredients.map(i => i.id), ties: true, syncopation: true, allowUnintuitiveNotation: true }, random);
-    const source = scoreFromLegacy(legacy);
+    const original = generateScore({ meters: [meter], measures, ingredients: ingredients.map(i => i.id), ties: true, syncopation: true, allowUnintuitiveNotation: true }, random).measures;
+    const source = makeScore(original);
     const actual = deriveScore(parseMusicXML(serializeMusicXML(source)));
-    assert.deepEqual(actual.attacks.map(a => ({ start: a.start, duration: a.duration })), derivePassage(legacy).attacks.map(a => ({ start: a.start, duration: a.duration })));
+    assert.deepEqual(actual.attacks.map(a => ({ start: a.start, duration: a.duration })), derivePassage(original).attacks.map(a => ({ start: a.start, duration: a.duration })));
     for (const dotted of [false, true]) buildCountingPlan(source, { ...defaultCountingPreferences, dotted });
   }
 });

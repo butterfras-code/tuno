@@ -13,8 +13,8 @@ export function availableCountPositions(source: RhythmMeasure): Fraction[] {
   measure.events.forEach(event => {
     include(event.start);
     // Dots require the smallest component of the written value; tuplets retain exact time.
-    const unit = divide(event.duration, fraction(2 ** ((event.written[1]?.dots ?? 0) + 1) - 1));
-    const step = !event.written[1]?.tuplet && !event.written[1]?.dots && compare(event.duration, base) > 0
+    const unit = divide(event.duration, fraction(2 ** ((event.written.dots ?? 0) + 1) - 1));
+    const step = !event.written.timeModification && !event.written.dots && compare(event.duration, base) > 0
       ? divide(event.duration, fraction(2)) : unit;
     measure.beats.forEach(beat => {
       const end = add(beat.start, beat.duration);

@@ -1,7 +1,7 @@
 /** Historical counting contract regression helper; never imported by the application. */
 import type { CountingSystem } from '../../src/apps/count-writing/input.ts';
-import { derivePassage } from '../../src/music/measure.ts';
-import type { RhythmMeasure } from '../../src/music/measure.ts';
+import { derivePassage } from '../score-test-support.ts';
+import type { RhythmMeasure } from '../score-test-support.ts';
 import { compare, divide, fraction } from '../../src/music/fraction.ts';
 import { countGrid } from '../../src/apps/count-writing/grid.ts';
 import type { Span } from './count-evaluation.ts';
@@ -9,7 +9,7 @@ import type { Span } from './count-evaluation.ts';
 /** Derived answer coordinates only. Authored music stays in RhythmMeasure. */
 export function passageGrid(source: readonly RhythmMeasure[], system: CountingSystem = 'numbers') {
   const derived = derivePassage(source);
-  if (derived.attacks.some(a => a.sources.length > 1 && a.sources.some(r => source[r.measure]!.events[r.event]![1]?.tuplet))) throw new Error('Uno234 does not support ties involving triplet members.');
+  if (derived.attacks.some(a => a.sources.length > 1 && a.sources.some(r => source[r.measure]!.notes[r.event]!.timeModification))) throw new Error('Uno234 does not support ties involving triplet members.');
   const grids = source.map(m => countGrid(m, system));
   const offsets = grids.map((_, index) => grids.slice(0, index).reduce((sum, grid) => sum + grid.slots.length, 0));
   const sounding = derived.attacks.map(attack => {

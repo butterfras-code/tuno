@@ -4,28 +4,24 @@ Current integration: [one Uno234 activity](unified-activity.md) shares written e
 
 Implemented 2026-10-10 at the owner's request. This is the shared source contract for Uno234. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
 
-## Compact source
+## Typed source
 
-Use [RhythmMeasure and RhythmEvent](../../src/music/measure.ts): one flat, ordered event array per measure. Store written notation, not duplicate starts or computed durations. A passage is an array of measures.
+[`RhythmScore`](../../src/music/score.ts) is the sole authored musical source. It contains measures with `meter` and a flat ordered `notes` array. Each `WrittenNote` has a stable `id`, `kind` (`note` or `rest`), `type` (`whole`, `half`, `quarter`, `eighth`, `16th`), `dots`, optional `timeModification: [actual, normal]`, and `tieNext`.
 
-```ts
-const example: RhythmMeasure = {
-  meter: [4, 4],
-  events: [['H'], ['Q'], ['E'], ['E']],
-};
-```
-
-Each event is `[value, modifiers?]`. Values are `W` whole, `H` half, `Q` quarter, `E` eighth, and `S` sixteenth. Modifiers are omitted unless needed:
+Generation and fixtures construct this source directly. The authoring helpers in [measure.ts](../../src/music/measure.ts) provide compact templates and assign passage-wide IDs at construction:
 
 ```ts
-['Q', { rest: true }]         // quarter rest
-['E', { dots: 1 }]            // dotted eighth
-['Q', { dots: 2 }]            // double-dotted quarter
-['E', { tuplet: [3, 2] }]     // 3 written eighths in the time of 2
-['Q', { tieNext: true }]      // ties to the next written event
+const example = score([{ meter: [4, 4], notes: [
+  note('half'), note('quarter'), note('eighth'), note('eighth'),
+] }]);
+// Other templates: note('quarter', { kind: 'rest' }),
+// note('eighth', { dots: 1 }), note('eighth', { timeModification: [3, 2] }),
+// note('quarter', { tieNext: true }).
 ```
 
-Rests stay in chronological order with notes and advance time. Do not encode rests as negative positions. UI labels, preset IDs, assistance and student answers do not belong in the shared musical event. Prototype fixture metadata lives in [fixtures.ts](../../src/apps/rhythm-walk/shared/fixtures.ts).
+`score(measures)` assigns deterministic IDs for generated/authored templates. Use `createScore(input)` for a completed external score: it validates, detaches, deep-freezes and preserves authored IDs. Calling it on an already captured score returns the same immutable object. Activity, CountingPlan, engraving and active capture therefore share one source; completed attempt evidence is detached for export. There is no legacy tuple source or runtime conversion adapter.
+
+Rests advance time in chronological order. Store notation, not duplicate starts or computed durations. UI labels, preset IDs, assistance and student answers do not belong in the musical source. Fixture metadata remains separate.
 
 ## Derived time and coordinates
 
@@ -39,20 +35,9 @@ The beat grid is a coordinate system, not the definition of written note duratio
 
 ## Meter and counting beats
 
-`meter: [numerator, denominator]` determines bar length. Optional `groups` gives denominator-unit counts in each counting beat:
+`meter: [numerator, denominator]` determines bar length. The current typed profile accepts 2/4, 3/4, 4/4 and 6/8. Simple-meter performance pulses are quarters; 6/8 has two dotted-quarter pulses. Derived beat views use `[1, 1]`, `[1, 1, 1]`, `[1, 1, 1, 1]` or `[3, 3]` denominator-unit groups respectively. Grouping is derived, not a second authored field.
 
-```ts
-{ meter: [3, 4], groups: [1, 1, 1], events: /* ... */ }
-{ meter: [6, 8], groups: [3, 3], events: /* ... */ }
-{ meter: [6, 8], groups: [1, 1, 1, 1, 1, 1], events: /* ... */ }
-{ meter: [7, 8], groups: [2, 2, 3], events: /* ... */ }
-```
-
-At the domain level, the same 6/8 notation can therefore be counted as two dotted-quarter beats or six eighth-note beats. Changing grouping changes coordinates, not written durations. For unequal groups, equal coordinate distances need not represent equal musical time; use exact score positions for playback, not an assumption of constant milliseconds per coordinate tick.
-
-Defaults are one denominator unit per beat for numerators 1–4, and groups of three for compound numerators divisible by three greater than 3 with denominator 8 or 16. Other meters require explicit groups. Groups must be positive integers summing to the numerator. Current validation bounds are numerator 1–32 and denominator 2, 4, 8 or 16; this is a domain boundary, not a promise that all combinations have teaching presets.
-
-Count Writing uses a separate counting policy for six numbered eighths in 6/8 while retaining score groups `[3, 3]` and two dotted-quarter performance pulses. It does not override score grouping with six single-unit groups; see [meter decisions](meters.md).
+Count Writing has a separate policy for six numbered eighths in 6/8, grouped visually as 123 and 456; see [meter decisions](meters.md). Counting and performance coordinates do not change written durations. Additional meters and custom grouping require an explicit profile extension; historical broader tuple-model tests do not promise runtime support.
 
 ## Tuplets and ties
 
@@ -68,18 +53,18 @@ Numerical [musical assessment](assessment.md) derives the same sounding chains a
 
 ## Count Writing integration
 
-Write Counts and Both now consume one immutable [CountingPlan](../../src/music/counting/plan.ts) and one [CountingAnswer](../../src/music/counting/answer.ts) per exercise. [Activity](../../src/apps/rhythm-walk/activity.ts) calls the core-owned [one-way adapter](../../src/music/legacy-score.ts) once at exercise creation. The plan retains its detached typed score and counting preferences. The legacy exercise passage is frozen and remains the input to generation, engraving and performance; there are no synchronized editable sources and no conversion back from the typed score.
+Write Counts and Both consume one immutable [CountingPlan](../../src/music/counting/plan.ts) and one [CountingAnswer](../../src/music/counting/answer.ts) per exercise. [Activity](../../src/apps/rhythm-walk/activity.ts) owns the typed score, and the plan retains that same score with captured counting preferences. Changing response mode does not reconstruct music or reset answers/results.
 
 The [plan editor](../../src/apps/count-writing/plan-editor.ts) renders only exact plan counts, indexed by count IDs. All rule interpretation and evaluation belong to the core. Sounding attacks always create inputs; tied continuations alone do not. Enabled rules contribute a union: long notes qualify at two pulses using complete sounding duration and attack-relative steps; dotted subdivision uses eligible individual written members. Simple-meter pulses are quarters; the 6/8 pulse is a dotted quarter. In 6/8, a written dotted half has `1 4` with long notes enabled and otherwise `1`; its dot adds nothing. Written tied dotted quarters can expose all six counts through dotted subdivision, in one unit. Untied members remain separate units. Generation pools are unchanged.
 
 Rest and duration evidence are unit booleans. Included rests remain separate written units, with applicable duration indication assessed independently. Omitting rests removes their inputs and suppresses all rest assessment. Duration entry/assessment requires internal counts and either a visible line or raised/lowered internal appearance. Rest (R) and Duration (D) act on the entire selected unit, including across bars and wraps. There are no student-authored ranges or endpoint grades. All counting choices apply on New exercise; pending changes preserve answers/results.
 
-The old [grid](../../src/apps/count-writing/grid.ts) remains only at engraving/layout and performance-timeline boundaries. Its positions are not answer identities or requirements. The new editor maps exact fractions to that existing geometry. Dense notation and count targets scroll together inside each measure; performance without counts retains its compact score. Remove this layout adapter when engraving/timeline source access migrates. Performance timing and assessment still use the unchanged exact legacy attack derivation.
+The [grid](../../src/apps/count-writing/grid.ts) supplies derived engraving and performance-timeline geometry directly from typed written notes. Its positions are not answer identities or requirements. The editor maps exact plan fractions onto that geometry. The responsive layout contract remains unchanged; no individual measure scrolls independently.
 
-The old evaluator and passage-answer adapter have moved to [historical test helpers](../../tests/legacy/count-evaluation.ts), preserving independent regression coverage without a competing runtime path. `editor.ts`, `passage-lines.ts` and `count-popover.ts` were removed. The next ownership slice must make generation/fixtures produce typed scores and migrate engraving/performance consumers directly, then remove `scoreFromLegacy`; do not introduce reverse conversion.
+Historical counting evaluators and the former tuple timing implementation live only in `tests/legacy/` as independent regression oracles. The runtime `legacy-score.ts` adapter is removed. Source ownership tests compare generated and fixture timing against the historical implementation and verify immutable identity and imported IDs. Scoring, calibration, hold tolerances and reward thresholds are unchanged.
 
 ## Verification and extension rules
 
-[Domain tests](../../tests/rhythm-model.test.ts) cover exact durations, dots, sixteenths, tuplets, compound/additive grouping, fractional beat coordinates, rests, exact bar totals, tie chains across changing meters, invalid cases and the UI support boundary. [Count Writing tests](../../tests/count-writing.test.ts) preserve historical answers and independent feedback dimensions; [migration tests](../../tests/counting-migration.test.ts) and the counting-plan acceptance suite cover the running contract.
+[Domain tests](../../tests/rhythm-model.test.ts) preserve historical duration/grouping regressions. Typed score and source-ownership tests cover current supported meters, exact timing, ties, tuplets, validation and consumer identity. [Count Writing tests](../../tests/count-writing.test.ts) preserve historical answers and independent feedback dimensions; [migration tests](../../tests/counting-migration.test.ts) and the counting-plan acceptance suite cover the running contract.
 
 Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/rhythm-walk/shared/generation.ts) now uses this model and validates complete passages. This model does not own notation UI, audio scheduling or preference persistence; their current implementation is documented in the [unified activity contract](unified-activity.md). Follow normal feature-to-dev staging and explicit production-publication rules.

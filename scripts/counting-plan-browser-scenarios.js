@@ -127,7 +127,7 @@ async function countingPlanScenarios(w = window) {
   click('Retry'); click('Clear'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
   await fixture('half'); activate(0); assert(!unit('restMarked'), 'Rest omission suppresses rest control on sounded units too');
   defaults(); await fixture('six-dotted-half');
-  assert(counts().length === 2 && q('g[data-value="H"][data-dots="1"]'), 'Dotted-half engraving and two count inputs');
+  assert(counts().length === 2 && q('g[data-value="half"][data-dots="1"]'), 'Dotted-half engraving and two count inputs');
   setting('dotted',true); await fixture('six-dotted-half'); assert(counts().length === 2, 'Dotted rule adds nothing to compound dotted half');
   await fixture('six-dotted-tie'); assert(counts().length === 6 && new Set(counts().map(c=>c.dataset.unitId)).size === 1, 'Written tied dotted quarters expose six counts in one unit');
   await fixture('six-dotted'); assert(counts().length === 6 && new Set(counts().map(c=>c.dataset.unitId)).size === 2, 'Untied dotted quarters retain two units');

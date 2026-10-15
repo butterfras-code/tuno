@@ -1,8 +1,10 @@
+import { score } from './score-test-support.ts';
+import { note } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exercises } from '../src/apps/rhythm-walk/fixtures.ts';
-import { musicalSeconds, planPassage, inputAudioTime } from '../src/apps/rhythm-walk/timing.ts';
-import type { RhythmMeasure } from '../src/music/measure.ts';
+import { musicalSeconds, planPassage, inputAudioTime } from './score-test-support.ts';
+import type { RhythmMeasure } from './score-test-support.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
 function capture(id = 'mixed', bpm = 80) { return new Capture(exercises.find(e => e.id === id)!, bpm, true); }
@@ -15,14 +17,14 @@ test('exact musical time converts only at scheduling boundary at different tempo
   assert.equal(musicalSeconds([1, 1], 60), 4);
   assert.equal(musicalSeconds([1, 1], 120), 2);
   assert.equal(musicalSeconds([3, 8], 80, [3, 8]), .75);
-  const compound = planPassage([{ meter: [6, 8], groups: [1, 1, 1, 1, 1, 1], events: [['H', { dots: 1 }]] }], 80, undefined, [3, 8]);
+  const compound = planPassage([{ meter: [6, 8], notes: [note('half', { dots: 1 })] }], 80, undefined, [3, 8]);
   assert.equal(compound.pulses.filter(p => !p.countIn).length, 2);
   assert.equal(compound.duration, 1.5);
   assert.equal(inputAudioTime(1100, { performanceMs: 1000, audioSeconds: 5 }), 5.1);
   assert.throws(() => musicalSeconds([1, 4], 0));
 });
 test('all curated two-bar fixtures fill exactly, with quarter pulses derived from bars', () => {
-  exercises.forEach(e => { assert.equal(e.measures.length, 2); const p = planPassage(e.measures, 80); assert.equal(p.duration, 6); assert.equal(p.countIn, 3); assert.equal(p.pulses.length, 12); });
+  exercises.forEach(e => { assert.equal(e.score.measures.length, 2); const p = planPassage(e.score.measures, 80); assert.equal(p.duration, 6); assert.equal(p.countIn, 3); assert.equal(p.pulses.length, 12); });
 });
 test('barline tie has a single attack and combined release with both written sources', () => {
   const c = capture('tie'); const n = c.plan.notes[1]!;
@@ -91,16 +93,16 @@ test('cancel, focus loss, background, audio suspension and pointer cancellation 
 });
 test('snapshot settings and written exercise survive outside mutation', () => {
   const e = structuredClone(exercises[0]!); const policy = { attackWindow: .18, releaseGrace: .75, leadIn: .12 }; const c = new Capture(e, 80, false, policy);
-  policy.attackWindow = 2; (e.measures as unknown[]).pop(); assert.equal(c.plan.duration, 6); assert.equal(c.policy.attackWindow, .18);
+  policy.attackWindow = 2; (e.score.measures as unknown[]).pop(); assert.equal(c.plan.duration, 6); assert.equal(c.policy.attackWindow, .18);
   const record = finish(c); assert.equal(record.metronome, false); assert.equal(c.interrupt('later focus loss', 9).status, 'completed');
 });
 test('a press within a written rest is extra and overlaps silence; count-in holds also overlap initial rests', () => {
   const c = capture(); input(c, 'down', 3.9); input(c, 'up', 4.1);
   const r = evaluateAttempt(finish(c)); assert.equal(r.extra.length, 1); assert.equal(r.restOverlaps.length, 1);
-  const initialRest = new Capture({ id: 'rest-first', label: 'Rest first', description: '', measures: [
-    { meter: [4, 4], events: [['Q', { rest: true }], ['H'], ['Q']] },
-    { meter: [4, 4], events: [['H'], ['H']] },
-  ] }, 80, false);
+  const initialRest = new Capture({ id: 'rest-first', label: 'Rest first', description: '', score: score([
+    { meter: [4, 4], notes: [note('quarter', { kind: 'rest' }), note('half'), note('quarter')] },
+    { meter: [4, 4], notes: [note('half'), note('half')] },
+  ]) }, 80, false);
   input(initialRest, 'down', -.2); input(initialRest, 'up', .3);
   const held = evaluateAttempt(finish(initialRest)); assert.equal(held.matches.length, 0); assert.equal(held.extra.length, 0);
   assert.equal(held.restOverlaps[0]!.start, 0); assert.equal(held.restOverlaps[0]!.end, .3);
@@ -108,10 +110,10 @@ test('a press within a written rest is extra and overlaps silence; count-in hold
 
 test('count-in uses complete bars with at least four performance beats, preserving exercise timing', () => {
   const cases: { measure: RhythmMeasure; pulse: [number, number]; beats: number[]; seconds: number; accents: number[] }[] = [
-    { measure: { meter: [2, 4], events: [['H']] }, pulse: [1, 4], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
-    { measure: { meter: [3, 4], events: [['H', { dots: 1 }]] }, pulse: [1, 4], beats: [1, 2, 3, 1, 2, 3], seconds: 3, accents: [0, 3] },
-    { measure: { meter: [4, 4], events: [['W']] }, pulse: [1, 4], beats: [1, 2, 3, 4], seconds: 2, accents: [0] },
-    { measure: { meter: [6, 8], events: [['H', { dots: 1 }]] }, pulse: [3, 8], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
+    { measure: { meter: [2, 4], notes: [note('half')] }, pulse: [1, 4], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
+    { measure: { meter: [3, 4], notes: [note('half', { dots: 1 })] }, pulse: [1, 4], beats: [1, 2, 3, 1, 2, 3], seconds: 3, accents: [0, 3] },
+    { measure: { meter: [4, 4], notes: [note('whole')] }, pulse: [1, 4], beats: [1, 2, 3, 4], seconds: 2, accents: [0] },
+    { measure: { meter: [6, 8], notes: [note('half', { dots: 1 })] }, pulse: [3, 8], beats: [1, 2, 1, 2], seconds: 2, accents: [0, 2] },
   ];
   for (const { measure, pulse, beats, seconds, accents } of cases) {
     const plan = planPassage([measure], 120, undefined, pulse);

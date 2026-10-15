@@ -1,6 +1,6 @@
 # Configurable counting schemes and inferred notation groups
 
-Status: foundational core, coordinated editor/settings migration and URL/session preferences implemented locally; musical-source ownership migration remains pending. Written 2026-10-14 from the owner's design decisions. This document specifies a replacement for the current count-entry and evaluation architecture; it is not a description of shipped behavior or authorization to publish.
+Status: foundational core, coordinated editor/settings migration and URL/session preferences implemented locally; musical-source ownership migration is implemented locally. Written 2026-10-14 from the owner's design decisions. This document specifies a replacement for the current count-entry and evaluation architecture; it is not a description of shipped behavior or authorization to publish.
 
 ## Purpose and authority
 
@@ -319,7 +319,7 @@ Historical foundation handoff at `2d323a00ac142d7a8c755445061a5ff0345a9558`: thi
 | [`src/music/score.ts`](../../src/music/score.ts) | Typed `RhythmScore`, flat `WrittenNote` members, immutable source construction, exact passage derivation, computed incoming ties and sounding attacks |
 | [`src/music/written.ts`](../../src/music/written.ts) | Shared written-duration arithmetic, also used by the legacy `duration` function |
 | [`src/music/musicxml.ts`](../../src/music/musicxml.ts) | Strict MusicXML boundary parser, standard score serialization and plan-derived exercise serialization |
-| [`src/music/legacy-score.ts`](../../src/music/legacy-score.ts) | Temporary one-way `RhythmMeasure[] → RhythmScore` snapshot adapter |
+| `src/music/legacy-score.ts` (subsequently removed) | Temporary one-way `RhythmMeasure[] → RhythmScore` snapshot adapter |
 | [`src/music/counting/preferences.ts`](../../src/music/counting/preferences.ts) | Version 1 preferences, defaults, enum options, validation and detached immutable capture |
 | [`src/music/counting/vocabulary.ts`](../../src/music/counting/vocabulary.ts) | Shared atomic vocabulary and exact position-to-token mapping; legacy input/evaluation modules re-export their existing API |
 | [`src/music/counting/plan.ts`](../../src/music/counting/plan.ts) | One passage-wide rule interpreter, `NotationSymbol`, exact counts, inferred units and derived marker participation |
@@ -398,3 +398,10 @@ T3 could not reach workspace loopback (connection refused), so browser checks lo
 Remaining work is the generation/fixture, engraving/layout and performance musical-source ownership migration and removal of the one-way legacy adapter. This slice adds no counting rules, optional counts or editable endpoints and does not change performance scoring.
 
 Readable-URL follow-up: at the owner’s request, replaced encoded payloads entirely with explicit query fields; no backward compatibility. Node 24 `npm run check` passed again (437 tests and builds), and the updated sharing/session browser scenarios passed 20 assertions each at 1280px and 320px in T3 using the same isolated local-bundle harness and simulated clipboard described above.
+
+
+## Single source migration (2026-10-15)
+
+This section supersedes the historical source-owner and next-slice notes above. Generation and fixtures now construct typed `RhythmScore` values. Activity, CountingPlan, notation and active performance capture share one validated immutable score with stable written IDs. `measure.ts` now provides typed authoring helpers and derived beat/layout views; `legacy-score.ts` is deleted. Imported IDs survive capture; generated IDs are assigned once at construction. Completed evidence carries `exercise.score`, not `exercise.measures`. No reverse adapter or synchronized musical mirror remains.
+
+Empty count input names describe measure, counting beat and exact offset only; they do not reveal the expected vocabulary token. Entered answers and unit flags continue to be announced by the editor. Scoring, hold thresholds, calibration and rewards are unchanged. See [source migration validation](source-migration-validation.md) for evidence and outstanding physical acceptance.

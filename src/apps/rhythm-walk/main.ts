@@ -1,3 +1,4 @@
+import type { RhythmScore } from '../../music/score.ts';
 // Copyright (C) 2026 tUno contributors. SPDX-License-Identifier: GPL-3.0-only
 import '../../tokens.css';
 import '../../shared/ui/fonts.css';
@@ -29,7 +30,7 @@ const testing = fixtureAccess(location.search);
 if (testing.fixture) preferences.preset = testing.fixture.id;
 let generation = preferences.generation;
 let fixtureId = preferences.preset;
-const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
+const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.score);
 function persist() {
   Object.assign(preferences, { generation, preset: fixtureId });
   try { localStorage.setItem(preferenceKey, preferenceSession.serialize()); } catch { /* Memory fallback. */ }
@@ -37,7 +38,7 @@ function persist() {
 let editors: ReturnType<typeof createPlanEditor>[] = [];
 let focusNewRhythm = false;
 let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
-let currentMeasures: RhythmMeasure[] = [];
+let currentMeasures: readonly RhythmMeasure[] = [];
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
 const header = el('header', 'app-header');
@@ -148,7 +149,7 @@ function newExercise(returnToPractice = false) {
   performance.cancel('New exercise');
   fixtureId = 'generated'; picker.value = '';
   activity.preferences.generation = generation; activity.next();
-  loadExercise(activity.exercise.measures as RhythmMeasure[], !returnToPractice, false);
+  loadExercise(activity.exercise.score, !returnToPractice, false);
   if (customDialog.open) customDialog.close();
   if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
 }
@@ -198,16 +199,16 @@ main.append(header, activitySurface, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;
   fixtureId = id; picker.value = id;
-  loadExercise(practiceFixtures.find(f => f.id === id)!.measures, !practiceView.hidden);
+  loadExercise(practiceFixtures.find(f => f.id === id)!.score, !practiceView.hidden);
 }
-function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true) {
+function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
   performance.cancel('Exercise changed');
-  if (replace) { activity.preferences.preset = fixtureId; activity.replace(measures); }
+  if (replace) { activity.preferences.preset = fixtureId; activity.replace(score); }
   performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
-  currentMeasures = activity.exercise.measures as RhythmMeasure[];
-  measures = currentMeasures;
+  currentMeasures = activity.exercise.score.measures;
+  const measures = currentMeasures;
   passageStrip.dataset.measures = String(measures.length);
   passageStrip.style.setProperty('--measure-count', String(measures.length));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
@@ -344,6 +345,6 @@ function decoratePerformance(record: AttemptRecord | null) {
     annotate(rest.source.measure, rest.source.event, !evaluation.evidenceAvailable ? 'unavailable' : violations.length ? 'overlap' : 'silent', !evaluation.evidenceAvailable ? 'Insufficient evidence for musical rest assessment; raw intersections retained' : violations.length ? 'Leave more silence in this rest' : record.playStyle === 'tap' ? early ? 'Raw target-relative rest intersection retained; musical timing accepted' : 'No attacks during rest' : 'Silent or within attack/release tolerance', `feedback-rest-${index}`);
   });
 }
-loadExercise(activity.exercise.measures as RhythmMeasure[], false, false);
+loadExercise(activity.exercise.score, false, false);
 showPage(false);
 if (!practiceView.hidden && preferences.mode !== 'tap') focusCounts();

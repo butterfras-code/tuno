@@ -1,3 +1,4 @@
+import { createScore } from '../../music/score.ts';
 import { assessmentPolicy, holdPolicy } from './assessment-policy.ts';
 import type { AssessmentPolicy, HoldPolicy } from './assessment-policy.ts';
 import { sourcePolicy } from './shared/meter.ts';
@@ -43,10 +44,10 @@ export class Capture {
   constructor(exercise: Exercise, bpm: number, metronome: boolean, policy = prototypeTiming, timingOffset?: TimingOffset, playStyle: PlayStyle = 'tap', evaluationPolicy: EvaluationPolicy = provisionalEvaluation, scoringPolicy: AssessmentPolicy = assessmentPolicy) {
     this.assessmentPolicy = { ...scoringPolicy };
     this.playStyle = playStyle; this.evaluationPolicy = { ...evaluationPolicy };
-    this.exercise = structuredClone(exercise); this.policy = { ...policy };
+    this.exercise = { ...exercise, score: createScore(exercise.score) }; this.policy = { ...policy };
     this.timingOffset = timingOffset ? { ...timingOffset } : undefined;
     this.bpm = bpm; this.metronome = metronome;
-    this.plan = planPassage(this.exercise.measures, bpm, this.policy, sourcePolicy(this.exercise.measures[0]!).pulse);
+    this.plan = planPassage(this.exercise.score.measures, bpm, this.policy, sourcePolicy(this.exercise.score.measures[0]!).pulse);
     // Finish at the written ending plus a short release/calibration allowance.
     // Analytical tempo fitting must never extend the recording deadline.
     this.plan.captureEnd = this.plan.duration + this.policy.releaseGrace + Math.max(0, timingOffset?.seconds ?? 0);

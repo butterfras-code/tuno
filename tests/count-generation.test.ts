@@ -1,10 +1,12 @@
+import { notationOnly } from './score-test-support.ts';
+import { note } from './score-test-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultGeneration, generateExercise, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
-import { deriveMeasure, derivePassage } from '../src/music/measure.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
+import { deriveMeasure, derivePassage } from './score-test-support.ts';
 import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import type { CountAnswer } from './legacy/count-evaluation.ts';
-import type { RhythmMeasure } from '../src/music/measure.ts';
+import type { RhythmMeasure } from './score-test-support.ts';
 import { readableRestPlacement } from '../src/apps/count-writing/notation-policy.ts';
 import { fraction } from '../src/music/fraction.ts';
 
@@ -31,8 +33,8 @@ test('defaults are two measures; deterministic generation validates every subset
         derived.measures.forEach(bar => assert.deepEqual(bar.length, [1, 1]));
         passage.forEach(bar => {
           assert.deepEqual(bar.meter, [4, 4]);
-          assert.ok(bar.events.length <= 8);
-          bar.events.forEach(event => assert.ok(allowed.some(i => JSON.stringify(event) === JSON.stringify(i.event)), JSON.stringify(event)));
+          assert.ok(bar.notes.length <= 8);
+          bar.notes.forEach(event => assert.ok(allowed.some(i => JSON.stringify(notationOnly(event)) === JSON.stringify(notationOnly(i.event))), JSON.stringify(event)));
           if (!allowUnintuitiveNotation) deriveMeasure(bar).events.forEach(event => assert.ok(readableRestPlacement(event.written, event.start)));
         });
       }
@@ -46,7 +48,7 @@ test('impossible selections fail; unavailable ingredients are skipped without mu
   ]) assert.ok(generationIssue(settings));
   const subset = { ...defaultGeneration(), ingredients: ['dotted-quarter' as const, 'half' as const] };
   assert.equal(generationIssue(subset), null);
-  assert.ok(generateExercise(subset, () => 0).every(bar => bar.events.every(event => event[0] === 'H')));
+  assert.ok(generateExercise(subset, () => 0).every(bar => bar.notes.every(event => event.type === 'half')));
   for (const id of ['quarter', 'eighth-rest', 'half-rest'] as const) {
     const settings = { ...defaultGeneration(), measures: 4, ingredients: [id] }; const before = structuredClone(settings);
     assert.equal(generateExercise(settings, () => 0).length, 4);
@@ -56,11 +58,11 @@ test('impossible selections fail; unavailable ingredients are skipped without mu
   assert.throws(() => generateExercise(defaultGeneration(), () => 1), /Random/);
 });
 
-const measures: RhythmMeasure[] = [
-  { meter: [4, 4], events: [['Q', { dots: 1, rest: true }], ['E', { rest: true }], ['H']] },
-  { meter: [4, 4], events: [['H', { rest: true }], ['Q', { rest: true }], ['Q', { rest: true }]] },
-  { meter: [4, 4], events: [['E'], ['Q', { dots: 1 }], ['H']] },
-  { meter: [4, 4], events: [['E', { rest: true }], ['E', { rest: true }], ['Q'], ['H']] },
+const measures: readonly RhythmMeasure[] = [
+  { meter: [4, 4], notes: [note('quarter', { dots: 1, kind: 'rest' }), note('eighth', { kind: 'rest' }), note('half')] },
+  { meter: [4, 4], notes: [note('half', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('quarter', { kind: 'rest' })] },
+  { meter: [4, 4], notes: [note('eighth'), note('quarter', { dots: 1 }), note('half')] },
+  { meter: [4, 4], notes: [note('eighth', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('quarter'), note('half')] },
 ];
 const answers: CountAnswer[] = [
   { symbols: ['1', '&', '2', '&', '3', '', '4', ''], spans: [{ start: 0, end: 2 }, { start: 4, end: 7 }], rests: [{ start: 0, end: 2 }, { start: 3, end: 3 }] },
@@ -93,7 +95,7 @@ test('measure boundaries reject spans/rests outside the bar and locate each issu
 });
 
 test('offbeat dotted rests apply the internal offbeat convention and enclose its required or entered count', () => {
-  const source: RhythmMeasure = { meter: [4, 4], events: [['E', { rest: true }], ['Q', { dots: 1, rest: true }], ['H']] };
+  const source: RhythmMeasure = { meter: [4, 4], notes: [note('eighth', { kind: 'rest' }), note('quarter', { dots: 1, kind: 'rest' }), note('half')] };
   const answer: CountAnswer = { symbols: ['1', '&', '2', '&', '3', '', '4', ''], spans: [{ start: 1, end: 3 }, { start: 4, end: 7 }], rests: [{ start: 0, end: 0 }, { start: 1, end: 3 }] };
   assert.ok(Object.values(evaluatePassage([source], [answer], 'required')[0]!).every(d => d.verdict === 'correct'));
   answer.symbols[3] = ''; answer.rests[1]!.end = 2;
@@ -103,20 +105,20 @@ test('offbeat dotted rests apply the internal offbeat convention and enclose its
 });
 
 test('beginner rest placement forbids offbeat starts at beat length or longer, but permits half rests on any whole beat', () => {
-  assert.equal(readableRestPlacement(['H', { rest: true }], fraction(1, 8)), false);
-  assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(1, 8)), false);
-  assert.equal(readableRestPlacement(['E', { rest: true }], fraction(1, 8)), true);
-  for (const beat of [0, 1, 2]) assert.equal(readableRestPlacement(['H', { rest: true }], fraction(beat, 4)), true);
-  assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(0)), false);
-  assert.equal(readableRestPlacement(['H'], fraction(1, 8)), true, 'note syncopation remains available');
+  assert.equal(readableRestPlacement(note('half', { kind: 'rest' }), fraction(1, 8)), false);
+  assert.equal(readableRestPlacement(note('quarter', { kind: 'rest' }), fraction(1, 8)), false);
+  assert.equal(readableRestPlacement(note('eighth', { kind: 'rest' }), fraction(1, 8)), true);
+  for (const beat of [0, 1, 2]) assert.equal(readableRestPlacement(note('half', { kind: 'rest' }), fraction(beat, 4)), true);
+  assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(0)), false);
+  assert.equal(readableRestPlacement(note('half'), fraction(1, 8)), true, 'note syncopation remains available');
   const draws = [0, .99, 0];
   const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['quarter', 'half-rest'] }, () => draws.shift()!);
-  assert.deepEqual(passage[0]!.events, [['Q'], ['H', { rest: true }], ['Q']], 'a half rest starting on beat 2 is allowed');
+  assert.deepEqual(notationOnly(passage[0]!.notes), notationOnly([note('quarter'), note('half', { kind: 'rest' }), note('quarter')]), 'a half rest starting on beat 2 is allowed');
 });
 test('the screenshot silence can be written as eighth, quarter, eighth rests; opt-in still generates less usual spellings', () => {
   const draws = [0, .99, .5, .99, .99, 0, 0];
   const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['eighth', 'quarter-rest', 'eighth-rest'] }, () => draws.shift()!);
-  assert.deepEqual(passage[0]!.events, [['E'], ['E', { rest: true }], ['Q', { rest: true }], ['E', { rest: true }], ['E', { rest: true }], ['E'], ['E']]);
+  assert.deepEqual(notationOnly(passage[0]!.notes), notationOnly([note('eighth'), note('eighth', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth'), note('eighth')]));
   const readableAnswer: CountAnswer = { symbols: ['1', '&', '2', '', '3', '&', '4', '&'], spans: [], rests: [{ start: 1, end: 1 }, { start: 2, end: 2 }, { start: 4, end: 4 }, { start: 5, end: 5 }] };
   assert.ok(Object.values(evaluatePassage(passage, [readableAnswer], 'required')[0]!).every(d => d.verdict === 'correct'), 'grading follows the separate written rests');
   readableAnswer.rests = [{ start: 1, end: 4 }, { start: 5, end: 5 }];
@@ -125,11 +127,13 @@ test('the screenshot silence can be written as eighth, quarter, eighth rests; op
   let offbeatHalf = false, dottedRest = false;
   for (let seed = 0; seed < 100; seed++) generateExercise(advanced, seeded(seed)).forEach(bar => {
     deriveMeasure(bar).events.forEach(event => {
-      if (event.written[0] === 'H' && event.kind === 'rest' && !readableRestPlacement(event.written, event.start)) offbeatHalf = true;
-      if (event.kind === 'rest' && event.written[1]?.dots) dottedRest = true;
+      if (event.written.type === 'half' && event.kind === 'rest' && !readableRestPlacement(event.written, event.start)) offbeatHalf = true;
+      if (event.kind === 'rest' && event.written.dots) dottedRest = true;
     });
   });
   assert.equal(offbeatHalf, true); assert.equal(dottedRest, true);
   assert.equal(generationIssue({ ...advanced, allowUnintuitiveNotation: false }), null);
-  for (let seed = 0; seed < 30; seed++) assert.ok(generateExercise({ ...advanced, allowUnintuitiveNotation: false }, seeded(seed)).every(bar => bar.events.every(event => !(event[1]?.rest && event[1]?.dots))));
+  for (let seed = 0; seed < 30; seed++) assert.ok(generateExercise({ ...advanced, allowUnintuitiveNotation: false }, seeded(seed)).every(bar => bar.notes.every(event => !((event.kind === 'rest') && event.dots))));
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

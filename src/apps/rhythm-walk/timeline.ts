@@ -19,12 +19,12 @@ export function timingTimelines(record: AttemptRecord) {
   const evaluation = evaluateAttempt(record);
   if (evaluation.status !== 'completed') return [];
   let start = 0;
-  return record.exercise.measures.map((measure, index) => {
+  return record.exercise.score.measures.map((measure, index) => {
     const grid = countGrid(measure);
     const duration = musicalSeconds(grid.measure.length, record.bpm, grid.policy.pulse);
     const end = start + duration;
     const position = (time: number) => Math.max(0, Math.min(100, slotX((time - start) / duration * grid.slots.length, grid.slots.length, grid.fine)));
-    const contains = (time: number) => time >= start && time < end || index === 0 && time < 0 || index === record.exercise.measures.length - 1 && time >= end;
+    const contains = (time: number) => time >= start && time < end || index === 0 && time < 0 || index === record.exercise.score.measures.length - 1 && time >= end;
     const expected = record.plan.notes.flatMap((note, i) => note.sources[0]!.measure === index ? [{ x: position(note.start), time: note.start, missing: evaluation.missing.includes(i) }] : []);
     const received = evaluation.holds.flatMap((hold, i) => {
       if (hold.countIn) return [];
@@ -37,7 +37,7 @@ export function timingTimelines(record: AttemptRecord) {
     function segment(onset: number, release: number | null, observedUntil: number, feedback: SustainSegment['feedback'], attackMeasure?: number): SustainSegment[] {
       // Keep out-of-score tail inputs as clipped evidence on the final segment,
       // just as attack markers at that edge retain their actual time in titles.
-      const last = index === record.exercise.measures.length - 1;
+      const last = index === record.exercise.score.measures.length - 1;
       const anchored = attackMeasure === index;
       if (attackMeasure !== undefined && index < attackMeasure || !anchored && (observedUntil <= start || onset >= end && !last)) return [];
       return [{ x1: position(anchored ? onset : Math.max(start, onset)), x2: position(Math.min(end, observedUntil)), start: onset, end: release, observedUntil,

@@ -1,3 +1,4 @@
+import { score } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { countingPreferenceOptions, defaultCountingPreferences as defaults } from '../src/music/counting/preferences.ts';
@@ -39,7 +40,7 @@ test('URL overrides saved counting before initial exercise, preserving unrelated
   const saved = { ...defaultPreferences(), bpm: 123, mode: 'both', playStyle: 'hold' };
   const session = createPreferenceSession(JSON.stringify(saved), `?${encode(linked)}`);
   assert.deepEqual(session.preferences, { ...saved, counting: linked });
-  const activity = new Activity(session.preferences, presets.find(p => p.id === 'half')!.measures);
+  const activity = new Activity(session.preferences, score(presets.find(p => p.id === 'half')!.score.measures));
   assert.deepEqual(activity.countingPlan.preferences, linked);
   assert.equal(activity.countingPlan.counts.length, 4);
   assert.ok(Object.isFrozen(activity.countingPlan.preferences));
@@ -64,8 +65,8 @@ test('ordinary sessions save edits; linked pending edits preserve exercise, answ
   const normal = createPreferenceSession(null, ''); normal.preferences.counting = linked;
   assert.deepEqual(readPreferences(normal.serialize()).counting, linked);
   const session = createPreferenceSession(null, `?${encode(linked)}`);
-  const measures = presets.find(p => p.id === 'half')!.measures;
-  const a = new Activity(session.preferences, measures), plan = a.countingPlan, exercise = a.exercise;
+  const measures = presets.find(p => p.id === 'half')!.score.measures;
+  const a = new Activity(session.preferences, score(measures)), plan = a.countingPlan, exercise = a.exercise;
   a.countingAnswer = enterToken(plan, a.countingAnswer, plan.counts[0]!.id, '1');
   a.countingResult = evaluateAnswer(plan, a.countingAnswer);
   const answer = a.countingAnswer, result = a.countingResult;
@@ -73,7 +74,7 @@ test('ordinary sessions save edits; linked pending edits preserve exercise, answ
   session.serialize(); session.saveAsDefaults(() => {});
   assert.equal(a.exercise, exercise); assert.equal(a.countingPlan, plan); assert.equal(a.countingAnswer, answer); assert.equal(a.countingResult, result);
   assert.deepEqual(evaluateAnswer(plan, answer), result);
-  a.replace(measures); assert.deepEqual(a.countingPlan.preferences, defaults); assert.equal(a.countingResult, null);
+  a.replace(score(measures)); assert.deepEqual(a.countingPlan.preferences, defaults); assert.equal(a.countingResult, null);
 });
 test('share URL replaces duplicates, strips fixture access, retains unrelated parameters and view deterministically', () => {
   const url = new URL(countingPreferencesUrl('https://tuno.cc/prototypes/count-writing/?z=1&counting=old&fixture=half&testing=1&counting=other&counting.dotted=old&counting.unknown=old&a=2#settings', linked));

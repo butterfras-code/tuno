@@ -85,9 +85,12 @@ export function deriveScore(score: RhythmScore): DerivedScore {
   if (pending) throw new Error('Unresolved final tie.');
   return immutable({ symbols, attacks: attacks as readonly SoundingAttack[], length: offset });
 }
+const capturedScores = new WeakSet<RhythmScore>();
 /** Own a detached immutable source; callers cannot mutate a captured exercise. */
 export function createScore(source: RhythmScore): RhythmScore {
+  if (capturedScores.has(source)) return source;
   const score = structuredClone(source);
   deriveScore(score);
+  capturedScores.add(score);
   return immutable(score);
 }

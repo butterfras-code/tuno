@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { add, compare, divide, fraction, multiply } from '../src/music/fraction.ts';
-import { beatCoordinate, deriveMeasure, derivePassage, duration } from '../src/music/measure.ts';
-import type { RhythmEvent, RhythmMeasure } from '../src/music/measure.ts';
-import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { blankAnswer, evaluate } from './legacy/count-evaluation.ts';
+import { beatCoordinate, deriveMeasure, derivePassage, duration } from './legacy/measure.ts';
+import type { RhythmEvent, RhythmMeasure } from './legacy/measure.ts';
+import { countGrid as typedCountGrid } from '../src/apps/count-writing/grid.ts';
+import { blankAnswer as typedBlankAnswer, evaluate as typedEvaluate } from './legacy/count-evaluation.ts';
 
 const bar = (events: readonly RhythmEvent[]): RhythmMeasure => ({ meter: [4, 4], events });
 test('exact arithmetic normalizes thirds and rejects unsafe quantities', () => {
@@ -107,3 +107,9 @@ test('counting policy follows notation, not fixture IDs, including shifted dotte
   answer.symbols[3] = '&';
   assert.equal(evaluate(source, answer, 'required').counts.verdict, 'correct');
 });
+
+// Keep the independent legacy-domain examples; convert only their UI test inputs.
+const typedBar = (bar: RhythmMeasure) => ({ meter: bar.meter as readonly [number, 4 | 8], notes: bar.events.map(([type, m], i) => ({id: `n${i}`,type: ({W:'whole',H:'half',Q:'quarter',E:'eighth',S:'16th'} as const)[type],kind: m?.rest ? 'rest' as const : 'note' as const,dots:m?.dots??0,tieNext:m?.tieNext??false,...(m?.tuplet?{timeModification:m.tuplet}:{})})) });
+const countGrid = (bar: RhythmMeasure) => typedCountGrid(typedBar(bar));
+const blankAnswer = (bar: RhythmMeasure) => typedBlankAnswer(typedBar(bar));
+const evaluate = (bar: RhythmMeasure, ...args: Parameters<typeof typedEvaluate> extends [unknown, ...infer R] ? R : never) => typedEvaluate(typedBar(bar), ...args);

@@ -252,12 +252,12 @@ export function createPerformance(options: { treatBag: HTMLElement; exercise: ()
   document.addEventListener('visibilitychange', () => { if (document.hidden) { startCancelled = true; transport?.interrupt('Page backgrounded'); } });
   window.addEventListener('pagehide', () => transport?.interrupt('Page left'));
 
-  function pulseLabel() { return sourcePolicy(options.exercise().measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
+  function pulseLabel() { return sourcePolicy(options.exercise().score.measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
   function refreshExercise() {
     tempoField.querySelector('.field-label')!.textContent = `Tempo (${pulseLabel()} BPM)`;
     tempo.setAttribute('aria-label', `Tempo (${pulseLabel()} BPM)`);
     tempoUnit.textContent = pulseLabel() === 'dotted-quarter' ? '♩. =' : '♩ =';
-    const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
+    const plan = planPassage(options.exercise().score.measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().score.measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
     playHint.textContent = playInstructions[options.preferences.playStyle];

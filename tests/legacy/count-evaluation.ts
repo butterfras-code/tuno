@@ -2,8 +2,8 @@
 import type { CountingSystem } from '../../src/apps/count-writing/input.ts';
 import { countGrid } from '../../src/apps/count-writing/grid.ts';
 import { passageGrid } from './count-passage.ts';
-import { derivePassage } from '../../src/music/measure.ts';
-import type { RhythmMeasure } from '../../src/music/measure.ts';
+import { derivePassage } from '../score-test-support.ts';
+import type { RhythmMeasure } from '../score-test-support.ts';
 export { alphabet } from '../../src/music/counting/vocabulary.ts';
 export type { CountToken as CountSymbol } from '../../src/music/counting/vocabulary.ts';
 import type { CountToken as CountSymbol } from '../../src/music/counting/vocabulary.ts';
@@ -77,7 +77,7 @@ function evaluateMeasure(measure: RhythmMeasure, answer: CountAnswer, dottedConv
 
 /** Single-bar entry validates complete tie chains, too. */
 export function evaluate(measure: RhythmMeasure, answer: CountAnswer, convention: DottedQuarterConvention = 'review', system: CountingSystem = 'numbers'): Evaluation {
-  if (measure.events.some(e => e[1]?.tieNext)) return evaluatePassage([measure], [answer], convention, undefined, system)[0]!;
+  if (measure.notes.some(e => e.tieNext)) return evaluatePassage([measure], [answer], convention, undefined, system)[0]!;
   return evaluateMeasure(measure, answer, convention, system);
 }
 
@@ -86,7 +86,7 @@ export function evaluatePassage(measures: readonly RhythmMeasure[], answers: rea
   derivePassage(measures);
   if (answers.length !== measures.length) throw new Error('Provide one answer per measure.');
   const results = measures.map((measure, index) => evaluateMeasure(measure, answers[index]!, convention, system));
-  if (measures.some(m => m.events.some(e => e[1]?.tieNext)) || passageSpans) {
+  if (measures.some(m => m.notes.some(e => e.tieNext)) || passageSpans) {
     const grid = passageGrid(measures, system);
     const lines = passageSpans ?? answers.flatMap((answer, measure) => answer.spans.map(span => ({ start: span.start + grid.offsets[measure]!, end: span.end + grid.offsets[measure]! })));
     results.forEach(result => { result.counts = { verdict: 'correct', issues: [] }; result.spans = { verdict: 'correct', issues: [] }; });

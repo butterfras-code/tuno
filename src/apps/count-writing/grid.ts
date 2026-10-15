@@ -13,12 +13,12 @@ export function countGrid(source: RhythmMeasure, system: CountingSystem = 'numbe
   const policy = sourcePolicy(source);
   const measure = deriveMeasure(source);
   if (measure.beats.some(b => compare(b.duration, policy.pulse)) ||
-      source.events.some(([value, m]) => !['H', 'Q', 'E', ...(policy.compound ? [] : ['S', 'W'])].includes(value) || (value === 'W' && m?.dots) || (m?.tuplet && (policy.compound || value !== 'E' || m.tuplet[0] !== 3 || m.tuplet[1] !== 2 || m.rest || m.dots || m.tieNext)) || (m?.dots ?? 0) > 1 || (value === 'S' && m?.dots) || (value === 'E' && m?.dots && (policy.compound || m.rest)) || (m?.rest && value === 'H' && m.dots))) {
+      source.notes.some(v => !['half', 'quarter', 'eighth', ...(policy.compound ? [] : ['16th', 'whole'])].includes(v.type) || (v.type === 'whole' && v.dots) || (v.timeModification && (policy.compound || v.type !== 'eighth' || v.timeModification[0] !== 3 || v.timeModification[1] !== 2 || v.kind === 'rest' || v.dots)) || v.dots > 1 || (v.type === '16th' && v.dots) || (v.type === 'eighth' && v.dots && (policy.compound || v.kind === 'rest')) || (v.kind === 'rest' && v.type === 'half' && v.dots))) {
     throw new Error('Uno234 currently supports 2/4, 3/4, 4/4 and 6/8 reviewed whole/half/quarter/eighth/sixteenth material; only sounded eighth triplets; no dotted wholes, dotted sixteenths or dotted-eighth rests.');
   }
   const triplets = measure.events.some(e => e.tupletGroup !== null);
-  if (measure.events.some(e => e.tupletGroup !== null && (divide(measure.events[e.tupletGroup]!.start, fraction(1, 4))[1] !== 1 || source.events[e.index - 1]?.[1]?.tieNext))) throw new Error('Triplet groups must start on quarter beats, without ties to/from members.');
-  const fine = triplets || (!policy.compound && source.events.some(([v, m]) => v === 'S' || (v === 'E' && m?.dots)));
+  if (measure.events.some(e => e.tupletGroup !== null && (divide(measure.events[e.tupletGroup]!.start, fraction(1, 4))[1] !== 1 || source.notes[e.index - 1]?.tieNext))) throw new Error('Triplet groups must start on quarter beats, without ties to/from members.');
+  const fine = triplets || (!policy.compound && source.notes.some(v => v.type === '16th' || (v.type === 'eighth' && v.dots)));
   const step = fraction(1, triplets ? 48 : fine ? 16 : 8);
   const positions: Fraction[] = [];
   for (let position = fraction(0); compare(position, measure.length) < 0; position = add(position, step)) positions.push(position);
@@ -39,7 +39,7 @@ export function countGrid(source: RhythmMeasure, system: CountingSystem = 'numbe
       subdivision, triplet,
       symbol: units[1] === 1 || policy.compound ? countAt(position, policy.compound, system, triplet) : '',
       label: policy.compound ? `count ${index + 1}` : `beat ${beatIndex + 1}${beat >= 0 ? '' : !fine ? ' offbeat' : ` ${triplet ? 'triplet' : 'subdivision'} ${subdivision + 1}`}`,
-      dottedInternal: !policy.compound && event.written[0] === 'Q' && event.written[1]?.dots === 1 && beat < 0 && divide(position, fraction(1, 8))[1] === 1 && compare(position, event.start) > 0,
+      dottedInternal: !policy.compound && event.written.type === 'quarter' && event.written.dots === 1 && beat < 0 && divide(position, fraction(1, 8))[1] === 1 && compare(position, event.start) > 0,
     };
   });
   return { slots, events, measure, policy, step, fine, triplets, availableSlots: slots.flatMap((slot, i) => slot.available ? [i] : []) };

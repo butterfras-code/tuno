@@ -1,7 +1,6 @@
 import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
-import type { RhythmEvent } from '../../../music/measure.ts';
 import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
 import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../../music/counting/preferences.ts';
@@ -166,11 +165,11 @@ export function createSettingsPage(callbacks: {
   const vocabularyHeadings = el('div', 'ingredient-headings');
   vocabularyHeadings.append(el('h3', '', 'Allowed Notes'), el('h3', '', 'Allowed Rests'));
   vocabulary.append(vocabularyHeadings);
-  for (const [value, name] of [['W', 'Whole'], ['H', 'Half'], ['Q', 'Quarter'], ['E', 'Eighth'], ['S', 'Sixteenth']] as const) {
+  for (const [value, name] of [['whole', 'Whole'], ['half', 'Half'], ['quarter', 'Quarter'], ['eighth', 'Eighth'], ['16th', 'Sixteenth']] as const) {
     const valueRow = el('div', 'ingredient-value-row'); valueRow.dataset.value = value;
     for (const rest of [false, true]) {
       const row = el('div', 'ingredient-row'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', `${name} ${rest ? 'rests' : 'notes'}`);
-      for (const ingredient of ingredients.filter(i => i.event[0] === value && Boolean((i.event as RhythmEvent)[1]?.rest) === rest)) {
+      for (const ingredient of ingredients.filter(i => i.event.type === value && (i.event.kind === 'rest') === rest)) {
         const { label, input } = segmentedOption({ label: ingredient.label, content: renderRhythmSymbol(ingredient.event), type: 'checkbox', value: ingredient.id,
           checked: generation.ingredients.includes(ingredient.id), changed: () => {
             generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) };

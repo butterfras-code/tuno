@@ -4,8 +4,8 @@ import { initializeAnswer } from '../../music/counting/answer.ts';
 import type { CountingAnswer, CountingEvaluation } from '../../music/counting/answer.ts';
 import { defaultCountingPreferences, captureCountingPreferences } from '../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../music/counting/preferences.ts';
-import { scoreFromLegacy } from '../../music/legacy-score.ts';
-import { immutable } from '../../music/written.ts';
+import { createScore } from '../../music/score.ts';
+import type { RhythmScore } from '../../music/score.ts';
 import { defaultGeneration, generateExercise, generationIssue, ingredients } from './shared/generation.ts';
 import type { GenerationSettings } from './shared/generation.ts';
 import type { PassageFixture } from './shared/fixtures.ts';
@@ -18,8 +18,6 @@ import type { CountPresentation } from '../count-writing/presentation.ts';
 type DottedQuarterConvention = 'review' | 'required' | 'optional';
 import type { OffbeatSymbol, CountingSystem } from '../count-writing/input.ts';
 import { meters } from './shared/meter.ts';
-import type { RhythmMeasure } from '../../music/measure.ts';
-import { derivePassage } from '../../music/measure.ts';
 import { playStyles } from './play-policy.ts';
 import type { PlayStyle } from './play-policy.ts';
 import { generationLevels, matchesTeachingPreset, resolveTeachingPreset } from './shared/teaching-presets.ts';
@@ -30,7 +28,7 @@ export const modeOptions = [{ value: 'write', label: 'Write Counts' }, { value: 
 /** One catalogue for every mode, including all historical review exercises. */
 export const presets: readonly PassageFixture[] = [
   ...practiceFixtures,
-  ...exercises.map(e => ({ ...e, measures: structuredClone(e.measures) as RhythmMeasure[] })),
+  ...exercises,
 ];
 export function fixtureAccess(search: string) {
   const params = new URLSearchParams(search);
@@ -93,17 +91,17 @@ export class Activity {
   exerciseGeneration!: GenerationSettings;
   private serial = 0;
   preferences: Preferences;
-  constructor(preferences: Preferences, measures: readonly RhythmMeasure[]) { this.preferences = preferences; this.exercise = this.create(measures); }
-  private create(measures: readonly RhythmMeasure[]): Exercise {
-    derivePassage(measures);
-    this.countingPlan = buildCountingPlan(scoreFromLegacy(measures), this.preferences.counting);
+  constructor(preferences: Preferences, source: RhythmScore) { this.preferences = preferences; this.exercise = this.create(source); }
+  private create(source: RhythmScore): Exercise {
+    const score = createScore(source);
+    this.countingPlan = buildCountingPlan(score, this.preferences.counting);
     this.countingAnswer = initializeAnswer(this.countingPlan);
     this.countingResult = null;
     this.exerciseGeneration = structuredClone(generationIssue(this.preferences.generation) ? defaultGeneration() : this.preferences.generation);
-    return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', measures: immutable(structuredClone(measures)) };
+    return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', score };
   }
   setMode(mode: Mode) { this.preferences.mode = mode; }
-  replace(measures: readonly RhythmMeasure[]) { this.exercise = this.create(measures); return this.exercise; }
+  replace(source: RhythmScore) { this.exercise = this.create(source); return this.exercise; }
   next(random = Math.random) {
     const measures = generateExercise(this.preferences.generation, random);
     this.preferences.preset = 'generated';

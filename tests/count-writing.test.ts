@@ -1,6 +1,7 @@
+import { note } from './score-test-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveMeasure, validateMeasure } from '../src/music/measure.ts';
+import { deriveMeasure, validateMeasure } from './score-test-support.ts';
 import { countWritingFixtures } from '../src/apps/count-writing/fixtures.ts';
 import { toNumber } from '../src/music/fraction.ts';
 import { blankAnswer, evaluate } from './legacy/count-evaluation.ts';
@@ -19,7 +20,7 @@ test('all four fixtures have exact onsets and fill 4/4', () => {
     assert.deepEqual(deriveMeasure(fixture).events.map(e => toNumber(e.start) * 8), positions[i]);
     assert.deepEqual(deriveMeasure(fixture).events.map(e => toNumber(e.duration) * 8), lengths[i]);
   });
-  assert.throws(() => validateMeasure({ ...countWritingFixtures[0]!, events: [['Q']] }));
+  assert.throws(() => validateMeasure({ ...countWritingFixtures[0]!, notes: [note('quarter')] }));
 });
 countWritingFixtures.slice(0, 4).forEach((fixture, i) => {
   test(`${fixture.id}: independent correct and incorrect dimensions; checking does not mutate`, () => {
@@ -93,22 +94,22 @@ test('available positions keep beats/onsets and activate subdivisions locally', 
   const { countGrid } = await import('../src/apps/count-writing/grid.ts');
   const expected = [[0, 2, 4, 6, 7], [0, 1, 2, 3, 4, 6], [0, 2, 4, 5, 6], [0, 2, 4, 6]];
   countWritingFixtures.slice(0, 4).forEach((fixture, i) => assert.deepEqual(countGrid(fixture).availableSlots, expected[i]));
-  assert.deepEqual(countGrid({ meter: [4, 4], events: [['Q'], ['Q'], ['Q'], ['Q']] }).availableSlots, [0, 2, 4, 6]);
+  assert.deepEqual(countGrid({ meter: [4, 4], notes: [note('quarter'), note('quarter'), note('quarter'), note('quarter')] }).availableSlots, [0, 2, 4, 6]);
   // An offbeat quarter still has an onset; it does not subdivide unrelated beats.
-  assert.deepEqual(countGrid({ meter: [4, 4], events: [['E'], ['Q'], ['E'], ['Q'], ['Q']] }).availableSlots, [0, 1, 2, 3, 4, 6]);
+  assert.deepEqual(countGrid({ meter: [4, 4], notes: [note('eighth'), note('quarter'), note('eighth'), note('quarter'), note('quarter')] }).availableSlots, [0, 1, 2, 3, 4, 6]);
 });
 
 test('position policy derives dotted, tuplet and grouped-meter subdivisions exactly', async () => {
   const { availableCountPositions } = await import('../src/apps/count-writing/positions.ts');
   const positions = (source: Parameters<typeof availableCountPositions>[0]) => availableCountPositions(source).map(toNumber);
-  assert.deepEqual(positions({ meter: [4, 4], events: [['E', { dots: 1 }], ['S'], ['Q'], ['H']] }),
+  assert.deepEqual(positions({ meter: [4, 4], notes: [note('eighth', { dots: 1 }), note('16th'), note('quarter'), note('half')] }),
     [0, 1, 2, 3, 4, 8, 12].map(n => n / 16));
-  const triplet = ['E', { tuplet: [3, 2] }] as const;
-  assert.deepEqual(availableCountPositions({ meter: [4, 4], events: [triplet, triplet, triplet, ['Q'], ['H']] }).slice(0, 4),
+  const triplet = note('eighth', { timeModification: [3, 2] });
+  assert.deepEqual(availableCountPositions({ meter: [4, 4], notes: [triplet, triplet, triplet, note('quarter'), note('half')] }).slice(0, 4),
     [[0, 1], [1, 12], [1, 6], [1, 4]]);
-  assert.deepEqual(positions({ meter: [6, 8], events: [['Q', { dots: 1 }], ['Q', { dots: 1 }]] }),
+  assert.deepEqual(positions({ meter: [6, 8], notes: [note('quarter', { dots: 1 }), note('quarter', { dots: 1 })] }),
     Array.from({ length: 6 }, (_, n) => n / 8));
-  assert.deepEqual(positions({ meter: [4, 4], events: [['H', { rest: true }], ['Q'], ['Q']] }),
+  assert.deepEqual(positions({ meter: [4, 4], notes: [note('half', { kind: 'rest' }), note('quarter'), note('quarter')] }),
     [0, 2, 4, 6].map(n => n / 8));
 });
 

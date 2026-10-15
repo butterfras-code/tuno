@@ -1,18 +1,19 @@
+import { note } from './score-test-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { RhythmMeasure } from '../src/music/measure.ts';
-import { derivePassage } from '../src/music/measure.ts';
+import type { RhythmMeasure } from './score-test-support.ts';
+import { derivePassage } from './score-test-support.ts';
 import { compare, divide, fraction } from '../src/music/fraction.ts';
-import { defaultGeneration, generateExercise, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
 import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import type { CountAnswer, Span } from './legacy/count-evaluation.ts';
 import { passageGrid, passageDurationEnd, spanPieces } from './legacy/count-passage.ts';
 import { tieFixtures } from '../src/apps/count-writing/fixtures.ts';
-const bar = (events: RhythmMeasure['events']): RhythmMeasure => ({ meter: [4, 4], events });
-const fixture = (id: string) => tieFixtures.find(f => f.id === id)!.measures;
+const bar = (notes: RhythmMeasure['notes']): RhythmMeasure => ({ meter: [4, 4], notes });
+const fixture = (id: string) => tieFixtures.find(f => f.id === id)!.score.measures;
 const answer = (symbols: CountAnswer['symbols'], rests: Span[] = []): CountAnswer => ({ symbols, spans: [], rests });
 const beats: CountAnswer['symbols'] = ['1', '', '2', '', '3', '', '4', ''];
-const correct = (source: RhythmMeasure[], answers: CountAnswer[], spans: Span[]) => {
+const correct = (source: readonly RhythmMeasure[], answers: CountAnswer[], spans: Span[]) => {
   const before = structuredClone({ source, answers, spans });
   const result = evaluatePassage(source, answers, 'required', spans);
   assert.ok(result.every(r => Object.values(r).every(d => d.verdict === 'correct')), JSON.stringify(result));
@@ -29,8 +30,8 @@ test('review fixtures: within beat, across beat, barline, three segments, offbea
   correct(fixture('tie-rests'), [answer(beats, [{ start: 0, end: 0 }, { start: 4, end: 4 }])], [{ start: 2, end: 3 }]);
 });
 test('single and tied sounding durations share attack/beat/dotted-count rules, independently of written onsets', () => {
-  const single = [bar([['Q', { dots: 1 }], ['E'], ['H']])];
-  const tied = [bar([['Q', { tieNext: true }], ['E'], ['E'], ['H']])];
+  const single = [bar([note('quarter', { dots: 1 }), note('eighth'), note('half')])];
+  const tied = [bar([note('quarter', { tieNext: true }), note('eighth'), note('eighth'), note('half')])];
   const a = answer(['1', '&', '2', '&', '3', '', '4', '']);
   for (const convention of ['required', 'optional', 'review'] as const) {
     for (const internal of ['', '&'] as const) {
@@ -40,7 +41,7 @@ test('single and tied sounding durations share attack/beat/dotted-count rules, i
   }
   assert.deepEqual(derivePassage(single).attacks.map(a => [a.start, a.duration]), derivePassage(tied).attacks.map(a => [a.start, a.duration]));
   assert.equal(passageGrid(tied).slots[1]!.available, true, 'sounding dotted quarter exposes internal offbeat even when written quarter hides it');
-  const half = [bar([['H'], ['H']])];
+  const half = [bar([note('half'), note('half')])];
   assert.deepEqual(evaluatePassage(half, [answer(beats)], 'required', [{ start: 0, end: 3 }, { start: 4, end: 7 }]).map(r => r.counts), evaluatePassage(fixture('tie-chain'), [answer(beats)], 'required', [{ start: 0, end: 3 }, { start: 4, end: 7 }]).map(r => r.counts));
 });
 test('feedback distinguishes missing attack, continuation count and extended line without modifying answers', () => {
@@ -70,11 +71,11 @@ test('visual pieces and endpoint selection retain continuous duration at barline
 });
 test('invalid chains and exercise boundaries are rejected before grading', () => {
   for (const source of [
-    [bar([['H'], ['H', { tieNext: true }]])],
-    [bar([['Q', { rest: true, tieNext: true }], ['Q'], ['H']])],
-    [bar([['Q', { tieNext: true }], ['Q', { rest: true }], ['H']])],
-    [bar([['H'], ['H', { tieNext: true }]]), bar([['Q', { rest: true }], ['Q'], ['H']])],
-    [bar([['Q', { tieNext: true }], ['Q']])],
+    [bar([note('half'), note('half', { tieNext: true })])],
+    [bar([note('quarter', { kind: 'rest', tieNext: true }), note('quarter'), note('half')])],
+    [bar([note('quarter', { tieNext: true }), note('quarter', { kind: 'rest' }), note('half')])],
+    [bar([note('half'), note('half', { tieNext: true })]), bar([note('quarter', { kind: 'rest' }), note('quarter'), note('half')])],
+    [bar([note('quarter', { tieNext: true }), note('quarter')])],
   ]) assert.throws(() => evaluatePassage(source, source.map(blankAnswer)), /tie|fill/);
 });
 function seeded(seed: number) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; }
@@ -87,9 +88,9 @@ test('bounded seeded generation respects independent pattern controls, written i
     if (generationIssue(settings)) { assert.throws(() => generateExercise(settings, seeded(53))); continue; }
     const source = generateExercise(settings, seeded(mask + measures));
     assert.deepEqual(source, generateExercise(settings, seeded(mask + measures)));
-    source.forEach(m => m.events.forEach(([value, modifiers]) => {
-      const { tieNext: _, ...written } = modifiers ?? {};
-      assert.ok(selected.some(i => i.event[0] === value && JSON.stringify(i.event[1] ?? {}) === JSON.stringify(written)));
+    source.forEach(m => m.notes.forEach(event => {
+      const { id: _, tieNext: _tie, ...written } = event;
+      assert.ok(selected.some(i => { const {id: _id, tieNext: _t, ...expected} = i.event; return JSON.stringify(expected) === JSON.stringify(written); }));
     }));
     const derived = derivePassage(source);
     assert.ok(derived.measures.every(m => compare(m.length, fraction(1)) === 0));
@@ -111,3 +112,5 @@ test('bounded seeded generation respects independent pattern controls, written i
   assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: true }), null);
   assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: false }), null);
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

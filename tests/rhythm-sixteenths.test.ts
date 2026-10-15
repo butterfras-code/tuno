@@ -1,3 +1,4 @@
+import { note } from './score-test-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { countGrid, durationEndSlot, slotX } from '../src/apps/count-writing/grid.ts';
@@ -6,12 +7,12 @@ import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import type { CountSymbol } from './legacy/count-evaluation.ts';
 import { countKey, displayCount, translateCount, syllableBuffer } from '../src/apps/count-writing/input.ts';
 import { sixteenthFixtures } from '../src/apps/rhythm-walk/shared/fixtures.ts';
-import { generateExercise, generationIssue, defaultGeneration, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { generateExercise as generateScore, generationIssue, defaultGeneration, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { meters, meterPolicy, syncopated } from '../src/apps/rhythm-walk/shared/meter.ts';
-import { derivePassage, duration } from '../src/music/measure.ts';
+import { derivePassage, duration } from './score-test-support.ts';
 import { compare, fraction } from '../src/music/fraction.ts';
 import { readPreferences } from '../src/apps/rhythm-walk/activity.ts';
-import { planPassage } from '../src/apps/rhythm-walk/timing.ts';
+import { planPassage } from './score-test-support.ts';
 
 // Hand-derived onset expectations, independent of the generated expected symbols.
 const expected: Record<string, [number[], CountSymbol[], CountSymbol[]]> = {
@@ -23,22 +24,22 @@ const expected: Record<string, [number[], CountSymbol[], CountSymbol[]]> = {
 for (const [id, [positions, numbers, syllables]] of Object.entries(expected)) test(`independent onset answer: ${id}`, () => {
   const fixture = sixteenthFixtures.find(f => f.id === id)!;
   for (const [system, values] of [['numbers', numbers], ['syllables', syllables]] as const) {
-    const answer = blankAnswer(fixture.measures[0]!);
+    const answer = blankAnswer(fixture.score.measures[0]!);
     positions.forEach((p, i) => { answer.symbols[p] = values[i]!; });
     if (id === 'four-sixteenths') answer.spans = [{ start: 8, end: 15 }];
-    const results = evaluatePassage(fixture.measures, [answer], 'optional', undefined, system);
+    const results = evaluatePassage(fixture.score.measures, [answer], 'optional', undefined, system);
     assert.equal(results[0]!.counts.verdict, 'correct');
     assert.equal(results[0]!.spans.verdict, 'correct');
     answer.symbols[3] = system === 'numbers' ? 'e' : 'te';
-    assert.equal(evaluatePassage(fixture.measures, [answer], 'optional', undefined, system)[0]!.counts.verdict, 'revise');
+    assert.equal(evaluatePassage(fixture.score.measures, [answer], 'optional', undefined, system)[0]!.counts.verdict, 'revise');
   }
 });
 test('optional subdivisions, hidden endpoints and written rest geometry use the finer local grid', () => {
-  const f = sixteenthFixtures[0]!.measures[0]!;
+  const f = sixteenthFixtures[0]!.score.measures[0]!;
   const grid = countGrid(f);
   assert.deepEqual(grid.availableSlots, [0,1,2,3,4,8,12]);
   assert.equal(durationEndSlot(grid, 12), 15);
-  const dottedSource = sixteenthFixtures.find(f => f.id === 'dotted-eighth-sixteenth')!.measures[0]!;
+  const dottedSource = sixteenthFixtures.find(f => f.id === 'dotted-eighth-sixteenth')!.score.measures[0]!;
   const dotted = countGrid(dottedSource);
   assert.equal(dotted.slots[1]!.available, true);
   assert.equal(dotted.slots[2]!.available, true);
@@ -47,7 +48,7 @@ test('optional subdivisions, hidden endpoints and written rest geometry use the 
   assert.equal(evaluatePassage([dottedSource], [answer])[0]!.counts.verdict, 'correct');
   answer.symbols[1] = 'e';
   assert.equal(evaluatePassage([dottedSource], [answer])[0]!.counts.verdict, 'provisional');
-  const rests = sixteenthFixtures.find(f => f.id === 'sixteenth-rests')!.measures;
+  const rests = sixteenthFixtures.find(f => f.id === 'sixteenth-rests')!.score.measures;
   const rg = countGrid(rests[0]!); const ra = blankAnswer(rests[0]!);
   ra.symbols = rg.slots.map(s => s.symbol);
   ra.rests = [{start:0,end:0},{start:5,end:5},{start:10,end:10},{start:15,end:15}];
@@ -56,10 +57,10 @@ test('optional subdivisions, hidden endpoints and written rest geometry use the 
   assert.equal(evaluatePassage(rests,[ra])[0]!.rests.verdict,'revise');
 });
 test('switching never turns a wrong token correct; duplicate ta is resolved only at e/a coordinates', () => {
-  const grid = countGrid(sixteenthFixtures[0]!.measures[0]!);
+  const grid = countGrid(sixteenthFixtures[0]!.score.measures[0]!);
   for (const slot of grid.slots) for (const token of ['1','2','e','&','a',''] as const) {
     const translated = translateCount(token, slot.position, 'numbers', 'syllables');
-    const syllable = countGrid(sixteenthFixtures[0]!.measures[0]!, 'syllables').slots[grid.slots.indexOf(slot)]!.symbol;
+    const syllable = countGrid(sixteenthFixtures[0]!.score.measures[0]!, 'syllables').slots[grid.slots.indexOf(slot)]!.symbol;
     if (token !== slot.symbol && translated) assert.notEqual(translated, syllable);
   }
   assert.equal(translateCount('e',fraction(3,16),'numbers','syllables'),'');
@@ -98,20 +99,20 @@ test('new ingredient subsets preserve exact totals, reachability, selected spell
     assert.deepEqual(settings,before); assert.equal(passage.length,measures);
     passage.forEach((bar,i)=>{
       assert.equal(compare(derived.measures[i]!.length,policy.length),0);
-      bar.events.forEach(([v,m])=>{const {tieNext:_,...mods}=m??{}; assert.ok(ingredients.some(ing=>selected.includes(ing.id as typeof selected[number]) && ing.event[0]===v && JSON.stringify(ing.event[1]??{})===JSON.stringify(mods))); if(meter==='6/8') assert.ok(v!=='S' && !(v==='E'&&m?.dots)); });
+      bar.notes.forEach(event=>{const {id:_,tieNext:_tie,...mods}=event; assert.ok(ingredients.some(ing=>{const {id:_id,tieNext:_t,...expected}=ing.event;return selected.includes(ing.id as typeof selected[number]) && JSON.stringify(expected)===JSON.stringify(mods);})); if(meter==='6/8') assert.ok(event.type!=='16th' && !(event.type==='eighth'&&event.dots)); });
     });
     if(!syncopation) assert.ok(derived.attacks.every(a=>!syncopated(a.start,a.duration,policy.pulse)));
   }
 });
 test('ties retain exact sixteenth attacks and releases at barline and layout boundaries', () => {
   const fixture=sixteenthFixtures.find(f=>f.id==='sixteenth-bar-tie')!;
-  const grid=passageGrid(fixture.measures); assert.deepEqual(grid.offsets,[0,8]);
+  const grid=passageGrid(fixture.score.measures); assert.deepEqual(grid.offsets,[0,8]);
   assert.deepEqual(grid.sustained.map(s=>[s.start,s.end]),[[7,8]]);
   assert.equal(passageDurationEnd(grid,7),7); assert.equal(passageDurationEnd(grid,8),8);
-  const plan=planPassage(fixture.measures,120);
+  const plan=planPassage(fixture.score.measures,120);
   assert.equal(plan.notes.length,7);
   assert.equal(plan.notes[3]!.start, .875); assert.equal(plan.notes[3]!.end,1.125);
-  assert.equal(duration(['E',{dots:1}])[0],3);
+  assert.equal(duration(note('eighth', {dots:1}))[0],3);
   assert.equal(slotX(3,16,true),27);
 });
 
@@ -126,7 +127,7 @@ test('Tap and Hold retain exact sixteenth/dotted timing, calibrated evidence and
     assert.equal(result.acceptable,true,fixture.id); assert.equal(result.matches.length,c.plan.notes.length);
     const timelines=timingTimelines(record);
     timelines.forEach((timeline,bar)=>{
-      const grid=countGrid(fixture.measures[bar]!);
+      const grid=countGrid(fixture.score.measures[bar]!);
       const starts=c.plan.notes.filter(n=>n.sources[0]!.measure===bar).map(n=>grid.events[n.sources[0]!.event]!.startSlot);
       assert.deepEqual(timeline.expected.map(n=>n.x),starts.map(p=>slotX(p,grid.slots.length,grid.fine)));
       timeline.received.forEach((hit,i)=>assert.ok(Math.abs(hit.x-timeline.expected[i]!.x)<1e-9));
@@ -137,7 +138,7 @@ test('Tap and Hold retain exact sixteenth/dotted timing, calibrated evidence and
   }
 });
 test('mixed fine/coarse bars and dotted-quarter chains retain old convention without extra e/a requirements', () => {
-  const measures=[{meter:[4,4] as const,events:[['S'],['S'],['E'],['Q',{dots:1}],['E'],['Q']] as const}, {meter:[4,4] as const,events:[['H'],['H']] as const}];
+  const measures=[{meter:[4,4] as const,notes:[note('16th'),note('16th'),note('eighth'),note('quarter', {dots:1}),note('eighth'),note('quarter')] as const}, {meter:[4,4] as const,notes:[note('half'),note('half')] as const}];
   const grid=passageGrid(measures);
   assert.deepEqual(grid.offsets,[0,16]); assert.equal(grid.slots.length,24);
   assert.deepEqual(grid.grids[0]!.slots.flatMap((s,i)=>s.dottedInternal?[i]:[]),[6]);
@@ -145,3 +146,5 @@ test('mixed fine/coarse bars and dotted-quarter chains retain old convention wit
   answers.forEach((a,i)=>{a.symbols=grid.grids[i]!.slots.map(s=>s.onCount||s.onset||s.dottedInternal?s.symbol:'');});
   assert.ok(evaluatePassage(measures,answers,'required').every(r=>r.counts.verdict==='correct'));
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

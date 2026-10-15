@@ -104,7 +104,7 @@ export function buildCountingPlan(input: RhythmScore, preferences: CountingPrefe
       const countId: CountId = `count:${symbol.measure}:${localPosition[0]}/${localPosition[1]}`;
       const beat = divide(localPosition, fraction(1, compound ? 8 : 4));
       return { id: countId, position, localPosition, measure: symbol.measure, symbolId: symbol.source.id, unitId: id, expectedToken,
-        label: `Measure ${symbol.measure + 1}, ${compound ? 'count' : 'beat'} ${Math.floor(beat[0] / beat[1]) + 1}, offset ${localPosition.join('/')} whole notes (${expectedToken})`, reasons: [...reasons].sort() };
+        label: `Measure ${symbol.measure + 1}, ${compound ? 'count' : 'beat'} ${Math.floor(beat[0] / beat[1]) + 1}, offset ${localPosition.join('/')} whole notes`, reasons: [...reasons].sort() };
     });
     counts.push(...unitCounts);
     units.push({ id, symbolIds: members.map(s => s.source.id), start: first.start, end: last.end, duration, counts: unitCounts, expectedRest: rest, restApplicable: prefs.includeRests,
