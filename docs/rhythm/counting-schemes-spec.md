@@ -163,7 +163,7 @@ Focus, selected count, popover state, incomplete typed syllables, hover state, a
 3. Add the sounding attack/rest onset for every included unit.
 4. If long-note subdivision is on and a unit lasts at least two pulses, add attack + k × pulse for positive integers k while the position is strictly before the unit end.
 5. If dotted subdivision is on, inspect every written dotted member eligible under the meter-aware policy (in 6/8, dotted quarters qualify and dotted halves do not). Add positions starting at that member's start, at the meter-appropriate step, strictly before that member's end. This may introduce a count at a tied member's start even though ties alone do not.
-6. Union positions using exact fraction equality. Map each to its source event, unit, and meter-specific token. Reset labels at each measure, not at each note.
+6. Within each eligible written dotted member, dotted subdivision takes precedence: discard long-note-only pulse positions that are absent from its dotted pattern. Outside those members, keep long-note positions. Merge remaining positions using exact fraction equality. Map each to its source event, unit, and meter-specific token. Reset labels at each measure, not at each note.
 7. Derive duration-indication applicability from the unit's final count set and the captured presentation preferences.
 
 Simple-meter dotted step is half the undotted written value for supported singly dotted events, incorporating supported time modification only when the capability contract permits it. In 6/8, apply the one-eighth dotted step to written dotted quarters only; written dotted halves are handled solely by the long-note rule. Apply the same distinction to included rests where the repertoire supports them. Do not treat generated pulse divisions as new written dotted events. Unsupported combinations must not be approximated.
@@ -293,7 +293,7 @@ Preferences require a versioned migration. Preserve independently meaningful voc
 
 Required tests:
 
-- Rule union is order-independent and duplicate-free; exposed positions equal required positions.
+- Dotted-member precedence is order-independent and duplicate-free; exposed positions equal required positions.
 - Dotted written-member behavior differs deliberately from equivalent undotted tied spelling.
 - Offbeat long-note steps are attack-relative; ties across barlines retain one unit and reset labels.
 - All compound examples above, including independent dotted-only behavior.
@@ -405,3 +405,10 @@ Readable-URL follow-up: at the owner’s request, replaced encoded payloads enti
 This section supersedes the historical source-owner and next-slice notes above. Generation and fixtures now construct typed `RhythmScore` values. Activity, CountingPlan, notation and active performance capture share one validated immutable score with stable written IDs. `measure.ts` now provides typed authoring helpers and derived beat/layout views; `legacy-score.ts` is deleted. Imported IDs survive capture; generated IDs are assigned once at construction. Completed evidence carries `exercise.score`, not `exercise.measures`. No reverse adapter or synchronized musical mirror remains.
 
 Empty count input names describe measure, counting beat and exact offset only; they do not reveal the expected vocabulary token. Entered answers and unit flags continue to be announced by the editor. Scoring, hold thresholds, calibration and rewards are unchanged. See [source migration validation](source-migration-validation.md) for evidence and outstanding physical acceptance.
+
+
+## Count presentation refinement (2026-10-15)
+
+Dotted subdivision owns the internal count pattern of each eligible written dotted member when both subdivision options are enabled. Long-note subdivision still uses complete sounding length and attack-relative pulses elsewhere. For a dotted eighth tied to a dotted quarter starting on beat 1, the tied unit reads `1 e & a e a`; unrelated `2` and `3` pulse counts are omitted. Turning dotted subdivision off restores `1 2 3` under the long-note rule. This supersedes unconditional rule-union language in historical implementation notes above.
+
+Duration lines and rest enclosures terminate at the final depicted count, including across bars, instead of extending to the end of the musical sound/rest. Exact musical durations and Tap + Hold scoring are unaffected. Count-entry palette keys use a cream fill, contrasting outline and darker cream shadow with visible keyboard focus and pressed states.

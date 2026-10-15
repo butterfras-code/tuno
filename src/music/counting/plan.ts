@@ -84,10 +84,6 @@ export function buildCountingPlan(input: RhythmScore, preferences: CountingPrefe
     };
     const rest = first.source.kind === 'rest';
     include(first.start, rest ? 'rest-onset' : 'attack');
-    if (prefs.longNotes && compare(duration, multiply(pulse, fraction(2))) >= 0) {
-      members.forEach(s => marked.add(s.source.id));
-      for (let p = add(first.start, pulse); compare(p, last.end) < 0; p = add(p, pulse)) include(p, 'long-note');
-    }
     if (prefs.dotted) for (const member of members) {
       const n = member.source, compound = source.measures[member.measure]!.meter[1] === 8;
       if (n.dots !== 1 || (compound && n.type !== 'quarter')) continue;
@@ -95,6 +91,15 @@ export function buildCountingPlan(input: RhythmScore, preferences: CountingPrefe
       const step = fraction(1, writtenDenominators[n.type] * 2);
       for (let p = member.start; compare(p, member.end) < 0; p = add(p, step)) include(p, 'written-dot');
     }
+    if (prefs.longNotes && compare(duration, multiply(pulse, fraction(2))) >= 0) {
+      for (let p = add(first.start, pulse); compare(p, last.end) < 0; p = add(p, pulse)) {
+        const member = members.find(s => compare(p, s.start) >= 0 && compare(p, s.end) < 0)!;
+        // A depicted dotted subdivision owns its member's internal counts.
+        // Retain overlapping reasons, but do not insert a competing pulse grid.
+        if (!marked.has(member.source.id) || positions.has(p.join('/'))) include(p, 'long-note');
+      }
+    }
+    if (prefs.longNotes && compare(duration, multiply(pulse, fraction(2))) >= 0) members.forEach(s => marked.add(s.source.id));
     const unitCounts: CountPosition[] = [...positions.values()].sort((a, b) => compare(a.position, b.position)).map(({ position, reasons }) => {
       const symbol = members.find(s => compare(position, s.start) >= 0 && compare(position, s.end) < 0)!;
       const localPosition = add(symbol.localStart, subtract(position, symbol.start));

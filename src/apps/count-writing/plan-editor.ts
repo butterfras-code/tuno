@@ -1,6 +1,6 @@
 import { button, el } from '../../shared/ui/components.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
-import { compare, divide, fraction, subtract } from '../../music/fraction.ts';
+import { compare, divide, subtract } from '../../music/fraction.ts';
 import type { Fraction } from '../../music/fraction.ts';
 import type { CountingPlan, CountId } from '../../music/counting/plan.ts';
 import { enterToken, toggleUnit } from '../../music/counting/answer.ts';
@@ -33,8 +33,6 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   // Temporary engraving geometry only. Never use the lattice for answers or rule interpretation.
   const grid = countGrid(source);
   const x = (position: Fraction) => { const slot = divide(position, grid.step); return slotX(slot[0] / slot[1], grid.slots.length, grid.fine); };
-  const barEnd = fraction(source.meter[0], source.meter[1]);
-  const endX = (position: Fraction) => compare(position, barEnd) === 0 ? 98 : x(position) - 2;
   const card = el('section', 'passage-measure plan-measure'); card.dataset.measure = String(measureIndex + 1);
   card.classList.toggle('fine-grid', grid.fine); card.setAttribute('aria-label', `Editable measure ${measureIndex + 1}`);
   const heading = el('h2', 'measure-heading', String(measureIndex + 1)); heading.setAttribute('aria-label', `Measure ${measureIndex + 1}`);
@@ -150,20 +148,23 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     });
     marks.replaceChildren();
     unitPieces(plan, measureIndex).forEach(piece => {
+      if (piece.unit.counts.at(-1)!.measure < measureIndex) return;
+      const continuesAfter = piece.unit.counts.at(-1)!.measure > measureIndex;
       const state = answer.units[piece.unit.id]!;
-      const left = piece.continuesBefore ? 2 : x(piece.start), right = endX(piece.end);
+      const members = counts.filter(c => c.unitId === piece.unit.id);
+      const first = members[0], last = members.at(-1);
+      const left = piece.continuesBefore ? 2 : x(first?.localPosition ?? piece.start);
+      const right = continuesAfter ? 98 : x(last?.localPosition ?? piece.start);
       if (state.durationIndicated && prefs.showDurationLine) {
         const line = el('div', 'inferred-duration'); line.dataset.unitId = piece.unit.id;
-        line.dataset.continuesBefore = String(piece.continuesBefore); line.dataset.continuesAfter = String(piece.continuesAfter);
+        line.dataset.continuesBefore = String(piece.continuesBefore); line.dataset.continuesAfter = String(continuesAfter);
         line.style.left = `${left}%`; line.style.width = `${Math.max(1, right - left)}%`; marks.append(line);
       }
       if (state.restMarked && prefs.restAppearance === 'parentheses') {
         const rest = el('div', 'inferred-rest'); rest.dataset.unitId = piece.unit.id;
-        const members = counts.filter(c => c.unitId === piece.unit.id);
-        const first = members[0], last = members.at(-1);
         rest.style.left = piece.continuesBefore || !first ? '0%' : `calc(${x(first.localPosition)}% - var(--rest-extent, 40px))`;
-        rest.style.right = piece.continuesAfter || !last ? '0%' : `calc(${100 - x(last.localPosition)}% - var(--rest-extent, 40px))`;
-        rest.append(el('span', '', piece.continuesBefore ? '⋯' : '('), el('span', '', piece.continuesAfter ? '⋯' : ')')); marks.append(rest);
+        rest.style.right = continuesAfter || !last ? '0%' : `calc(${100 - x(last.localPosition)}% - var(--rest-extent, 40px))`;
+        rest.append(el('span', '', piece.continuesBefore ? '⋯' : '('), el('span', '', continuesAfter ? '⋯' : ')')); marks.append(rest);
       }
     });
     feedback.replaceChildren();

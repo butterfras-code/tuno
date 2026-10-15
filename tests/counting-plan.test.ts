@@ -176,3 +176,15 @@ test('overlapping rule reasons share a single exact count and do not infer pulse
   const compound = plan([bar([note('half', { dots: 1 })], [6, 8])], { dotted: true });
   assert.deepEqual(compound.counts.map(c => c.reasons), [['attack'], ['long-note']]);
 });
+
+
+test('dotted tied members do not acquire unrelated long-note pulse counts', () => {
+  const music = [bar([note('eighth', { dots: 1, tieNext: true }), dotQ,
+    note('eighth', { kind: 'rest' }), note('16th')], [3, 4])];
+  assert.equal(labels(plan(music, { longNotes: true, dotted: true })), '1 e & a e a');
+  assert.equal(labels(plan(music, { longNotes: false, dotted: true })), '1 e & a e a');
+  assert.equal(labels(plan(music, { longNotes: true, dotted: false })), '1 2 3');
+  const p = plan(music, { longNotes: true, dotted: true });
+  assert.equal(p.counts.map(c => c.expectedToken).join(' '), '1 e & a e a e a');
+  assert.ok(!p.counts.some(c => c.expectedToken === '2' || c.expectedToken === '3'));
+});

@@ -358,3 +358,17 @@ main.rhythm-app {
   .plan-answer[data-placement="beside"] .inferred-duration { top: 46px; }
   .rhythm-app .count-palette-host { min-height: 0; }
 }
+
+/* Count vocabulary is a set of pressable keys, not plain text. */
+.rhythm-app .plan-token-palette button.control {
+  color: #493f32;
+  background: #fff8e7;
+  border: 1px solid #b5a183;
+  border-radius: 9px;
+  box-shadow: 0 3px 0 #c7b596;
+  margin-bottom: 3px;
+  touch-action: manipulation;
+}
+.rhythm-app .plan-token-palette button.control:hover { background: #f5e8cc; border-color: #897252; }
+.rhythm-app .plan-token-palette button.control:active { transform: translateY(2px); box-shadow: 0 1px 0 #c7b596; }
+.rhythm-app .plan-token-palette button.control:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
