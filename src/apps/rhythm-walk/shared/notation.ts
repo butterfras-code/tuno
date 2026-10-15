@@ -75,7 +75,7 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
   if (passage.first) svg.append(...timeSignatureDigits(measure.meter, 46, 94, 28));
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
-    const group = node('g', { 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
+    const group = node('g', { 'data-layout-x': nx, 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
     group.append(...writtenSymbol(event.written, nx).childNodes);
     if (event.kind === 'note') {
       if (short(event)) {
@@ -106,6 +106,34 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
     text.textContent = '3'; svg.append(text);
   }
   return svg;
+}
+
+/** Change horizontal spacing without enlarging musical glyphs. Keep the same DOM
+ * nodes so focus, entry handlers and performance feedback survive a resize. */
+export function responsiveNotation(svg: SVGElement) {
+  const top = [...svg.children].filter(e => e.tagName !== 'g').map(element => ({
+    element, coordinates: ['x', 'x1', 'x2'].flatMap(name => element.hasAttribute(name) ? [[name, Number(element.getAttribute(name))] as const] : []),
+  }));
+  const groups = [...svg.querySelectorAll<SVGGElement>('g[data-event]')].map(element => {
+    // All glyph geometry is authored around the note's original horizontal anchor.
+    const head = element.querySelector('ellipse');
+    const start = head ? Number(head.getAttribute('cx')) : null;
+    return { element, start, beams: [...element.querySelectorAll('[data-beam="true"], [data-beam="secondary"]')].map(beam => ({ beam, end: Number(beam.getAttribute('x2')) })) };
+  });
+  // Rest paths have no ellipse; their anchor is recorded by the renderer below.
+  return (width: number, scale = .65) => {
+    const ratio = width / scale / 800;
+    svg.setAttribute('viewBox', `0 0 ${width / scale} 150`);
+    svg.style.height = `${150 * scale}px`;
+    for (const { element, coordinates } of top) for (const [name, value] of coordinates) {
+      element.setAttribute(name, String(value * ratio));
+    }
+    for (const { element, start, beams } of groups) {
+      const anchor = start ?? Number(element.dataset.layoutX);
+      element.setAttribute('transform', `translate(${anchor * (ratio - 1)} 0)`);
+      for (const { beam, end } of beams) beam.setAttribute('x2', String(end + (end - 10 - anchor) * (ratio - 1)));
+    }
+  };
 }
 
 /** Engrave ties in screen geometry so adjacent bars share one uninterrupted curve. */

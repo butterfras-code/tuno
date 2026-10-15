@@ -209,6 +209,7 @@ function loadExercise(measures: RhythmMeasure[], focus: boolean, replace = true)
   currentMeasures = activity.exercise.measures as RhythmMeasure[];
   measures = currentMeasures;
   passageStrip.dataset.measures = String(measures.length);
+  passageStrip.style.setProperty('--measure-count', String(measures.length));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
   editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
   countPalette.onkeydown = null;

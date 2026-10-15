@@ -1,7 +1,7 @@
 /* App shell follows tUno and tuNotes; notation keeps the count editor's styles. */
 html { scrollbar-gutter: stable; }
 main.rhythm-app {
-  max-width: calc(var(--content-width) + 48px);
+  max-width: none;
   padding: 24px 24px 12px;
 }
 .rhythm-app .app-header { justify-content: flex-start; flex-wrap: wrap; gap: 16px 28px; margin-bottom: 20px; }
@@ -321,10 +321,10 @@ main.rhythm-app {
 }
 .passage:not(.counts-hidden) .plan-measure { min-width: 0; width: 100%; }
 .passage .plan-measure .measure { min-width: 280px; }
-.passage .plan-measure .count-slot { width: 44px; min-width: 44px; touch-action: pan-x pan-y; top: 28px; font-size: 25px; }
+.passage .plan-measure .count-slot { width: var(--count-target-width, 44px); min-width: 0; padding-inline: 0; touch-action: pan-x pan-y; top: 28px; font-size: var(--count-font-size, 25px); }
 .passage .plan-measure .counts { height: 100px; }
-.passage .plan-measure .answer-area[data-appearance="raised"] .count-slot.sustained { top: 8px; font-size: 19px; }
-.passage .plan-measure .answer-area[data-appearance="lowered"] .count-slot.sustained { top: 48px; font-size: 19px; }
+.passage .plan-measure .answer-area[data-appearance="raised"] .count-slot.sustained { top: 8px; font-size: calc(var(--count-font-size, 25px) * .8); }
+.passage .plan-measure .answer-area[data-appearance="lowered"] .count-slot.sustained { top: 48px; font-size: calc(var(--count-font-size, 25px) * .8); }
 .passage .plan-measure .answer-area[data-appearance="unchanged"] .count-slot.sustained { top: 28px; }
 .plan-measure .score-actions { position: static; display: flex; justify-content: space-between; pointer-events: auto; padding: 6px; }
 .rhythm-app .plan-measure .score-actions > .control, .rhythm-app .plan-measure .write-actions { transform: none; }
@@ -332,8 +332,29 @@ main.rhythm-app {
 /* Performance keeps its compact score; writing restores disjoint count targets. */
 .counts-hidden .plan-measure .measure { min-width: 0 !important; }
 
-.inferred-rest > span { flex: 0 0 16px; font-size: 40px; text-align: center; }
+.inferred-rest > span { flex: 0 0 var(--rest-bracket-width, 16px); font-size: 32px; text-align: center; }
 
 .counting-share { grid-column: 1 / -1; min-width: 0; }
 .counting-share button { margin: 8px 8px 0 0; }
 .counting-share input { width: 100%; min-width: 0; box-sizing: border-box; }
+
+/* Desktop teaching surface: all exercise bars share one system. Width changes
+   spacing, never the musical glyph size. Narrow layouts retain touch spacing. */
+@media (min-width: 1000px) {
+  .passage .passage-strip,
+  .counts-hidden .passage-strip:has(.fine-grid),
+  .passage:not(.counts-hidden) .passage-strip,
+  .passage:not(.counts-hidden) .passage-strip.wrapped {
+    grid-template-columns: repeat(var(--measure-count, 1), minmax(0, 1fr));
+  }
+  .passage .plan-measure .measure { min-width: 0; }
+  .passage .plan-measure .count-slot { height: 36px; min-height: 36px; }
+  .passage .plan-measure .counts { height: 84px; }
+  .plan-answer { min-height: 132px; }
+  .inferred-rest { height: 84px; z-index: 3; }
+  .inferred-rest > span { font-size: calc(var(--count-font-size, 22px) * 1.1); }
+  .passage .plan-measure .count-slot { background: transparent; }
+  .passage .plan-measure .count-slot[aria-pressed="true"] { background: var(--color-tint); }
+  .plan-answer[data-placement="beside"] .inferred-duration { top: 46px; }
+  .rhythm-app .count-palette-host { min-height: 0; }
+}

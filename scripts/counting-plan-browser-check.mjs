@@ -15,7 +15,7 @@ try {
   const context = await browser.newContext({ hasTouch: true });
   const page = await context.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  for (const width of [320, 390, 768, 1024, 1280, 1920]) {
+  for (const width of [320, 390, 768, 1024, 1280, 1366, 1440, 1536, 1920, 2560]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${url}?fixture=half`);
     await page.evaluate(() => document.fonts.ready);

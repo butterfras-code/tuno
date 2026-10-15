@@ -6,7 +6,7 @@ import type { CountingPlan, CountId } from '../../music/counting/plan.ts';
 import { enterToken, toggleUnit } from '../../music/counting/answer.ts';
 import type { CountingAnswer, CountingEvaluation, UnitAnswer } from '../../music/counting/answer.ts';
 import type { CountToken } from '../../music/counting/vocabulary.ts';
-import { renderMeasure } from '../rhythm-walk/shared/notation.ts';
+import { renderMeasure, responsiveNotation } from '../rhythm-walk/shared/notation.ts';
 import { countGrid, slotX } from './grid.ts';
 import { paletteSymbols } from './palette.ts';
 import { countKey, displayCount, syllableBuffer } from './input.ts';
@@ -161,8 +161,8 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
         const rest = el('div', 'inferred-rest'); rest.dataset.unitId = piece.unit.id;
         const members = counts.filter(c => c.unitId === piece.unit.id);
         const first = members[0], last = members.at(-1);
-        rest.style.left = piece.continuesBefore || !first ? '0%' : `calc(${x(first.localPosition)}% - ${restExtent}px)`;
-        rest.style.right = piece.continuesAfter || !last ? '0%' : `calc(${100 - x(last.localPosition)}% - ${restExtent}px)`;
+        rest.style.left = piece.continuesBefore || !first ? '0%' : `calc(${x(first.localPosition)}% - var(--rest-extent, 40px))`;
+        rest.style.right = piece.continuesAfter || !last ? '0%' : `calc(${100 - x(last.localPosition)}% - var(--rest-extent, 40px))`;
         rest.append(el('span', '', piece.continuesBefore ? '⋯' : '('), el('span', '', piece.continuesAfter ? '⋯' : ')')); marks.append(rest);
       }
     });
@@ -178,6 +178,23 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     }
     palette();
   }
+  const layoutNotation = responsiveNotation(notation);
+  const gaps = counts.slice(1).map((c, i) => (x(c.localPosition) - x(counts[i]!.localPosition)) / 100);
+  const closest = Math.min(1, ...gaps);
+  const layoutObserver = new ResizeObserver(() => {
+    const width = measure.getBoundingClientRect().width;
+    if (!width) return;
+    const desktop = window.matchMedia('(min-width: 1000px)').matches;
+    // Compact mouse/keyboard targets share the available subdivision spacing.
+    // Touch layouts retain 44px targets and passage-level scrolling.
+    const target = desktop ? Math.min(36, width * closest - 1) : 44;
+    card.style.setProperty('--count-target-width', `${target}px`);
+    card.style.setProperty('--count-font-size', `${Math.min(22, Math.max(10, target * .65))}px`);
+    card.style.setProperty('--rest-extent', `${desktop ? target / 2 : 40}px`);
+    card.style.setProperty('--rest-bracket-width', desktop ? `${target * .22}px` : '16px');
+    layoutNotation(width, .6);
+  });
+  layoutObserver.observe(measure);
   refresh();
-  return { card, feedback, refresh, focusPosition, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { card.remove(); feedback.remove(); } };
+  return { card, feedback, refresh, focusPosition, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { layoutObserver.disconnect(); card.remove(); feedback.remove(); } };
 }
