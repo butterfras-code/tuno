@@ -4,7 +4,7 @@ import '../../shared/ui/fonts.css';
 import '../count-writing/styles.css';
 import './styles.css';
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { Activity, presets as practiceFixtures, modeOptions, readPreferences, preferenceKey, fixtureAccess } from './activity.ts';
+import { Activity, presets as practiceFixtures, modeOptions, preferenceKey, fixtureAccess } from './activity.ts';
 import type { Mode } from './activity.ts';
 import { createPerformance } from './performance.ts';
 import type { AttemptRecord } from './capture.ts';
@@ -12,6 +12,7 @@ import { timingTimelines, renderTimingTimeline } from './timeline.ts';
 import { evaluateAttempt } from './evaluation.ts';
 import { createPlanEditor } from '../count-writing/plan-editor.ts';
 import { evaluateAnswer as evaluateCountingAnswer, initializeAnswer } from '../../music/counting/answer.ts';
+import { createPreferenceSession } from './counting-session.ts';
 import { createSettingsPage } from './shared/settings.ts';
 import { defaultGeneration, generateExercise, generationIssue } from './shared/generation.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
@@ -20,7 +21,8 @@ import { teachingPresetLabel } from './shared/teaching-presets.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
-const preferences = readPreferences(saved);
+const preferenceSession = createPreferenceSession(saved, location.search);
+const preferences = preferenceSession.preferences;
 let migratedCounting = false;
 try { migratedCounting = Boolean(saved && !JSON.parse(saved)?.counting); } catch { /* malformed preferences use defaults */ }
 const testing = fixtureAccess(location.search);
@@ -30,7 +32,7 @@ let fixtureId = preferences.preset;
 const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.measures);
 function persist() {
   Object.assign(preferences, { generation, preset: fixtureId });
-  try { localStorage.setItem(preferenceKey, JSON.stringify({ ...preferences, countingSystem: undefined, offbeat: undefined, presentation: undefined, convention: undefined })); } catch { /* Memory fallback. */ }
+  try { localStorage.setItem(preferenceKey, preferenceSession.serialize()); } catch { /* Memory fallback. */ }
 }
 let editors: ReturnType<typeof createPlanEditor>[] = [];
 let focusNewRhythm = false;
@@ -91,7 +93,7 @@ help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Measures fit the available width. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Duration when appropriate.'),
   el('p', '', 'Select any count in a group. Rest (R) and Duration (D) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
-  el('p', '', 'Preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
+  el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
 const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
@@ -167,6 +169,8 @@ const settings = createSettingsPage({
   initialGeneration: generation,
   newExercise: () => newExercise(true),
   initialCounting: preferences.counting,
+  isLinked: preferenceSession.isLinked,
+  saveCountingDefaults: () => preferenceSession.saveAsDefaults(raw => localStorage.setItem(preferenceKey, raw)),
   counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
   generation: value => {
     generation = value; persist();
@@ -244,6 +248,7 @@ function updateExerciseSummary() {
   exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
   if (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) || fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
   const issue = generationIssue(generation);
+  if (preferenceSession.notice) exerciseSummary.textContent += ` ${preferenceSession.notice}`;
   if (migratedCounting) exerciseSummary.textContent += ' Counting updated: groups are inferred; long-note subdivision is on and dotted subdivision is off. Review Settings.';
   if (issue) exerciseSummary.textContent += ` New exercise unavailable: ${issue}`;
 }

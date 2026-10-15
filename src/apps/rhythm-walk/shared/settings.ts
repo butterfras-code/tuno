@@ -1,3 +1,4 @@
+import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
 import type { RhythmEvent } from '../../../music/measure.ts';
@@ -69,10 +70,14 @@ export function createSettingsPage(callbacks: {
   generation: (value: GenerationSettings) => void;
   initialCounting: CountingPreferences;
   counting: (value: CountingPreferences) => void;
+  isLinked: () => boolean;
+  saveCountingDefaults: () => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
   const intro = el('p', 'settings-intro', 'Use Customize… in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
-  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on New exercise. New exercise clears both responses and returns to practice.');
+  const savedNote = el('p', 'setting-hint');
+  const updateSavedNote = () => { savedNote.textContent = `${callbacks.isLinked() ? 'Linked counting preferences and your edits stay in this session until you choose Save as my defaults.' : 'Preferences are saved automatically in this browser.'} Counting changes apply on New exercise. Current music, answers and results are kept.`; };
+  updateSavedNote();
   const newExercise = button('New exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
@@ -85,7 +90,8 @@ export function createSettingsPage(callbacks: {
   const labels = { longNotes: 'Long-note subdivision', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show duration line', linePlacement: 'Line placement', internalAppearance: 'Internal-count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
   function change(key: keyof CountingPreferences, value: string | boolean) {
     counting = captureCountingPreferences({ ...counting, [key]: value }); callbacks.counting(counting);
-    savedNote.textContent = 'Counting changes apply on New exercise. Current music, answers and results are kept. Preferences are saved in this browser.';
+    updateSavedNote();
+    shareStatus.textContent = ''; fallback.hidden = true;
   }
   for (const key of ['longNotes', 'dotted', 'includeRests', 'showDurationLine'] as const) {
     const input = el('input'); input.type = 'checkbox'; input.checked = counting[key]; input.dataset.countingPreference = key;
@@ -95,6 +101,33 @@ export function createSettingsPage(callbacks: {
     const input = select(countingPreferenceOptions[key].map(value => ({ value, label: value === 'numbers' ? '1 e & a' : value === 'syllables' ? '1 ta-te-ta' : value[0]!.toUpperCase() + value.slice(1) })), value => change(key, value));
     input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); activeControls.append(field(labels[key], input));
   }
+  const share = el('div', 'counting-share');
+  const shareHint = el('p', 'setting-hint', 'Share the counting preferences currently selected here, including pending changes. The current exercise is unchanged.');
+  const shareStatus = el('p', 'setting-hint'); shareStatus.setAttribute('role', 'status');
+  const fallback = el('div'); fallback.hidden = true;
+  const linkInput = el('input'); linkInput.type = 'text'; linkInput.readOnly = true;
+  linkInput.addEventListener('focus', () => linkInput.select());
+  fallback.append(field('Counting preferences link', linkInput));
+  const copy = button('Copy counting preferences link', async () => {
+    const url = countingPreferencesUrl(location.href, counting);
+    linkInput.value = url; fallback.hidden = true;
+    try {
+      await navigator.clipboard.writeText(url);
+      shareStatus.textContent = 'Counting preferences link copied.';
+    } catch {
+      shareStatus.textContent = 'Could not copy automatically. Select and copy the link below.';
+      fallback.hidden = false; linkInput.focus(); linkInput.select();
+    }
+  });
+  const adopt = button('Save as my defaults', () => {
+    try {
+      callbacks.saveCountingDefaults(); updateSavedNote(); adopt.hidden = true;
+      shareStatus.textContent = 'Selected counting preferences saved as your browser defaults. Current exercise unchanged.';
+    } catch { shareStatus.textContent = 'Could not save defaults in this browser. Your counting preferences remain session-only.'; }
+  });
+  adopt.hidden = !callbacks.isLinked();
+  share.append(shareHint, copy, adopt, shareStatus, fallback);
+  activeControls.append(share);
   activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and D toggles Duration for the selected unit. Hidden lines with unchanged internal counts disable duration entry and assessment. Type t then a/e for ta/te; l and i enter la and li.'));
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');

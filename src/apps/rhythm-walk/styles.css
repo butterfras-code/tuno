@@ -345,3 +345,7 @@ main.rhythm-app {
 .counts-hidden .plan-measure .measure { min-width: 0 !important; }
 
 .inferred-rest > span { flex: 0 0 16px; font-size: 40px; text-align: center; }
+
+.counting-share { grid-column: 1 / -1; min-width: 0; }
+.counting-share button { margin: 8px 8px 0 0; }
+.counting-share input { width: 100%; min-width: 0; box-sizing: border-box; }

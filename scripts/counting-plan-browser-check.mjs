@@ -8,6 +8,7 @@ const url = process.env.COUNT_WRITING_URL || new URL('/prototypes/rhythm-walk/',
 const browser = await ({ chromium, firefox })[engine].launch();
 const output = `dist/validation/counting-plan-${engine}`;
 const source = await readFile(new URL('./counting-plan-browser-scenarios.js', import.meta.url), 'utf8');
+const linkSource = await readFile(new URL('./counting-link-browser-scenarios.js', import.meta.url), 'utf8');
 const report = { engine, url, passed: false, checks: [], physicalDeviceChecks: 'not performed' };
 try {
   await mkdir(output, { recursive: true });
@@ -25,6 +26,20 @@ try {
     assert.equal(await page.locator('[data-count-id]').first().textContent(), '1');
     assert.equal(await page.locator('.sustained').count(), 1);
     await page.screenshot({ path: `${output}/${width}.png`, fullPage: true });
+    await page.addScriptTag({ content: linkSource });
+    report.checks.push(await page.evaluate(async () => {
+      const load = async search => {
+        document.querySelector('#link-test')?.remove();
+        const frame = document.createElement('iframe'); frame.id = 'link-test';
+        frame.style = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:white;z-index:999999';
+        frame.src = '/prototypes/rhythm-walk/' + search;
+        const ready = new Promise(resolve => { frame.onload = resolve; });
+        document.body.append(frame); await ready; await frame.contentDocument.fonts.ready;
+        return frame.contentWindow;
+      };
+      return countingLinkScenarios(load, localStorage);
+    }));
+    await page.evaluate(() => document.querySelector('#link-test').remove());
   }
   await page.evaluate(() => localStorage.setItem('tuno.rhythm-walk.preferences.v1', JSON.stringify({ version:1, countingSystem:'syllables', offbeat:'+', presentation:{linePlacement:'above',sustainAppearance:'lowered'}, bpm:123, metronome:false })));
   await page.reload();
