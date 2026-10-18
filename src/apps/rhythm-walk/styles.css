@@ -428,3 +428,112 @@ main.rhythm-app {
   .rhythm-app .rhythm-nav a[aria-current="page"] { display: none; }
   .rhythm-app .activity-surface { padding: 12px 8px; }
 }
+
+/* Exercise-level controls and one responsive view of the existing rewards. */
+.rhythm-app .app-header { flex-wrap: nowrap; }
+.rhythm-app .app-header .brand { flex: 1; min-width: 0; }
+.rhythm-app .app-header .rhythm-nav { flex: none; margin-left: 0; }
+.exercise-overview-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 3fr); gap: 24px; align-items: start; margin-bottom: 12px; }
+.exercise-overview-row .level-configuration { min-width: 0; }
+.exercise-overview-row .field { margin: 0; }
+.exercise-overview-row select { width: 100%; min-width: 0; max-width: 100%; }
+.exercise-overview-row #pending-level { margin: 4px 0 0; font-size: 11px; }
+.exercise-overview-row .feedback-snapshot { min-width: 0; padding: 12px 16px 0; }
+.exercise-overview-row .treat-ratings { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 10px 0 0; gap: 12px; }
+.exercise-overview-row .treat-ratings li { display: flex; flex-direction: column; align-items: start; justify-content: start; gap: 6px; min-width: 0; }
+.treat-label-short, .bone-count { display: none; }
+.treat-details > summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; font-size: 13px; font-weight: 700; }
+.treat-details[open] { padding-bottom: 12px; }
+.treat-assessment { padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.response-controls { margin: 8px 0; gap: 8px 16px; }
+.response-controls .field:first-child > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+.response-controls select { min-height: 44px; }
+.practice-workspace { min-width: 0; position: relative; }
+.rhythm-app .shared-interaction { margin: 8px 0; }
+.rhythm-app .interaction-body { padding: 10px 12px; }
+.palette-context { margin: 0 0 6px; font-size: 13px; }
+.plan-token-palette, .plan-unit-controls { margin: 6px 0; gap: 6px; }
+.rhythm-app .plan-token-palette button.control { padding: 8px 12px; }
+.rhythm-app .plan-unit-controls button.control { padding: 8px; font-size: 13px; }
+.rhythm-app .write-actions { margin-top: 6px; }
+.rhythm-app .write-actions button { min-height: 44px; padding: 8px 12px; font-size: 14px; }
+@media (min-width: 769px) and (max-width: 1000px) {
+  .exercise-overview-row .treat-ratings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .practice-workspace.editing-counts { display: flex; flex-direction: column; }
+  .practice-workspace.editing-counts.dock-roomy { min-height: calc(100svh - 80px); }
+  .practice-workspace.editing-counts > .response-controls { margin-bottom: auto; }
+  .exercise-overview-row { grid-template-columns: minmax(88px, 1fr) minmax(0, 2fr); gap: 8px; margin-bottom: 8px; }
+  .exercise-overview-row .field > span { font-size: 12px; }
+  .exercise-overview-row select { min-height: 44px; padding: 8px 22px 8px 6px; font-size: 13px; }
+  .exercise-overview-row #pending-level { font-size: 10px; }
+  .exercise-overview-row .feedback-snapshot { padding: 0; border: 0; background: none; }
+  .exercise-overview-row .feedback-snapshot h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .exercise-overview-row .treat-ratings { gap: 3px; margin: 0; }
+  .exercise-overview-row .treat-ratings li { align-items: center; gap: 5px; font-size: 10px; }
+  .treat-label-full, .treat-ratings .bone-slots, .treat-ratings .treat-unrated { display: none; }
+  .treat-label-short { display: inline; }
+  .bone-count { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; }
+  .bone-count .bone-slot { width: 15px; height: 12px; }
+  .treat-details > summary { padding: 10px 0; min-height: 44px; font-size: 12px; }
+  .treat-details[open] { padding-bottom: 0; }
+  .treat-details p, .treat-assessment { font-size: 12px; overflow-wrap: anywhere; }
+  .palette-keyboard-hint { display: none; }
+  .rhythm-app .shared-interaction { grid-template-columns: minmax(0, 1fr); margin: 8px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--color-surface); }
+  .editing-counts.dock-can-stick > .shared-interaction { position: sticky; bottom: 0; z-index: 4; }
+  .rhythm-app .interaction-body { padding: 8px; }
+  .rhythm-app .plan-token-palette { gap: 4px; }
+  .rhythm-app .plan-token-palette button.control { padding: 8px; }
+  .rhythm-app .plan-unit-controls { gap: 4px; }
+  .rhythm-app .plan-unit-controls button.control { padding: 8px 6px; font-size: 12px; }
+  .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Counting feedback uses the same checked snapshot as the top Treat Bag. */
+.exercise-overview-row .treat-ratings:has(.counting-rating) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.counting-rating { grid-column: 1 / -1; flex-wrap: wrap; }
+.counting-totals { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.counting-confirmation { font-size: .82rem; margin: .3rem 0; }
+.counting-problem-link { display: block; width: 100%; text-align: left; margin: .3rem 0; font-size: .85rem; }
+.counting-diagnostics { margin-top: .6rem; }
+.counting-diagnostics pre { max-height: 240px; overflow: auto; font-size: .7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.count-slot:has(.count-problem-marker) { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.count-slot[data-tokens="missing"] { outline-style: dashed; }
+.count-slot:has(.count-problem-marker):not([data-tokens="incorrect"]):not([data-tokens="missing"]):not([data-rests="incorrect"]):not([data-rests="missing"]):not([data-duration="missing"]) { outline-style: dotted; }
+.count-problem-marker { position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); font-size: 9px; line-height: 12px; white-space: nowrap; font-weight: 700; background: var(--color-surface); color: var(--color-ink); padding: 0 2px; border-radius: 2px; }
+.plan-answer { padding-bottom: 18px; }
+g[data-counting-feedback] { outline: 1px dashed currentColor; outline-offset: 3px; }
+g[data-counting-feedback="edited"] { outline-style: dotted; }
+.counts-hidden g[data-counting-feedback] { outline: none; }
+.count-correction-context { margin: 4px 0; font-size: .85rem; min-height: 1.2em; }
+@media (max-width: 768px) {
+  .treat-ratings:has(.counting-rating) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .counting-rating { flex-direction: row !important; justify-content: flex-start !important; gap: .25rem .5rem !important; font-size: .75rem; }
+  .counting-rating .counting-bones { display: none; }
+  .counting-confirmation { font-size: .7rem; }
+}
+.exercise-overview-row .treat-ratings .counting-rating { flex-direction: row; align-items: center; gap: 6px 14px; }
+
+/* Keep next-exercise actions with the preset they configure. */
+.exercise-overview-row .level-configuration { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; align-items: end; }
+.level-configuration > .field { grid-column: 1; grid-row: 1; min-width: 0; gap: 2px; }
+.level-configuration > .level-customize { grid-column: 2; grid-row: 1; padding-inline: 12px; }
+.level-configuration > #pending-level, .level-configuration > .setup-actions { grid-column: 1 / -1; }
+.level-configuration > .setup-actions { margin-top: 4px; }
+.level-configuration .setup-actions .control { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+.customize-icon { display: none; width: 20px; height: 20px; }
+@media (max-width: 1100px) {
+  .level-customize .customize-label { display: none; }
+  .level-customize .customize-icon { display: block; }
+  .level-configuration > .level-customize { width: 44px; min-height: 44px; padding: 10px; }
+}
+@media (max-width: 768px) {
+  .exercise-overview-row { grid-template-columns: minmax(148px, 1fr) minmax(0, 2fr); }
+  .exercise-overview-row .level-configuration { column-gap: 4px; }
+  .level-configuration .setup-actions .control { font-size: 12px; }
+}
+
+.exercise-overview-row .level-configuration select,
+.exercise-overview-row .level-customize { min-height: 44px; padding-block: 6px; }
+.exercise-overview-row .level-configuration #pending-level { margin-top: 2px; }

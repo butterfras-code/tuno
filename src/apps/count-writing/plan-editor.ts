@@ -1,3 +1,4 @@
+import { countingProblems } from '../rhythm-walk/counting-feedback.ts';
 import { button, el } from '../../shared/ui/components.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 import { compare, divide, subtract } from '../../music/fraction.ts';
@@ -24,7 +25,7 @@ export function unitPieces(plan: CountingPlan, measure: number) {
 
 /** Each bar is a view of the same passage plan/answer. No measure-local answers. */
 export function createPlanEditor(source: RhythmMeasure, measureIndex: number, options: {
-  plan: CountingPlan; answer: () => CountingAnswer; result: () => CountingEvaluation | null;
+  plan: CountingPlan; answer: () => CountingAnswer; result: () => CountingEvaluation | null; checked?: () => CountingAnswer | null;
   change: (answer: CountingAnswer) => void; palette: HTMLElement; activated: () => void;
   hidden: () => boolean; check: () => void; navigate: (id: CountId, delta: number) => void;
   reveal: (target: HTMLElement) => void;
@@ -56,7 +57,6 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   const area = el('div', 'answer-area plan-answer'); area.dataset.placement = prefs.linePlacement; area.dataset.appearance = prefs.internalAppearance;
   const positions = el('div', 'counts'); positions.setAttribute('role', 'group'); positions.setAttribute('aria-label', 'Count positions');
   const marks = el('div', 'unit-marks'); marks.setAttribute('aria-hidden', 'true');
-  const feedback = el('section', 'feedback'); feedback.setAttribute('aria-label', `Answer feedback measure ${measureIndex + 1}`); feedback.setAttribute('aria-live', 'polite');
   const buffer = syllableBuffer(); let selected: CountId | null = null; let active = false;
   const buttons = new Map<CountId, HTMLButtonElement>();
   function commit(token: CountToken) {
@@ -94,18 +94,23 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
       sixteenths: plan.symbols.some(s => s.source.type === '16th' || s.source.type === 'eighth' && s.source.dots > 0),
       triplets: plan.symbols.some(s => s.source.timeModification !== undefined),
     });
-    const title = el('p', 'palette-context', `${count.label.split(', offset')[0]} · arrows move · Enter checks`);
+    const title = el('p', 'palette-context', count.label.split(', offset')[0]);
+    title.append(el('span', 'palette-keyboard-hint', ' · arrows move · Enter checks'));
+    const problems = countingProblems(plan, options.result(), options.checked?.() ?? null, options.answer()).filter(p => p.item.countIds.includes(selected!));
+    const explanation = el('p', 'count-correction-context', problems.map(p => p.message).join(' '));
+    explanation.id = `count-correction-${measureIndex}`; explanation.setAttribute('role', 'status');
+    explanation.hidden = !problems.length;
     const row = el('div', 'plan-token-palette');
     tokens.forEach(token => { const b = button(displayCount(token, prefs.offbeat), () => commit(token)); b.setAttribute('aria-label', `Enter ${displayCount(token, prefs.offbeat)}`); row.append(b); });
     const controls = el('div', 'plan-unit-controls');
     for (const [control, name, shortcut, applicable] of [['restMarked', 'Rest', 'r', unit.restApplicable], ['durationIndicated', 'Duration', 'd', unit.durationApplicable]] as const) {
       if (!applicable) continue;
       const b = button(`${name} (${shortcut.toUpperCase()})`, () => { toggle(control); buttons.get(selected!)?.focus({ preventScroll: true }); });
-      b.dataset.unitControl = control; b.setAttribute('aria-pressed', String(state[control])); b.setAttribute('aria-keyshortcuts', shortcut); b.setAttribute('aria-label', `${name} for entire unit at ${unit.counts[0]!.label}`); controls.append(b);
+      b.dataset.unitControl = control; b.setAttribute('aria-pressed', String(state[control])); b.setAttribute('aria-keyshortcuts', shortcut); b.setAttribute('aria-label', `${name} for entire unit at ${unit.counts[0]!.label.split(', offset')[0]}`); controls.append(b);
     }
     const clear = button('Clear count', () => { if (selected) options.change(enterToken(plan, options.answer(), selected, '')); }); controls.append(clear);
     const restoreFocus = options.palette.contains(options.palette.ownerDocument.activeElement);
-    options.palette.replaceChildren(title, row, controls, el('p', 'setting-hint', 'Rest (R) and Duration (D) affect the whole written unit, including tied notes.'));
+    options.palette.replaceChildren(title, explanation, row, controls, el('p', 'setting-hint', 'Rest (R) and Duration (D) affect the whole written unit, including tied notes.'));
     // Refresh removes palette buttons. Keep keyboard entry alive, including at
     // the last count where commit has no next position to focus.
     if (restoreFocus) buttons.get(selected)?.focus({ preventScroll: true });
@@ -132,20 +137,32 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     const unit = plan.units.find(u => u.id === symbol?.unitId);
     const target = symbol?.counts[0] ?? unit?.counts.find(c => c.measure === measureIndex) ?? unit?.counts[0];
     if (!target) return;
-    glyph.dataset.entryLabel = `Enter ${target.label}`; glyph.setAttribute('aria-label', glyph.dataset.entryLabel); glyph.setAttribute('role', 'button'); glyph.setAttribute('tabindex', '0');
+    glyph.dataset.entryLabel = `Enter ${target.label.split(', offset')[0]}`; glyph.setAttribute('aria-label', glyph.dataset.entryLabel); glyph.setAttribute('role', 'button'); glyph.setAttribute('tabindex', '0');
     glyph.addEventListener('click', () => { if (!options.hidden()) options.navigate(target.id, 0); }); glyph.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!options.hidden()) options.navigate(target.id, 0); } });
   });
   area.append(marks, positions); measure.append(notation, area); score.append(measure); card.append(heading, score, status);
   function refresh() {
     const answer = options.answer(), result = options.result();
+    const problems = countingProblems(plan, result, options.checked?.() ?? null, answer);
     counts.forEach(count => {
       const b = buttons.get(count.id)!, unit = plan.units.find(u => u.id === count.unitId)!, state = answer.units[unit.id]!;
       const token = displayCount(answer.counts[count.id]!, prefs.offbeat);
-      b.textContent = token || '·'; b.setAttribute('aria-label', `${count.label}, ${token || 'empty'}${state.restMarked ? ', marked as rest' : ''}${state.durationIndicated ? ', duration indicated' : ''}`);
+      b.textContent = token || '·'; b.setAttribute('aria-label', `${count.label.split(', offset')[0]}, ${token || 'empty'}${state.restMarked ? ', marked as rest' : ''}${state.durationIndicated ? ', duration indicated' : ''}`);
       b.setAttribute('aria-pressed', String(active && selected === count.id));
       b.classList.toggle('sustained', state.durationIndicated && count.id !== unit.counts[0]!.id);
       b.classList.toggle('rest-slashed', state.restMarked && prefs.restAppearance === 'slashes');
-      const item = result?.tokens.items.find(i => i.id === count.id); if (item) b.dataset.verdict = item.verdict; else delete b.dataset.verdict;
+      const relevant = problems.filter(p => p.item.countIds.includes(count.id));
+      delete b.dataset.verdict;
+      for (const dimension of ['tokens', 'rests', 'duration'] as const) {
+        const problem = relevant.find(p => p.dimension === dimension);
+        if (problem) b.dataset[dimension] = problem.state; else delete b.dataset[dimension];
+      }
+      if (relevant.length) {
+        const marker = el('span', 'count-problem-marker', relevant.map(p => `${p.dimension === 'tokens' ? 'C' : p.dimension === 'rests' ? 'R' : 'D'}${p.state === 'edited' ? '…' : p.state === 'missing' ? '?' : '!'}`).join(' '));
+        marker.setAttribute('aria-hidden', 'true'); b.append(marker);
+        b.setAttribute('aria-label', `${b.getAttribute('aria-label')}. ${relevant.map(p => p.message).join(' ')}`);
+        b.title = relevant.map(p => p.message).join(' ');
+      } else b.removeAttribute('title');
     });
     marks.replaceChildren();
     unitPieces(plan, measureIndex).forEach(piece => {
@@ -168,16 +185,13 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
         rest.append(el('span', '', piece.continuesBefore ? '⋯' : '('), el('span', '', continuesAfter ? '⋯' : ')')); marks.append(rest);
       }
     });
-    feedback.replaceChildren();
-    if (result) for (const [dimension, name] of [['tokens', 'Count symbols'], ['rests', 'Rest identification'], ['duration', 'Duration indication']] as const) {
-      const items = result[dimension].items.filter(i => i.countIds.some(id => counts.some(c => c.id === id)));
-      const applicable = items.filter(i => i.verdict !== 'not-applicable');
-      const wrong = applicable.filter(i => i.verdict === 'incorrect');
-      const block = el('div', `dimension ${wrong.length ? 'revise' : 'correct'}`);
-      block.append(el('strong', '', `Measure ${measureIndex + 1} · ${name}: ${!applicable.length ? 'Not applicable' : wrong.length ? 'Needs correction' : 'Correct'}`));
-      if (wrong.length) block.append(el('p', '', wrong.map(i => i.labels.join(', ')).join('; ')));
-      feedback.append(block);
-    }
+    // Mark all written members of an unresolved unit, including cross-bar ties.
+    notation.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
+      const symbol = plan.symbols.find(s => s.measure === measureIndex && s.event === Number(glyph.dataset.event));
+      const relevant = problems.filter(p => symbol && p.item.symbolIds.includes(symbol.source.id));
+      if (relevant.length) glyph.dataset.countingFeedback = relevant.every(p => p.state === 'edited') ? 'edited' : 'attention';
+      else delete glyph.dataset.countingFeedback;
+    });
     palette();
   }
   const layoutNotation = responsiveNotation(notation);
@@ -198,5 +212,5 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   });
   layoutObserver.observe(measure);
   refresh();
-  return { card, feedback, refresh, focusPosition, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { layoutObserver.disconnect(); card.remove(); feedback.remove(); } };
+  return { card, refresh, focusPosition, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { layoutObserver.disconnect(); card.remove(); } };
 }

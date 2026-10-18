@@ -74,7 +74,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   w.location.hash = '#settings'; await sleep(30);
   for (const id of ['uil-1', 'uil-6']) {
     choose(picker, id);
-    const details = picker.closest('.level-configuration')?.querySelector('details') ?? d.querySelector('.shared-exercise-settings details');
+    const details = d.querySelector('[data-level-details]');
     details.open = true; await sleep(30);
     assert(d.documentElement.scrollWidth <= w.innerWidth + 1, `${w.innerWidth}px ${id} source details have no page overflow`);
     const box = picker.getBoundingClientRect();
@@ -100,7 +100,7 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     await reload();
     let d = frame.contentDocument, w = frame.contentWindow;
     const field = d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration');
-    assert(field.textContent.includes('UIL I · note-only practice · next exercise'), 'fresh load restores qualified exact attribution');
+    assert(field.querySelector('select').selectedOptions[0].textContent.includes('UIL I · note-only practice') && field.textContent.includes('For next exercise'), 'fresh load restores qualified exact attribution');
     assert(d.querySelector('[data-setting="exercise-length"] input:checked').value === String(expected.generation.measures), 'fresh load restores chosen length');
     assert(d.querySelector('[data-ingredient="whole"]').checked && d.querySelector('[data-ingredient="dotted-half"]').checked, 'fresh load restores whole/dotted-half selections');
     assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('select[aria-label="Mode"]').value === expected.mode, 'fresh load restores independent mode/system');
@@ -108,7 +108,7 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     assert([...d.querySelectorAll('.count-slot:not([hidden])')].every(slot => slot.textContent === '·'), 'fresh load does not persist writing responses');
     localStorage.setItem(key, JSON.stringify({ ...expected, generation: { ...expected.generation, teachingPreset: { id: 'uil-unknown', version: 1, customized: false }, restrictions: { pairedEighths: 'yes', noQuarterRestBeatOne: true } } }));
     await reload(); d = frame.contentDocument; w = frame.contentWindow;
-    assert(d.querySelector('[data-setting="teaching-preset"]').closest('.level-configuration').textContent.includes('Custom · pending settings.'), 'malformed attribution safely migrates to free practice');
+    assert(d.querySelector('[data-setting="teaching-preset"]').value === '', 'malformed attribution safely migrates to free practice');
     const length = d.querySelector('[data-setting="exercise-length"] input:checked'); length.dispatchEvent(new w.Event('change'));
     const restored = JSON.parse(localStorage.getItem(key));
     assert(!restored.generation.teachingPreset && !restored.generation.restrictions, 'malformed restrictions and attribution never reach persisted active settings');

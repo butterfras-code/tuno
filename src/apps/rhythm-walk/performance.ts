@@ -1,3 +1,4 @@
+import type { CountingFeedbackContext } from './counting-feedback.ts';
 import { assessAttempt } from './assessment.ts';
 import { TreatBagState } from './rewards.ts';
 import { createResults, renderTreatBag } from './results.ts';
@@ -15,10 +16,10 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { treatBag: HTMLElement; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
+export function createPerformance(options: { treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
   const treatBag = new TreatBagState();
-  const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted);
+  const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted, options.countingFeedback?.());
   renderFeedback();
   let audio: AudioContext | undefined;
   let transport: Transport | null = null;
@@ -283,6 +284,7 @@ export function createPerformance(options: { treatBag: HTMLElement; exercise: ()
     start: begin,
     record: () => result,
     syncResults: () => results?.sync(options.nextIssue()),
+    refreshFeedback: renderFeedback,
     reset: () => { cancel('Exercise changed'); treatBag.clear(); delete options.treatBag.dataset.exerciseId; renderFeedback(); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 

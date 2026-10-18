@@ -21,7 +21,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
     assert(settings.teachingPreset.id === id && !settings.teachingPreset.customized, `${id} applies exact pending identity`);
     assert(settings.measures === 3 && JSON.stringify({ ...stored(), generation: independent.generation }) === JSON.stringify(independent), `${id} preserves independent preferences`);
     assert(d.querySelector('.notation') === score && d.querySelector('.passage').dataset.exerciseId === exercise && slot.textContent === answer, `${id} preserves score and writing`);
-    const details = picker.closest('.level-configuration').querySelector('details'); details.open = true;
+    const details = d.querySelector('[data-level-details]'); details.open = true;
     assert(details.textContent.includes('Uno practice configuration') && !details.textContent.includes('Official criteria'), `${id} identifies its own practice configuration`);
     assert(d.documentElement.scrollWidth <= w.innerWidth + 1 && picker.getBoundingClientRect().right <= w.innerWidth + 1, `${id} selector and details fit ${w.innerWidth}px`);
     details.open = false;

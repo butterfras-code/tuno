@@ -87,6 +87,7 @@ export class Activity {
   countingPlan!: CountingPlan;
   countingAnswer!: CountingAnswer;
   countingResult: CountingEvaluation | null = null;
+  checkedCountingAnswer: CountingAnswer | null = null;
   /** Configuration captured at replacement, distinct from pending preferences. */
   exerciseGeneration!: GenerationSettings;
   private serial = 0;
@@ -97,6 +98,7 @@ export class Activity {
     this.countingPlan = buildCountingPlan(score, this.preferences.counting);
     this.countingAnswer = initializeAnswer(this.countingPlan);
     this.countingResult = null;
+    this.checkedCountingAnswer = null;
     this.exerciseGeneration = structuredClone(generationIssue(this.preferences.generation) ? defaultGeneration() : this.preferences.generation);
     return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', score };
   }

@@ -16,11 +16,11 @@ async function countingLinkScenarios(load, storage) {
   assert(JSON.stringify(JSON.parse(storage.getItem(key)).counting)===JSON.stringify(defaults), 'Initial load does not persist linked counting');
   q('[data-count-id]').click(); d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:'1',bubbles:true}));
   click('Check');
-  const answers=all('[data-count-id]').map(c=>c.textContent).join('|'), feedback=q('.passage-feedback').textContent;
+  const answers=all('[data-count-id]').map(c=>c.textContent).join('|'), feedback=q('.counting-totals').textContent;
   await settings();
   assert(q('.rhythm-settings').textContent.includes('session until'), 'Settings explains session scope');
   setting('longNotes',true); setting('offbeat','&');
-  assert(all('[data-count-id]').map(c=>c.textContent).join('|')===answers && q('.passage-feedback').textContent===feedback, 'Pending edits keep active answers and scoring');
+  assert(all('[data-count-id]').map(c=>c.textContent).join('|')===answers && q('.counting-totals').textContent===feedback, 'Pending edits keep active answers and scoring');
   assert(JSON.parse(storage.getItem(key)).counting.longNotes===true && JSON.parse(storage.getItem(key)).counting.dotted===false, 'Session edits preserve saved defaults');
   let copied=''; Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
   click('Copy counting preferences link'); await new Promise(r=>setTimeout(r,0));

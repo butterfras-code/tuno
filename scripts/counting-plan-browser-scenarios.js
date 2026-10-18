@@ -66,16 +66,16 @@ async function countingPlanScenarios(w = window) {
   assert(q('.inferred-rest'), 'Wrong sounded rest marking stays visible');
   for (const [i,token] of ['1','2','3','4','+'].entries()) { activate(i); key(token); }
   click('Check');
-  assert(q('.passage-feedback').textContent.includes('Rest identification: Needs correction'), 'Rest feedback is independent');
-  assert(q('.passage-feedback').textContent.includes('Count symbols: Correct'), 'Canonical plus alias grades correctly');
-  const before = counts().map(c => c.textContent).join('|'), feedback = q('.passage-feedback').textContent;
+  assert(q('[data-rests="incorrect"]'), 'Rest feedback is independent');
+  assert(!q('[data-tokens]'), 'Canonical plus alias grades correctly');
+  const before = counts().map(c => c.textContent).join('|'), feedback = q('.counting-totals').textContent;
   setting('vocabulary','syllables'); setting('offbeat','+'); setting('dotted',true); setting('internalAppearance','lowered');
   assert(counts().map(c => c.textContent).join('|') === before, 'Pending settings preserve tokens');
-  assert(q('.passage-feedback').textContent === feedback, 'Pending settings preserve results');
+  assert(q('.counting-totals').textContent === feedback, 'Pending settings preserve results');
   assert(q('.exercise-summary').textContent.includes('Pending settings'), 'Pending state is explained');
   for (const mode of ['both','tap','write']) choose('select[aria-label="Mode"]',mode);
-  assert(q('.passage-feedback').textContent === feedback && counts().map(c => c.textContent).join('|') === before, 'Mode changes retain writing and results');
-  click('Retry'); assert(counts().map(c => c.textContent).join('|') === before && !q('.passage-feedback').textContent, 'Retry retains evidence and clears feedback');
+  assert(q('.counting-totals').textContent === feedback && counts().map(c => c.textContent).join('|') === before, 'Mode changes retain writing and results');
+  click('Check Again'); assert(counts().map(c => c.textContent).join('|') === before && q('.counting-totals').textContent === feedback, 'Reassessment retains evidence and confirmed results');
   click('New exercise');
   assert(counts().every(c => c.textContent === '·'), 'New exercise starts blank');
   assert(q('.answer-area').dataset.appearance === 'lowered', 'New exercise applies pending appearance');
@@ -97,7 +97,7 @@ async function countingPlanScenarios(w = window) {
   assert(!q('.inferred-duration') && counts()[1].classList.contains('sustained'), 'Hidden line retains internal duration feedback');
   setting('internalAppearance','unchanged'); await fixture('half-rest'); activate(0);
   assert(!unit('durationIndicated'), 'Hidden unchanged presentation suppresses duration control');
-  click('Check'); assert(q('.passage-feedback').textContent.includes('Duration indication: Not applicable'), 'Suppressed duration is excluded from assessment');
+  click('Check'); assert(!q('.count-slot[data-duration]'), 'Suppressed duration is excluded from assessment');
   defaults(); await fixture('two-rests'); activate(0); key('r'); activate(1); key('r');
   assert(all('.inferred-rest').length === 2, 'Adjacent written rests stay separate');
   function checkParentheses(label) {
@@ -123,8 +123,8 @@ async function countingPlanScenarios(w = window) {
   defaults(); setting('includeRests',false); await fixture('all-rests');
   assert(counts().length === 0, 'All-rest exercise permits zero inputs');
   assert(!unit('restMarked') && !unit('durationIndicated'), 'Empty exercise has no stale unit controls');
-  click('Check'); assert(q('.practice-status').textContent.includes('All applicable'), 'Zero-input Check excludes inapplicable dimensions');
-  click('Retry'); click('Clear'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
+  click('Check'); assert(q('.counting-confirmation').textContent.includes('All applicable'), 'Zero-input Check excludes inapplicable dimensions');
+  click('Check Again'); click('Clear'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
   await fixture('half'); activate(0); assert(!unit('restMarked'), 'Rest omission suppresses rest control on sounded units too');
   defaults(); await fixture('six-dotted-half');
   assert(counts().length === 2 && q('g[data-value="half"][data-dots="1"]'), 'Dotted-half engraving and two count inputs');

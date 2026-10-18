@@ -10,11 +10,23 @@ Notation and count targets share the passage scroll container. The overview uses
 
 Selection, keyboard navigation and entry reveal counts locally without scrolling the page. Following reserves room for the next actual count, bounded to avoid excessive movement across sparse gaps. Repeated selection does not scroll again. Resizing keeps the focused count visible; manual scrolling otherwise stays under user control. Motion is immediate and does not introduce smooth animations, including with reduced motion enabled.
 
-The palette, Check and Clear remain outside the scrolling music. The header contains the mode selector; Level, Customize and New exercise are in a collapsed Exercise settings disclosure below the interaction area. Pending-settings/current-exercise text remains visible, and Treat Bag follows the workspace. Responses, evaluation, settings lifecycle and the three response modes are unchanged.
+The palette, Check and Clear remain outside the scrolling music. The global header keeps navigation and Help on one row. Mode sits beside the practice interaction controls. Level and Treat Bag share a row above the music; Customize, level requirements and New exercise remain in Exercise settings below. Level is explicitly labeled for the next exercise, and the current/pending exercise summary remains visible. Responses, evaluation, settings lifecycle and the three response modes are unchanged.
 
 Tap Rhythms and the Perform panel retain their existing fitting/wrapping behavior. Performance following and a playhead are deferred; this slice does not change the audio clock, capture or assessment.
 
 `counting-plan-browser-scenarios.js` now asserts continuous writing at all widths instead of phone wrapping. `writing-workspace-browser-scenarios.js`, included in `npm run test:counts:browser`, covers readable targets, conditional overview, projection, keyboard navigation, local selection following, retained scroll/answers across mode changes, deletion, pending settings and stationary actions. No scoring assertions were relaxed.
+
+### Responsive refinement
+
+The same Treat Bag component now exposes all four existing dimensions at every width: Rhythm, Holding notes, Tempo and Steady beat. Mobile shows short labels, one bone icon and the earned count; desktop retains full labels and five bone graphics per rated dimension. A dash means unscored, not zero. Tap displays an unscored Hold dimension with “Not assessed in Tap”; rewards and assessment policy still omit hold scoring for Tap. Feedback expands in normal flow with the retained musical summary and assessment values. Detailed performance review and timing evidence remain available in the performance panel. Expansion state survives reward refreshes.
+
+On screens up to 768px wide, the existing counting interaction surface can stick to the bottom inside its practice workspace. It reserves normal-flow space and includes safe-area padding. A measured guard prevents it from moving above the score or mode controls. When the initial reading area and controls fit, the workspace reserves a viewport-sized area for bottom docking. That decision uses document coordinates to stay stable while scrolling. Expanded feedback, short screens and reduced visual viewport height fall back to normal flow without an artificial gap. Desktop keeps a compact natural-flow palette. Keyboard hints remain on desktop and in Help; the mobile palette keeps the active measure/beat context.
+
+The refinement does not implement time-driven performance following; Tap and Perform retain the previously validated stationary layout. It does not alter capture, scoring mathematics, calibration or reward thresholds.
+
+Run `node scripts/responsive-workspace-browser-check.mjs` after `npm run build` for the 320/390/768/1024/1440px layout, feedback, short-height and performance-retention scenarios, plus default and expanded-feedback screenshots. `TUNO_BROWSER=firefox` selects Firefox. Run `npm run test:counts:browser` for the existing counting, minimap and sharing regression checks.
+
+Refinement validation: Node 24.21.0 and `npm run check` passed (442 tests, TypeScript and portable builds). Chromium and Firefox passed the five requested widths using dense sixteenths, dotted quarters, cross-bar ties, rests and mixed triplets, including 420/568/844px viewport heights. Browser capture scenarios cover completed Tap + Hold, keyboard Tap, silent attempts, cancellation, retry, reward retention and Next Exercise. Screenshots use actual assessment results from synthetic timestamped input, not fabricated ratings. Native T3 checks also confirmed that unsupported level requirements open their enclosing Exercise settings and that the performance-only checkbox is absent from count entry. Physical-device safe areas, real touch/audio latency and screen-reader acceptance remain unverified.
 
 ### First-slice validation
 

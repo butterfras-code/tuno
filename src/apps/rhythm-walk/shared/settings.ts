@@ -250,8 +250,7 @@ export function createSettingsPage(callbacks: {
       const label = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
       teachingPickers.forEach(picker => { [...picker.options].find(o => o.value === definition.id)!.textContent = label; });
     }
-    const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
-    teachingAttribution.textContent = active ? `${teachingPresetLabel(generation.teachingPreset)} · next exercise.` : 'Custom · pending settings. New exercise generates from these settings.';
+    teachingAttribution.textContent = 'For next exercise';
     const definition = generationLevels.find(p => p.id === teachingPicker.value);
     customLevelStatus.hidden = true; customLevelStatus.textContent = '';
     teachingEvidence.replaceChildren();
@@ -286,7 +285,8 @@ export function createSettingsPage(callbacks: {
   teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'Uno levels are practice configurations. UIL levels retain their qualified scope; they are not complete composition validators or UIL endorsements. Meters remain editable. No requirement that every allowed figure appear.'));
   teachingAttribution.id = 'pending-level';
   teachingPicker.setAttribute('aria-describedby', teachingAttribution.id);
-  teachingField.append(teachingAttribution, teachingDetails);
+  teachingField.append(teachingAttribution);
+  teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
   exerciseControls.append(customLevelField, meterField, lengthField, vocabulary, patternFields, generationStatus);
   available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
@@ -322,6 +322,7 @@ export function createSettingsPage(callbacks: {
     page,
     exerciseControls,
     levelField: teachingField,
+    levelDetails: teachingDetails,
     setLocked: (active: boolean) => {
       locked = active;
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });

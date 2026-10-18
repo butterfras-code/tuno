@@ -1,3 +1,5 @@
+import { countingProblems, countingScore } from './counting-feedback.ts';
+import type { CountId } from '../../music/counting/plan.ts';
 import type { RhythmScore } from '../../music/score.ts';
 // Copyright (C) 2026 tUno contributors. SPDX-License-Identifier: GPL-3.0-only
 import '../../tokens.css';
@@ -20,6 +22,7 @@ import type { RhythmMeasure } from '../../music/measure.ts';
 import { renderPassageTies } from './shared/notation.ts';
 import { teachingPresetLabel } from './shared/teaching-presets.ts';
 import { createWritingWorkspace } from './writing-workspace.ts';
+import { keepCountingDockClear } from './counting-dock.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
@@ -68,8 +71,19 @@ const customClose = button('Done', () => customDialog.close());
 customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
 const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
 customDialog.append(customHeader);
-const presetRow = el('div', 'preset-row'); presetRow.append(customButton);
-const setup = el('div', 'setup exercise-toolbar'); setup.append(presetRow);
+customButton.classList.add('level-customize');
+customButton.setAttribute('aria-label', 'Customize next exercise');
+customButton.title = 'Customize next exercise';
+const customLabel = el('span', 'customize-label', 'Customize…');
+const customIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+customIcon.setAttribute('viewBox', '0 0 24 24'); customIcon.setAttribute('aria-hidden', 'true');
+customIcon.classList.add('customize-icon');
+const pencil = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+pencil.setAttribute('d', 'M15 5l4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15z');
+pencil.setAttribute('fill', 'none'); pencil.setAttribute('stroke', 'currentColor');
+pencil.setAttribute('stroke-width', '1.8'); pencil.setAttribute('stroke-linejoin', 'round');
+customIcon.append(pencil); customButton.replaceChildren(customLabel, customIcon);
+const setup = el('div', 'setup exercise-toolbar');
 const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');
 
 const activitySurface = el('section', 'card activity-surface'); activitySurface.setAttribute('aria-label', 'Uno234 activity');
@@ -97,7 +111,6 @@ help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Select any count in a group. Rest (R) and Duration (D) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
   el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
-const passageFeedback = el('div', 'passage-feedback');
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
 const writeResponse = el('section', 'write-response'); writeResponse.setAttribute('aria-label', 'Write Counts');
@@ -117,7 +130,8 @@ countsButton.setAttribute('aria-controls', countPalette.id);
 const paletteEmpty = el('p', 'palette-empty', 'Select a count box above to enter counts or toggle Rest and Duration for its group.'); countPalette.append(paletteEmpty);
 const performanceSetup = el('div', 'performance-setup');
 
-const performance = createPerformance({ treatBag: feedbackSnapshot, exercise: () => activity.exercise, preferences, changed: persist,
+const performance = createPerformance({ treatBag: feedbackSnapshot,
+  countingFeedback: () => ({ plan: activity.countingPlan, answer: activity.countingAnswer, checked: activity.checkedCountingAnswer, result: activity.countingResult, mode: preferences.mode, navigate: focusProblem }), exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
     performing = active; picker.disabled = next.disabled = customButton.disabled = active;
     settings.setLocked(active);
@@ -135,15 +149,33 @@ const performance = createPerformance({ treatBag: feedbackSnapshot, exercise: ()
   nextIssue: () => generationIssue(generation),
 });
 function focusCounts() { const first = activity.countingPlan.counts[0]; if (first) editors[first.measure]?.focusPosition(first.id); }
+function focusProblem(id: CountId) {
+  const details = feedbackSnapshot.querySelector<HTMLDetailsElement>('.treat-details');
+  if (details) details.open = false;
+  selectResponsePanel('counts');
+  const count = activity.countingPlan.counts.find(c => c.id === id);
+  if (count) editors[count.measure]?.focusPosition(id);
+  const bounds = passage.getBoundingClientRect();
+  if (bounds.top < 0 || bounds.bottom > innerHeight) passage.scrollIntoView({ block: 'start', behavior: 'instant' });
+}
 function evaluateAnswer() {
-  editors.forEach(e => e.suspend());
-  const result = evaluateCountingAnswer(activity.countingPlan, activity.countingAnswer);
-  activity.countingResult = result; editors.forEach(editor => editor.refresh());
-  summary.textContent = Object.values(result).some(d => d.verdict === 'incorrect') ? 'Some answers need correction. Review counts, rests and duration separately below, then Retry.' : 'All applicable answers are correct. Choose New exercise to keep practicing.';
-  retry.hidden = false;
+  activity.countingResult = evaluateCountingAnswer(activity.countingPlan, activity.countingAnswer);
+  activity.checkedCountingAnswer = activity.countingAnswer;
+  refreshCounting();
+  const problems = countingProblems(activity.countingPlan, activity.countingResult, activity.checkedCountingAnswer, activity.countingAnswer);
+  const first = activity.countingPlan.counts.find(c => problems.some(p => p.item.countIds.includes(c.id)));
+  if (first) focusProblem(first.id);
+}
+function refreshCounting() {
+  editors.forEach(editor => editor.refresh());
+  check.textContent = activity.countingResult ? 'Check Again' : 'Check';
+  const score = activity.countingResult ? countingScore(activity.countingResult) : null;
+  completionNext.disabled = Boolean(generationIssue(generation));
+  completionNext.hidden = !score || score.correct !== score.total || activity.checkedCountingAnswer !== activity.countingAnswer;
+  performance.refreshFeedback();
 }
 const check = button('Check', evaluateAnswer, true);
-const retry = button('Retry', () => { activity.countingResult = null; editors.forEach(editor => { editor.suspend(); editor.refresh(); }); summary.textContent = 'Correct your answer, then Check again.'; retry.hidden = true; focusCounts(); }); retry.hidden = true;
+const completionNext = button('Next Exercise', () => newExercise()); completionNext.hidden = true;
 function newExercise(returnToPractice = false) {
   migratedCounting = false;
   const issue = generationIssue(generation);
@@ -156,19 +188,23 @@ function newExercise(returnToPractice = false) {
   if (returnToPractice) { focusNewRhythm = true; location.hash = '#practice'; }
 }
 const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
-const reset = button('Clear', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); activity.countingResult = null; editors.forEach(editor => editor.refresh()); summary.textContent = ''; retry.hidden = true; focusCounts(); });
-actions.append(reset, check);
+const reset = button('Clear', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); refreshCounting(); focusCounts(); });
+actions.append(reset, check, completionNext);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
-setup.append(sharedActions);
-writeResponse.append(retry, summary, passageFeedback);
+
+writeResponse.append(summary);
 help.append(performance.help);
 performanceSetup.append(performance.tempoField, performance.playField, performance.metronomeField);
 performance.section.prepend(performanceSetup);
 performance.section.id = 'performance-panel'; performButton.setAttribute('aria-controls', performance.section.id);
 interactionBody.append(countPalette, actions, performance.section); interaction.append(panelSelector, interactionBody);
 const responseControls = el('div', 'response-controls'); responseControls.append(showCountsField);
+responseControls.prepend(modeField);
 help.append(banner);
-practiceView.append(passage, responseControls, interaction, writeResponse);
+const playArea = el('div', 'practice-workspace');
+playArea.append(passage, responseControls, interaction);
+keepCountingDockClear(playArea, responseControls, interaction);
+practiceView.append(playArea, writeResponse);
 const settings = createSettingsPage({
   initialGeneration: generation,
   newExercise: () => newExercise(true),
@@ -178,12 +214,16 @@ const settings = createSettingsPage({
   counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
   generation: value => {
     generation = value; persist();
-    const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
+    const issue = generationIssue(generation); next.disabled = completionNext.disabled = Boolean(issue); performance.syncResults();
     updateExerciseSummary();
   },
 });
 customDialog.append(settings.exerciseControls);
-presetRow.prepend(settings.levelField);
+setup.append(settings.levelDetails);
+settings.levelField.append(customButton, sharedActions);
+const exerciseRow = el('div', 'exercise-overview-row');
+exerciseRow.append(settings.levelField, feedbackSnapshot);
+practiceView.prepend(exerciseRow);
 if (testing.enabled) {
   const fixtures = el('details', 'testing-fixtures');
   fixtures.append(el('summary', '', 'Developer / testing fixtures'), el('p', 'setting-hint', 'Testing access enabled. Selecting a fixed fixture replaces the exercise and clears both responses. New exercise returns to generated practice.'), field('Testing fixture', picker));
@@ -191,11 +231,12 @@ if (testing.enabled) {
 }
 const sharedControls = el('details', 'shared-controls');
 sharedControls.append(el('summary', '', 'Exercise settings'), setup);
-practiceView.append(sharedControls, exerciseSummary, feedbackSnapshot);
+settings.levelDetails.addEventListener('toggle', () => { if (settings.levelDetails.open) sharedControls.open = true; });
+practiceView.append(sharedControls, exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
-header.append(modeField, helpButton, nav);
+header.append(helpButton, nav);
 activitySurface.append(pageTitle, practiceView, settings.page);
 main.append(header, activitySurface, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
@@ -214,26 +255,26 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
   passageStrip.dataset.measures = String(measures.length);
   passageStrip.style.setProperty('--measure-count', String(measures.length));
   passageStrip.classList.toggle('wrapped', Boolean(practiceFixtures.find(f => f.id === fixtureId)?.wrap));
-  editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren(); passageFeedback.replaceChildren();
+  editors.forEach(editor => editor.destroy()); editors = []; passageStrip.replaceChildren();
   countPalette.onkeydown = null;
   countPalette.replaceChildren(el('p', 'palette-empty', activity.countingPlan.counts.length ? 'Select a count box to enter counts or toggle its unit.' : 'This exercise has no count inputs with the current settings.'));
   measures.forEach((measure, index) => {
     const editor = createPlanEditor(measure, index, {
-      plan: activity.countingPlan, answer: () => activity.countingAnswer, result: () => activity.countingResult,
+      plan: activity.countingPlan, answer: () => activity.countingAnswer, result: () => activity.countingResult, checked: () => activity.checkedCountingAnswer,
       palette: countPalette, activated: () => {
         editors.forEach((other, otherIndex) => { other.card.classList.toggle('active-count-measure', otherIndex === index); if (otherIndex !== index) other.suspend(); });
         selectResponsePanel('counts');
       },
       hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
       reveal: target => workspace.reveal(target),
-      change: answer => { activity.countingAnswer = answer; activity.countingResult = null; editors.forEach(e => e.refresh()); summary.textContent = 'Answer edited. Check when ready.'; },
+      change: answer => { activity.countingAnswer = answer; refreshCounting(); },
       check: evaluateAnswer,
       navigate: (id, delta) => {
         const counts = activity.countingPlan.counts, target = counts[counts.findIndex(c => c.id === id) + delta];
         if (target) editors[target.measure]!.focusPosition(target.id);
       },
     });
-    editors.push(editor); passageStrip.append(editor.card); passageFeedback.append(editor.feedback);
+    editors.push(editor); passageStrip.append(editor.card);
   });
   // Use the densest bar's required width throughout the passage. Independent
   // minima scale the notation differently and misalign adjacent staffs/inputs.
@@ -243,7 +284,7 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
   tieNotation = renderPassageTies(measures, passageStrip);
   workspace.reset();
   updateExerciseSummary();
-  summary.textContent = ''; retry.hidden = true;
+  summary.textContent = ''; refreshCounting();
   updateEditors(); updateResponseView();
   if (focus && preferences.mode !== 'tap') focusCounts();
 }
@@ -297,18 +338,20 @@ function selectResponsePanel(panel: 'counts' | 'perform', focus = false) {
   if (focus && panel === 'counts') focusCounts();
 }
 function updateResponseView() {
+  performance.refreshFeedback();
   const writing = preferences.mode !== 'tap';
   writeResponse.hidden = !writing || performing;
   const showPerformance = preferences.mode === 'tap' || (preferences.mode === 'both' && responsePanel === 'perform');
   performance.section.hidden = !showPerformance;
   countPalette.hidden = showPerformance;
+  playArea.classList.toggle('editing-counts', !showPerformance && !performing);
   actions.hidden = showPerformance || performing;
   workspace.setEnabled(writing && !showPerformance && !performing);
   panelSelector.hidden = preferences.mode !== 'both';
   countsButton.disabled = performing;
   countsButton.setAttribute('aria-pressed', String(!showPerformance)); performButton.setAttribute('aria-pressed', String(showPerformance));
   banner.hidden = preferences.mode === 'tap';
-  showCountsField.hidden = preferences.mode !== 'both';
+  showCountsField.hidden = preferences.mode !== 'both' || !showPerformance;
   const hideCounts = !writing || (performing && !preferences.showCounts);
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', performing);
