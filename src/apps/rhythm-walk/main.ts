@@ -19,6 +19,7 @@ import { defaultGeneration, generateExercise, generationIssue } from './shared/g
 import type { RhythmMeasure } from '../../music/measure.ts';
 import { renderPassageTies } from './shared/notation.ts';
 import { teachingPresetLabel } from './shared/teaching-presets.ts';
+import { createWritingWorkspace } from './writing-workspace.ts';
 
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
@@ -77,6 +78,7 @@ const passageScroll = el('div', 'score-scroll passage-scroll');
 const passageStrip = el('div', 'passage-strip');
 passageScroll.append(passageStrip);
 passage.append(passageScroll);
+const workspace = createWritingWorkspace(passage, passageScroll, passageStrip, () => currentMeasures);
 const help = el('div', 'practice-help-popover'); help.id = 'practice-help'; help.popover = 'auto';
 help.setAttribute('role', 'dialog'); help.setAttribute('aria-label', 'Practice help');
 const helpButton = button('?', () => {
@@ -91,7 +93,7 @@ helpButton.setAttribute('aria-expanded', 'false');
 help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
 help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Switch modes to write counts, tap rhythms, or try both on the same score. New exercise starts a new score and clears both responses.'),
-  el('p', '', 'Measures fit the available width. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Duration when appropriate.'),
+  el('p', '', 'In Write Counts, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Duration when appropriate.'),
   el('p', '', 'Select any count in a group. Rest (R) and Duration (D) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
   el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
@@ -155,7 +157,7 @@ function newExercise(returnToPractice = false) {
 }
 const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
 const reset = button('Clear', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); activity.countingResult = null; editors.forEach(editor => editor.refresh()); summary.textContent = ''; retry.hidden = true; focusCounts(); });
-actions.append(check);
+actions.append(reset, check);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 setup.append(sharedActions);
 writeResponse.append(retry, summary, passageFeedback);
@@ -163,9 +165,10 @@ help.append(performance.help);
 performanceSetup.append(performance.tempoField, performance.playField, performance.metronomeField);
 performance.section.prepend(performanceSetup);
 performance.section.id = 'performance-panel'; performButton.setAttribute('aria-controls', performance.section.id);
-interactionBody.append(countPalette, performance.section); interaction.append(panelSelector, interactionBody);
-const responseControls = el('div', 'response-controls'); responseControls.append(modeField, showCountsField);
-practiceView.append(banner, passage, responseControls, interaction, writeResponse);
+interactionBody.append(countPalette, actions, performance.section); interaction.append(panelSelector, interactionBody);
+const responseControls = el('div', 'response-controls'); responseControls.append(showCountsField);
+help.append(banner);
+practiceView.append(passage, responseControls, interaction, writeResponse);
 const settings = createSettingsPage({
   initialGeneration: generation,
   newExercise: () => newExercise(true),
@@ -186,15 +189,14 @@ if (testing.enabled) {
   fixtures.append(el('summary', '', 'Developer / testing fixtures'), el('p', 'setting-hint', 'Testing access enabled. Selecting a fixed fixture replaces the exercise and clears both responses. New exercise returns to generated practice.'), field('Testing fixture', picker));
   setup.append(fixtures);
 }
-const exerciseMeta = el('div', 'exercise-meta'); exerciseMeta.append(exerciseSummary, helpButton);
-const sharedControls = el('section', 'shared-controls'); sharedControls.setAttribute('aria-label', 'Shared exercise controls');
-const headerLayout = el('div', 'exercise-header-layout'); headerLayout.append(setup, feedbackSnapshot);
-sharedControls.append(headerLayout, exerciseMeta);
+const sharedControls = el('details', 'shared-controls');
+sharedControls.append(el('summary', '', 'Exercise settings'), setup);
+practiceView.append(sharedControls, exerciseSummary, feedbackSnapshot);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
-header.append(nav);
-activitySurface.append(pageTitle, sharedControls, practiceView, settings.page);
+header.append(modeField, helpButton, nav);
+activitySurface.append(pageTitle, practiceView, settings.page);
 main.append(header, activitySurface, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;
@@ -223,6 +225,7 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
         selectResponsePanel('counts');
       },
       hidden: () => Boolean(practiceView.hidden) || preferences.mode === 'tap' || performing,
+      reveal: target => workspace.reveal(target),
       change: answer => { activity.countingAnswer = answer; activity.countingResult = null; editors.forEach(e => e.refresh()); summary.textContent = 'Answer edited. Check when ready.'; },
       check: evaluateAnswer,
       navigate: (id, delta) => {
@@ -237,13 +240,8 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
   const measureWidth = Math.max(280, ...editors.map(editor =>
     Number.parseFloat(editor.card.style.getPropertyValue('--count-measure-width'))));
   passageStrip.style.setProperty('--passage-measure-width', `${measureWidth}px`);
-  editors.forEach((editor, index) => {
-    const row = el('div', 'score-actions');
-    if (index === 0) row.append(reset);
-    if (index === editors.length - 1) row.append(actions);
-    editor.card.querySelector('.answer-area')!.append(row);
-  });
   tieNotation = renderPassageTies(measures, passageStrip);
+  workspace.reset();
   updateExerciseSummary();
   summary.textContent = ''; retry.hidden = true;
   updateEditors(); updateResponseView();
@@ -304,12 +302,13 @@ function updateResponseView() {
   const showPerformance = preferences.mode === 'tap' || (preferences.mode === 'both' && responsePanel === 'perform');
   performance.section.hidden = !showPerformance;
   countPalette.hidden = showPerformance;
+  actions.hidden = showPerformance || performing;
+  workspace.setEnabled(writing && !showPerformance && !performing);
   panelSelector.hidden = preferences.mode !== 'both';
   countsButton.disabled = performing;
   countsButton.setAttribute('aria-pressed', String(!showPerformance)); performButton.setAttribute('aria-pressed', String(showPerformance));
   banner.hidden = preferences.mode === 'tap';
   showCountsField.hidden = preferences.mode !== 'both';
-  passage.querySelectorAll<HTMLElement>('.score-actions').forEach(row => { row.hidden = !writing || performing; });
   const hideCounts = !writing || (performing && !preferences.showCounts);
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', performing);

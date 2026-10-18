@@ -25,20 +25,20 @@ async function countingPlanScenarios(w = window) {
     const bars = all('.plan-measure');
     const rects = bars.map(bar => bar.getBoundingClientRect());
     const notation = all('.plan-measure .notation').map(svg => svg.getBoundingClientRect());
-    if (desktop) assert(rects.every(r => Math.abs(r.top - rects[0].top) < 1), id + ': desktop measures stay on one row');
+    assert(rects.every(r => Math.abs(r.top - rects[0].top) < 1), id + ': writing measures stay on one row');
     assert(rects.every(r => Math.abs(r.width - rects[0].width) < 1), id + ': equal measure widths');
     assert(notation.every(r => Math.abs(r.height - notation[0].height) < 1), id + ': consistent notation scale');
     assert(bars.every(bar => {
       const editor = bar.querySelector('.measure-editor');
       return editor.scrollWidth <= editor.clientWidth + 1;
     }), id + ': no measure-local overflow');
-    assert(all('.score-actions:not(:empty)').every(row => {
-      const r = row.getBoundingClientRect(), bar = row.closest('.plan-measure').getBoundingClientRect();
+    assert(all('.write-actions:not(:empty)').every(row => {
+      const r = row.getBoundingClientRect(), bar = q('.interaction-body').getBoundingClientRect();
       return r.left >= bar.left - 1 && r.right <= bar.right + 1 && w.getComputedStyle(row).position === 'static';
-    }), id + ': actions stay in their measure');
+    }), id + ': actions stay beside the input palette');
     assert(w.getComputedStyle(q('.passage-scroll')).overflowX === 'auto', id + ': passage contains horizontal scrolling');
     assert(d.documentElement.scrollWidth <= w.innerWidth + 1, id + ': no document overflow');
-    if (id === 'six-wrap' && !desktop) assert(rects[1].top >= rects[0].bottom, 'Explicit wrap preserves whole measures');
+    assert(!q('.rhythm-overview').hidden === (q('.passage-scroll').scrollWidth > q('.passage-scroll').clientWidth + 1), id + ': overview appears only for overflow');
   }
   defaults(); await fixture('half');
   activate(0); key('1'); activate(0);
@@ -106,7 +106,7 @@ async function countingPlanScenarios(w = window) {
       const members = localCounts.filter(c => c.dataset.unitId === rest.dataset.unitId);
       if (!members.length) continue;
       const open = rest.firstElementChild.getBoundingClientRect(), close = rest.lastElementChild.getBoundingClientRect();
-      const rect = button => { if (!desktop) return button.getBoundingClientRect(); const range = d.createRange(); range.selectNodeContents(button); return range.getBoundingClientRect(); };
+      const rect = button => { const range = d.createRange(); range.selectNodeContents(button); return range.getBoundingClientRect(); };
       const first = rect(members[0]), last = rect(members.at(-1));
       assert(open.right <= first.left + 1 && close.left >= last.right - 1, label + ': parentheses enclose their counts');
       const next = localCounts[localCounts.indexOf(members.at(-1)) + 1];
@@ -144,7 +144,7 @@ async function countingPlanScenarios(w = window) {
   const strip = q('.passage-strip'), wasWrapped = strip.classList.contains('wrapped');
   strip.classList.add('wrapped'); await settle();
   const bars = all('.plan-measure').map(m=>m.getBoundingClientRect());
-  assert(bars.every((r,i)=>i===0||(desktop ? Math.abs(r.top-bars[0].top)<1 : r.top>=bars[i-1].bottom)), 'Desktop keeps one system; narrow wrapped measures occupy separate rows');
+  assert(bars.every((r,i)=>i===0||Math.abs(r.top-bars[0].top)<1), 'Writing keeps one system even for historical wrapped fixtures');
   assert(all('.measure-editor').every(m=>m.scrollWidth<=m.clientWidth+1), 'Wrapped measures retain full input width');
   assert(d.documentElement.scrollWidth<=w.innerWidth+1, 'Wide wrapped measures overflow only inside the passage');
   strip.classList.toggle('wrapped', wasWrapped); await settle();
@@ -159,7 +159,7 @@ async function countingPlanScenarios(w = window) {
   restButton.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:12}));
   restButton.dispatchEvent(new w.PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:12})); restButton.click();
   assert(q('.inferred-rest'), 'Touch pointer/click route toggles unit');
-  if (!desktop) assert(counts().every(c => c.getBoundingClientRect().width >= 43 && c.getBoundingClientRect().height >= 43), 'Count touch targets are at least 44 CSS pixels within rounding');
+  assert(counts().every(c => c.getBoundingClientRect().width >= 43 && c.getBoundingClientRect().height >= 43), 'Count touch targets are at least 44 CSS pixels within rounding');
   assert(d.documentElement.scrollWidth <= w.innerWidth + 1, 'No page-level horizontal overflow');
   assert(!all('button').some(b => /Start rest pair|Start duration line|endpoint/.test(b.textContent)), 'No obsolete range actions exposed');
   return { assertions: results.length, width:w.innerWidth, results };

@@ -5,7 +5,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
   const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new w.Event('change')); };
   const stored = () => JSON.parse(w.localStorage.getItem(key));
   const picker = d.querySelector('[data-setting="teaching-preset"]');
-  const mode = d.querySelector('.response-controls select');
+  const mode = d.querySelector('select[aria-label="Mode"]');
   const next = d.querySelector('.setup-actions button');
   choose(mode, 'write');
   choose(d.querySelector('[data-setting="exercise-length"]'), '3');

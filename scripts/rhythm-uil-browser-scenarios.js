@@ -12,7 +12,7 @@ window.runUilBrowserScenarios = async function (w = window) {
   const button = name => [...d.querySelectorAll('button')].find(control => control.textContent === name);
   const stored = () => JSON.parse(w.localStorage.getItem('tuno.rhythm-walk.preferences.v1'));
   const generation = () => stored().generation;
-  const mode = d.querySelector('.response-controls select');
+  const mode = d.querySelector('select[aria-label="Mode"]');
   choose(mode, 'both'); choose(d.querySelector('[data-preset]'), 'half'); choose(d.querySelector('[data-preset]'), 'whole');
   choose(d.querySelector('.score-tempo input'), '180');
   choose(d.querySelector('[data-setting="count-system"]'), 'syllables');
@@ -103,7 +103,7 @@ window.runUilPreferenceBrowserScenarios = async function (frame) {
     assert(field.textContent.includes('UIL I · note-only practice · next exercise'), 'fresh load restores qualified exact attribution');
     assert(d.querySelector('[data-setting="exercise-length"] input:checked').value === String(expected.generation.measures), 'fresh load restores chosen length');
     assert(d.querySelector('[data-ingredient="whole"]').checked && d.querySelector('[data-ingredient="dotted-half"]').checked, 'fresh load restores whole/dotted-half selections');
-    assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('.response-controls select').value === expected.mode, 'fresh load restores independent mode/system');
+    assert(d.querySelector('[data-setting="count-system"]').value === expected.countingSystem && d.querySelector('select[aria-label="Mode"]').value === expected.mode, 'fresh load restores independent mode/system');
     assert(d.querySelector('.score-tempo input').value === String(expected.bpm), 'fresh load restores tempo');
     assert([...d.querySelectorAll('.count-slot:not([hidden])')].every(slot => slot.textContent === '·'), 'fresh load does not persist writing responses');
     localStorage.setItem(key, JSON.stringify({ ...expected, generation: { ...expected.generation, teachingPreset: { id: 'uil-unknown', version: 1, customized: false }, restrictions: { pairedEighths: 'yes', noQuarterRestBeatOne: true } } }));

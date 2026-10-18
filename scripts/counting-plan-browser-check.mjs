@@ -8,6 +8,7 @@ const url = process.env.COUNT_WRITING_URL || new URL('/prototypes/rhythm-walk/',
 const browser = await ({ chromium, firefox })[engine].launch();
 const output = `dist/validation/counting-plan-${engine}`;
 const source = await readFile(new URL('./counting-plan-browser-scenarios.js', import.meta.url), 'utf8');
+const workspaceSource = await readFile(new URL('./writing-workspace-browser-scenarios.js', import.meta.url), 'utf8');
 const linkSource = await readFile(new URL('./counting-link-browser-scenarios.js', import.meta.url), 'utf8');
 const report = { engine, url, passed: false, checks: [], physicalDeviceChecks: 'not performed' };
 try {
@@ -25,6 +26,30 @@ try {
     await page.keyboard.press('1'); await page.keyboard.press('d');
     assert.equal(await page.locator('[data-count-id]').first().textContent(), '1');
     assert.equal(await page.locator('.sustained').count(), 1);
+    await page.addScriptTag({ content: workspaceSource });
+    report.checks.push(await page.evaluate(() => writingWorkspaceScenarios()));
+    await page.locator('[data-preset]').evaluate(el => { el.value = 'dense-sixteenths'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.waitForTimeout(100);
+    const overview = await page.locator('.rhythm-overview').boundingBox();
+    await page.mouse.click(overview.x + overview.width * .95, overview.y + overview.height / 2);
+    const afterTap = await page.locator('.passage-scroll').evaluate(el => el.scrollLeft);
+    assert.ok(afterTap > 0, 'Overview tap navigates the passage');
+    const window = await page.locator('.rhythm-overview-window').boundingBox();
+    await page.mouse.move(window.x + window.width / 2, window.y + window.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(window.x + window.width / 2 - 30, window.y + window.height / 2, { steps: 5 });
+    await page.mouse.up();
+    assert.ok(await page.locator('.passage-scroll').evaluate(el => el.scrollLeft) < afterTap, 'Dragging the overview window navigates continuously');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.locator('[data-count-id]').last().focus();
+    await page.keyboard.press('ArrowLeft');
+    assert.ok(await page.locator('[data-count-id]').nth(62).evaluate(el => {
+      const viewport = el.closest('.passage-scroll').getBoundingClientRect(), r = el.getBoundingClientRect();
+      return r.left >= viewport.left && r.right <= viewport.right;
+    }), 'Reduced-motion keyboard navigation keeps the selected count visible');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.locator('[data-count-id]').first().click();
+    await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: `${output}/${width}.png`, fullPage: true });
     await page.addScriptTag({ content: linkSource });
     report.checks.push(await page.evaluate(async () => {

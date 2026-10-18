@@ -10,7 +10,7 @@ window.__assessmentCheck = (async () => {
   const choose = (node, value) => { node.value=value; node.dispatchEvent(new Event('change')); };
   const button = name => [...document.querySelectorAll('button')].find(n=>n.textContent===name);
   const pad=document.querySelector('.tap-response .pad'), surface=document.querySelector('.performance-surface');
-  const mode=document.querySelector('.response-controls select'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
+  const mode=document.querySelector('select[aria-label="Mode"]'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
   const id=()=>document.querySelector('.passage').dataset.exerciseId;
   const written=()=>[...document.querySelectorAll('.count-slot')].map(n=>n.textContent).join();
   // Background native preview has no OS focus; scope a focus predicate stub to

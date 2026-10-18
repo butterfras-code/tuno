@@ -10,7 +10,7 @@ window.runLevelBrowserScenarios = async function (w = window, loadFresh) {
   const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new Event('change')); };
   const level = document.querySelector('[data-setting="teaching-preset"]');
   const length = document.querySelector('[data-setting="exercise-length"]');
-  const mode = document.querySelector('.response-controls select');
+  const mode = document.querySelector('select[aria-label="Mode"]');
   const next = [...document.querySelectorAll('.setup-actions button')][0];
   assert(!document.querySelector('[data-preset]'), 'ordinary visits have no fixture selector');
   assert([...level.options].every(o => o.value !== 'generated'), 'generated practice is not a level option');

@@ -372,3 +372,59 @@ main.rhythm-app {
 .rhythm-app .plan-token-palette button.control:hover { background: #f5e8cc; border-color: #897252; }
 .rhythm-app .plan-token-palette button.control:active { transform: translateY(2px); box-shadow: 0 1px 0 #c7b596; }
 .rhythm-app .plan-token-palette button.control:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
+
+/* Write Counts uses readable targets and one continuous musical surface.
+   Performance retains its existing fitting/wrapping contract in this slice. */
+.rhythm-app .passage.writing-workspace .passage-strip,
+.rhythm-app .passage.writing-workspace .passage-strip.wrapped {
+  grid-template-columns: repeat(var(--measure-count, 1), minmax(var(--passage-measure-width, 280px), 1fr));
+  width: max(100%, calc(var(--measure-count, 1) * var(--passage-measure-width, 280px)));
+}
+.rhythm-app .writing-workspace .plan-measure {
+  --count-target-width: 44px !important;
+  --count-font-size: 22px !important;
+  --rest-extent: 22px !important;
+  --rest-bracket-width: 9px !important;
+}
+.rhythm-app .writing-workspace .count-slot { min-height: 44px; height: 44px; background: var(--color-surface); }
+.rhythm-app .writing-workspace .count-slot[aria-pressed="true"] { background: var(--color-accent); color: var(--color-surface); }
+.rhythm-app .writing-workspace .counts { height: 100px; }
+.rhythm-app .writing-workspace .plan-answer { min-height: 110px; }
+.rhythm-app .writing-workspace .inferred-rest { height: 98px; z-index: 3; }
+.rhythm-app .writing-workspace .inferred-rest > span { font-size: 24px; }
+.rhythm-app .writing-workspace .plan-answer[data-placement="beside"] .inferred-duration { top: 54px; }
+.writing-workspace .notation g[data-start] { touch-action: pan-x pan-y; }
+.writing-workspace .passage-scroll { overscroll-behavior-x: contain; overflow-anchor: none; }
+.rhythm-overview { position: relative; height: 48px; margin-bottom: 8px; border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface); touch-action: none; cursor: pointer; }
+.rhythm-overview[hidden] { display: none; }
+.rhythm-overview > svg { width: 100%; height: 100%; pointer-events: none; }
+.rhythm-overview-window { position: absolute; top: 0; bottom: 0; border: 2px solid var(--color-accent); background: color-mix(in srgb, var(--color-accent) 15%, transparent); box-sizing: border-box; pointer-events: none; }
+.rhythm-overview:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+.rhythm-app .app-header { gap: 8px 16px; margin-bottom: 12px; }
+.rhythm-app .brand { width: auto; }
+.rhythm-app .tagline { display: none; }
+.rhythm-app .app-header .field { margin: 0 0 0 auto; min-width: 0; }
+.rhythm-app .app-header .field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.rhythm-app .app-header select { min-height: 44px; max-width: 100%; }
+.rhythm-app .app-header > .control { min-width: 44px; min-height: 44px; padding: 8px; }
+.rhythm-app .rhythm-nav { margin-left: auto; }
+.rhythm-app .passage { margin-top: 0; }
+.response-controls:not(:has(.field:not([hidden]))) { display: none; }
+.shared-interaction { margin: 8px 0; }
+.rhythm-app .count-palette-host { min-height: 0; }
+.count-palette-host .setting-hint { display: none; }
+.rhythm-app .write-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0 0; }
+.rhythm-app .write-actions[hidden] { display: none; }
+.rhythm-app .write-actions > :first-child { margin-right: auto; }
+.shared-controls { margin: 12px 0 0; padding: 0; border-top: 1px solid var(--color-line); border-bottom: 0; }
+.shared-controls > summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 700; box-sizing: border-box; }
+.shared-controls > .setup { padding: 8px 0; }
+#practice-view > .feedback-snapshot { margin-top: 16px; }
+@media (max-width: 760px) {
+  .rhythm-app .wordmark { font-size: 24px; }
+  .rhythm-app .app-header { gap: 8px; }
+  .rhythm-app .rhythm-nav { width: auto; display: flex; background: none; padding: 0; }
+  .rhythm-app .rhythm-nav .control { padding: 8px; }
+  .rhythm-app .rhythm-nav a[aria-current="page"] { display: none; }
+  .rhythm-app .activity-surface { padding: 12px 8px; }
+}

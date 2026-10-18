@@ -29,7 +29,7 @@ window.__offsetCheck = (async () => {
     return pad.dispatchEvent(new KeyboardEvent(action, { key: ' ', code: 'Space', bubbles: true, cancelable: true }));
   };
   try {
-    const mode = document.querySelector('.response-controls select'); mode.value = 'tap'; mode.dispatchEvent(new Event('change'));
+    const mode = document.querySelector('select[aria-label="Mode"]'); mode.value = 'tap'; mode.dispatchEvent(new Event('change'));
     if (scenario === 'automatic' || scenario === 'reuse') {
       if (scenario === 'automatic') { button('Reset timing').click(); panel.querySelector('input[type=checkbox]').checked = true; }
       const before = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));

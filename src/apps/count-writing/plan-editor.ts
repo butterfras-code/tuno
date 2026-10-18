@@ -27,6 +27,7 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   plan: CountingPlan; answer: () => CountingAnswer; result: () => CountingEvaluation | null;
   change: (answer: CountingAnswer) => void; palette: HTMLElement; activated: () => void;
   hidden: () => boolean; check: () => void; navigate: (id: CountId, delta: number) => void;
+  reveal: (target: HTMLElement) => void;
 }) {
   const plan = options.plan, prefs = plan.preferences;
   const counts = plan.counts.filter(c => c.measure === measureIndex);
@@ -38,12 +39,12 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   const heading = el('h2', 'measure-heading', String(measureIndex + 1)); heading.setAttribute('aria-label', `Measure ${measureIndex + 1}`);
   const measure = el('div', 'measure'); const score = el('div', 'measure-editor');
   const parentheses = prefs.includeRests && prefs.restAppearance === 'parentheses';
-  // A 44px input plus a 16px parenthesis and 2px gutter on each side.
-  const restExtent = 40;
+  // Parentheses enclose the token inside its 44px target. Reserve a 4px
+  // gutter between targets instead of empty space for external brackets.
+  const restExtent = 22;
   const spacing = counts.slice(1).map((c, i) => {
     const previous = counts[i]!;
-    const pixels = parentheses && previous.unitId !== c.unitId ? 2 * restExtent + 4 : 48;
-    return Math.ceil(100 * pixels / (x(c.localPosition) - x(previous.localPosition)));
+    return Math.ceil(100 * 48 / (x(c.localPosition) - x(previous.localPosition)));
   });
   const edgeWidths = parentheses && counts.length
     ? [100 * restExtent / x(counts[0]!.localPosition), 100 * restExtent / (100 - x(counts.at(-1)!.localPosition))]
@@ -116,13 +117,13 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   function focusPosition(id: CountId) {
     if (!buttons.has(id) || options.hidden()) return;
     buffer.clear(); selected = id; active = true; options.activated(); refresh();
-    const b = buttons.get(id)!; b.focus({ preventScroll: true }); b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const b = buttons.get(id)!; b.focus({ preventScroll: true }); options.reveal(b);
   }
   function suspend() { active = false; buffer.clear(); }
   counts.forEach(count => {
     const b = button('', () => focusPosition(count.id)); b.className = 'count-slot'; b.dataset.countId = count.id; b.dataset.unitId = count.unitId;
     b.style.left = `${x(count.localPosition)}%`; b.setAttribute('aria-keyshortcuts', 'r d');
-    b.addEventListener('focus', () => { if (!active || selected !== count.id) { selected = count.id; active = true; options.activated(); refresh(); } });
+    b.addEventListener('focus', () => { if (!active || selected !== count.id) { selected = count.id; active = true; options.activated(); refresh(); } options.reveal(b); });
     b.addEventListener('keydown', key); buttons.set(count.id, b); positions.append(b);
   });
   if (!counts.length) positions.append(el('p', 'no-counts', 'No count inputs in this measure.'));
@@ -191,8 +192,8 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     const target = desktop ? Math.min(36, width * closest - 1) : 44;
     card.style.setProperty('--count-target-width', `${target}px`);
     card.style.setProperty('--count-font-size', `${Math.min(22, Math.max(10, target * .65))}px`);
-    card.style.setProperty('--rest-extent', `${desktop ? target / 2 : 40}px`);
-    card.style.setProperty('--rest-bracket-width', desktop ? `${target * .22}px` : '16px');
+    card.style.setProperty('--rest-extent', `${target / 2}px`);
+    card.style.setProperty('--rest-bracket-width', `${target * .22}px`);
     layoutNotation(width, .6);
   });
   layoutObserver.observe(measure);
