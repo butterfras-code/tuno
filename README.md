@@ -28,7 +28,7 @@ Copyright © 2026 Justin Butterfras. tUno’s code, documentation, and original 
 
 ## Development
 
-Use Node.js 24 (also recorded in `.nvmrc`).
+Use Node.js 24.22.1, pinned in `.nvmrc`, or a newer patched Node 24 release. Select it with your Node version manager before running the commands below; `node --version` must report at least `v24.22.1`.
 
 ```sh
 npm ci

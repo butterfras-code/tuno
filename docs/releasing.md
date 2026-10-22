@@ -1,6 +1,6 @@
 # Building and reviewing a release
 
-Use Node 24 and the pinned lockfile. Install dependencies with `npm ci`, and install test browsers with `npx playwright install chromium firefox`. Browser system libraries and OpenSSL (for the local TLS fixture) are required. No runtime package, account, or remote asset service is needed.
+Use Node 24.22.1 from `.nvmrc` and the pinned lockfile. Confirm `node --version` before validation. Install dependencies with `npm ci`, and install test browsers with `npx playwright install chromium firefox`. Browser system libraries and OpenSSL (for the local TLS fixture) are required. No runtime package, account, or remote asset service is needed.
 
 Run `npm run verify` from the repository root. It type-checks, runs unit tests, builds once, verifies checksums/manifest/icon dimensions, and runs Chromium and Firefox integration, offline/update, audio-render, performance, HTTPS/download and installation-lifecycle checks. A failure stops the command and is recorded in `dist/validation/summary.json`. Physical acceptance is always recorded separately. See [release validation](release-validation.md) for thresholds, measurements and gaps.
 

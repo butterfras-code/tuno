@@ -20,4 +20,4 @@ See [hosting setup](docs/hosting.md) for deployment settings and preview behavio
 
 ## Validation
 
-Use Node.js 24 and install dependencies with `npm ci`. Run checks appropriate to the change; documentation-only edits need link/content review and `git diff --check`, not an application rebuild. For application changes, use `npm run check` and the relevant browser checks. Follow [release instructions](docs/releasing.md) for full candidate verification with `npm run verify` and required physical-device checks.
+Use the Node.js 24 version pinned in `.nvmrc` (minimum 24.22.1) and install dependencies with `npm ci`. Run checks appropriate to the change; documentation-only edits need link/content review and `git diff --check`, not an application rebuild. For application changes, use `npm run check` and the relevant browser checks. Follow [release instructions](docs/releasing.md) for full candidate verification with `npm run verify` and required physical-device checks.
