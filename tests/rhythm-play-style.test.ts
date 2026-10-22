@@ -1,3 +1,5 @@
+import { note } from './score-test-support.ts';
+import { score } from './score-test-support.ts';
 import { legacyAssessmentPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,11 +11,11 @@ import { defaultPreferences, readPreferences, presets } from '../src/apps/rhythm
 import { provisionalEvaluation, releaseAllowances } from '../src/apps/rhythm-walk/play-policy.ts';
 import type { PlayStyle } from '../src/apps/rhythm-walk/play-policy.ts';
 import type { TimingOffset } from '../src/apps/rhythm-walk/offset.ts';
-import { defaultGeneration, generateExercise, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { defaultGeneration, generateExercise as generateScore, ingredients } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
 
-const adjacent: Exercise = { id: 'adjacent', label: '', description: '', measures: [{ meter: [2, 4], events: [['E'], ['E'], ['Q']] }] };
-const rest: Exercise = { id: 'rest', label: '', description: '', measures: [{ meter: [2, 4], events: [['Q'], ['E', { rest: true }], ['E']] }] };
+const adjacent: Exercise = { id: 'adjacent', label: '', description: '', score: score([{ meter: [2, 4], notes: [note('eighth'), note('eighth'), note('quarter')] }]) };
+const rest: Exercise = { id: 'rest', label: '', description: '', score: score([{ meter: [2, 4], notes: [note('quarter'), note('eighth', { kind: 'rest' }), note('eighth')] }]) };
 function capture(style: PlayStyle, exercise = adjacent, bpm = 120, offset?: TimingOffset) { return new Capture(exercise, bpm, false, undefined, offset, style, undefined, legacyAssessmentPolicy); }
 function pair(c: Capture, down: number, up: number | null, source = 'keyboard') {
   c.input('down', source, down, 10000 + down * 1000);
@@ -123,10 +125,10 @@ test('rest acceptance does not excuse unmatched attacks or unrelated sustained i
 
 test('ties require a single continuous hold, within and across bars', () => {
   for (const measures of [
-    [{ meter: [2, 4] as const, events: [['Q', { tieNext: true }], ['Q']] as const }],
-    [{ meter: [2, 4] as const, events: [['H', { tieNext: true }]] as const }, { meter: [2, 4] as const, events: [['H']] as const }],
+    [{ meter: [2, 4] as const, notes: [note('quarter', { tieNext: true }), note('quarter')] as const }],
+    [{ meter: [2, 4] as const, notes: [note('half', { tieNext: true })] as const }, { meter: [2, 4] as const, notes: [note('half')] as const }],
   ]) {
-    const exercise = { id: 'tie', label: '', description: '', measures };
+    const exercise = { id: 'tie', label: '', description: '', score: score(measures) };
     const good = capture('hold', exercise); pair(good, 0, good.plan.duration);
     assert.equal(evaluateAttempt(complete(good)).acceptable, true);
     const broken = capture('hold', exercise), boundary = measures.length === 1 ? .5 : 1;
@@ -166,10 +168,10 @@ test('preferences and policies are snapshotted; retry uses current selection', (
 });
 
 test('duration geometry splits tied, unmatched, overheld and incomplete inputs without new attacks', () => {
-  const exercise: Exercise = { id: 'cross', label: '', description: '', measures: [
-    { meter: [2, 4], events: [['H', { tieNext: true }]] },
-    { meter: [2, 4], events: [['Q'], ['Q']] },
-  ] };
+  const exercise: Exercise = { id: 'cross', label: '', description: '', score: score([
+    { meter: [2, 4], notes: [note('half', { tieNext: true })] },
+    { meter: [2, 4], notes: [note('quarter'), note('quarter')] },
+  ]) };
   const c = capture('hold', exercise); pair(c, 0, 1.49); pair(c, 1.5, null);
   const rows = timingTimelines(complete(c));
   assert.deepEqual(rows.map(r => r.expected.length), [1, 1]);
@@ -197,7 +199,7 @@ test('both performance settings cover every preset and generated supported meter
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
   const exercises: Exercise[] = presets.map(p => ({ ...p, description: '' }));
   for (const meter of meters) for (const measures of [1, 2, 3, 4]) {
-    exercises.push({ id: meter, label: '', description: '', measures: generateExercise({ ...defaultGeneration(), meters: [meter], measures, ties: true, syncopation: true, allowUnintuitiveNotation: true, ingredients: ingredients.map(i => i.id) }, random) });
+    exercises.push({ id: meter, label: '', description: '', score: score(generateExercise({ ...defaultGeneration(), meters: [meter], measures, ties: true, syncopation: true, allowUnintuitiveNotation: true, ingredients: ingredients.map(i => i.id) }, random)) });
   }
   for (const exercise of exercises) for (const style of ['tap', 'hold'] as const) {
     const c = capture(style, exercise);
@@ -205,3 +207,5 @@ test('both performance settings cover every preset and generated supported meter
     assert.equal(evaluateAttempt(complete(c)).acceptable, true, `${exercise.id} ${style}`);
   }
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

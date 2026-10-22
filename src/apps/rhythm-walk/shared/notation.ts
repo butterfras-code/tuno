@@ -23,37 +23,37 @@ export function renderTimeSignature(meter: RhythmMeasure['meter']) {
 }
 function writtenSymbol(written: RhythmEvent, nx: number) {
   const group = node('g', {});
-  if (written[1]?.rest) {
-    if (['W', 'H'].includes(written[0])) {
-      group.append(node('rect', { x: nx - 12, y: written[0] === 'W' ? 100 : 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': written[0] === 'W' ? 'whole' : 'half' }));
-    } else if (['E', 'S'].includes(written[0])) {
-      if (written[0] === 'S') group.append(node('path', { d: 'M -9 7 C -20 17 -24 1 -13 1 C -5 1 -5 7 -9 7 Z M -8 30 L 8 -18', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'sixteenth' }));
+  if ((written.kind === 'rest')) {
+    if (['whole', 'half'].includes(written.type)) {
+      group.append(node('rect', { x: nx - 12, y: written.type === 'whole' ? 100 : 90, width: 24, height: 10, fill: 'currentColor', 'data-rest': written.type === 'whole' ? 'whole' : 'half' }));
+    } else if (['eighth', '16th'].includes(written.type)) {
+      if (written.type === '16th') group.append(node('path', { d: 'M -9 7 C -20 17 -24 1 -13 1 C -5 1 -5 7 -9 7 Z M -8 30 L 8 -18', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'sixteenth' }));
       group.append(node('path', { d: 'M -6 20 L 8 -18 M 6 -12 C -8 -2 -14 -18 -3 -18 C 5 -18 7 -12 6 -12 Z', transform: `translate(${nx} 100)`, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': 3, 'data-rest': 'eighth' }));
     } else
     group.append(node('path', { d: 'M -4 -26 L 9 -12 L 0 -2 L 10 12 C -7 4 -12 16 -2 24 C -22 17 -16 0 0 4 L -12 -10 L -4 -18 Z', transform: `translate(${nx} 100)`, fill: 'currentColor' }));
   } else {
-    const whole = written[0] === 'W';
-    const hollow = whole || written[0] === 'H';
+    const whole = written.type === 'whole';
+    const hollow = whole || written.type === 'half';
     group.append(node('ellipse', { cx: nx, cy: 100, rx: whole ? 14 : 11, ry: whole ? 8.5 : 7.5, transform: `rotate(${whole ? 0 : -20} ${nx} 100)`, fill: hollow ? 'var(--notation-surface, var(--color-surface))' : 'currentColor', stroke: 'currentColor', 'stroke-width': hollow ? 2.6 : 1, 'data-hollow': String(hollow) }));
     if (!whole) group.append(node('line', { x1: nx + 10, x2: nx + 10, y1: 98, y2: 42, stroke: 'currentColor', 'stroke-width': 2.5 }));
   }
-  if (written[1]?.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
+  if (written.dots) group.append(node('circle', { cx: nx + 24, cy: 92, r: 3.5, fill: 'currentColor' }));
   return group;
 }
 function appendFlags(group: Element, written: RhythmEvent, nx: number) {
-  for (let level = 0; level < (written[0] === 'S' ? 2 : 1); level++) {
+  for (let level = 0; level < (written.type === '16th' ? 2 : 1); level++) {
     const y = 42 + level * 12;
     group.append(node('path', { d: `M ${nx + 10} ${y} C ${nx + 12} ${y + 13} ${nx + 33} ${y + 14} ${nx + 23} ${y + 38} C ${nx + 25} ${y + 22} ${nx + 13} ${y + 22} ${nx + 10} ${y + 19} Z`, fill: 'currentColor', 'data-flag': level + 1 }));
   }
 }
 /** Ingredient previews reuse the score glyphs; enclosing labels provide their names. */
 export function renderRhythmSymbol(written: RhythmEvent) {
-  const triplet = Boolean(written[1]?.tuplet);
+  const triplet = Boolean(written.timeModification);
   const svg = node('svg', { viewBox: triplet ? '0 0 136 136' : '0 24 72 112', class: 'rhythm-symbol-preview', 'aria-hidden': 'true', focusable: 'false' });
   for (const x of triplet ? [22, 62, 102] : [26]) {
     const group = writtenSymbol(written, x);
-    if (!triplet && !written[1]?.rest && ['E', 'S'].includes(written[0])) appendFlags(group, written, x);
-    if (written[1]?.rest && ['W', 'H'].includes(written[0])) group.append(node('line', { x1: x - 16, x2: x + 16, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
+    if (!triplet && !(written.kind === 'rest') && ['eighth', '16th'].includes(written.type)) appendFlags(group, written, x);
+    if ((written.kind === 'rest') && ['whole', 'half'].includes(written.type)) group.append(node('line', { x1: x - 16, x2: x + 16, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
     svg.append(group);
   }
   if (triplet) {
@@ -67,7 +67,7 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
   const grid = countGrid(measure);
   const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `${measure.meter.join("/")} rhythm: ${label}`, class: 'notation' });
   const groupOf = (event: typeof grid.events[number]) => { const p = divide(event.start, grid.policy.pulse); return Math.floor(p[0] / p[1]); };
-  const short = (event: typeof grid.events[number] | undefined) => event && ['E', 'S'].includes(event.written[0]);
+  const short = (event: typeof grid.events[number] | undefined) => event && ['eighth', '16th'].includes(event.written.type);
   const x = (tick: number) => slotX(tick, grid.slots.length, grid.fine) * 8;
   svg.append(node('line', { x1: passage.first ? 80 : 0, x2: passage.last ? 798 : 800, y1: 100, y2: 100, stroke: 'currentColor', 'stroke-width': 2 }));
   for (const bx of passage.first ? [80, passage.last ? 798 : 800] : [passage.last ? 798 : 800]) svg.append(node('line', { x1: bx, x2: bx, y1: 74, y2: 126, stroke: 'currentColor', 'stroke-width': passage.last && bx !== 80 ? 4 : 2 }));
@@ -75,7 +75,7 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
   if (passage.first) svg.append(...timeSignatureDigits(measure.meter, 46, 94, 28));
   grid.events.forEach((event, index) => {
     const nx = x(event.startSlot);
-    const group = node('g', { 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written[0], 'data-dots': event.written[1]?.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written[1]?.tieNext)) });
+    const group = node('g', { 'data-layout-x': nx, 'data-event': index, 'data-start': event.startSlot, 'data-duration': (event.endSlot - event.startSlot), 'data-kind': event.kind, 'data-value': event.written.type, 'data-dots': event.written.dots ?? 0, 'data-tuplet-group': event.tupletGroup ?? '', 'data-tie-next': String(Boolean(event.written.tieNext)) });
     group.append(...writtenSymbol(event.written, nx).childNodes);
     if (event.kind === 'note') {
       if (short(event)) {
@@ -85,9 +85,9 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
         const notes = run.filter(e => e.kind === 'note');
         const at = notes.indexOf(event), previous = notes[at - 1], next = notes[at + 1];
         if (next) group.append(node('line', { x1: nx + 10, x2: x(next.startSlot) + 10, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7, 'data-beam': 'true' }));
-        if (event.written[0] === 'S' && notes.length > 1) {
-          const joinedNext = next?.written[0] === 'S' && next.index === event.index + 1;
-          const joinedPrevious = previous?.written[0] === 'S' && previous.index === event.index - 1;
+        if (event.written.type === '16th' && notes.length > 1) {
+          const joinedNext = next?.written.type === '16th' && next.index === event.index + 1;
+          const joinedPrevious = previous?.written.type === '16th' && previous.index === event.index - 1;
           if (joinedNext || !joinedPrevious) {
             const end = joinedNext ? x(next.startSlot) + 10 : nx + 10 + (next ? 20 : -20);
             group.append(node('line', { x1: nx + 10, x2: end, y1: 54, y2: 54, stroke: 'currentColor', 'stroke-width': 6, 'data-beam': joinedNext ? 'secondary' : 'partial' }));
@@ -106,6 +106,34 @@ export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm',
     text.textContent = '3'; svg.append(text);
   }
   return svg;
+}
+
+/** Change horizontal spacing without enlarging musical glyphs. Keep the same DOM
+ * nodes so focus, entry handlers and performance feedback survive a resize. */
+export function responsiveNotation(svg: SVGElement) {
+  const top = [...svg.children].filter(e => e.tagName !== 'g').map(element => ({
+    element, coordinates: ['x', 'x1', 'x2'].flatMap(name => element.hasAttribute(name) ? [[name, Number(element.getAttribute(name))] as const] : []),
+  }));
+  const groups = [...svg.querySelectorAll<SVGGElement>('g[data-event]')].map(element => {
+    // All glyph geometry is authored around the note's original horizontal anchor.
+    const head = element.querySelector('ellipse');
+    const start = head ? Number(head.getAttribute('cx')) : null;
+    return { element, start, beams: [...element.querySelectorAll('[data-beam="true"], [data-beam="secondary"]')].map(beam => ({ beam, end: Number(beam.getAttribute('x2')) })) };
+  });
+  // Rest paths have no ellipse; their anchor is recorded by the renderer below.
+  return (width: number, scale = .65) => {
+    const ratio = width / scale / 800;
+    svg.setAttribute('viewBox', `0 0 ${width / scale} 150`);
+    svg.style.height = `${150 * scale}px`;
+    for (const { element, coordinates } of top) for (const [name, value] of coordinates) {
+      element.setAttribute(name, String(value * ratio));
+    }
+    for (const { element, start, beams } of groups) {
+      const anchor = start ?? Number(element.dataset.layoutX);
+      element.setAttribute('transform', `translate(${anchor * (ratio - 1)} 0)`);
+      for (const { beam, end } of beams) beam.setAttribute('x2', String(end + (end - 10 - anchor) * (ratio - 1)));
+    }
+  };
 }
 
 /** Engrave ties in screen geometry so adjacent bars share one uninterrupted curve. */
@@ -132,10 +160,14 @@ export function renderPassageTies(source: readonly RhythmMeasure[], strip: HTMLE
       overlay.append(node('path', { d: `M ${x1} ${y1} C ${c1} ${shoulder} ${c2} ${shoulder} ${x2} ${y2} C ${c2} ${shoulder - 2.3} ${c1} ${shoulder - 2.3} ${x1} ${y1} Z`, fill: 'currentColor', 'data-tie': kind, 'data-measure': bar + 1 }));
     }
     events.forEach((event, index) => {
-      if (!event.written[1]?.tieNext) return;
+      if (!event.written.tieNext) return;
       const next = events[index + 1]!;
       const from = head(event.bar, event.index), to = head(next.bar, next.index);
-      const x1 = from.x + from.width / 2 + 2 - origin.x, x2 = to.x + to.width / 2 - 2 - origin.x;
+      const fromCard = cards[event.bar]!.getBoundingClientRect(), toCard = cards[next.bar]!.getBoundingClientRect();
+      const rawFrom = from.x + from.width / 2 + 2, rawTo = to.x + to.width / 2 - 2;
+      if (event.bar === next.bar && (rawTo < fromCard.left || rawFrom > fromCard.right)) return;
+      const x1 = Math.max(fromCard.left + 2, Math.min(fromCard.right - 2, rawFrom)) - origin.x;
+      const x2 = Math.max(toCard.left + 2, Math.min(toCard.right - 2, rawTo)) - origin.x;
       const y1 = from.bottom + 3 - origin.y, y2 = to.bottom + 3 - origin.y;
       const wrapped = Math.abs(cards[event.bar]!.getBoundingClientRect().top - cards[next.bar]!.getBoundingClientRect().top) > 1;
       if (wrapped) {
@@ -147,6 +179,7 @@ export function renderPassageTies(source: readonly RhythmMeasure[], strip: HTMLE
   }
   const observer = new ResizeObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); });
   observer.observe(strip); cards.forEach(card => observer.observe(card));
+  strip.addEventListener('scroll', refresh, true);
   refresh();
-  return { refresh, destroy: () => { cancelAnimationFrame(frame); observer.disconnect(); overlay.remove(); } };
+  return { refresh, destroy: () => { cancelAnimationFrame(frame); observer.disconnect(); strip.removeEventListener('scroll', refresh, true); overlay.remove(); } };
 }

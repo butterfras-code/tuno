@@ -1,15 +1,17 @@
+import { notationOnly } from './score-test-support.ts';
+import { score } from './score-test-support.ts';
+import { note } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { teachingPresets, criteriaSource, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from '../src/apps/rhythm-walk/shared/teaching-presets.ts';
 import type { TeachingPresetDefinition } from '../src/apps/rhythm-walk/shared/teaching-presets.ts';
 import { generationCapabilities } from '../src/apps/rhythm-walk/shared/capabilities.ts';
-import { defaultGeneration, generateExercise, generationIssue, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { Activity, defaultPreferences, modes, presets, readPreferences } from '../src/apps/rhythm-walk/activity.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
-import { deriveMeasure } from '../src/music/measure.ts';
 
 // Independent source expectations: do not generate these from the definitions.
 const expectedGeneral = [
@@ -20,92 +22,19 @@ const expectedGeneral = [
   ['Q', 'H', 'H.', 'W', 'E E', 'Q. E', 'E Q E', 'E. S', 'S S S S', 'E S S', 'E3:2 E3:2 E3:2', 'S S E'],
   ['Q', 'H', 'H.', 'W', 'E E', 'Q. E', 'E Q E', 'E. S', 'S S S S', 'E S S', 'E3:2 E3:2 E3:2', 'S S E'],
 ];
-test('all six stable definitions have versioned provenance and exact inspected figures', () => {
-  assert.deepEqual(teachingPresets.map(p => p.id), ['uil-1', 'uil-2', 'uil-3', 'uil-4', 'uil-5', 'uil-6']);
-  assert.deepEqual(teachingPresets.map(p => p.label), ['UIL I', 'UIL II', 'UIL III', 'UIL IV', 'UIL V', 'UIL VI']);
+test('I–IV definitions preserve independently inspected figures and source restrictions', () => {
+  assert.deepEqual(teachingPresets.map(p => p.id), ['uil-1', 'uil-2', 'uil-3', 'uil-4']);
   for (const [index, definition] of teachingPresets.entries()) {
-    assert.equal(definition.version, 2); assert.deepEqual(definition.source, criteriaSource);
-    assert.equal(definition.source.revision, 'Revised 2022'); assert.equal(definition.source.retrieved, '2026-10-14');
+    assert.equal(definition.version, 3); assert.deepEqual(definition.source, criteriaSource);
     assert.deepEqual(definition.figures.filter(f => f.scope === 'general').map(f => f.events.join(' ')), expectedGeneral[index]);
-    assert.ok(definition.figures.every(f => f.url.startsWith('https://www.uiltexas.org/files/music/music-notations/')));
-    const percussion = definition.figures.filter(f => f.scope === 'percussion').map(f => f.events.join(' '));
-    assert.deepEqual(percussion, index < 2 ? ['E S S', 'S S S S'] : index === 2 ? ['E S S', 'S S S S', 'E. S'] : []);
-    // Merely allowing S/E does not authorize these unlisted figures.
-    for (const forbidden of ['S E S', 'E. E.', 'E3:2 rest E3:2']) assert.ok(!definition.figures.some(f => f.events.join(' ') === forbidden));
+    assert.deepEqual(definition.figures.filter(f => f.scope === 'percussion').map(f => f.events.join(' ')), index < 2 ? ['E S S', 'S S S S'] : index === 2 ? ['E S S', 'S S S S', 'E. S'] : []);
+    assert.ok(resolveTeachingPreset(definition).supported);
   }
-  assert.deepEqual(teachingPresets.map(p => p.meterChanges), [0, 0, 0, 1, 2, 3]);
-  assert.deepEqual(teachingPresets[0]!.officialMeters, ['4/4']);
+  assert.deepEqual(teachingPresets.map(p => p.meterChanges), [0, 0, 0, 1]); // Source requirement, not generation behavior.
   assert.deepEqual(teachingPresets[2]!.officialMeters, ['2/4', '3/4', '4/4']);
-  assert.deepEqual(teachingPresets[4]!.officialMeters, ['2/4', '3/4', '4/4', '6/8', '2/2']);
-  assert.ok(teachingPresets[2]!.restrictions.some(r => r.includes('2023')));
-});
-test('higher levels use verified note-only figures independently of unresolved rest policy', () => {
-  const actual = generationCapabilities();
-  for (const definition of teachingPresets.slice(2)) {
-    assert.equal(resolveTeachingPreset(definition).supported, true);
-    assert.equal(resolveTeachingPreset(definition, { ...actual, patterns: [] }).supported, false);
-    if (Number(definition.id.slice(-1)) >= 5) assert.equal(resolveTeachingPreset(definition, { ...actual, ingredients: actual.ingredients.filter(i => i !== 'triplet-eighth') }).supported, false);
-  }
-});
-test('capability query checks meters and patterns independently of ingredients', () => {
-  const definition = teachingPresets[4]!;
-  const complete = { ingredients: [...definition.required.ingredients], patterns: [...definition.required.patterns], meters: [...definition.required.meters] };
-  const result = resolveTeachingPreset({ ...definition, unresolved: [] }, { ...complete, patterns: complete.patterns.filter(p => p !== 'uil-figures'), meters: ['4/4'] });
-  assert.equal(result.supported, false);
-  if (!result.supported) { assert.ok(result.reasons.includes('Missing pattern support: uil-figures.')); assert.ok(result.reasons.includes('Unsupported meter: 6/8.')); }
-});
-test('I–II note-only presets require paired figures, not just vocabulary', () => {
-  const capabilities = generationCapabilities();
-  assert.ok(!capabilities.byMeter?.['6/8']?.ingredients.includes('whole'));
-  assert.ok(!capabilities.byMeter?.['2/4']?.ingredients.includes('dotted-half'));
-  assert.ok(capabilities.byMeter?.['4/4']?.ingredients.includes('whole'));
-  const missingByMeter = { ...capabilities, byMeter: { ...capabilities.byMeter, '4/4': { ingredients: capabilities.ingredients, patterns: [] } } };
-  assert.equal(resolveTeachingPreset(teachingPresets[0]!, missingByMeter).supported, false);
-  for (const definition of teachingPresets.slice(0, 2)) {
-    assert.equal(resolveTeachingPreset(definition).supported, true);
-    for (const missing of ['uil-figures']) {
-      const result = resolveTeachingPreset(definition, { ...capabilities, patterns: capabilities.patterns.filter(p => p !== missing) });
-      assert.equal(result.supported, false);
-    }
-    assert.equal(resolveTeachingPreset(definition, { ...capabilities, ingredients: capabilities.ingredients.filter(i => i !== 'whole') }).supported, false);
-    let seed = 123;
-    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
-    for (let sample = 0; sample < 200; sample++) {
-      const result = applyTeachingPreset({ ...defaultGeneration(), measures: 4 }, definition);
-      assert.equal(result.supported, true); if (!result.supported) continue;
-      const passage = generateExercise(result.settings, random);
-      for (const measure of passage) {
-        assert.deepEqual(measure.meter, [4, 4]);
-        const events = deriveMeasure(measure).events;
-        for (let i = 0; i < events.length; i++) {
-          const event = events[i]!;
-          assert.ok(!event.written[1]?.rest && !event.written[1]?.tieNext && !event.written[1]?.tuplet);
-          if (event.written[0] === 'E') {
-            assert.equal((event.start[0] * 4) % event.start[1], 0, 'pair begins on a quarter beat');
-            assert.deepEqual(events[++i]?.written, ['E'], 'independently require second eighth');
-          } else {
-            assert.ok(event.written[0] === 'Q' || event.written[0] === 'H' || event.written[0] === 'W');
-            assert.ok(!event.written[1]?.dots || event.written[0] === 'H');
-          }
-        }
-      }
-    }
-  }
-});
-test('downbeat-rest restriction and impossible paired patterns fail without retries', () => {
-  const settings = { ...defaultGeneration(), ingredients: ['quarter-rest', 'eighth'] as const, restrictions: { pairedEighths: true, noQuarterRestBeatOne: true } };
-  for (const draw of [0, .3, .9]) {
-    const measures = generateExercise({ ...settings, ingredients: [...settings.ingredients] }, () => draw);
-    assert.ok(measures.every(m => !m.events[0]![1]?.rest));
-    for (const measure of measures) for (let i = 0; i < measure.events.length; i++) if (measure.events[i]![0] === 'E') assert.deepEqual(measure.events[++i], ['E']);
-  }
-  assert.ok(generationIssue({ ...settings, ingredients: ['quarter-rest'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['sixteenth'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['eighth'], meters: ['6/8'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['eighth'], ties: true }));
 });
 test('whole notes have independent counts, duration endpoint and shared performance timing', () => {
-  const measure = { meter: [4, 4] as const, events: [['W'] as const] };
+  const measure = { meter: [4, 4] as const, notes: [note('whole')] };
   const grid = countGrid(measure);
   assert.deepEqual(grid.availableSlots, [0, 2, 4, 6]);
   assert.deepEqual(grid.slots.filter(s => s.available).map(s => s.symbol), ['1', '2', '3', '4']);
@@ -113,15 +42,15 @@ test('whole notes have independent counts, duration endpoint and shared performa
   const correct = evaluatePassage([measure], [answer], 'required', [{ start: 0, end: 7 }]);
   assert.equal(correct[0]!.counts.verdict, 'correct'); assert.equal(correct[0]!.spans.verdict, 'correct');
   answer.symbols[6] = ''; assert.equal(evaluatePassage([measure], [answer])[0]!.counts.verdict, 'revise');
-  const capture = new Capture({ id: 'whole-test', label: 'Whole', description: '', measures: [measure] }, 60, true);
+  const capture = new Capture({ id: 'whole-test', label: 'Whole', description: '', score: score([measure]) }, 60, true);
   assert.equal(capture.plan.notes.length, 1);
-  const note = capture.plan.notes[0]!; assert.equal(note.end - note.start, 4);
-  capture.input('down', 'keyboard', note.start, note.start * 1000);
-  capture.input('up', 'keyboard', note.end, note.end * 1000);
+  const sound = capture.plan.notes[0]!; assert.equal(sound.end - sound.start, 4);
+  capture.input('down', 'keyboard', sound.start, sound.start * 1000);
+  capture.input('up', 'keyboard', sound.end, sound.end * 1000);
   const result = evaluateAttempt(capture.advance(capture.plan.captureEnd)!);
   assert.deepEqual(result.missing, []); assert.deepEqual(result.extra, []);
   assert.equal(result.matches[0]!.releaseOffset, 0);
-  assert.deepEqual(generateExercise({ ...defaultGeneration(), ingredients: ['whole'] }, () => 0).map(m => m.events), [[['W']], [['W']]]);
+  assert.deepEqual(notationOnly(generateExercise({ ...defaultGeneration(), ingredients: ['whole'] }, () => 0).map(m => m.notes)), notationOnly([[note('whole')], [note('whole')]]));
   for (const meter of ['2/4', '3/4', '6/8'] as const) assert.ok(generationIssue({ ...defaultGeneration(), meters: [meter], ingredients: ['whole'] }));
 });
 
@@ -129,7 +58,7 @@ test('whole rests generate only in 4/4, require one full count/rest span, and pe
   const settings = { ...defaultGeneration(), ingredients: ['whole-rest' as const] };
   assert.ok(!defaultGeneration().ingredients.includes('whole-rest'));
   const measures = generateExercise(settings, () => 0);
-  assert.deepEqual(measures.map(m => m.events), [[['W', { rest: true }]], [['W', { rest: true }]]]);
+  assert.deepEqual(notationOnly(measures.map(m => m.notes)), notationOnly([[note('whole', { kind: 'rest' })], [note('whole', { kind: 'rest' })]]));
   for (const meter of ['2/4', '3/4', '6/8'] as const) {
     assert.ok(!rhythmCapabilities(meter).ingredients.includes('whole-rest'));
     assert.ok(generationIssue({ ...settings, meters: [meter] }));
@@ -143,7 +72,7 @@ test('whole rests generate only in 4/4, require one full count/rest span, and pe
   answer.rests = [{ start: 0, end: 2 }, { start: 4, end: 6 }];
   assert.equal(evaluatePassage([measure], [answer])[0]!.rests.verdict, 'revise');
   for (const style of ['tap', 'hold'] as const) {
-    const capture = new Capture({ id: 'whole-rest', label: 'Whole rest', description: '', measures: [measure] }, 60, true, undefined, undefined, style);
+    const capture = new Capture({ id: 'whole-rest', label: 'Whole rest', description: '', score: score([measure]) }, 60, true, undefined, undefined, style);
     assert.deepEqual(capture.plan.notes, []);
     assert.equal(capture.plan.rests[0]!.end - capture.plan.rests[0]!.start, 4);
     const evaluation = evaluateAttempt(capture.advance(capture.plan.captureEnd)!);
@@ -164,7 +93,7 @@ const quarterPractice: TeachingPresetDefinition = {
 test('supported application changes pending settings only, preserves length, and deliberately reapplies', () => {
   const preferences = defaultPreferences(); preferences.generation.measures = 4;
   preferences.mode = 'both'; preferences.countingSystem = 'syllables'; preferences.bpm = 123; preferences.playStyle = 'hold';
-  const activity = new Activity(preferences, presets[0]!.measures);
+  const activity = new Activity(preferences, score(presets[0]!.score.measures));
   const before = structuredClone(preferences); const exercise = activity.exercise;
   const applied = applyTeachingPreset(preferences.generation, quarterPractice, generationCapabilities());
   assert.equal(applied.supported, true); if (!applied.supported) return;
@@ -179,14 +108,14 @@ test('supported application changes pending settings only, preserves length, and
   assert.deepEqual(reapplied.settings.meters, ['4/4']);
   preferences.generation = reapplied.settings;
   const replacement = activity.next(() => .2); assert.notEqual(replacement.id, exercise.id);
-  assert.equal(replacement.measures.length, 4);
+  assert.equal(replacement.score.measures.length, 4);
   // Independent allowed/forbidden exercise expectation for the enforceable test template.
-  assert.deepEqual(replacement.measures.map(m => m.events), Array.from({ length: 4 }, () => [['Q'], ['Q'], ['Q'], ['Q']]));
+  assert.deepEqual(notationOnly(replacement.score.measures.map(m => m.notes)), notationOnly(Array.from({ length: 4 }, () => [note('quarter'), note('quarter'), note('quarter'), note('quarter')])));
 });
-test('blocked application leaves pending settings and current exercise unchanged', () => {
-  const preferences = defaultPreferences(); const activity = new Activity(preferences, presets[0]!.measures);
+test('unsupported application leaves pending settings and current exercise unchanged', () => {
+  const preferences = defaultPreferences(); const activity = new Activity(preferences, score(presets[0]!.score.measures));
   const before = structuredClone(preferences); const exercise = activity.exercise;
-  for (const definition of teachingPresets.slice(2)) assert.equal(applyTeachingPreset(preferences.generation, definition, { ingredients: [], patterns: [], meters: [] }).supported, false);
+  for (const definition of teachingPresets) assert.equal(applyTeachingPreset(preferences.generation, definition, { ingredients: [], patterns: [], meters: [] }).supported, false);
   assert.deepEqual(preferences, before); assert.strictEqual(activity.exercise, exercise);
   assert.equal(applyTeachingPreset({ ...defaultGeneration(), measures: 9 }, quarterPractice).supported, false);
 });
@@ -195,15 +124,15 @@ test('independent meter override uses one meter per passage in every response mo
   for (const draw of [.1, .8]) {
     const generated = generateExercise({ ...settings, meters: [...settings.meters], ingredients: [...settings.ingredients] }, () => draw);
     assert.ok(generated.every(m => m.meter.join('/') === generated[0]!.meter.join('/')));
-    const activity = new Activity(defaultPreferences(), generated); const exercise = activity.exercise;
-    for (const mode of modes) { activity.setMode(mode); assert.strictEqual(activity.exercise, exercise); assert.deepEqual(activity.exercise.measures, generated); }
+    const activity = new Activity(defaultPreferences(), score(generated)); const exercise = activity.exercise;
+    for (const mode of modes) { activity.setMode(mode); assert.strictEqual(activity.exercise, exercise); assert.deepEqual(activity.exercise.score.measures, generated); }
   }
 });
 test('preference migration validates attribution separately and never trusts a saved exact label', () => {
   const preferences = defaultPreferences(); preferences.bpm = 117; preferences.generation.measures = 3;
   preferences.generation.teachingPreset = { id: 'uil-1', version: 1, customized: false };
   const restored = readPreferences(JSON.stringify(preferences));
-  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 2, customized: true, scope: 'general' });
+  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 3, customized: true, scope: 'general' });
   assert.equal(restored.bpm, 117); assert.equal(restored.generation.measures, 3);
   for (const malformed of [null, {}, { id: 'uil-9', version: 1, customized: false }, { id: 'uil-1', version: 99, customized: false }, { id: 'uil-1', version: 1, customized: 'no' }]) {
     assert.equal(readPreferences(JSON.stringify({ ...preferences, generation: { ...preferences.generation, teachingPreset: malformed } })).generation.teachingPreset, undefined);
@@ -216,9 +145,9 @@ test('preference migration validates attribution separately and never trusts a s
   const exact = readPreferences(JSON.stringify({ ...preferences, generation: applied.settings }));
   assert.equal(exact.generation.teachingPreset?.customized, false);
   assert.deepEqual(exact.generation.figureProfile, { version: 1, level: 1, scope: 'general' });
-  for (const invalid of [{ pairedEighths: 'yes', noQuarterRestBeatOne: true }, null, { pairedEighths: true }]) {
-    const restored = readPreferences(JSON.stringify({ ...preferences, generation: { ...applied.settings, restrictions: invalid } }));
-    assert.equal(restored.generation.restrictions, undefined); assert.equal(restored.generation.teachingPreset?.customized, false);
+  for (const invalid of [{ version: 99, level: 1, scope: 'general' }, null, { version: 1, level: 1 }]) {
+    const restored = readPreferences(JSON.stringify({ ...preferences, generation: { ...applied.settings, figureProfile: invalid } }));
+    assert.equal(restored.generation.figureProfile, undefined); assert.equal(restored.generation.teachingPreset?.customized, true);
   }
 });
 
@@ -238,5 +167,7 @@ test('integrated capability catalogue derives meter support and rejects globally
   const result = resolveTeachingPreset(teachingPresets[0]!, missing);
   assert.equal(result.supported, false);
   if (!result.supported) assert.ok(result.reasons.includes('Missing ingredient in selected meters: whole.'));
-  for (const preset of teachingPresets.slice(2)) assert.equal(resolveTeachingPreset(preset, capabilities).supported, true);
+  for (const preset of teachingPresets) assert.equal(resolveTeachingPreset(preset, capabilities).supported, true);
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

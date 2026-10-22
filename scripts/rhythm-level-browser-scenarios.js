@@ -10,7 +10,7 @@ window.runLevelBrowserScenarios = async function (w = window, loadFresh) {
   const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new Event('change')); };
   const level = document.querySelector('[data-setting="teaching-preset"]');
   const length = document.querySelector('[data-setting="exercise-length"]');
-  const mode = document.querySelector('.response-controls select');
+  const mode = document.querySelector('select[aria-label="Mode"]');
   const next = [...document.querySelectorAll('.setup-actions button')][0];
   assert(!document.querySelector('[data-preset]'), 'ordinary visits have no fixture selector');
   assert([...level.options].every(o => o.value !== 'generated'), 'generated practice is not a level option');
@@ -59,7 +59,7 @@ window.runLevelBrowserScenarios = async function (w = window, loadFresh) {
     assert(!d.querySelector('[data-preset]') && !d.querySelector('.exercise-summary').textContent.includes('Testing fixture'), 'saved fixture never enables testing on ordinary reload');
     assert(stored().preset === 'generated' && stored().generation.teachingPreset.id === 'uil-2', 'fixture migration preserves level configuration');
     d = await fresh('?fixture=whole');
-    assert(d.querySelector('[data-preset]').value === 'whole' && d.querySelector('g[data-value="W"]') && d.querySelector('.exercise-summary').textContent.includes('Testing fixture'), 'explicit fixture link retains ID, score and testing identification');
+    assert(d.querySelector('[data-preset]').value === 'whole' && d.querySelector('g[data-value="whole"]') && d.querySelector('.exercise-summary').textContent.includes('Testing fixture'), 'explicit fixture link retains ID, score and testing identification');
     d = await fresh('?testing=1');
     assert(d.querySelector('[data-preset]') && d.querySelector('.testing-fixtures').textContent.includes('Developer / testing'), 'explicit testing access exposes fixture catalogue');
     localStorage.setItem(key, JSON.stringify({ ...expected, generation: { ...expected.generation, teachingPreset: undefined, restrictions: undefined }, preset: 'whole' }));

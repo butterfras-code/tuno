@@ -10,7 +10,7 @@ window.__assessmentCheck = (async () => {
   const choose = (node, value) => { node.value=value; node.dispatchEvent(new Event('change')); };
   const button = name => [...document.querySelectorAll('button')].find(n=>n.textContent===name);
   const pad=document.querySelector('.tap-response .pad'), surface=document.querySelector('.performance-surface');
-  const mode=document.querySelector('.response-controls select'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
+  const mode=document.querySelector('select[aria-label="Mode"]'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
   const id=()=>document.querySelector('.passage').dataset.exerciseId;
   const written=()=>[...document.querySelectorAll('.count-slot')].map(n=>n.textContent).join();
   // Background native preview has no OS focus; scope a focus predicate stub to
@@ -18,12 +18,12 @@ window.__assessmentCheck = (async () => {
   const originalFocus = document.hasFocus; document.hasFocus = () => true;
   const originalOsc=AudioContext.prototype.createOscillator, originalCapture=pad.setPointerCapture, originalURL=URL.createObjectURL;
   let context, scheduled=[], stopped=0, evidence;
-  AudioContext.prototype.createOscillator=function(){context=this;const node=originalOsc.call(this), start=node.start.bind(node),stop=node.stop.bind(node);node.start=time=>{scheduled.push(time);start(time);};node.stop=time=>{if(time===undefined)stopped++;stop(time);};return node;};
+  AudioContext.prototype.createOscillator=function(){context=this;if(!scheduled.length)stampAnchor=performance.now()-context.currentTime*1000;const node=originalOsc.call(this), start=node.start.bind(node),stop=node.stop.bind(node);node.start=time=>{scheduled.push(time);start(time);};node.stop=time=>{if(time===undefined)stopped++;stop(time);};return node;};
   pad.setPointerCapture=()=>{}; // Only invented synthetic pointer IDs.
   URL.createObjectURL=blob=>{evidence=blob.text().then(JSON.parse);return originalURL(blob);};
   const prevent=e=>{if(e.target instanceof HTMLAnchorElement && e.target.download)e.preventDefault();};document.addEventListener('click',prevent,true);
   const download=async()=>{button('Download timing evidence').click();return evidence;};
-  const begin=async(retry=false)=>{scheduled=[];(retry?button('Try again'):pad).click();await wait(()=>scheduled.length && document.querySelector('.tap-response .status').textContent.startsWith('Count-in'));return scheduled[0]+document.querySelectorAll('.count-in-dot').length*60/Number(tempo.value);};
+  const begin=async(retry=false)=>{if(mode.value==='both')button('Perform').click();scheduled=[];(retry?button('Try again'):pad).click();await wait(()=>scheduled.length && document.querySelector('.tap-response .status').textContent.startsWith('Count-in'));return scheduled[0]+document.querySelectorAll('.count-in-dot').length*60/Number(tempo.value);};
   let stampAnchor;
   const holdStyle = ['pointer','compound','accepted','short','tied'].includes(scenario);
   const pointer=scenario==='pointer'||scenario==='compound'||scenario==='accepted';
@@ -50,6 +50,8 @@ window.__assessmentCheck = (async () => {
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;
     const slot=document.querySelector('.count-slot');slot.focus();slot.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
+    if (scenario === 'accepted') button('Check').click();
+    const countingScore = document.querySelector('.counting-totals')?.textContent;
     const exercise=id(),answer=written();
     const start=await begin();
     if(scenario==='cancellation') {
@@ -68,7 +70,8 @@ window.__assessmentCheck = (async () => {
       return { scenario, width: innerWidth, passed: ['no fabricated rewards, truthful feedback, result actions'] };
     }
     await wait(()=>context.currentTime>=start+.01);
-    stampAnchor=performance.now()-context.currentTime*1000;
+    // Anchor synthetic DOM timestamps when Transport schedules its first click.
+    // Resampling after count-in can drift from its captured anchor in headless audio.
     const scale=scenario==='slower'?1.1:1, count=scenario==='tap-rest'?4:scenario==='tied'?3:scenario==='compound'?6:8, spacing=scenario==='compound'?1/9:scenario==='accepted'?1/2:1/3;
     if(scenario==='tap-rest') { for(const [down,up] of [[0,.95],[1,1.1],[1.25,1.35],[1.5,1.9]]) { stamp('down',down,start);stamp('up',up,start); } }
     else if(scenario==='tied') { for(const [down,up] of [[0,.5],[.75,.79],[1,1.8]]) { stamp('down',down,start);stamp('up',up,start); } }
@@ -82,7 +85,7 @@ window.__assessmentCheck = (async () => {
     stamp('up',count*spacing*scale,start);pad.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));
     document.activeElement.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true}));
     assert(surface.hidden && panel.isConnected,'finishing release and synthesized click cannot retry');
-    assert(text.includes(`Rhythm accuracy at ${scenario==='compound'||scenario==='tied'?'target':'performed'} tempo:`) && Number(text.match(/tempo: (\d+)%/)[1])>=95,'pattern score and tempo basis are explicit (synthetic clock tolerance)');
+    assert(text.includes(`Rhythm accuracy at ${scenario==='compound'||scenario==='tied'?'target':'performed'} tempo:`) && Number(text.match(/tempo: (\d+)%/)[1])>=95,'pattern score and tempo basis are explicit (synthetic clock tolerance): ' + text);
     assert(document.querySelector('.feedback-snapshot .result-summary') && !/BPM|%|ms/.test(document.querySelector('.feedback-snapshot .result-summary').textContent),'concise musical summary without technical metrics');
     assert(!panel.querySelector('details').open && panel.querySelector('details .result-metrics'),'numbers remain available in collapsed Details');
     assert(text.includes('Hold accuracy')===holdStyle,'hold metric follows attempt style');
@@ -100,11 +103,15 @@ window.__assessmentCheck = (async () => {
     assert([...bag.querySelectorAll('.bone-slots')].every(slots => slots.children.length === 5 && slots.getAttribute('aria-hidden') === 'true'), 'five decorative slots per rating');
     assert(bag.querySelector('.sr-only').textContent.includes('out of 5 bones'), 'accessible text rating');
     assert(document.querySelectorAll('.result-summary').length === 1 && !panel.querySelector('.result-summary'), 'Treat Bag owns the only feedback summary');
-    assert(bag.textContent.includes('Holding notes') === holdStyle, 'captured style controls hold reward');
+    assert(Boolean(bag.querySelector('[data-metric="hold"] .bone-slots')) === (holdStyle && record.assessment.hold !== null), 'captured style controls hold reward; Tap keeps an unscored dimension');
+    assert(bag.querySelectorAll('.treat-ratings > li:not(.counting-rating)').length === 4, 'all four reward dimensions remain visible');
+    if (!holdStyle) assert(bag.querySelector('[data-metric="hold"]').textContent.includes('Not assessed in Tap'), 'Tap explains its unscored hold dimension');
+    if (typeof window.__assessmentSnapshot === 'function') await window.__assessmentSnapshot();
     if (scenario === 'short') assert(bag.textContent.includes('No long notes to check'), 'short sounds stay unrated');
     if (scenario === 'slower') assert(bag.textContent.includes('Steady beat: 5 out of 5 bones'), 'steady pace rewarded independently of tempo');
     choose(tempo,'160');choose(style,holdStyle?'tap':'hold');
-    for(const response of ['write','tap','both']) {choose(mode,response);assert(panel.textContent===text && bag.textContent===bagText && id()===exercise,'mode/preferences retain completed interpretation and rewards');}
+    for(const response of ['write','tap','both']) {choose(mode,response);assert(panel.textContent===text && (response!=='both' || bag.textContent===bagText) && id()===exercise,'mode/preferences retain completed interpretation and rewards');}
+    if (scenario === 'accepted') assert(document.querySelector('.counting-totals').textContent === countingScore, 'Both retains checked counting score through performance and mode changes');
     location.hash='#settings';await sleep(40);location.hash='#practice';await sleep(40);assert(panel.textContent===text,'settings navigation retains results');
     const meters=[...document.querySelectorAll('[data-meter]')];for(const meter of meters){meter.checked=false;meter.dispatchEvent(new Event('change'));}
     assert(panel.querySelectorAll('button')[1].disabled,'invalid configuration disables results Next');

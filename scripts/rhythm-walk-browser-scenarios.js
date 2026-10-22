@@ -101,7 +101,7 @@
     choose('quarters'); tempo.value = '180';
     await begin(); window.dispatchEvent(new Event('blur')); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Window lost focus', 'window blur interrupted');
-    await begin(); document.querySelector('.response-controls select').focus(); await wait(() => status() === 'Interrupted');
+    await begin(); document.querySelector('select[aria-label="Mode"]').focus(); await wait(() => status() === 'Interrupted');
     assert((await raw()).reason === 'Performance pad lost focus', 'pad focus loss interrupted');
     await begin(); await context.suspend(); await wait(() => status() === 'Interrupted'); await context.resume();
     assert((await raw()).reason === 'Audio clock interrupted', 'audio suspension interrupted');

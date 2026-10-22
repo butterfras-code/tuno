@@ -104,7 +104,7 @@ export function assessAttempt(record: AttemptRecord) {
   }
   const policy = record.assessmentPolicy ?? assessmentPolicy;
   const hp = record.holdPolicy ?? legacyHoldPolicy;
-  const target = planPassage(record.exercise.measures, record.bpm, record.policy, sourcePolicy(record.exercise.measures[0]!).pulse);
+  const target = planPassage(record.exercise.score.measures, record.bpm, record.policy, sourcePolicy(record.exercise.score.measures[0]!).pulse);
   const allHolds = capturedHolds(record);
   const holds = allHolds.filter(h => !h.countIn);
   const expected = target.notes.map(n => n.start), actual = holds.map(h => h.down);
@@ -165,7 +165,7 @@ export function assessAttempt(record: AttemptRecord) {
     const duration = (note.end - note.start) * scale;
     const adjacent = Math.abs((target.notes[e + 1]?.start ?? Infinity) - note.end) < 1e-9;
     const preceding = note.sources.at(-2);
-    const precedingMember = preceding ? musicalSeconds(writtenDuration(record.exercise.measures[preceding.measure]!.events[preceding.event]!), record.bpm, sourcePolicy(record.exercise.measures[preceding.measure]!).pulse) * scale : 0;
+    const precedingMember = preceding ? musicalSeconds(writtenDuration(record.exercise.score.measures[preceding.measure]!.notes[preceding.event]!), record.bpm, sourcePolicy(record.exercise.score.measures[0]!).pulse) * scale : 0;
     const durationEvidence = holdStyle ? sustainEvidence(duration, h.up === null ? null : h.up-h.down, adjacent, (note.finalSegmentDuration ?? note.end-note.start)*scale, hp, precedingMember) : null;
     // One hold credit: use the strongest duration/rest issue, never add penalties.
     const holdCredit = durationEvidence?.credit != null ? Math.min(durationEvidence.credit, ...restIntrusions.filter(r=>r.actual===a).map(r=>r.credit)) : null;

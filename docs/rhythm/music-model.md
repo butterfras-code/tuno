@@ -4,28 +4,24 @@ Current integration: [one Uno234 activity](unified-activity.md) shares written e
 
 Implemented 2026-10-10 at the owner's request. This is the shared source contract for Uno234. It replaces the prototype's stored eighth-note starts and fixed 4/4 music model. It does not expand the currently reviewed UI repertoire or settle counting conventions.
 
-## Compact source
+## Typed source
 
-Use [RhythmMeasure and RhythmEvent](../../src/music/measure.ts): one flat, ordered event array per measure. Store written notation, not duplicate starts or computed durations. A passage is an array of measures.
+[`RhythmScore`](../../src/music/score.ts) is the sole authored musical source. It contains measures with `meter` and a flat ordered `notes` array. Each `WrittenNote` has a stable `id`, `kind` (`note` or `rest`), `type` (`whole`, `half`, `quarter`, `eighth`, `16th`), `dots`, optional `timeModification: [actual, normal]`, and `tieNext`.
 
-```ts
-const example: RhythmMeasure = {
-  meter: [4, 4],
-  events: [['H'], ['Q'], ['E'], ['E']],
-};
-```
-
-Each event is `[value, modifiers?]`. Values are `W` whole, `H` half, `Q` quarter, `E` eighth, and `S` sixteenth. Modifiers are omitted unless needed:
+Generation and fixtures construct this source directly. The authoring helpers in [measure.ts](../../src/music/measure.ts) provide compact templates and assign passage-wide IDs at construction:
 
 ```ts
-['Q', { rest: true }]         // quarter rest
-['E', { dots: 1 }]            // dotted eighth
-['Q', { dots: 2 }]            // double-dotted quarter
-['E', { tuplet: [3, 2] }]     // 3 written eighths in the time of 2
-['Q', { tieNext: true }]      // ties to the next written event
+const example = score([{ meter: [4, 4], notes: [
+  note('half'), note('quarter'), note('eighth'), note('eighth'),
+] }]);
+// Other templates: note('quarter', { kind: 'rest' }),
+// note('eighth', { dots: 1 }), note('eighth', { timeModification: [3, 2] }),
+// note('quarter', { tieNext: true }).
 ```
 
-Rests stay in chronological order with notes and advance time. Do not encode rests as negative positions. UI labels, preset IDs, assistance and student answers do not belong in the shared musical event. Prototype fixture metadata lives in [fixtures.ts](../../src/apps/rhythm-walk/shared/fixtures.ts).
+`score(measures)` assigns deterministic IDs for generated/authored templates. Use `createScore(input)` for a completed external score: it validates, detaches, deep-freezes and preserves authored IDs. Calling it on an already captured score returns the same immutable object. Activity, CountingPlan, engraving and active capture therefore share one source; completed attempt evidence is detached for export. There is no legacy tuple source or runtime conversion adapter.
+
+Rests advance time in chronological order. Store notation, not duplicate starts or computed durations. UI labels, preset IDs, assistance and student answers do not belong in the musical source. Fixture metadata remains separate.
 
 ## Derived time and coordinates
 
@@ -39,20 +35,9 @@ The beat grid is a coordinate system, not the definition of written note duratio
 
 ## Meter and counting beats
 
-`meter: [numerator, denominator]` determines bar length. Optional `groups` gives denominator-unit counts in each counting beat:
+`meter: [numerator, denominator]` determines bar length. The current typed profile accepts 2/4, 3/4, 4/4 and 6/8. Simple-meter performance pulses are quarters; 6/8 has two dotted-quarter pulses. Derived beat views use `[1, 1]`, `[1, 1, 1]`, `[1, 1, 1, 1]` or `[3, 3]` denominator-unit groups respectively. Grouping is derived, not a second authored field.
 
-```ts
-{ meter: [3, 4], groups: [1, 1, 1], events: /* ... */ }
-{ meter: [6, 8], groups: [3, 3], events: /* ... */ }
-{ meter: [6, 8], groups: [1, 1, 1, 1, 1, 1], events: /* ... */ }
-{ meter: [7, 8], groups: [2, 2, 3], events: /* ... */ }
-```
-
-At the domain level, the same 6/8 notation can therefore be counted as two dotted-quarter beats or six eighth-note beats. Changing grouping changes coordinates, not written durations. For unequal groups, equal coordinate distances need not represent equal musical time; use exact score positions for playback, not an assumption of constant milliseconds per coordinate tick.
-
-Defaults are one denominator unit per beat for numerators 1–4, and groups of three for compound numerators divisible by three greater than 3 with denominator 8 or 16. Other meters require explicit groups. Groups must be positive integers summing to the numerator. Current validation bounds are numerator 1–32 and denominator 2, 4, 8 or 16; this is a domain boundary, not a promise that all combinations have teaching presets.
-
-Count Writing uses a separate counting policy for six numbered eighths in 6/8 while retaining score groups `[3, 3]` and two dotted-quarter performance pulses. It does not override score grouping with six single-unit groups; see [meter decisions](meters.md).
+Count Writing has a separate policy for six numbered eighths in 6/8, grouped visually as 123 and 456; see [meter decisions](meters.md). Counting and performance coordinates do not change written durations. Additional meters and custom grouping require an explicit profile extension; historical broader tuple-model tests do not promise runtime support.
 
 ## Tuplets and ties
 
@@ -68,37 +53,24 @@ Numerical [musical assessment](assessment.md) derives the same sounding chains a
 
 ## Count Writing integration
 
-The prototype consumes this source through [countGrid](../../src/apps/count-writing/grid.ts). That adapter explicitly restricts rendering and grading to 2/4, 3/4, 4/4, 6/8 and scaled-counting 2/2, half/quarter/eighth material, including dotted-quarter notes/rests and eighth rests, plus simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets (3:2). The supported counting/engraving boundary is detailed in [sixteenths](sixteenths.md) and [triplets](triplets.md). Tied notes are now supported in this repertoire; [passageGrid](../../src/apps/count-writing/passage.ts) derives sounding attacks, chain durations and answer coordinates from `derivePassage`. Generated practice uses 1–4 consecutive measures in one staff passage, with optional bounded meter changes in UIL IV–VI; rest pairs stay measure-local while tied duration lines use passage-wide derived answer positions; see [practice loop](practice-loop.md). Beginner rest-placement policy lives in the generator’s [notation policy](../../src/apps/rhythm-walk/shared/notation-policy.ts), keeping uncommon but valid written music available through an explicit practice opt-in. Unsupported model features fail clearly at this boundary instead of being silently engraved or graded incorrectly.
+Write Counts and Both consume one immutable [CountingPlan](../../src/music/counting/plan.ts) and one [CountingAnswer](../../src/music/counting/answer.ts) per exercise. [Activity](../../src/apps/rhythm-walk/activity.ts) owns the typed score, and the plan retains that same score with captured counting preferences. Changing response mode does not reconstruct music or reset answers/results.
 
-The [UIL preset slice](uil-presets.md) adds reviewed whole-note counting/engraving in 4/4 and 2/2 and opt-in whole/dotted-half generation. Whole notes use numbered quarter counts in 4/4 or half counts in 2/2 and one complete sounding duration line. Opt-in whole rests in 4/4 use the same numbered quarter counts and duration line, enclosed in one rest pair. Dotted wholes remain unsupported by the UI. This changes the adapter boundary, not the canonical duration model.
+The [plan editor](../../src/apps/count-writing/plan-editor.ts) renders only exact plan counts, indexed by count IDs. All rule interpretation and evaluation belong to the core. Sounding attacks always create inputs; tied continuations alone do not. Enabled rules share exact positions; dotted subdivision controls the internal counts of eligible written dotted members, suppressing unrelated long-note pulse counts there: long notes qualify at two pulses using complete sounding duration and attack-relative steps; dotted subdivision uses eligible individual written members. Simple-meter pulses are quarters; the 6/8 pulse is a dotted quarter. In 6/8, a written dotted half has `1 4` with long notes enabled and otherwise `1`; its dot adds nothing. Written tied dotted quarters can expose all six counts through dotted subdivision, in one unit. Untied members remain separate units. Generation pools are unchanged.
 
-Its derived eighth-, sixteenth- or twelve-subdivision-quarter answer storage is a **counting/presentation policy**, not the music clock. Slot indices in student symbols, rest markings and duration spans refer to this generated grid. Do not pass them to performance timing as musical coordinates. The renderer and editor use the same slot geometry; answer size and navigation limits come from the grid. Dotted-quarter policy is identified from total sounding durations and positions for notes, and written durations for rests, not fixture IDs. See the [ties and syncopation rules](ties-syncopation.md).
+Rest and duration evidence are unit booleans. Included rests remain separate written units, with applicable duration indication assessed independently. Omitting rests removes their inputs and suppresses all rest assessment. Duration entry/assessment requires internal counts and either a visible line or raised/lowered internal appearance. Rest (R) and Duration (D) act on the entire selected unit, including across bars and wraps. There are no student-authored ranges or endpoint grades. All counting choices apply on New exercise; pending changes preserve answers/results.
 
-In simple meters, available inputs always include grouped beat starts and every written note/rest onset. Undotted events longer than the denominator unit expose one level below their written value (a half note exposes quarters, already available as beats in 4/4). Dotted half notes also resolve to quarter positions; dotted quarters resolve to eighths. Shorter or dotted figures use the smallest written component, with exact tuplet ratios; subdivision grids are local to affected beats. Ordinary quarter-only beats expose no unused offbeat. Visibility does not make an internal count required: teacher-selected dotted-quarter grading stays separate. Count navigation and duration endpoints share the available positions. Duration lines extend through trailing hidden subdivisions within the chosen sounding note chain or written rest; all endpoint controls and dragging select available counts and derive the implied trailing hidden subdivisions. The adapter derives 4, 6, 8 or 6 eighth-spaced storage/layout positions for 2/4, 3/4, 4/4 or 6/8 respectively, or 8, 12, 16 sixteenth-spaced positions in simple-meter measures containing sixteenths/dotted eighths. Triplet measures instead derive twelve positions per quarter (1/48 whole notes), exposing only thirds on triplet beats and the written-value positions on neighboring binary beats. Available inputs remain local; measure sizes and passage offsets are derived. Simple meters hide unavailable offbeats; 6/8 exposes and requires all six numbered eighths. See [meter decisions](meters.md) for its exact duration endpoints, readable rest groups and distinct dotted-quarter pulse. Duration-line expected endpoints use the final grid position within the note, including hidden subdivisions, so a half note extends past beat 2 toward beat 3. For half–quarter–eighth–eighth in 4/4, the only extra position beyond the four beats is the final eighth-note onset.
+The [grid](../../src/apps/count-writing/grid.ts) supplies derived engraving and performance-timeline geometry directly from typed written notes. Its positions are not answer identities or requirements. The editor maps exact plan fractions onto that geometry. Write Counts uses one continuous passage with aligned counts and a conditional overview; no individual measure scrolls independently. See the [responsive layout contract](responsive-layout-audit.md).
 
-Rest parentheses are explicit answer ranges, separate from count symbols and duration spans. Each written rest requires one complete pair from its onset through its last required or entered count. A half rest encloses `1 2` and its independently entered duration line; two quarter rests require `(1) (2)`. Missing, duplicate, truncated, overlapping or cross-event pairs need correction, even if the count symbols are right. Selecting a count box shows its contextual counting palette below the score. Start rest pair keeps an opening at that position, then tapping an eligible count box chooses the closing position. Start duration line uses the same endpoint-selection pattern. Visible instructions and Cancel appear in the palette while choosing an endpoint. Separate ghost opening/closing and duration-start touch targets are hidden. Completed rest edges still provide edit/remove interactions. New and edited groups cannot overlap or nest. Keyboard `(` begins a group, arrows choose an available nonoverlapping closing count, Enter or `)` completes it, and Escape cancels. Shift with arrows previews a duration endpoint from available counts, automatically including trailing hidden subdivisions; Shift release commits the line. Half-rest and adjacent-quarter-rest fixtures extend the reviewed UI, including half-rest engraving and duration-line evaluation for sustained rests.
-
-The position policy can derive finer and grouped-meter positions, but this alone does not expand the reviewed engraving/grading repertoire.
-
-To expose new material: extend the counting convention, input positions, engraving and evaluation together; then add musical and browser fixtures. Supporting a rhythm in the domain alone does not make it playable in either app. Existing duration-line ending rules remain provisional.
+Historical counting evaluators and the former tuple timing implementation live only in `tests/legacy/` as independent regression oracles. The runtime `legacy-score.ts` adapter is removed. Source ownership tests compare generated and fixture timing against the historical implementation and verify immutable identity and imported IDs. Scoring, calibration, hold tolerances and reward thresholds are unchanged.
 
 ## Verification and extension rules
 
-[Domain tests](../../tests/rhythm-model.test.ts) cover exact durations, dots, sixteenths, tuplets, compound/additive grouping, fractional beat coordinates, rests, exact bar totals, tie chains across changing meters, invalid cases and the UI support boundary. [Count Writing tests](../../tests/count-writing.test.ts) preserve the four existing answers and independent feedback dimensions.
+[Domain tests](../../tests/rhythm-model.test.ts) preserve historical duration/grouping regressions. Typed score and source-ownership tests cover current supported meters, exact timing, ties, tuplets, validation and consumer identity. [Count Writing tests](../../tests/count-writing.test.ts) preserve historical answers and independent feedback dimensions; [migration tests](../../tests/counting-migration.test.ts) and the counting-plan acceptance suite cover the running contract.
 
 Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/rhythm-walk/shared/generation.ts) now uses this model and validates complete passages. This model does not own notation UI, audio scheduling or preference persistence; their current implementation is documented in the [unified activity contract](unified-activity.md). Follow normal feature-to-dev staging and explicit production-publication rules.
 
-## UIL figure generation and changing meters
+Duration lines and rest enclosures end at the last depicted count of their unit, not at the musical end or the next attack. Cross-bar visual continuations stop in the bar containing that final count; musical durations and performance holds remain unchanged.
 
-The [declarative figure planner](../../src/apps/rhythm-walk/shared/figures.ts) emits
-only canonical written events; figure identity, scope and source evidence stay in
-generation configuration, never musical event modifiers. Figures have exact summed
-durations, meter-specific placements and a shared feasibility/generation search.
-The [UIL scope matrix](uil-presets.md) separates source rules from teaching limits.
+## UIL scope reconciliation (2026-10-22)
 
-2/2 counts half-note beats 1–2, with quarter/eighth subdivisions scaled from the
-existing systems. Sixteenths, dotted eighths and eighth triplets are intentionally
-excluded there. 6/8 remains six numbered eighths with dotted-quarter pulses.
-Optional mixed-meter exercises use piecewise exact-position-to-seconds conversion
-at constant local-pulse BPM, with the first meter supplying the count-in. This does
-not modify authored durations or the musical model.
+UIL I–IV use atomic note-only figures and one meter per exercise (I–II: 4/4; III–IV: 2/4, 3/4, 4/4). IV teaches figures without claiming the composition-level meter-change requirement. V–VI, 2/2 and within-exercise changes are deferred. Existing Uno/Custom 6/8 and triplets are unchanged. Generation, counting, engraving and capture share the immutable typed score. See [UIL scope](uil-presets.md).

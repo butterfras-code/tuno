@@ -1,5 +1,4 @@
-import { sourcePolicy } from './shared/meter.ts';
-import { add, fraction, toNumber, divide, compare } from '../../music/fraction.ts';
+import { add, fraction, toNumber, divide, compare, multiply } from '../../music/fraction.ts';
 import type { Fraction } from '../../music/fraction.ts';
 import { derivePassage } from '../../music/measure.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
@@ -15,41 +14,35 @@ export function musicalSeconds(time: Fraction, bpm: number, pulse: Fraction = qu
 export interface Source { measure: number; event: number }
 export interface ExpectedNote { start: number; end: number; sources: Source[]; finalSegmentDuration?: number }
 export interface ExpectedRest { start: number; end: number; source: Source }
-export function planPassage(measures: readonly RhythmMeasure[], bpm: number, policy: TimingPolicy = prototypeTiming, pulse?: Fraction) {
+export function planPassage(measures: readonly RhythmMeasure[], bpm: number, policy: TimingPolicy = prototypeTiming, pulse: Fraction = quarterPulse) {
   const passage = derivePassage(measures);
   if (!passage.measures.length) throw new Error('Empty passage.');
-  const first = sourcePolicy(measures[0]!);
-  pulse ??= first.pulse;
-  // Preserve explicit pulse callers for uniform passages; meter changes use the
-  // local pulse at constant pulse BPM. Musical positions remain exact fractions.
-  const localPulses = measures.map(m => sourcePolicy(m).id === first.id ? pulse : sourcePolicy(m).pulse);
-  const starts: number[] = [], lengths: number[] = [];
-  let duration = 0;
-  passage.measures.forEach((m, i) => { starts.push(duration); const length = musicalSeconds(m.length, bpm, localPulses[i]!); lengths.push(length); duration += length; });
-  const at = (measure: number, position: Fraction) => starts[measure]! + musicalSeconds(position, bpm, localPulses[measure]!);
+  const seconds = (time: Fraction) => musicalSeconds(time, bpm, pulse);
   const notes: ExpectedNote[] = passage.attacks.map(a => {
-    const first = a.sources[0]!, last = a.sources.at(-1)!;
-    const firstEvent = passage.measures[first.measure]!.events[first.event]!;
-    const lastEvent = passage.measures[last.measure]!.events[last.event]!;
-    return { start: at(first.measure, firstEvent.start), end: at(last.measure, lastEvent.end), sources: a.sources,
-      finalSegmentDuration: musicalSeconds(lastEvent.duration, bpm, localPulses[last.measure]!) };
+    const last = a.sources.at(-1)!;
+    return { start: seconds(a.start), end: seconds(add(a.start, a.duration)), sources: a.sources,
+      finalSegmentDuration: seconds(passage.measures[last.measure]!.events[last.event]!.duration) };
   });
+  let offset = fraction(0);
   const rests: ExpectedRest[] = [];
   const pulses: { time: number; downbeat: boolean; countIn: boolean; beat: number }[] = [];
   const firstLength = passage.measures[0]!.length;
+  // Whole count-in bars, with at least four performance pulses.
   const countInMeasures = Math.ceil(4 / toNumber(divide(firstLength, pulse)));
-  const countIn = lengths[0]! * countInMeasures;
-  function addPulses(start: number, length: Fraction, localPulse: Fraction, count: boolean) {
-    for (let p = fraction(0), beat = 1; compare(p, length) < 0; p = add(p, localPulse), beat++) {
-      pulses.push({ time: start + musicalSeconds(p, bpm, localPulse), downbeat: compare(p, fraction(0)) === 0, countIn: count, beat });
+  const countIn = seconds(multiply(firstLength, fraction(countInMeasures)));
+  function addPulses(start: Fraction, length: Fraction, count: boolean) {
+    for (let p = fraction(0), beat = 1; compare(p, length) < 0; p = add(p, pulse), beat++) {
+      pulses.push({ time: seconds(add(start, p)) - (count ? countIn : 0), downbeat: compare(p, fraction(0)) === 0, countIn: count, beat });
     }
   }
-  for (let bar = 0; bar < countInMeasures; bar++) addPulses(bar * lengths[0]! - countIn, firstLength, pulse, true);
+  for (let bar = 0; bar < countInMeasures; bar++) addPulses(multiply(firstLength, fraction(bar)), firstLength, true);
   passage.measures.forEach((measure, m) => {
-    addPulses(starts[m]!, measure.length, localPulses[m]!, false);
-    measure.events.filter(e => e.kind === 'rest').forEach(e => rests.push({ start: at(m, e.start), end: at(m, e.end), source: { measure: m, event: e.index } }));
+    addPulses(offset, measure.length, false);
+    measure.events.filter(e => e.kind === 'rest').forEach(e => rests.push({ start: seconds(add(offset, e.start)), end: seconds(add(offset, e.end)), source: { measure: m, event: e.index } }));
+    offset = add(offset, measure.length);
   });
-  return { notes, rests, pulses, duration, countIn, captureEnd: duration + policy.releaseGrace, pulseSeconds: 60 / bpm };
+  const duration = seconds(passage.length);
+  return { notes, rests, pulses, duration, countIn, captureEnd: duration + policy.releaseGrace, pulseSeconds: seconds(pulse) };
 }
 export type Plan = ReturnType<typeof planPassage>;
 /** DOM monotonic timestamp -> AudioContext timeline. No latency correction. */

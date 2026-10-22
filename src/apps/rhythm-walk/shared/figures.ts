@@ -1,5 +1,5 @@
 import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
-import { duration, derivePassage } from '../../../music/measure.ts';
+import { duration, score, note } from '../../../music/measure.ts';
 import { add, compare, divide, fraction } from '../../../music/fraction.ts';
 import type { Fraction } from '../../../music/fraction.ts';
 import { meterPolicy } from './meter.ts';
@@ -8,11 +8,10 @@ import type { CountMeter } from './meter.ts';
 export type InstrumentScope = 'general' | 'percussion';
 export interface FigureProfile { version: 1; level: number; scope: InstrumentScope }
 const events = {
-  Q: [['Q']], H: [['H']], 'H.': [['H', { dots: 1 }]], W: [['W']],
-  EE: [['E'], ['E']], 'Q.E': [['Q', { dots: 1 }], ['E']],
-  EQE: [['E'], ['Q'], ['E']], 'E.S': [['E', { dots: 1 }], ['S']],
-  ESS: [['E'], ['S'], ['S']], SSSS: [['S'], ['S'], ['S'], ['S']],
-  SSE: [['S'], ['S'], ['E']], T: Array.from({ length: 3 }, (): RhythmEvent => ['E', { tuplet: [3, 2] }]),
+  Q: [note('quarter')], H: [note('half')], 'H.': [note('half', { dots: 1 })], W: [note('whole')],
+  EE: [note('eighth'), note('eighth')], 'Q.E': [note('quarter', { dots: 1 }), note('eighth')],
+  EQE: [note('eighth'), note('quarter'), note('eighth')], 'E.S': [note('eighth', { dots: 1 }), note('16th')],
+  ESS: [note('eighth'), note('16th'), note('16th')], SSSS: Array.from({ length: 4 }, () => note('16th')),
 } satisfies Record<string, RhythmEvent[]>;
 export type FigureId = keyof typeof events;
 export const rhythmFigures = Object.fromEntries(Object.entries(events).map(([id, written]) => [id, {
@@ -20,27 +19,20 @@ export const rhythmFigures = Object.fromEntries(Object.entries(events).map(([id,
   duration: written.reduce((sum, event) => add(sum, duration(event as RhythmEvent)), fraction(0)),
 }])) as Record<FigureId, { id: FigureId; events: readonly RhythmEvent[]; duration: Fraction }>;
 export function profileFigures(profile: FigureProfile): FigureId[] {
-  if (profile.version !== 1 || !Number.isInteger(profile.level) || profile.level < 1 || profile.level > 6 || !['general', 'percussion'].includes(profile.scope)) throw new Error('Invalid UIL figure profile.');
+  if (profile.version !== 1 || !Number.isInteger(profile.level) || profile.level < 1 || profile.level > 4 || !['general', 'percussion'].includes(profile.scope)) throw new Error('Invalid UIL figure profile.');
   return ['Q', 'H', 'H.', 'W', 'EE', ...(profile.level >= 3 ? ['Q.E'] : []),
-    ...(profile.level >= 4 ? ['EQE', 'E.S', 'ESS', 'SSSS'] : profile.scope === 'percussion' ? ['ESS', 'SSSS', ...(profile.level === 3 ? ['E.S'] : [])] : []),
-    ...(profile.level >= 5 ? ['SSE', 'T'] : [])] as FigureId[];
+    ...(profile.level >= 4 ? ['EQE', 'E.S', 'ESS', 'SSSS'] : profile.scope === 'percussion' ? ['ESS', 'SSSS', ...(profile.level === 3 ? ['E.S'] : [])] : [])] as FigureId[];
 }
 /** Conservative teaching placements, separate from the source's figure inventory. */
 export function figureAllowedAt(id: FigureId, meter: CountMeter, position: Fraction): boolean {
   const p = meterPolicy(meter);
   if (compare(add(position, rhythmFigures[id].duration), p.length) > 0) return false;
-  if (p.cut && ['E.S', 'ESS', 'SSSS', 'SSE', 'T'].includes(id)) return false;
-  if (p.compound) {
-    // Preserve the written figures: dotted-quarter + eighth / eighth-quarter-eighth
-    // finish with an EE figure on counts 5–6. Never reinterpret ordinary eighths.
-    return (['H.', 'Q.E', 'EQE'].includes(id) && compare(position, fraction(0)) === 0) ||
-      (id === 'EE' && compare(position, fraction(1, 2)) === 0);
-  }
+  if (p.compound) return false;
   return divide(position, fraction(1, 4))[1] === 1;
 }
 export function figurePlan(profile: FigureProfile, meter: CountMeter) {
   const pool = profileFigures(profile).map(id => rhythmFigures[id]);
-  if (profile.level < 3 && meter !== '4/4' || profile.level < 5 && ['6/8', '2/2'].includes(meter)) throw new Error(`Meter ${meter} is outside this UIL profile. Customize to use another meter.`);
+  if (profile.level < 3 && meter !== '4/4' || meter === '6/8') throw new Error(`Meter ${meter} is outside this UIL profile. Customize to use another meter.`);
   const policy = meterPolicy(meter), memo = new Map<string, boolean>();
   function fills(position: Fraction): boolean {
     if (!compare(position, policy.length)) return true;
@@ -66,21 +58,16 @@ export function drawIndex(length: number, random: () => number): number {
   if (!Number.isFinite(value) || value < 0 || value >= 1) throw new Error('Random source must return a number in [0, 1).');
   return Math.floor(value * length);
 }
-export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, changes: number, random: () => number): RhythmMeasure[] {
+export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, random: () => number) {
   const plans = new Map(pool.map(m => [m, figurePlan(profile, m)]));
-  let meter = pool[pool.length === 1 ? 0 : drawIndex(pool.length, random)]!;
-  let remaining = Math.min(changes, measures - 1);
-  const passage = Array.from({ length: measures }, (_, index): RhythmMeasure => {
-    if (index && remaining && pool.length > 1 && drawIndex(2, random)) {
-      const alternatives = pool.filter(m => m !== meter);
-      meter = alternatives[drawIndex(alternatives.length, random)]!; remaining--;
-    }
+  const meter = pool[pool.length === 1 ? 0 : drawIndex(pool.length, random)]!;
+  const passage = Array.from({ length: measures }, (): RhythmMeasure => {
     const plan = plans.get(meter)!, written: RhythmEvent[] = [];
     for (let position = fraction(0); compare(position, plan.policy.length) < 0;) {
       const choices = plan.choicesAt(position), choice = choices[drawIndex(choices.length, random)]!;
       written.push(...structuredClone(choice.events)); position = add(position, choice.duration);
     }
-    return { meter: plan.policy.meter, events: written };
+    return { meter: plan.policy.meter, notes: written };
   });
-  derivePassage(passage); return passage;
+  return score(passage);
 }

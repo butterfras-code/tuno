@@ -39,7 +39,7 @@ For corrected observed attack `a`, target musical attack time `e`, scale `s` and
 starting displacement `d`, fit `a ≈ d + e × s`. Performed BPM is `targetBPM / s`.
 One global scale and one displacement apply to the entire passage. Timing uses exact
 musical spacing, including unequal note values and rests. 6/8 uses dotted-quarter
-pulses; written counts still number six eighths. Cut time uses half-note pulses and half-note counts 1–2. Across supported meter changes, the timing plan converts each bar using its local pulse at the same BPM. The analytical fit remains one global time scale and displacement, so BPM and rhythm feedback remain coherent across boundaries.
+pulses; written counts still number six eighths.
 
 The bounded search uses 121 inclusive scale seeds between **2/3 and 1.5** and three
 starting displacement seeds (negative bound, zero, positive bound). Displacement is

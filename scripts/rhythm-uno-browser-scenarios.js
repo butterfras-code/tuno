@@ -5,7 +5,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
   const choose = (control, value) => { if (control.tagName === 'FIELDSET') { control.querySelector(`input[value="${value}"]`).click(); return; } control.value = value; control.dispatchEvent(new w.Event('change')); };
   const stored = () => JSON.parse(w.localStorage.getItem(key));
   const picker = d.querySelector('[data-setting="teaching-preset"]');
-  const mode = d.querySelector('.response-controls select');
+  const mode = d.querySelector('select[aria-label="Mode"]');
   const next = d.querySelector('.setup-actions button');
   choose(mode, 'write');
   choose(d.querySelector('[data-setting="exercise-length"]'), '3');
@@ -21,7 +21,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
     assert(settings.teachingPreset.id === id && !settings.teachingPreset.customized, `${id} applies exact pending identity`);
     assert(settings.measures === 3 && JSON.stringify({ ...stored(), generation: independent.generation }) === JSON.stringify(independent), `${id} preserves independent preferences`);
     assert(d.querySelector('.notation') === score && d.querySelector('.passage').dataset.exerciseId === exercise && slot.textContent === answer, `${id} preserves score and writing`);
-    const details = picker.closest('.level-configuration').querySelector('details'); details.open = true;
+    const details = d.querySelector('[data-level-details]'); details.open = true;
     assert(details.textContent.includes('Uno practice configuration') && !details.textContent.includes('Official criteria'), `${id} identifies its own practice configuration`);
     assert(d.documentElement.scrollWidth <= w.innerWidth + 1 && picker.getBoundingClientRect().right <= w.innerWidth + 1, `${id} selector and details fit ${w.innerWidth}px`);
     details.open = false;
@@ -41,9 +41,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
       assert(fresh.querySelector('[data-setting="teaching-preset"]').value === id && fresh.querySelector('.exercise-summary').textContent.includes(`Uno${index + 1}`), `${id} restores after fresh load`);
     }
   }
-  const before = d.querySelector('.passage').dataset.exerciseId;
-  choose(picker, 'uil-6');
-  assert(!d.querySelector('[data-setting="apply-teaching-preset"]').disabled && stored().generation.figureProfile.level === 6 && d.querySelector('.passage').dataset.exerciseId === before, 'UIL VI uses its own pending atomic figure profile without replacing the Uno exercise');
+  assert(![...picker.options].some(o => o.value === 'uil-6'), 'Deferred UIL VI is not offered');
   choose(picker, 'uno-4');
   return { passed: checks.length, width: w.innerWidth, checks };
 };

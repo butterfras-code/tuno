@@ -1,3 +1,4 @@
+import type { CountingFeedbackContext } from './counting-feedback.ts';
 import { assessAttempt } from './assessment.ts';
 import { TreatBagState } from './rewards.ts';
 import { createResults, renderTreatBag } from './results.ts';
@@ -15,10 +16,10 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { treatBag: HTMLElement; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
+export function createPerformance(options: { treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
   const treatBag = new TreatBagState();
-  const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted);
+  const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted, options.countingFeedback?.());
   renderFeedback();
   let audio: AudioContext | undefined;
   let transport: Transport | null = null;
@@ -252,18 +253,16 @@ export function createPerformance(options: { treatBag: HTMLElement; exercise: ()
   document.addEventListener('visibilitychange', () => { if (document.hidden) { startCancelled = true; transport?.interrupt('Page backgrounded'); } });
   window.addEventListener('pagehide', () => transport?.interrupt('Page left'));
 
-  function pulseLabel() { const policy = sourcePolicy(options.exercise().measures[0]!); return policy.cut ? 'half-note' : policy.compound ? 'dotted-quarter' : 'quarter-note'; }
+  function pulseLabel() { return sourcePolicy(options.exercise().score.measures[0]!).compound ? 'dotted-quarter' : 'quarter-note'; }
   function refreshExercise() {
-    const changing = new Set(options.exercise().measures.map(m => m.meter.join('/'))).size > 1;
-    const tempoLabel = changing ? 'Tempo (BPM · follows each meter)' : `Tempo (${pulseLabel()} BPM)`;
-    tempoField.querySelector('.field-label')!.textContent = tempoLabel;
-    tempo.setAttribute('aria-label', tempoLabel);
-    tempoUnit.textContent = changing ? 'Beat =' : pulseLabel() === 'dotted-quarter' ? '♩. =' : pulseLabel() === 'half-note' ? '𝅗𝅥 =' : '♩ =';
-    const plan = planPassage(options.exercise().measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().measures[0]!).pulse);
+    tempoField.querySelector('.field-label')!.textContent = `Tempo (${pulseLabel()} BPM)`;
+    tempo.setAttribute('aria-label', `Tempo (${pulseLabel()} BPM)`);
+    tempoUnit.textContent = pulseLabel() === 'dotted-quarter' ? '♩. =' : '♩ =';
+    const plan = planPassage(options.exercise().score.measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().score.measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
     playHint.textContent = playInstructions[options.preferences.playStyle];
-    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. BPM follows each meter’s pulse (quarter / dotted quarter / half); the count-in uses the first meter. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
+    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
   }
   function cancel(reason: string) {
     timing.cancel();
@@ -285,6 +284,7 @@ export function createPerformance(options: { treatBag: HTMLElement; exercise: ()
     start: begin,
     record: () => result,
     syncResults: () => results?.sync(options.nextIssue()),
+    refreshFeedback: renderFeedback,
     reset: () => { cancel('Exercise changed'); treatBag.clear(); delete options.treatBag.dataset.exerciseId; renderFeedback(); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 

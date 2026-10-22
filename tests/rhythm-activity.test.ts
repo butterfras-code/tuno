@@ -1,15 +1,16 @@
+import { score } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Activity, defaultPreferences, modes, presets, readPreferences, fixtureAccess } from '../src/apps/rhythm-walk/activity.ts';
-import { defaultGeneration, generateExercise, generationIssue, ingredients, enableMeter } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, ingredients, enableMeter } from '../src/apps/rhythm-walk/shared/generation.ts';
 import type { GenerationSettings } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import { passageGrid } from '../src/apps/count-writing/passage.ts';
-import type { RhythmMeasure } from '../src/music/measure.ts';
-import type { CountSymbol } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import { passageGrid } from './legacy/count-passage.ts';
+import type { RhythmMeasure } from './score-test-support.ts';
+import type { CountSymbol } from './legacy/count-evaluation.ts';
 
 function exerciseWorks(measures: readonly RhythmMeasure[]) {
   const grid = passageGrid(measures);
@@ -22,7 +23,7 @@ function exerciseWorks(measures: readonly RhythmMeasure[]) {
   const lines = grid.sustained.map(sound => ({ start: sound.start, end: sound.end }));
   const counts = evaluatePassage(measures, answers, 'required', lines);
   assert.ok(counts.every(result => Object.values(result).every(d => d.verdict === 'correct')), JSON.stringify(counts));
-  const capture = new Capture({ id: 'shared', label: 'Shared', description: '', measures }, 80, true);
+  const capture = new Capture({ id: 'shared', label: 'Shared', description: '', score: score(measures) }, 80, true);
   capture.plan.notes.forEach(note => {
     capture.input('down', 'keyboard', note.start, note.start * 1000);
     capture.input('up', 'keyboard', note.end, note.end * 1000);
@@ -36,20 +37,20 @@ function exerciseWorks(measures: readonly RhythmMeasure[]) {
 
 test('mode switching retains the canonical exercise object, identity and pending configuration', () => {
   const preferences = defaultPreferences();
-  const activity = new Activity(preferences, presets[0]!.measures);
+  const activity = new Activity(preferences, score(presets[0]!.score.measures));
   const exercise = activity.exercise;
   preferences.generation.measures = 4;
   assert.equal(activity.exerciseGeneration.measures, 2, "current configuration is captured separately from pending settings");
   for (const mode of [...modes, ...modes].reverse()) { activity.setMode(mode); assert.strictEqual(activity.exercise, exercise); assert.equal(activity.preferences.generation.measures, 4); }
   const next = activity.next(() => .4);
-  assert.notEqual(next.id, exercise.id); assert.equal(next.measures.length, 4); assert.equal(preferences.preset, 'generated');
+  assert.notEqual(next.id, exercise.id); assert.equal(next.score.measures.length, 4); assert.equal(preferences.preset, 'generated');
   assert.equal(activity.exerciseGeneration.measures, 4);
   preferences.generation.ingredients = [];
   assert.notDeepEqual(activity.exerciseGeneration.ingredients, []);
   assert.throws(() => activity.next()); assert.strictEqual(activity.exercise, next);
 });
 
-for (const preset of presets) test(`shared preset works in both evaluators: ${preset.id}`, () => { exerciseWorks(preset.measures); });
+for (const preset of presets) test(`shared preset works in both evaluators: ${preset.id}`, () => { exerciseWorks(preset.score.measures); });
 
 test('generated meters, lengths, ingredient pools and pattern options serve both evaluators', () => {
   let seed = 12;
@@ -63,7 +64,7 @@ test('generated meters, lengths, ingredient pools and pattern options serve both
 });
 
 test('6/8 capture uses two dotted-quarter pulses and six independent written counts', () => {
-  const capture = exerciseWorks(presets.find(p => p.id === 'six-eighths')!.measures);
+  const capture = exerciseWorks(presets.find(p => p.id === 'six-eighths')!.score.measures);
   assert.equal(capture.plan.countIn, 3); assert.equal(capture.plan.duration, 1.5);
   assert.deepEqual(capture.plan.pulses.filter(p => !p.countIn).map(p => p.time), [0, .75]);
   assert.deepEqual(capture.plan.notes.map(n => n.start), [0, .25, .5, .75, 1, 1.25]);
@@ -80,7 +81,7 @@ test('saved shared and mode preferences validate independently and preserve edit
 });
 
 test('explicit cancellation cannot complete an active attempt or replace its raw evidence', () => {
-  const capture = new Capture({ id: 'shared', label: 'Shared', description: '', measures: presets[0]!.measures }, 80, true);
+  const capture = new Capture({ id: 'shared', label: 'Shared', description: '', score: score(presets[0]!.score.measures) }, 80, true);
   capture.input('down', 'keyboard', .1, 100);
   const record = capture.interrupt('Mode changed', capture.plan.captureEnd + 1);
   assert.equal(record.status, 'interrupted'); assert.equal(record.events.length, 1);
@@ -97,7 +98,7 @@ test('meter pool chooses one meter per exercise, includes every enabled meter an
     let first = true;
     const exercise = generateExercise(settings, () => { if (first) { first = false; return (index + .5) / meters.length; } return .49; });
     assert.ok(exercise.every(bar => bar.meter.join('/') === meter));
-    if (meter === '6/8') assert.ok(exercise.every(bar => bar.events.every(event => event[0] !== 'H')));
+    if (meter === '6/8') assert.ok(exercise.every(bar => bar.notes.every(event => event.type !== 'half')));
     exerciseWorks(exercise);
   }
   assert.deepEqual(settings, before);
@@ -142,3 +143,5 @@ test('fixture access is explicit and saved fixture selections migrate to generat
   assert.equal(fixtureAccess('?testing=1').enabled, true);
   for (const fixture of presets) assert.equal(fixtureAccess('?fixture=' + fixture.id).fixture?.id, fixture.id);
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

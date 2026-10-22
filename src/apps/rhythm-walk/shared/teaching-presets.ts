@@ -30,13 +30,13 @@ const percussion = [figure('R8-16-16', ['E', 'S', 'S'], 'percussion'), figure('R
 const dottedQuarter = figure('Rdot4-8', ['Q.', 'E']);
 const dottedEighth = figure('Rdot8-s', ['E.', 'S']);
 const syncopated = figure('R8-4-8', ['E', 'Q', 'E']);
-const levels = ['I', 'II', 'III', 'IV', 'V', 'VI'] as const;
+const levels = ['I', 'II', 'III', 'IV'] as const;
 export const teachingPresets: readonly (TeachingPresetDefinition & { source: typeof criteriaSource })[] = levels.map((level, index) => {
   const number = index + 1;
-  const suggested: CountMeter[] = number < 3 ? ['4/4'] : number < 5 ? ['2/4', '3/4', '4/4'] : ['2/4', '3/4', '4/4', '6/8', '2/2'];
-  const figures = number < 3 ? [...basic, ...percussion] : number === 3 ? [...basic, dottedQuarter, ...percussion, { ...dottedEighth, scope: 'percussion' as const }] : [...basic, dottedQuarter, syncopated, dottedEighth, figure('R4-16', ['S', 'S', 'S', 'S']), figure('R8-16-16', ['E', 'S', 'S']), ...(number >= 5 ? [figure('Rtriplet', ['E3:2', 'E3:2', 'E3:2']), figure('R16-16-8', ['S', 'S', 'E'])] : [])];
+  const suggested: CountMeter[] = number < 3 ? ['4/4'] : ['2/4', '3/4', '4/4'];
+  const figures = number < 3 ? [...basic, ...percussion] : number === 3 ? [...basic, dottedQuarter, ...percussion, { ...dottedEighth, scope: 'percussion' as const }] : [...basic, dottedQuarter, syncopated, dottedEighth, figure('R4-16', ['S', 'S', 'S', 'S']), figure('R8-16-16', ['E', 'S', 'S'])];
   return {
-    id: `uil-${number}`, version: 2, label: `UIL ${level}`, source: criteriaSource,
+    id: `uil-${number}`, version: 3, label: `UIL ${level}`, source: criteriaSource,
     figures, officialMeters: suggested,
     meterChanges: number < 4 ? 0 : number - 3,
     restrictions: [
@@ -46,7 +46,7 @@ export const teachingPresets: readonly (TeachingPresetDefinition & { source: typ
     ],
     unresolved: ['Rest vocabulary beyond the explicit Level I prohibitions and tie permissions require clarification.'],
     recommended: { meters: suggested, measures: 2,
-      figureProfile: { version: 1, level: number, scope: 'general' }, meterChanges: 0,
+      figureProfile: { version: 1, level: number, scope: 'general' },
       ingredients: figureIngredients({ version: 1, level: number, scope: 'general' }),
       allowUnintuitiveNotation: false, ties: false, syncopation: number >= 4 },
     required: { ingredients: figureIngredients({ version: 1, level: number, scope: 'general' }), patterns: ['uil-figures'], meters: suggested },
@@ -71,12 +71,12 @@ export const unoPresets: readonly TeachingPresetDefinition[] = unoConfigurations
 export const generationLevels = [...unoPresets, ...teachingPresets];
 export function teachingPresetLabel(identity?: TeachingPresetIdentity): string {
   const definition = generationLevels.find(p => p.id === identity?.id);
-  return definition ? `${definition.label}${identity?.customized ? ' · customized' : definition.source ? ` · ${identity?.scope ?? 'general'} · note-only practice` : ''}` : 'Custom';
+  return definition ? `${definition.label}${identity?.customized ? ' · customized' : definition.source ? ` · ${identity?.scope ?? 'general'} · note-only practice` : ''}` : identity && ['uil-5', 'uil-6'].includes(identity.id) ? `UIL ${identity.id === 'uil-5' ? 'V' : 'VI'} · customized · deferred level` : 'Custom';
 }
 export type PresetResolution = { supported: true; settings: GenerationSettings } | { supported: false; reasons: string[] };
 export function matchesTeachingPreset(settings: GenerationSettings, definition: TeachingPresetDefinition): boolean {
   const controlled = (g: GenerationSettings) => JSON.stringify({ meters: [...(g.meters ?? [g.meter ?? '4/4'])].sort(), ingredients: [...g.ingredients].sort(), allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: Boolean(g.ties), syncopation: Boolean(g.syncopation), pairedEighths: Boolean(g.restrictions?.pairedEighths), noQuarterRestBeatOne: Boolean(g.restrictions?.noQuarterRestBeatOne), figureProfile: g.figureProfile });
-  return controlled(settings) === controlled(scopedSettings(definition, settings.teachingPreset?.scope ?? 'general')) && Number.isInteger(settings.meterChanges ?? 0) && (settings.meterChanges ?? 0) >= 0 && (settings.meterChanges ?? 0) <= definition.meterChanges;
+  return controlled(settings) === controlled(scopedSettings(definition, settings.teachingPreset?.scope ?? 'general')) && (settings.meterChanges ?? 0) === 0;
 }
 function scopedSettings(definition: TeachingPresetDefinition, scope: InstrumentScope): GenerationSettings {
   const settings = structuredClone(definition.recommended);

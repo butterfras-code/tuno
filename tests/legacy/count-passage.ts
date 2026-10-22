@@ -1,14 +1,15 @@
-import type { CountingSystem } from './input.ts';
-import { derivePassage } from '../../music/measure.ts';
-import type { RhythmMeasure } from '../../music/measure.ts';
-import { compare, divide, fraction } from '../../music/fraction.ts';
-import { countGrid } from './grid.ts';
-import type { Span } from './evaluation.ts';
+/** Historical counting contract regression helper; never imported by the application. */
+import type { CountingSystem } from '../../src/apps/count-writing/input.ts';
+import { derivePassage } from '../score-test-support.ts';
+import type { RhythmMeasure } from '../score-test-support.ts';
+import { compare, divide, fraction } from '../../src/music/fraction.ts';
+import { countGrid } from '../../src/apps/count-writing/grid.ts';
+import type { Span } from './count-evaluation.ts';
 
 /** Derived answer coordinates only. Authored music stays in RhythmMeasure. */
 export function passageGrid(source: readonly RhythmMeasure[], system: CountingSystem = 'numbers') {
   const derived = derivePassage(source);
-  if (derived.attacks.some(a => a.sources.length > 1 && a.sources.some(r => source[r.measure]!.events[r.event]![1]?.tuplet))) throw new Error('Uno234 does not support ties involving triplet members.');
+  if (derived.attacks.some(a => a.sources.length > 1 && a.sources.some(r => source[r.measure]!.notes[r.event]!.timeModification))) throw new Error('Uno234 does not support ties involving triplet members.');
   const grids = source.map(m => countGrid(m, system));
   const offsets = grids.map((_, index) => grids.slice(0, index).reduce((sum, grid) => sum + grid.slots.length, 0));
   const sounding = derived.attacks.map(attack => {
@@ -28,7 +29,7 @@ export function passageGrid(source: readonly RhythmMeasure[], system: CountingSy
     const position = offsets[measure]! + index;
     const sound = sounding.find(s => s.start <= position && s.end >= position)!;
     const attack = sound.start === position;
-    const dottedInternal = compare(sound.duration, fraction(3, grid.policy.cut ? 4 : 8)) === 0 && !slot.onCount && divide(slot.position, fraction(1, grid.policy.cut ? 4 : 8))[1] === 1 && !attack;
+    const dottedInternal = compare(sound.duration, fraction(3, 8)) === 0 && !slot.onCount && divide(slot.position, fraction(1, 8))[1] === 1 && !attack;
     return { ...slot, measure, index, sound, attack, dottedInternal, available: slot.available || dottedInternal };
   }));
   grids.forEach((grid, measure) => {

@@ -1,27 +1,19 @@
+import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
-import type { RhythmEvent } from '../../../music/measure.ts';
 import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
-import type { DottedQuarterConvention } from '../../count-writing/evaluation.ts';
-import { linePlacementOptions, sustainAppearanceOptions } from '../../count-writing/presentation.ts';
-import type { CountPresentation, LinePlacement, SustainAppearance } from '../../count-writing/presentation.ts';
-import type { OffbeatSymbol, CountingSystem } from '../../count-writing/input.ts';
+import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
+import type { CountingPreferences } from '../../../music/counting/preferences.ts';
 import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
 import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
 
-export const dottedConventionOptions = [
-  { value: 'review', label: 'Teacher review — accept both provisionally' },
-  { value: 'required', label: 'Require internal &' },
-  { value: 'optional', label: 'Internal & is optional' },
-] as const;
-
 function unavailableReason(reason: string): string {
   if (/Missing pattern support(?: in [\d/]+)?: uil-\d-figures\./.test(reason)) return 'The exact rhythm figures for this level are not enforced yet.';
   if (reason.includes('uil-rest-and-tie-policy')) return 'Rest and tie permissions still need review.';
-  if (reason.includes('triplet-eighth')) return 'This configuration requires complete sounded eighth triplets in a supported quarter-note meter.';
+  if (reason.includes('triplet-eighth')) return 'Complete sounded eighth triplets require a supported quarter-note meter.';
   if (reason.includes('cut-time')) return 'Cut time is not supported yet.';
   if (reason.includes('paired-eighths')) return 'Complete eighth-note pairs are not supported in this configuration.';
   if (reason.includes('no-quarter-rest-beat-one')) return 'The downbeat quarter-rest restriction is not supported in this configuration.';
@@ -75,15 +67,16 @@ export function createSettingsPage(callbacks: {
   initialGeneration: GenerationSettings;
   newExercise: () => void;
   generation: (value: GenerationSettings) => void;
-  system: (value: CountingSystem) => void;
-  offbeat: (value: OffbeatSymbol) => void;
-  placement: (value: LinePlacement) => void;
-  appearance: (value: SustainAppearance) => void;
-  convention: (value: DottedQuarterConvention) => void;
+  initialCounting: CountingPreferences;
+  counting: (value: CountingPreferences) => void;
+  isLinked: () => boolean;
+  saveCountingDefaults: () => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
   const intro = el('p', 'settings-intro', 'Use Customize… in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
-  const savedNote = el('p', 'setting-hint', 'Preferences are saved automatically in this browser. Exercise settings apply on New exercise. New exercise clears both responses and returns to practice.');
+  const savedNote = el('p', 'setting-hint');
+  const updateSavedNote = () => { savedNote.textContent = `${callbacks.isLinked() ? 'Linked counting preferences and your edits stay in this session until you choose Save as my defaults.' : 'Preferences are saved automatically in this browser.'} Counting changes apply on New exercise. Current music, answers and results are kept.`; };
+  updateSavedNote();
   const newExercise = button('New exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
@@ -91,30 +84,50 @@ export function createSettingsPage(callbacks: {
   const activeBadge = el('span', 'availability availability--active', 'Working controls');
   const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
   const activeControls = el('div', 'settings-live-controls');
-  const offbeat = select([{ value: '&', label: 'Numbers with &' }, { value: '+', label: 'Numbers with +' }], value => callbacks.offbeat(value as OffbeatSymbol));
-  offbeat.dataset.setting = 'offbeat-symbol';
-  const system = select([{ value: 'numbers', label: '1 e & a' }, { value: 'syllables', label: '1 ta-te-ta' }], value => callbacks.system(value as CountingSystem));
-  system.dataset.setting = 'count-system';
-  const systemField = field('Counting system', system);
-  systemField.append(field('Offbeat symbol · 1 e & a', offbeat));
-  systemField.append(el('p', 'setting-hint', 'Choose 1 e & a or 1 ta-te-ta. Type t then a/e for ta/te. Triplets use 1 la li in both systems; type l for la and i for li. The independent &/+ preference is retained. System changes translate unambiguous tokens, clear ambiguous tokens and require Check again. Cut time counts half-note beats 1–2: quarters use &/te and eighths use e & a / ta te ta. In 6/8 every eighth has a fixed number 1–6; this preference is saved for simple meters.'));
-  const convention = select(dottedConventionOptions, value => callbacks.convention(value as DottedQuarterConvention));
-  convention.dataset.setting = 'dotted-quarter-convention';
-  const conventionField = field('Dotted-quarter / cut-time dotted-half internal count', convention);
-  const conventionHint = el('p', 'setting-hint', 'Applies to dotted-quarter sounding durations in quarter-note meters, scaled to dotted halves in cut time. In 6/8 all six numbers are required; this preference has no effect. Your answer stays intact; check again after changing the rule.');
-  conventionHint.id = 'settings-convention-hint'; convention.setAttribute('aria-describedby', conventionHint.id); conventionField.append(conventionHint);
-  const placement = select(linePlacementOptions, value => callbacks.placement(value as LinePlacement));
-  placement.dataset.setting = 'line-anchor';
-  const placementField = field('Duration-line placement', placement);
-  const placementHint = el('p', 'setting-hint', 'Switching to beside counts defaults sustained counts to raised and smaller. You can then choose any appearance.');
-  placementHint.id = 'settings-placement-hint';
-  placement.setAttribute('aria-describedby', placementHint.id); placementField.append(placementHint);
-  const appearance = select(sustainAppearanceOptions, value => callbacks.appearance(value as SustainAppearance));
-  appearance.dataset.setting = 'sustain-style';
-  const appearanceField = field('Sustained-count appearance', appearance);
-  const appearanceHint = el('p', 'setting-hint', 'Applies to counts inside your duration lines; the onset stays full-size. Unchanged allows lines beside counts to cross through them.');
-  appearanceHint.id = 'settings-appearance-hint';
-  appearance.setAttribute('aria-describedby', appearanceHint.id); appearanceField.append(appearanceHint);
+  let counting = callbacks.initialCounting;
+  const countingControls = new Map<keyof CountingPreferences, HTMLInputElement | HTMLSelectElement>();
+  const labels = { longNotes: 'Long-note subdivision', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show duration line', linePlacement: 'Line placement', internalAppearance: 'Internal-count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
+  function change(key: keyof CountingPreferences, value: string | boolean) {
+    counting = captureCountingPreferences({ ...counting, [key]: value }); callbacks.counting(counting);
+    updateSavedNote();
+    shareStatus.textContent = ''; fallback.hidden = true;
+  }
+  for (const key of ['longNotes', 'dotted', 'includeRests', 'showDurationLine'] as const) {
+    const input = el('input'); input.type = 'checkbox'; input.checked = counting[key]; input.dataset.countingPreference = key;
+    input.addEventListener('change', () => change(key, input.checked)); countingControls.set(key, input); activeControls.append(field(labels[key], input));
+  }
+  for (const key of ['linePlacement', 'internalAppearance', 'restAppearance', 'vocabulary', 'offbeat'] as const) {
+    const input = select(countingPreferenceOptions[key].map(value => ({ value, label: value === 'numbers' ? '1 e & a' : value === 'syllables' ? '1 ta-te-ta' : value[0]!.toUpperCase() + value.slice(1) })), value => change(key, value));
+    input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); activeControls.append(field(labels[key], input));
+  }
+  const share = el('div', 'counting-share');
+  const shareHint = el('p', 'setting-hint', 'Share the counting preferences currently selected here, including pending changes. The current exercise is unchanged.');
+  const shareStatus = el('p', 'setting-hint'); shareStatus.setAttribute('role', 'status');
+  const fallback = el('div'); fallback.hidden = true;
+  const linkInput = el('input'); linkInput.type = 'text'; linkInput.readOnly = true;
+  linkInput.addEventListener('focus', () => linkInput.select());
+  fallback.append(field('Counting preferences link', linkInput));
+  const copy = button('Copy counting preferences link', async () => {
+    const url = countingPreferencesUrl(location.href, counting);
+    linkInput.value = url; fallback.hidden = true;
+    try {
+      await navigator.clipboard.writeText(url);
+      shareStatus.textContent = 'Counting preferences link copied.';
+    } catch {
+      shareStatus.textContent = 'Could not copy automatically. Select and copy the link below.';
+      fallback.hidden = false; linkInput.focus(); linkInput.select();
+    }
+  });
+  const adopt = button('Save as my defaults', () => {
+    try {
+      callbacks.saveCountingDefaults(); updateSavedNote(); adopt.hidden = true;
+      shareStatus.textContent = 'Selected counting preferences saved as your browser defaults. Current exercise unchanged.';
+    } catch { shareStatus.textContent = 'Could not save defaults in this browser. Your counting preferences remain session-only.'; }
+  });
+  adopt.hidden = !callbacks.isLinked();
+  share.append(shareHint, copy, adopt, shareStatus, fallback);
+  activeControls.append(share);
+  activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and D toggles Duration for the selected unit. Hidden lines with unchanged internal counts disable duration entry and assessment. Type t then a/e for ta/te; l and i enter la and li.'));
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';
@@ -152,11 +165,11 @@ export function createSettingsPage(callbacks: {
   const vocabularyHeadings = el('div', 'ingredient-headings');
   vocabularyHeadings.append(el('h3', '', 'Allowed Notes'), el('h3', '', 'Allowed Rests'));
   vocabulary.append(vocabularyHeadings);
-  for (const [value, name] of [['W', 'Whole'], ['H', 'Half'], ['Q', 'Quarter'], ['E', 'Eighth'], ['S', 'Sixteenth']] as const) {
+  for (const [value, name] of [['whole', 'Whole'], ['half', 'Half'], ['quarter', 'Quarter'], ['eighth', 'Eighth'], ['16th', 'Sixteenth']] as const) {
     const valueRow = el('div', 'ingredient-value-row'); valueRow.dataset.value = value;
     for (const rest of [false, true]) {
       const row = el('div', 'ingredient-row'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', `${name} ${rest ? 'rests' : 'notes'}`);
-      for (const ingredient of ingredients.filter(i => i.event[0] === value && Boolean((i.event as RhythmEvent)[1]?.rest) === rest)) {
+      for (const ingredient of ingredients.filter(i => i.event.type === value && (i.event.kind === 'rest') === rest)) {
         const { label, input } = segmentedOption({ label: ingredient.label, content: renderRhythmSymbol(ingredient.event), type: 'checkbox', value: ingredient.id,
           checked: generation.ingredients.includes(ingredient.id), changed: () => {
             generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) };
@@ -232,14 +245,7 @@ export function createSettingsPage(callbacks: {
   }
   const instrumentScope = select([{ value: 'general', label: 'General' }, { value: 'percussion', label: 'Percussion' }], () => applySelectedLevel(teachingPicker.value));
   instrumentScope.dataset.setting = 'instrument-scope';
-  instrumentScope.value = generation.teachingPreset?.scope ?? 'general';
   const scopeField = field('UIL instrument scope', instrumentScope);
-  const meterChanges = select([0, 1, 2, 3].map(n => ({ value: String(n), label: n ? `Up to ${n} meter ${n === 1 ? 'change' : 'changes'}` : 'One meter per exercise' })), value => {
-    generation = { ...generation, meterChanges: Number(value) }; generationChanged(false);
-  });
-  meterChanges.dataset.setting = 'meter-changes';
-  const changesField = field('Short-exercise meter changes', meterChanges);
-  changesField.append(el('p', 'setting-hint', 'Optional teaching adaptation, limited by measure boundaries. BPM follows the local pulse; count-in uses the first meter.'));
   const applyPreset = button('Apply level', () => applySelectedLevel(teachingPicker.value));
   applyPreset.dataset.setting = 'apply-teaching-preset';
   function renderTeachingPreset() {
@@ -250,20 +256,18 @@ export function createSettingsPage(callbacks: {
     const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
     scopeField.hidden = !active?.source;
     instrumentScope.value = generation.teachingPreset?.scope ?? 'general';
-    changesField.hidden = !generation.figureProfile || !active?.meterChanges;
-    meterChanges.value = String(generation.meterChanges ?? 0);
-    for (const option of meterChanges.options) option.disabled = Number(option.value) > Math.min(active?.meterChanges ?? 0, generation.measures - 1);
-    teachingAttribution.textContent = active ? `${teachingPresetLabel(generation.teachingPreset)} · next exercise.` : 'Custom · pending settings. New exercise generates from these settings.';
+    teachingAttribution.textContent = `${teachingPresetLabel(generation.teachingPreset)} · for next exercise`;
+    if (generation.teachingPreset?.customized && generation.teachingPreset.id.startsWith('uil-')) teachingAttribution.textContent += '. Customized vocabulary; one supported meter per exercise. Reapply a level for verified figure practice.';
     const definition = generationLevels.find(p => p.id === teachingPicker.value);
     customLevelStatus.hidden = true; customLevelStatus.textContent = '';
     teachingEvidence.replaceChildren();
     if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
-    const result = resolveTeachingPreset(definition);
+    const result = resolveTeachingPreset(definition, undefined, instrumentScope.value as 'general' | 'percussion');
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
     if (!result.supported) { customLevelStatus.hidden = false; customLevelStatus.textContent = `Unavailable: ${unavailable.join(' ')}`; }
-    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; enabling those controls makes a customized configuration. Changes keep both responses until New exercise.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
       teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
       const settings = definition.recommended;
@@ -274,13 +278,12 @@ export function createSettingsPage(callbacks: {
       return;
     }
     const source = el('a', '', `Official criteria · ${definition.source.revision} · retrieved ${definition.source.retrieved}`); source.href = definition.source.url;
-    teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice defaults to one meter; optional bounded changes are a teaching adaptation. Length is preserved.`));
+    teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice uses one meter and preserves your chosen length. UIL IV is figure practice, not fulfillment of the composition-level meter-change requirement.`));
     for (const figure of definition.figures) {
       const link = el('a', '', `${figure.events.join(' ')} (${figure.scope})`); link.href = figure.url;
       const row = el('p'); row.append(link); teachingEvidence.append(row);
     }
-    teachingEvidence.append(el('p', '', definition.restrictions.join(' ')));
-    teachingEvidence.append(el('p', '', definition.unresolved.join(' ')), el('p', '', '6/8 uses H. or Q. E / E Q E followed by E E on counts 5–6. Cut time counts half beats 1–2; sixteenth, dotted-eighth and triplet figures are practiced only in quarter-note meters.'));
+    teachingEvidence.append(el('p', '', [...definition.restrictions, ...definition.unresolved].join(' ')));
     if (!result.supported) teachingEvidence.append(el('p', '', unavailable.join(' ')));
   }
   teachingPicker.value = generation.teachingPreset?.id ?? '';
@@ -289,18 +292,11 @@ export function createSettingsPage(callbacks: {
   teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'Uno levels are practice configurations. UIL levels retain their qualified scope; they are not complete composition validators or UIL endorsements. Meters remain editable. No requirement that every allowed figure appear.'));
   teachingAttribution.id = 'pending-level';
   teachingPicker.setAttribute('aria-describedby', teachingAttribution.id);
-  teachingField.append(teachingAttribution, teachingDetails);
+  teachingField.append(teachingAttribution);
+  teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
-  exerciseControls.append(customLevelField, scopeField, changesField, meterField, lengthField, vocabulary, patternFields, generationStatus);
-  activeControls.append(systemField, conventionField, placementField, appearanceField);
-  const restRule = el('section', 'setting-row');
-  restRule.dataset.setting = 'rest-grouping';
-  restRule.setAttribute('aria-labelledby', 'setting-rest-grouping');
-  const restHeading = el('div', 'setting-heading');
-  const restTitle = el('h3', '', 'Rest parentheses'); restTitle.id = 'setting-rest-grouping';
-  restHeading.append(restTitle, el('span', 'availability availability--active', 'Current rule'));
-  restRule.append(restHeading, el('p', 'setting-hint', 'Use one complete pair of parentheses per written rest, enclosing all its required or entered counts. A half rest encloses both beats and its duration line: (1 2). Two quarter rests use separate pairs: (1) (2). Groups cannot overlap or nest. This rule is fixed in the current prototype.'));
-  available.append(activeHeader, el('h3', '', 'Writing preferences'), activeControls, restRule, el('p', 'setting-hint', 'Preferences are saved for this browser. Preferences persist across reloads; responses belong to the current exercise.'));
+  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
+  available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));
   const sections: HTMLDetailsElement[] = [];
@@ -314,7 +310,7 @@ export function createSettingsPage(callbacks: {
   planned.append(el('summary', '', 'Future options'), browse, el('p', 'setting-hint', 'These options are planned or still being decided. They do not change your exercises.'));
   page.append(intro, savedNote, settingsActions, available, planned);
   for (const group of settingsGroups) {
-    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'meter-changes', 'beat-grouping', 'activity-mode', 'performance-input'].includes(setting.id));
+    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping', 'activity-mode', 'performance-input'].includes(setting.id));
     const section = el('details', 'settings-group'); section.dataset.group = group.id;
     section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
     const summary = el('summary');
@@ -333,6 +329,7 @@ export function createSettingsPage(callbacks: {
     page,
     exerciseControls,
     levelField: teachingField,
+    levelDetails: teachingDetails,
     setLocked: (active: boolean) => {
       locked = active;
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
@@ -341,11 +338,9 @@ export function createSettingsPage(callbacks: {
       exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
       if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
     },
-    sync: (value: DottedQuarterConvention, presentation: CountPresentation, symbol: OffbeatSymbol, compound = false, countingSystem: CountingSystem = 'numbers') => {
-      system.disabled = convention.disabled = locked || compound;
-      system.value = countingSystem; offbeat.disabled = locked || compound || countingSystem === 'syllables';
-      offbeat.value = symbol; convention.value = value;
-      placement.value = presentation.linePlacement; appearance.value = presentation.sustainAppearance;
+    sync: (value: CountingPreferences) => {
+      counting = value;
+      countingControls.forEach((control, key) => { if (control instanceof HTMLInputElement) control.checked = Boolean(value[key]); else control.value = String(value[key]); control.disabled = locked; });
     },
   };
 }

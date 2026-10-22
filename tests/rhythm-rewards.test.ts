@@ -1,3 +1,5 @@
+import { note } from './score-test-support.ts';
+import { score } from './score-test-support.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
@@ -9,7 +11,7 @@ import { Activity, defaultPreferences } from '../src/apps/rhythm-walk/activity.t
 import { musicalFeedback, steadinessDescription } from '../src/apps/rhythm-walk/results.ts';
 
 const preferences = defaultPreferences();
-const activity = new Activity(preferences, Array.from({ length: 2 }, () => ({ meter: [4, 4], events: [['Q'], ['Q'], ['Q'], ['Q']] })));
+const activity = new Activity(preferences, score(Array.from({ length: 2 }, () => ({ meter: [4, 4], notes: [note('quarter'), note('quarter'), note('quarter'), note('quarter')] }))));
 function completed(style: 'tap' | 'hold' = 'hold') {
   const c = new Capture(activity.exercise, 120, false, undefined, undefined, style);
   for (const time of [0, .5, 1, 1.5, 2, 2.5, 3, 3.5]) {
@@ -71,14 +73,14 @@ test('completed snapshot survives pending settings, every mode, retry and interr
   assert.equal(state.completed, original); assert.equal(state.previous, true);
   const nextRecord = completed('tap'); state.finish(nextRecord, assessAttempt(nextRecord));
   assert.equal(state.previous, false); assert.equal(state.completed!.record, nextRecord);
-  activity.replace(activity.exercise.measures); state.clear();
+  activity.replace(score(activity.exercise.score.measures)); state.clear();
   assert.equal(state.completed, null); assert.equal(state.previous, false);
 });
 
 test('real no-input and all-rest captures preserve silence evidence without rewards', () => {
   for (const style of ['tap', 'hold'] as const) {
     for (const rests of [false, true]) {
-      const exercise = rests ? { ...activity.exercise, measures: [{ meter: [4, 4] as const, events: [['W', { rest: true }] as const] }] } : activity.exercise;
+      const exercise = rests ? { ...activity.exercise, score: score([{ meter: [4, 4] as const, notes: [note('whole', { kind: 'rest' })] }]) } : activity.exercise;
       const capture = new Capture(exercise, 120, false, undefined, undefined, style);
       const r = capture.advance(capture.plan.captureEnd)!;
       const a = assessAttempt(r);

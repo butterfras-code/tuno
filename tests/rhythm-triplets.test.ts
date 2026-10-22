@@ -1,20 +1,22 @@
+import { score } from './score-test-support.ts';
+import { note } from './score-test-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { countGrid, durationEndSlot, slotX } from '../src/apps/count-writing/grid.ts';
-import { passageGrid } from '../src/apps/count-writing/passage.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import type { CountSymbol } from '../src/apps/count-writing/evaluation.ts';
+import { passageGrid } from './legacy/count-passage.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import type { CountSymbol } from './legacy/count-evaluation.ts';
 import { syllableBuffer, translateCount } from '../src/apps/count-writing/input.ts';
 import { tripletFixtures } from '../src/apps/rhythm-walk/shared/fixtures.ts';
-import { defaultGeneration, generateExercise, generationIssue, ingredients, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, ingredients, rhythmCapabilities } from '../src/apps/rhythm-walk/shared/generation.ts';
 import type { IngredientId } from '../src/apps/rhythm-walk/shared/generation.ts';
 import { meters } from '../src/apps/rhythm-walk/shared/meter.ts';
-import { deriveMeasure, derivePassage } from '../src/music/measure.ts';
-import type { RhythmEvent, RhythmMeasure } from '../src/music/measure.ts';
+import { deriveMeasure, derivePassage } from './score-test-support.ts';
+import type { RhythmEvent, RhythmMeasure } from './score-test-support.ts';
 import { divide, fraction } from '../src/music/fraction.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { timingTimelines } from '../src/apps/rhythm-walk/timeline.ts';
-import { planPassage } from '../src/apps/rhythm-walk/timing.ts';
+import { planPassage } from './score-test-support.ts';
 import { Activity, readPreferences } from '../src/apps/rhythm-walk/activity.ts';
 
 const fixture = (id: string) => tripletFixtures.find(f => f.id === id)!;
@@ -26,22 +28,22 @@ const onsets: Record<string, [number[], CountSymbol[], CountSymbol[]]> = {
 };
 for (const [id, [positions, numbers, syllables]] of Object.entries(onsets)) test(`triplet independent count positions: ${id}`, () => {
   for (const [system, values] of [['numbers',numbers],['syllables',syllables]] as const) {
-    const f = fixture(id), grid = countGrid(f.measures[0]!, system), answer = blankAnswer(f.measures[0]!);
+    const f = fixture(id), grid = countGrid(f.score.measures[0]!, system), answer = blankAnswer(f.score.measures[0]!);
     assert.deepEqual(grid.availableSlots, positions);
     assert.deepEqual(positions.map(i => grid.slots[i]!.symbol), values);
     positions.forEach((p,i) => { answer.symbols[p] = values[i]!; });
     if (id === 'triplet-isolated') answer.spans = [{ start:24, end:47 }];
-    assert.equal(evaluatePassage(f.measures,[answer],'optional',undefined,system)[0]!.counts.verdict,'correct');
-    assert.equal(evaluatePassage(f.measures,[answer],'optional',undefined,system)[0]!.spans.verdict,'correct');
+    assert.equal(evaluatePassage(f.score.measures,[answer],'optional',undefined,system)[0]!.counts.verdict,'correct');
+    assert.equal(evaluatePassage(f.score.measures,[answer],'optional',undefined,system)[0]!.spans.verdict,'correct');
     const la = positions[values.indexOf('la')]!;
     answer.symbols[la] = 'li';
-    assert.equal(evaluatePassage(f.measures,[answer],'optional',undefined,system)[0]!.counts.verdict,'revise');
+    assert.equal(evaluatePassage(f.score.measures,[answer],'optional',undefined,system)[0]!.counts.verdict,'revise');
     assert.equal(translateCount('li',grid.slots[la]!.position,system,system === 'numbers' ? 'syllables' : 'numbers',true),'li');
     for (const event of grid.events.filter(e => e.tupletGroup !== null)) assert.deepEqual(event.duration,[1,12]);
   }
 });
 test('triplet atom capability, defaults and independent meter validation', () => {
-  for (const meter of meters) assert.equal(rhythmCapabilities(meter).ingredients.includes('triplet-eighth'),meter !== '6/8' && meter !== '2/2');
+  for (const meter of meters) assert.equal(rhythmCapabilities(meter).ingredients.includes('triplet-eighth'),meter !== '6/8');
   assert.ok(rhythmCapabilities('4/4').patterns.includes('triplet-eighth'));
   assert.ok(!rhythmCapabilities('6/8').patterns.includes('triplet-eighth'));
   assert.ok(!defaultGeneration().ingredients.includes('triplet-eighth'));
@@ -61,14 +63,14 @@ test('bounded deterministic generation emits only selected complete groups, no 6
     let draws=0;const passage=generateExercise(settings,()=>{assert.ok(++draws<=66);return random();});
     const derived=derivePassage(passage); assert.equal(passage.length,measures);
     for (const [barIndex,bar] of passage.entries()) {
-      assert.deepEqual(derived.measures[barIndex]!.length,fraction(meter==='6/8'?6:Number(meter[0]),Number(meter[2])));
+      assert.deepEqual(derived.measures[barIndex]!.length,fraction(meter==='6/8'?6:Number(meter[0]),meter==='6/8'?8:4));
       const events=deriveMeasure(bar).events;
       for (const [i,event] of events.entries()) {
-        const options=event.written[1];
-        assert.ok(settings.ingredients.some(id=>{const value: RhythmEvent=ingredients.find(x=>x.id===id)!.event;return value[0]===event.written[0] && Boolean(value[1]?.rest)===Boolean(options?.rest) && Boolean(value[1]?.tuplet)===Boolean(options?.tuplet);}));
-        if (options?.tuplet) {
-          seenTriplets=true;assert.notEqual(meter,'6/8');assert.deepEqual(options.tuplet,[3,2]);assert.deepEqual(event.duration,[1,12]);
-          assert.ok(!options.tieNext && !events[i-1]?.written[1]?.tieNext);
+        const options=event.written;
+        assert.ok(settings.ingredients.some(id=>{const value: RhythmEvent=ingredients.find(x=>x.id===id)!.event;return value.type===event.written.type && Boolean((value.kind === 'rest'))===Boolean((options?.kind === 'rest')) && Boolean(value.timeModification)===Boolean(options?.timeModification);}));
+        if (options?.timeModification) {
+          seenTriplets=true;assert.notEqual(meter,'6/8');assert.deepEqual(options.timeModification,[3,2]);assert.deepEqual(event.duration,[1,12]);
+          assert.ok(!options.tieNext && !events[i-1]?.written.tieNext);
           const group=events.filter(e=>e.tupletGroup===event.tupletGroup);assert.equal(group.length,3);
           assert.equal(divide(group[0]!.start,fraction(1,4))[1],1);
         } else seenBinary=true;
@@ -80,16 +82,16 @@ test('bounded deterministic generation emits only selected complete groups, no 6
   // Fixed randomness makes both ternary and binary beats reachable in the same bar.
   const draws=[.99,0,0,.99];let index=0;
   const p=generateExercise({...defaultGeneration(),measures:1,ingredients:['eighth','triplet-eighth']},()=>draws[index++]??.99);
-  assert.deepEqual(p[0]!.events.map(e=>Boolean(e[1]?.tuplet)),[true,true,true,false,false,true,true,true,true,true,true]);
+  assert.deepEqual(p[0]!.notes.map(e=>Boolean(e.timeModification)),[true,true,true,false,false,true,true,true,true,true,true]);
 });
 test('review boundary rejects deferred tuplets and incoming barline ties', () => {
-  const f=structuredClone(fixture('triplet-consecutive').measures[0]!);
-  const events=f.events.map(e=>structuredClone(e));
-  for (const modifier of [{rest:true},{tieNext:true}]) assert.throws(()=>countGrid({...f,events:events.map((e,i)=>i===0?['E',{...e[1],...modifier}]:e)}));
-  assert.throws(()=>countGrid({meter:[6,8],events:events.concat([['Q']])}));
-  const shifted: RhythmMeasure={meter:[2,4],events:[['E'],...events.slice(0,3),['E']]};
+  const f=structuredClone(fixture('triplet-consecutive').score.measures[0]!);
+  const events=f.notes.map(e=>structuredClone(e));
+  for (const modifier of [{kind:'rest' as const},{tieNext:true}]) assert.throws(()=>countGrid({...f,notes:events.map((e,i)=>i===0?note('eighth', {...e,...modifier}):e)}));
+  assert.throws(()=>countGrid({meter:[6,8],notes:events.concat([note('quarter')])}));
+  const shifted: RhythmMeasure={meter:[2,4],notes:[note('eighth'),...events.slice(0,3),note('eighth')]};
   assert.throws(()=>countGrid(shifted),/quarter beats/);
-  assert.throws(()=>passageGrid([{meter:[2,4],events:[['Q'],['Q',{tieNext:true}]]},f]),/ties involving/);
+  assert.throws(()=>passageGrid([{meter:[2,4],notes:[note('quarter'),note('quarter', {tieNext:true})]},f]),/ties involving/);
 });
 test('single-key triplet entry is atomic, with incorrect answers retained across systems', () => {
   const b=syllableBuffer();assert.equal(b.key('l'),'la');assert.ok(!b.active());
@@ -102,7 +104,7 @@ test('single-key triplet entry is atomic, with incorrect answers retained across
   }
 });
 test('mixed triplet rest, tie and coarse measures retain exact duration geometry', () => {
-  const bar=fixture('triplet-rest-tie').measures[0]!,grid=passageGrid([bar,{meter:[2,4],events:[['H']]}]);
+  const bar=fixture('triplet-rest-tie').score.measures[0]!,grid=passageGrid([bar,{meter:[2,4],notes:[note('half')]}]);
   assert.deepEqual(grid.offsets,[0,48]);
   assert.deepEqual(grid.sustained.map(s=>[s.start,s.end]),[[24,35],[48,51]]);
   assert.equal(durationEndSlot(grid.grids[0]!,36),47);
@@ -113,8 +115,8 @@ test('mixed triplet rest, tie and coarse measures retain exact duration geometry
   assert.equal(result.counts.verdict,'correct');assert.equal(result.spans.verdict,'correct');assert.equal(result.rests.verdict,'correct');
 });
 test('quarter BPM triplet plans, capture policies and timeline positions use canonical fractions', () => {
-  const exercise={id:'independent',label:'Triplets',description:'',measures:fixture('triplet-consecutive').measures};
-  const plan=planPassage(exercise.measures,60);
+  const exercise={id:'independent',label:'Triplets',description:'',score: score(fixture('triplet-consecutive').score.measures)};
+  const plan=planPassage(exercise.score.measures,60);
   assert.equal(plan.countIn,4);assert.equal(plan.duration,2);
   const starts=[0,1/3,2/3,1,4/3,5/3], ends=[1/3,2/3,1,4/3,5/3,2];
   plan.notes.forEach((n,i)=>{assert.ok(Math.abs(n.start-starts[i]!)<1e-12);assert.ok(Math.abs(n.end-ends[i]!)<1e-12);});
@@ -128,6 +130,8 @@ test('quarter BPM triplet plans, capture policies and timeline positions use can
     assert.equal(capture.interrupt('blur',10).status,'completed');
     const canceled=new Capture(exercise,60,true);assert.equal(canceled.interrupt('mode switch',-1).status,'interrupted');
   }
-  const activity=new Activity(readPreferences(null),exercise.measures), id=activity.exercise.id;
-  for(const mode of ['tap','both','write'] as const) {activity.preferences.mode=mode;assert.equal(activity.exercise.id,id);assert.deepEqual(activity.exercise.measures,exercise.measures);}
+  const activity=new Activity(readPreferences(null),score(exercise.score.measures)), id=activity.exercise.id;
+  for(const mode of ['tap','both','write'] as const) {activity.preferences.mode=mode;assert.equal(activity.exercise.id,id);assert.deepEqual(activity.exercise.score.measures,exercise.score.measures);}
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

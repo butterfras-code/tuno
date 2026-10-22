@@ -1,3 +1,4 @@
+import { note, score } from './score-test-support.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
@@ -39,7 +40,7 @@ test('sparse, drifting, inconsistent, interrupted and ambiguous evidence cannot 
   assert.equal(estimateOffset(performance([0, .9, 1.4, 2.6, 3.2, 3.7, 4.9, 5.15])).ok, false);
   const interrupted = new Capture(exercises[0]!, 80, false).interrupt('Stopped', 1);
   assert.equal(estimateOffset(interrupted).ok, false);
-  const dense = { ...exercises[0]!, measures: Array.from({ length: 2 }, () => ({ meter: [4, 4] as const, events: Array.from({ length: 8 }, () => ['E'] as const) })) };
+  const dense = { ...exercises[0]!, score: score(Array.from({ length: 2 }, () => ({ meter: [4, 4] as const, notes: Array.from({ length: 8 }, () => note('eighth')) }))) };
   const c = new Capture(dense, 80, true);
   c.plan.notes.forEach(n => { c.input('down', 'keyboard', n.start + .25, 0); c.input('up', 'keyboard', n.start + .3, 0); });
   const ambiguous = estimateOffset(c.advance(c.plan.captureEnd)!);

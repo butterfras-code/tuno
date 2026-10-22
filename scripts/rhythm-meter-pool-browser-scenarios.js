@@ -33,7 +33,7 @@ window.__rhythmMeterPoolCheck = (() => {
       button('New exercise').click();
       const bars = [...document.querySelectorAll('.notation')];
       assert(bars.length === 4 && bars.every(bar => bar.getAttribute('aria-label').startsWith(pool[i])), 'each exercise uses exactly one selected meter');
-      if (pool[i] === '6/8') assert(bars.every(bar => !bar.querySelector('[data-value="H"]')), 'half notes retained in settings but skipped in 6/8');
+      if (pool[i] === '6/8') assert(bars.every(bar => !bar.querySelector('[data-value="half"]')), 'half notes retained in settings but skipped in 6/8');
       else assert(bars.every(bar => !bar.querySelector('[data-kind="rest"][data-dots="1"]')), 'simple-meter dotted rests skipped without notation opt-in');
       for (const mode of ['both', 'write', 'tap']) { const exercise = id(); choose('Mode', mode); assert(id() === exercise, 'response mode preserves selected-meter exercise'); }
       assert(document.documentElement.scrollWidth <= innerWidth, 'meter pool controls and score fit narrow viewport');

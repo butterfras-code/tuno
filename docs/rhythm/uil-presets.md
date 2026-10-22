@@ -1,6 +1,6 @@
 # UIL teaching levels
 
-All six levels offer **General / Percussion · note-only practice** in Write Counts,
+Levels I–IV offer **General / Percussion · note-only practice** in Write Counts,
 Tap Rhythms and Both. These are short rhythm teaching configurations informed by
 UIL criteria, not full contest-composition validators or claims of UIL endorsement.
 The shared Level selector changes pending settings; New exercise replaces the
@@ -57,45 +57,26 @@ Image files remain externally linked rather than bundled or relicensed.
 Let B = Q, H, H., W, and E E. The source matrix above remains authoritative for
 instrument scope. This table describes the implemented short-exercise profile:
 
-| Level | General | Percussion | Supported meters | Optional changes |
-| --- | --- | --- | --- | --- |
-| I–II | B | B + E S S, S S S S | 4/4 | None |
-| III | B + Q. E | General + E. S, E S S, S S S S | 2/4, 3/4, 4/4 | None |
-| IV | B + Q. E, E Q E, E. S, E S S, S S S S | Same | 2/4, 3/4, 4/4 | Up to 1 |
-| V | IV + S S E, complete sounded eighth triplets | Same | 2/4, 3/4, 4/4, 6/8, 2/2 | Up to 2 |
-| VI | Same as V | Same | Same as V | Up to 3 |
+| Level | General | Percussion | Supported meters |
+| --- | --- | --- | --- |
+| I–II | B | B + E S S, S S S S | 4/4 |
+| III | B + Q. E | General + E. S, E S S, S S S S | 2/4, 3/4, 4/4 |
+| IV | B + Q. E, E Q E, E. S, E S S, S S S S | Same | 2/4, 3/4, 4/4 |
 
-Meter applicability is narrower than the union of figures:
+Each exercise selects **one meter** for all its measures. Default length is two,
+configurable 1–4 independently of level. IV is figure practice; it does not fulfill
+the source's composition-level meter-change requirement. V–VI, cut time and
+within-exercise meter changes are deferred by the 2026-10-22 scope decision.
+The source inventory above remains evidence, not a promise of implemented scope.
 
-- In quarter-note meters, complete figures start on quarter boundaries and must
-  fit wholly in a bar. W therefore requires 4/4; H. requires 3/4 or 4/4.
-  Figures such as Q. E and E Q E are indivisible, never ingredient permutations.
-- In **2/2**, Q, H, H., W, E E, Q. E and E Q E fit under the same written-quarter
-  placement rule. Counting scales to half-note beats 1–2: quarters are &/te,
-  eighths are e & a / ta te ta. At the owner's explicit choice, sixteenth,
-  dotted-eighth and eighth-triplet figures are omitted only from cut time; they
-  remain available in quarter-note meters. Performance pulses are half notes.
-- **6/8** uses a conservative teaching subset: one H. filling the bar, or Q. E
-  followed by E E, or E Q E followed by E E. In the latter two cases E E occupies
-  counts 5–6; the initial figure occupies counts 1–4. This retains exact source
-  sequences and avoids arbitrary extra eighths. H, W, independent Q, sixteenths,
-  dotted eighths and triplets are not eligible in this compound profile.
-  Every eighth position still requires its number 1–6, grouped 123 / 456, with
-  two dotted-quarter performance pulses. These placements are teaching choices,
-  not an assertion that UIL mandates these bar patterns or maps every figure to
-  every listed meter. Unrestricted Custom and Uno 6/8 vocabulary is unchanged.
+Complete figures start on written-quarter boundaries and fit wholly inside a bar.
+W requires 4/4; H. requires 3/4 or 4/4. Q. E and E Q E remain indivisible sequences,
+not arbitrary permutations of ingredients. Every eligible figure is reachable;
+a short exercise need not contain every figure. No contest coverage is promised.
 
-Every eligible figure is reachable, but a short exercise need not contain every
-figure. There is no guarantee of particular probabilities or contest coverage.
-
-Default length is two, configurable 1–4 independently of level. Default meter
-behavior is one selected meter per exercise. IV–VI optionally allow up to 1/2/3
-changes, capped by available measure boundaries; a draw can use fewer. This is
-explicitly a **short-exercise teaching adaptation**, distinct from the official
-composition-level change requirements. All transitions among a profile's meters
-use a constant local-pulse BPM. Count-in uses whole bars of the first meter with
-at least four pulses. Changed signatures render at boundaries. Notes and figures
-never cross those boundaries, and the verified profile generates no ties.
+Existing Uno/Custom 6/8 and simple-meter triplets remain available. The six numbered
+6/8 counts and dotted-quarter performance pulses are unchanged; counting preferences
+determine exposed inputs through the shared counting plan.
 
 ## Unresolved source policy and customization
 
@@ -119,53 +100,49 @@ catalogue, not a separate generator.
 
 The [capability query](../../src/apps/rhythm-walk/shared/capabilities.ts) describes
 Custom ingredient support separately from reachable atomic figures in each meter.
-This matters for the compound H. figure, which is available in the UIL profile
-without changing historical Custom half-note exclusions. Resolution checks required
-meters, ingredients, atomic figure support and actual complete-bar feasibility.
-Unresolved rest/tie source questions are displayed rather than treated as global
-capability blockers. Integrated simple-meter triplets are supported.
+Resolution checks required meters, ingredients, atomic figures and complete-bar
+feasibility. Unresolved rest/tie source questions do not globally block practice.
 
-UIL definitions are version **2**; `figureProfile` has its own version **1**, level
-and instrument scope. The existing version-1 preference envelope stores scope in
-preset identity and the generation profile, plus the optional change budget.
-Old version-1 UIL settings retain their valid ingredients and prior restrictions,
-are attributed as customized, and acquire no new figure vocabulary. Unknown preset
-versions lose exact attribution. Current exact identity is restored only when
-controlled settings, scope and profile match the definition. Malformed profile
-fields cannot retain an exact label. Uno definitions remain version 1 and unchanged.
+UIL definitions are version **3**; `figureProfile` retains version **1**, level and
+instrument scope. Generation constructs the handoff branch's immutable `RhythmScore`
+directly with stable note IDs. CountingPlan, notation and capture share that score;
+there is no legacy tuple adapter. The new editor, correction cycle, counting links
+and session/default preference behavior remain authoritative.
+
+Saved UIL versions 1–2 retain supported ingredient selections but become customized.
+Retired V–VI identities retain customized source attribution. Unsupported 2/2 is
+removed from saved pools (4/4 is used if no supported meter remains), and old change
+budgets are removed. The UI identifies migrated UIL configurations as customized,
+single-meter practice; reapply I–IV to restore verified figure generation. No new
+vocabulary is added. Uno definitions remain version 1 and unchanged.
 
 Length, tempo, counting system, response mode and Tap/Tap + Hold stay independent.
 Fixtures remain explicitly enabled testing tools, never saved practice modes.
-New deterministic fixtures are `uil-percussion`, `uil-figures`, `uil-cut` and
-`uil-mixed`.
+Deterministic fixtures `uil-percussion` and `uil-figures` exercise the retained
+scope. Cut-time and mixed-meter fixtures are removed.
 
 ## Validation and limits
 
-Node 24.21.0, `npm ci`, and `npm run check` passed: TypeScript, **357 tests**,
-and hosted/portable builds. `git diff --check` and modified-document local links passed. [Independent acceptance tests](../../tests/rhythm-uil-acceptance.test.ts)
-write their own grammar and expected subsets, durations and pulse times. They cover
-all levels/scopes/meters/lengths, exact figures and placements, deterministic
-reachability, unsupported cut-time vocabulary, no rests/ties/partial triplets,
-mode identity, customization, migration, mixed pulses and completed assessment.
-Existing Uno and Custom regression tests remain in the suite.
+[Independent acceptance tests](../../tests/rhythm-uil-acceptance.test.ts) specify
+figure grammar and duration expectations independently of production definitions.
+They cover I–IV, both scopes, supported meters, lengths 1–4, figure reachability,
+the live counting-plan API with both vocabularies and subdivision options,
+immutable source identity, migration, customization and completed synthetic
+Tap/Tap + Hold assessment. Existing Uno and Custom regression suites remain.
 
-[Native browser scenarios](../../scripts/rhythm-uil-complete-browser-scenarios.js)
-passed 310 assertions each in 1280px and 320px frames (1265/305px content widths):
-all levels/scopes and lengths, shared modes, both counting systems, keyboard entry,
-new fixtures, changed signatures, pending identity, customization and overflow.
-Scaled cut-time keyboard syllables were entered in both systems; a native key
-press also advanced the cut-time editor. Fresh-frame checks restored exact scope,
-change budget and independent preferences with blank responses, and migrated an
-old UIL configuration to customized attribution without adding vocabulary.
-Synthetic completed mixed-meter performances passed Tap and Tap + Hold with 15
-matched notes, 100% rhythm feedback, and 100% hold feedback for eligible holds.
-Completed Treat Bag feedback survived mode switches. The existing Uno browser
-regression scenario also passed 46 assertions at each width. Background focus/visibility
-were explicitly emulated for those performance scenarios; timestamps were synthetic.
+Browser checks include the repository's counting correction and responsive workspace
+suites plus [UIL integration](../../scripts/rhythm-uil-browser-check.mjs).
+Physical devices, actual audio latency and release-preview acceptance remain separate.
+Earlier six-level validation applied to the superseded implementation, not this scope.
 
-The native preview could not connect to the workspace loopback server. Browser
-checks loaded built JS/CSS into an isolated same-origin frame; embedded font payloads
-were omitted. Thus these checks do not validate server routing, font loading, actual
-audio audibility or device timing. Physical touch/keyboard hardware, Safari, mobile
-browsers, assistive technology, Cloudflare candidate preview and full release/device
-acceptance remain unverified. No commit, push, integration or publication is included.
+### Reconciliation validation (2026-10-22)
+
+Reconciled locally with remote handoff `5715261`. Node 24.21.0, `npm ci` and
+`npm run check` passed (449 tests, TypeScript and hosted/portable builds).
+UIL browser scenarios passed 355 assertions per width at 320 and 1280 pixels in
+Chromium and Firefox, plus native keyboard entry of explicit percussion counts in
+both vocabularies and fresh-load scope/answer checks. The repository counting-plan
+suite passed in Chromium; counting correction and responsive workspace/completed
+performance suites passed in Chromium and Firefox. Those performance checks use
+synthetic timestamps and do not validate device latency. Documentation links and
+`git diff --check` passed. No physical-device or release-preview validation was run.

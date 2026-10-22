@@ -2,38 +2,39 @@ import { figurePlan, generateFigures, profileFigures, rhythmFigures, eligibleFig
 import type { FigureProfile, InstrumentScope, FigureId } from './figures.ts';
 import { meters, meterPolicy, syncopated } from './meter.ts';
 import type { CountMeter } from './meter.ts';
-import { derivePassage, deriveMeasure, duration } from '../../../music/measure.ts';
+import { derivePassage, deriveMeasure, duration, note, score } from '../../../music/measure.ts';
 import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
 import { add, compare, divide, fraction, multiply } from '../../../music/fraction.ts';
 import type { Fraction } from '../../../music/fraction.ts';
 import { readableRestPlacement } from './notation-policy.ts';
 
 export const ingredients = [
-  { id: 'quarter', label: 'Quarter notes', event: ['Q'] },
-  { id: 'eighth', label: 'Eighth notes', event: ['E'] },
-  { id: 'half', label: 'Half notes', event: ['H'] },
-  { id: 'dotted-quarter', label: 'Dotted quarter notes', event: ['Q', { dots: 1 }] },
-  { id: 'quarter-rest', label: 'Quarter rests', event: ['Q', { rest: true }] },
-  { id: 'eighth-rest', label: 'Eighth rests', event: ['E', { rest: true }] },
-  { id: 'half-rest', label: 'Half rests', event: ['H', { rest: true }] },
-  { id: 'dotted-quarter-rest', label: 'Dotted quarter rests', event: ['Q', { dots: 1, rest: true }] },
-  { id: 'sixteenth', label: 'Sixteenth notes', event: ['S'] },
-  { id: 'sixteenth-rest', label: 'Sixteenth rests', event: ['S', { rest: true }] },
-  { id: 'dotted-eighth', label: 'Dotted eighth notes', event: ['E', { dots: 1 }] },
-  { id: 'triplet-eighth', label: 'Triplet eighth notes', event: ['E', { tuplet: [3, 2] }] },
-  { id: 'whole', label: 'Whole notes', event: ['W'] },
-  { id: 'whole-rest', label: 'Whole rests', event: ['W', { rest: true }] },
-  { id: 'dotted-half', label: 'Dotted half notes', event: ['H', { dots: 1 }] },
+  { id: 'quarter', label: 'Quarter notes', event: note('quarter') },
+  { id: 'eighth', label: 'Eighth notes', event: note('eighth') },
+  { id: 'half', label: 'Half notes', event: note('half') },
+  { id: 'dotted-quarter', label: 'Dotted quarter notes', event: note('quarter', { dots: 1 }) },
+  { id: 'quarter-rest', label: 'Quarter rests', event: note('quarter', { kind: 'rest' }) },
+  { id: 'eighth-rest', label: 'Eighth rests', event: note('eighth', { kind: 'rest' }) },
+  { id: 'half-rest', label: 'Half rests', event: note('half', { kind: 'rest' }) },
+  { id: 'dotted-quarter-rest', label: 'Dotted quarter rests', event: note('quarter', { dots: 1, kind: 'rest' }) },
+  { id: 'sixteenth', label: 'Sixteenth notes', event: note('16th') },
+  { id: 'sixteenth-rest', label: 'Sixteenth rests', event: note('16th', { kind: 'rest' }) },
+  { id: 'dotted-eighth', label: 'Dotted eighth notes', event: note('eighth', { dots: 1 }) },
+  { id: 'triplet-eighth', label: 'Triplet eighth notes', event: note('eighth', { timeModification: [3, 2] }) },
+  { id: 'whole', label: 'Whole notes', event: note('whole') },
+  { id: 'whole-rest', label: 'Whole rests', event: note('whole', { kind: 'rest' }) },
+  { id: 'dotted-half', label: 'Dotted half notes', event: note('half', { dots: 1 }) },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
-/** The ingredient display mirrors the canonical events actually selected by a profile. */
+/** Display vocabulary is derived from the exact authored figure templates. */
 export function figureIngredients(profile: FigureProfile): IngredientId[] {
   return [...new Set(profileFigures(profile).flatMap(id => rhythmFigures[id].events.map(event => ingredients.find(i => JSON.stringify(i.event) === JSON.stringify(event))!.id)))];
 }
 export interface GenerationSettings {
-  teachingPreset?: { id: string; version: number; customized: boolean; scope?: InstrumentScope };
   figureProfile?: FigureProfile;
+  /** Read only for migration/rejection of the previous experimental configuration. */
   meterChanges?: number;
+  teachingPreset?: { id: string; version: number; customized: boolean; scope?: InstrumentScope };
   /** Narrow shared figure hooks; values are validated before generation. */
   restrictions?: { pairedEighths: boolean; noQuarterRestBeatOne: boolean };
   meters?: CountMeter[];
@@ -53,16 +54,15 @@ export interface RhythmCapabilities {
   readonly meter: CountMeter;
   readonly ingredients: readonly IngredientId[];
   readonly patterns: readonly string[];
-  /** Atomic UIL figures; separate from unrestricted Custom ingredient support. */
   readonly figures: readonly FigureId[];
 }
 export function rhythmCapabilities(meter: CountMeter): RhythmCapabilities {
-  const { compound, cut } = meterPolicy(meter);
+  const compound = meterPolicy(meter).compound;
   return {
     meter,
-    figures: eligibleFigures({ version: 1, level: 6, scope: 'general' }, meter),
-    ingredients: ingredients.filter(i => compound ? !['H', 'W'].includes(i.event[0]) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (!cut || !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id)) && (i.event[0] !== 'W' || meter === '4/4' || cut) && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
-    patterns: compound ? ['uil-figures', 'no-quarter-rest-beat-one'] : ['uil-figures', ...(cut ? [] : ['triplet-eighth']), 'paired-eighths', 'no-quarter-rest-beat-one'],
+    figures: compound ? [] : eligibleFigures({ version: 1, level: 4, scope: 'general' }, meter),
+    ingredients: ingredients.filter(i => compound ? !['half', 'whole'].includes(i.event.type) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (i.event.type !== 'whole' || meter === '4/4') && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
+    patterns: compound ? ['no-quarter-rest-beat-one'] : ['uil-figures', 'triplet-eighth', 'paired-eighths', 'no-quarter-rest-beat-one'],
   };
 }
 // A triplet is an atomic quarter-beat choice, emitted as ordinary written events.
@@ -72,7 +72,7 @@ const atomDuration = (ingredient: typeof ingredients[number]): Fraction => ingre
 export function selectedMeters(settings: GenerationSettings): CountMeter[] {
   const pool = settings.meters ?? [settings.meter ?? '4/4'];
   if (!pool.length) throw new Error('Select at least one time signature.');
-  if (pool.some(meter => !meters.includes(meter))) throw new Error('Choose supported time signatures: 2/4, 3/4, 4/4, 6/8 or 2/2.');
+  if (pool.some(meter => !meters.includes(meter))) throw new Error('Choose supported time signatures: 2/4, 3/4, 4/4 or 6/8.');
   return [...new Set(pool)];
 }
 /** Enabling a meter also enables its basic fill ingredient, without removing others. */
@@ -94,7 +94,7 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
     !(!policy.compound && !settings.allowUnintuitiveNotation && i.id === 'dotted-quarter-rest'));
   const memo = new Map<string, boolean>();
   const barEnd = policy.length;
-  const syncAt = (ingredient: typeof pool[number], position: Fraction) => !(ingredient.event as RhythmEvent)[1]?.rest && syncopated(position, atomDuration(ingredient), policy.pulse);
+  const syncAt = (ingredient: typeof pool[number], position: Fraction) => !((ingredient.event as RhythmEvent).kind === 'rest') && syncopated(position, atomDuration(ingredient), policy.pulse);
   const quarterEnd = (position: Fraction) => { const beat = divide(position, fraction(1, 4)); return multiply(fraction(Math.floor(beat[0] / beat[1]) + 1), fraction(1, 4)); };
   const allowedAt = (ingredient: typeof pool[number], position: Fraction, used = 0) =>
     (ingredient.id !== 'triplet-eighth' || divide(position, fraction(1, 4))[1] === 1) &&
@@ -119,29 +119,22 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
 }
 export function generationIssue(settings: GenerationSettings): string | null {
   try {
+    if (settings.meterChanges !== undefined && settings.meterChanges !== 0) throw new Error('Practice uses one meter per exercise.');
     if (settings.figureProfile) {
       if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
-      if (JSON.stringify([...settings.ingredients].sort()) !== JSON.stringify(figureIngredients(settings.figureProfile).sort())) throw new Error('Figure profile ingredients do not match. Customize the configuration to edit vocabulary.');
+      if (JSON.stringify([...settings.ingredients].sort()) !== JSON.stringify(figureIngredients(settings.figureProfile).sort())) throw new Error('Figure profile ingredients do not match. Customize to edit vocabulary.');
       if (settings.allowUnintuitiveNotation || Boolean(settings.syncopation) !== (settings.figureProfile.level >= 4) || settings.restrictions) throw new Error('Figure profile constraints do not match. Customize to change notation or syncopation.');
-      const changes = settings.meterChanges ?? 0;
-      if (!Number.isInteger(changes) || changes < 0 || changes > Math.max(0, settings.figureProfile.level - 3)) throw new Error('Invalid UIL meter-change limit.');
-      if (settings.ties || settings.ingredients.some(id => id.endsWith('-rest'))) throw new Error('Verified figure practice is note-only. Customize to enable rests or ties.');
+      if (settings.ties) throw new Error('Verified figure practice is note-only. Customize to enable rests or ties.');
       for (const meter of selectedMeters(settings)) figurePlan(settings.figureProfile, meter);
-    } else {
-      if (settings.meterChanges) throw new Error('Meter changes require a UIL figure profile.');
-      for (const meter of selectedMeters(settings)) plan(settings, meter);
-    }
+    } else for (const meter of selectedMeters(settings)) plan(settings, meter);
     return null;
   } catch (error) { return (error as Error).message; }
 }
 /** Randomness is injected for reproducible tests; source time always comes from written events. */
-export function generateExercise(settings: GenerationSettings, random = Math.random): RhythmMeasure[] {
+export function generateExercise(settings: GenerationSettings, random = Math.random) {
   const pool = selectedMeters(settings);
-  if (settings.figureProfile) {
-    const issue = generationIssue(settings); if (issue) throw new Error(issue);
-    return generateFigures(settings.figureProfile, pool, settings.measures, settings.meterChanges ?? 0, random);
-  }
-  if (settings.meterChanges) throw new Error('Meter changes require a UIL figure profile.');
+  const issue = generationIssue(settings); if (issue) throw new Error(issue);
+  if (settings.figureProfile) return generateFigures(settings.figureProfile, pool, settings.measures, random);
   // Validate every selected meter before drawing; none are silently omitted.
   for (const meter of pool) plan(settings, meter);
   const draw = pool.length > 1 ? random() : 0;
@@ -159,21 +152,21 @@ export function generateExercise(settings: GenerationSettings, random = Math.ran
       used += Number(syncAt(choice, position));
       position = add(position, atomDuration(choice));
     }
-    return { meter: policy.meter, events };
+    return { meter: policy.meter, notes: events };
   });
   if (settings.ties) {
     const refs = passage.flatMap((bar, measure) => deriveMeasure(bar).events.map(event => ({ measure, event: event.index })));
     const candidates: RhythmMeasure[][] = [];
     for (let start = 0; start < refs.length - 1; start++) for (const size of [2, 3]) {
       const chain = refs.slice(start, start + size);
-      if (chain.length !== size || chain.some(r => { const m = passage[r.measure]!.events[r.event]![1]; return m?.rest || m?.tuplet; })) continue;
+      if (chain.length !== size || chain.some(r => { const m = passage[r.measure]!.notes[r.event]!; return m.kind === 'rest' || m.timeModification; })) continue;
       const candidate = structuredClone(passage);
       chain.slice(0, -1).forEach(r => {
         const bar = candidate[r.measure]!;
-        const event = bar.events[r.event]!;
-        (bar.events as RhythmEvent[])[r.event] = [event[0], { ...event[1], tieNext: true }];
+        const event = bar.notes[r.event]!;
+        (bar.notes as RhythmEvent[])[r.event] = { ...event, tieNext: true };
       });
-      const attacks = derivePassage(candidate).attacks;
+      const attacks = derivePassage(score(candidate).measures).attacks;
       const syncs = Array<number>(passage.length).fill(0);
       for (const attack of attacks) {
         if (syncopated(attack.start, attack.duration, policy.pulse)) syncs[attack.sources[0]!.measure]!++;
@@ -184,8 +177,7 @@ export function generateExercise(settings: GenerationSettings, random = Math.ran
     // Bounded draw: at most one chain, never retry until success.
     const draw = random();
     if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');
-    if (candidates.length && draw < .65) return candidates[Math.floor(draw / .65 * candidates.length)]!;
+    if (candidates.length && draw < .65) return score(candidates[Math.floor(draw / .65 * candidates.length)]!);
   }
-  derivePassage(passage);
-  return passage;
+  return score(passage);
 }

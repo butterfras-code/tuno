@@ -1,17 +1,19 @@
+import { notationOnly } from './score-test-support.ts';
+import { note } from './score-test-support.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { meterFixtures } from '../src/apps/count-writing/fixtures.ts';
-import { blankAnswer, evaluatePassage } from '../src/apps/count-writing/evaluation.ts';
-import type { CountSymbol, Span } from '../src/apps/count-writing/evaluation.ts';
+import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
+import type { CountSymbol, Span } from './legacy/count-evaluation.ts';
 import { countGrid } from '../src/apps/count-writing/grid.ts';
-import { passageGrid, spanPieces } from '../src/apps/count-writing/passage.ts';
-import { defaultGeneration, generateExercise, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
+import { passageGrid, spanPieces } from './legacy/count-passage.ts';
+import { defaultGeneration, generateExercise as generateScore, generationIssue, ingredients } from '../src/apps/count-writing/generation.ts';
 import { meterPolicy, meters, syncopated } from '../src/apps/count-writing/meter.ts';
 import { readableRestPlacement } from '../src/apps/count-writing/notation-policy.ts';
-import { derivePassage } from '../src/music/measure.ts';
+import { derivePassage } from './score-test-support.ts';
 import { compare, fraction } from '../src/music/fraction.ts';
 const numbers: CountSymbol[] = ['1', '2', '3', '4', '5', '6'];
-const fixture = (id: string) => meterFixtures.find(f => f.id === id)!.measures;
+const fixture = (id: string) => meterFixtures.find(f => f.id === id)!.score.measures;
 // Explicit musical expectations: no grid-derived answer oracle.
 const examples: [string, CountSymbol[][], Span[], Span[][]][] = [
   ['meter-2', [['1', '', '2', '&']], [], [[]]],
@@ -58,19 +60,19 @@ test('six numbered counts, two pulses, fixed duration requirements and independe
   ]);
 });
 test('readable silence exposes the middle boundary and respects enabled spellings', () => {
-  assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(1, 8), '6/8'), true);
-  assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(2, 8), '6/8'), false);
-  assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(0), '6/8'), true);
-  assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(3, 8), '6/8'), true);
-  assert.equal(readableRestPlacement(['Q', { dots: 1, rest: true }], fraction(1, 8), '6/8'), false);
+  assert.equal(readableRestPlacement(note('quarter', { kind: 'rest' }), fraction(1, 8), '6/8'), true);
+  assert.equal(readableRestPlacement(note('quarter', { kind: 'rest' }), fraction(2, 8), '6/8'), false);
+  assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(0), '6/8'), true);
+  assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(3, 8), '6/8'), true);
+  assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(1, 8), '6/8'), false);
   assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['dotted-quarter-rest'] }), null);
   assert.match(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest'] })!, /cannot fill/);
   assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['half-rest', 'eighth-rest'] }), null);
   const bar = generateExercise({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest', 'eighth-rest'] }, () => 0)[0]!;
-  assert.deepEqual(bar.events, [['Q', { rest: true }], ['E', { rest: true }], ['Q', { rest: true }], ['E', { rest: true }]]);
+  assert.deepEqual(notationOnly(bar.notes), notationOnly([note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' })]));
   for (const meter of ['2/4', '3/4', '4/4'] as const) {
-    assert.equal(readableRestPlacement(['Q', { rest: true }], fraction(1, 8), meter), false);
-    assert.equal(readableRestPlacement(['H', { rest: true }], fraction(1, 4), meter), true);
+    assert.equal(readableRestPlacement(note('quarter', { kind: 'rest' }), fraction(1, 8), meter), false);
+    assert.equal(readableRestPlacement(note('half', { kind: 'rest' }), fraction(1, 4), meter), true);
   }
 });
 test('syncopation uses the dotted-quarter pulse, not each numbered eighth', () => {
@@ -81,7 +83,7 @@ test('syncopation uses the dotted-quarter pulse, not each numbered eighth', () =
   assert.match(generationIssue({ ...settings, ingredients: [...settings.ingredients] })!, /cannot fill/);
   const allowed = { ...settings, ingredients: [...settings.ingredients], syncopation: true };
   assert.equal(generationIssue(allowed), null);
-  assert.deepEqual(generateExercise(allowed, () => 0)[0]!.events, [['Q'], ['Q'], ['Q']]);
+  assert.deepEqual(notationOnly(generateExercise(allowed, () => 0)[0]!.notes), notationOnly([note('quarter'), note('quarter'), note('quarter')]));
 });
 function seeded(seed: number) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; }; }
 test('all meters, lengths, ingredient subsets and pattern modes are bounded and exact', () => {
@@ -93,7 +95,7 @@ test('all meters, lengths, ingredient subsets and pattern modes are bounded and 
     const source = generateExercise(settings, seeded(mask + measures));
     assert.deepEqual(source, generateExercise(settings, seeded(mask + measures)));
     const policy = meterPolicy(meter), derived = derivePassage(source), grid = passageGrid(source);
-    const size = meter === '2/4' ? 4 : (meter === '4/4' || meter === '2/2') ? 8 : 6;
+    const size = meter === '2/4' ? 4 : meter === '4/4' ? 8 : 6;
     assert.deepEqual(grid.offsets, Array.from({ length: measures }, (_, i) => i * size));
     assert.equal(grid.slots.length, size * measures);
     source.forEach((bar, i) => {
@@ -101,8 +103,8 @@ test('all meters, lengths, ingredient subsets and pattern modes are bounded and 
       assert.equal(blankAnswer(bar).symbols.length, size);
       assert.equal(grid.grids[i]!.slots[0]!.symbol, '1');
       derived.measures[i]!.events.forEach(e => {
-        const { tieNext: _, ...mods } = e.written[1] ?? {};
-        assert.ok(selected.some(s => s.event[0] === e.written[0] && JSON.stringify(s.event[1] ?? {}) === JSON.stringify(mods)));
+        const { id: _id, tieNext: _, ...mods } = e.written;
+        assert.ok(selected.some(s => {const {id: _id, tieNext: _tie, ...expected} = s.event; return JSON.stringify(expected) === JSON.stringify(mods);}));
         assert.ok(allowUnintuitiveNotation || readableRestPlacement(e.written, e.start, meter));
       });
     });
@@ -116,8 +118,8 @@ test('all meters, lengths, ingredient subsets and pattern modes are bounded and 
 test('short simple-meter barline ties use actual offsets and numbering resets', () => {
   for (const numerator of [2, 3]) {
     const source = [
-      { meter: [numerator, 4] as const, events: Array.from({ length: numerator }, (_, i) => i === numerator - 1 ? ['Q', { tieNext: true }] as const : ['Q'] as const) },
-      { meter: [numerator, 4] as const, events: Array.from({ length: numerator }, () => ['Q'] as const) },
+      { meter: [numerator, 4] as const, notes: Array.from({ length: numerator }, (_, i) => i === numerator - 1 ? note('quarter', { tieNext: true }) : note('quarter')) },
+      { meter: [numerator, 4] as const, notes: Array.from({ length: numerator }, () => note('quarter')) },
     ];
     const symbols = numerator === 2 ? ['1', '', '2', ''] : ['1', '', '2', '', '3', ''];
     const answers = source.map(bar => ({ ...blankAnswer(bar), symbols: symbols as CountSymbol[] }));
@@ -141,3 +143,5 @@ test('rest pairs and duration errors are independently located at 6/8 counting p
   assert.equal(lineError.counts.verdict, 'correct'); assert.equal(lineError.rests.verdict, 'correct'); assert.equal(lineError.spans.verdict, 'revise');
   assert.match(lineError.spans.issues.join(' '), /Measure 1.*count 2.*count 3/);
 });
+
+const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

@@ -1,5 +1,7 @@
 # Uno234 sixteenths and counting systems
 
+**Counting migration, 2026-10-14:** the running editor now follows the [counting-schemes specification](counting-schemes-spec.md#coordinated-editorsettings-migration-2026-10-14). Sparse plan counts replace grid answer slots; R/D toggle inferred units; all counting settings are pending until New exercise. There are no optional counts, range endpoints or immediate token translations. 6/8 inputs follow enabled rules, not an every-eighth requirement. The counting/editor tables and validation below record the earlier slice; written notation, generation restrictions and performance timing remain applicable unless explicitly updated.
+
 This slice extends the shared Uno234 activity, not the reserved future Rhythm Walk game mode. Write Counts, Tap Rhythms and Both use the same canonical written events, generator, fixtures, renderer and exact sounding chains. No scoring formulas, tolerances, tempo fitting or completed-results UI changed. This is feature work; no production promotion is authorized.
 
 ## Vocabulary and generation policy

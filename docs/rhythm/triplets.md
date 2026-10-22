@@ -1,5 +1,7 @@
 # Uno234 simple-meter triplet contract
 
+**Counting migration, 2026-10-14:** the running editor now follows the [counting-schemes specification](counting-schemes-spec.md#coordinated-editorsettings-migration-2026-10-14). Sparse plan counts replace grid answer slots; R/D toggle inferred units; all counting settings are pending until New exercise. There are no optional counts, range endpoints or immediate token translations. 6/8 inputs follow enabled rules, not an every-eighth requirement. The counting/editor tables and validation below record the earlier slice; written notation, generation restrictions and performance timing remain applicable unless explicitly updated.
+
 `triplet-eighth` is an opt-in ingredient in 2/4, 3/4 and 4/4. Defaults remain two measures with the previous ingredients. Write Counts, Tap Rhythms and Both share generated passages and the same eight triplet review fixtures. A response-mode change preserves the score and answers; Next/New Exercise replaces them through the existing lifecycle.
 
 ## Written music and generation

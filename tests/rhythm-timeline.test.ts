@@ -1,3 +1,5 @@
+import { note as writtenNote } from './score-test-support.ts';
+import { score } from './score-test-support.ts';
 import { legacyAssessmentPolicy } from '../src/apps/rhythm-walk/assessment-policy.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +33,7 @@ test('ties have one expected attack, missing and extra hits remain visible, inte
   assert.deepEqual(timingTimelines(new Capture(quarters, 80, true).interrupt('cancelled', 0)), []);
 });
 test('6/8 timelines use dotted-quarter seconds while retaining eighth-note positions', () => {
-  const capture = new Capture({ id: 'six', label: 'six', description: 'six eighth notes', measures: [{ meter: [6, 8], groups: [3, 3], events: Array.from({ length: 6 }, () => ['E'] as const) }] }, 80, true);
+  const capture = new Capture({ id: 'six', label: 'six', description: 'six eighth notes', score: score([{ meter: [6, 8], notes: Array.from({ length: 6 }, () => writtenNote('eighth')) }]) }, 80, true);
   capture.plan.notes.forEach(note => { capture.input('down', 'keyboard', note.start, 0); capture.input('up', 'keyboard', note.end - .01, 0); });
   const row = timingTimelines(capture.advance(capture.plan.captureEnd)!)[0]!;
   assert.equal(capture.plan.duration, 1.5);
@@ -103,11 +105,11 @@ test('early barline sustain starts at its matched marker, with no stray precedin
 
 test('an early barline attack anchors a tied or incomplete hold while later continuations still split', () => {
   for (const release of [2.99, null]) {
-    const capture = new Capture({ id: 'barline-chain', label: '', description: '', measures: [
-      { meter: [2, 4], events: [['H', { rest: true }]] },
-      { meter: [2, 4], events: [['H', { tieNext: true }]] },
-      { meter: [2, 4], events: [['H']] },
-    ] }, 120, false, undefined, undefined, 'hold');
+    const capture = new Capture({ id: 'barline-chain', label: '', description: '', score: score([
+      { meter: [2, 4], notes: [writtenNote('half', { kind: 'rest' })] },
+      { meter: [2, 4], notes: [writtenNote('half', { tieNext: true })] },
+      { meter: [2, 4], notes: [writtenNote('half')] },
+    ]) }, 120, false, undefined, undefined, 'hold');
     capture.input('down', 'keyboard', .99, 0);
     if (release !== null) capture.input('up', 'keyboard', release, 0);
     const rows = timingTimelines(capture.advance(capture.plan.captureEnd)!);
@@ -136,11 +138,11 @@ test('expected lift windows use the saved policy and leave actual intervals inta
 });
 
 test('lift bands never break internal ties or precede rests, and Tap has none', () => {
-  const music={id:'lift-ties',label:'',description:'',measures:[
-    {meter:[2,4] as const,events:[['H',{tieNext:true}]] as const},
-    {meter:[2,4] as const,events:[['Q'],['Q']] as const},
-    {meter:[2,4] as const,events:[['Q',{rest:true}],['Q']] as const},
-  ]};
+  const music={id:'lift-ties',label:'',description:'',score: score([
+    {meter:[2,4] as const,notes:[writtenNote('half', {tieNext:true})] as const},
+    {meter:[2,4] as const,notes:[writtenNote('quarter'),writtenNote('quarter')] as const},
+    {meter:[2,4] as const,notes:[writtenNote('quarter', {kind: 'rest'}),writtenNote('quarter')] as const},
+  ])};
   const hold=new Capture(music,120,false,undefined,undefined,'hold');const rows=timingTimelines({...hold.advance(hold.plan.captureEnd)!,assessmentPolicy:legacyAssessmentPolicy});
   assert.equal(rows[0]!.expectedSustain[0]!.releaseWindow,undefined,'internal tied barline continuous');
   assert.ok(rows[1]!.expectedSustain[0]!.releaseWindow,'chain end before separate note permits lift');
@@ -149,9 +151,9 @@ test('lift bands never break internal ties or precede rests, and Tap has none', 
 });
 
 test('a long tied chain ending in a short eighth never gets a lift band at an internal tie boundary', () => {
-  const capture=new Capture({id:'short-tie-end',label:'',description:'',measures:[
-    {meter:[6,8],events:[['Q',{tieNext:true}],['E'],['Q',{dots:1}]]},
-  ]},180,false,undefined,undefined,'hold');
+  const capture=new Capture({id:'short-tie-end',label:'',description:'',score: score([
+    {meter:[6,8],notes:[writtenNote('quarter', {tieNext:true}),writtenNote('eighth'),writtenNote('quarter', {dots:1})]},
+  ])},180,false,undefined,undefined,'hold');
   const record=capture.advance(capture.plan.captureEnd)!;
   const note=record.plan.notes[0]!;assert.ok(Math.abs(note.finalSegmentDuration!-1/9)<1e-9);
   const band=timingTimelines({...record,assessmentPolicy:legacyAssessmentPolicy})[0]!.expectedSustain[0]!.releaseWindow!;
