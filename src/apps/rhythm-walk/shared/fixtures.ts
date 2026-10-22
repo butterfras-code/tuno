@@ -75,6 +75,12 @@ export const tripletFixtures: readonly PassageFixture[] = fixtures([
   ...[2, 3, 4].map(length => ({ id: `triplet-mixed-${length}`, label: `Mixed triplets · ${length} bars`, measures: Array.from({ length }, mixedTripletBar) })),
 ]);
 
+const uilFixtures = singleFixtures([
+  { id: 'uil-percussion', label: 'UIL percussion · eighth and sixteenth figures', meter: [4, 4], notes: [note('eighth'), note('16th'), note('16th'), note('16th'), note('16th'), note('16th'), note('16th'), note('half')] },
+  { id: 'uil-figures', label: 'UIL IV · dotted and syncopated figures', meter: [4, 4], notes: [note('eighth'), note('quarter'), note('eighth'), note('eighth', { dots: 1 }), note('16th'), note('eighth'), note('16th'), note('16th')] },
+]);
+
 export const practiceFixtures: readonly PassageFixture[] = [
   ...countWritingFixtures.map(f => ({ id: f.id, label: f.label, score: score([f]) })), ...tieFixtures, ...meterFixtures, ...sixteenthFixtures, ...tripletFixtures,
+  ...uilFixtures.map(f => ({ id: f.id, label: f.label, score: score([f]) })),
 ];

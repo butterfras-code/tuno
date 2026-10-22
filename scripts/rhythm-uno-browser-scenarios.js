@@ -41,9 +41,7 @@ window.runUnoBrowserScenarios = async function (w = window, loadFresh) {
       assert(fresh.querySelector('[data-setting="teaching-preset"]').value === id && fresh.querySelector('.exercise-summary').textContent.includes(`Uno${index + 1}`), `${id} restores after fresh load`);
     }
   }
-  const before = JSON.stringify(stored().generation);
-  choose(picker, 'uil-6');
-  assert(d.querySelector('[data-setting="apply-teaching-preset"]').disabled && JSON.stringify(stored().generation) === before, 'Uno availability does not unblock UIL VI');
+  assert(![...picker.options].some(o => o.value === 'uil-6'), 'Deferred UIL VI is not offered');
   choose(picker, 'uno-4');
   return { passed: checks.length, width: w.innerWidth, checks };
 };

@@ -1,3 +1,5 @@
+import { figurePlan, generateFigures, profileFigures, rhythmFigures, eligibleFigures } from './figures.ts';
+import type { FigureProfile, InstrumentScope, FigureId } from './figures.ts';
 import { meters, meterPolicy, syncopated } from './meter.ts';
 import type { CountMeter } from './meter.ts';
 import { derivePassage, deriveMeasure, duration, note, score } from '../../../music/measure.ts';
@@ -24,8 +26,15 @@ export const ingredients = [
   { id: 'dotted-half', label: 'Dotted half notes', event: note('half', { dots: 1 }) },
 ] as const satisfies readonly { id: string; label: string; event: RhythmEvent }[];
 export type IngredientId = typeof ingredients[number]['id'];
+/** Display vocabulary is derived from the exact authored figure templates. */
+export function figureIngredients(profile: FigureProfile): IngredientId[] {
+  return [...new Set(profileFigures(profile).flatMap(id => rhythmFigures[id].events.map(event => ingredients.find(i => JSON.stringify(i.event) === JSON.stringify(event))!.id)))];
+}
 export interface GenerationSettings {
-  teachingPreset?: { id: string; version: number; customized: boolean };
+  figureProfile?: FigureProfile;
+  /** Read only for migration/rejection of the previous experimental configuration. */
+  meterChanges?: number;
+  teachingPreset?: { id: string; version: number; customized: boolean; scope?: InstrumentScope };
   /** Narrow shared figure hooks; values are validated before generation. */
   restrictions?: { pairedEighths: boolean; noQuarterRestBeatOne: boolean };
   meters?: CountMeter[];
@@ -45,13 +54,15 @@ export interface RhythmCapabilities {
   readonly meter: CountMeter;
   readonly ingredients: readonly IngredientId[];
   readonly patterns: readonly string[];
+  readonly figures: readonly FigureId[];
 }
 export function rhythmCapabilities(meter: CountMeter): RhythmCapabilities {
   const compound = meterPolicy(meter).compound;
   return {
     meter,
+    figures: compound ? [] : eligibleFigures({ version: 1, level: 4, scope: 'general' }, meter),
     ingredients: ingredients.filter(i => compound ? !['half', 'whole'].includes(i.event.type) && !['sixteenth', 'sixteenth-rest', 'dotted-eighth', 'triplet-eighth'].includes(i.id) : (i.event.type !== 'whole' || meter === '4/4') && (i.id !== 'dotted-half' || meter !== '2/4')).map(i => i.id),
-    patterns: compound ? ['no-quarter-rest-beat-one'] : ['triplet-eighth', 'paired-eighths', 'no-quarter-rest-beat-one'],
+    patterns: compound ? ['no-quarter-rest-beat-one'] : ['uil-figures', 'triplet-eighth', 'paired-eighths', 'no-quarter-rest-beat-one'],
   };
 }
 // A triplet is an atomic quarter-beat choice, emitted as ordinary written events.
@@ -107,11 +118,23 @@ function plan(settings: GenerationSettings, meter: CountMeter) {
   return { choicesAt, syncAt, policy };
 }
 export function generationIssue(settings: GenerationSettings): string | null {
-  try { for (const meter of selectedMeters(settings)) plan(settings, meter); return null; } catch (error) { return (error as Error).message; }
+  try {
+    if (settings.meterChanges !== undefined && settings.meterChanges !== 0) throw new Error('Practice uses one meter per exercise.');
+    if (settings.figureProfile) {
+      if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
+      if (JSON.stringify([...settings.ingredients].sort()) !== JSON.stringify(figureIngredients(settings.figureProfile).sort())) throw new Error('Figure profile ingredients do not match. Customize to edit vocabulary.');
+      if (settings.allowUnintuitiveNotation || Boolean(settings.syncopation) !== (settings.figureProfile.level >= 4) || settings.restrictions) throw new Error('Figure profile constraints do not match. Customize to change notation or syncopation.');
+      if (settings.ties) throw new Error('Verified figure practice is note-only. Customize to enable rests or ties.');
+      for (const meter of selectedMeters(settings)) figurePlan(settings.figureProfile, meter);
+    } else for (const meter of selectedMeters(settings)) plan(settings, meter);
+    return null;
+  } catch (error) { return (error as Error).message; }
 }
 /** Randomness is injected for reproducible tests; source time always comes from written events. */
 export function generateExercise(settings: GenerationSettings, random = Math.random) {
   const pool = selectedMeters(settings);
+  const issue = generationIssue(settings); if (issue) throw new Error(issue);
+  if (settings.figureProfile) return generateFigures(settings.figureProfile, pool, settings.measures, random);
   // Validate every selected meter before drawing; none are silently omitted.
   for (const meter of pool) plan(settings, meter);
   const draw = pool.length > 1 ? random() : 0;

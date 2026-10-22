@@ -4,7 +4,7 @@ Updated 2026-10-15. **Uno234 is one activity with three freely interchangeable r
 
 Write Counts now places a continuous, readable horizontal score above its input palette. A notation overview appears only when the passage overflows and supports pointer/keyboard navigation. Count targets stay 44px; entry follows the active count without moving the page. Level and responsive Treat Bag ratings share the row above the score; Mode is beside the interaction controls. The mobile counting palette docks inside the workspace when space permits and stays in normal flow on short screens. Other exercise settings collapse below, with pending changes still explicit. Both uses this workspace in its Counts panel; performance keeps its existing layout until a separate following slice. See the [responsive layout contract](responsive-layout-audit.md).
 
-The shared **Level** selector chooses a generation configuration: **Uno1–Uno4**, qualified UIL I–II note-only practice, or **Custom**. III–VI remain inspectable with explicit blockers. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
+The shared **Level** selector chooses a generation configuration: **Uno1–Uno4**, UIL I–IV General/Percussion note-only figure practice, or **Custom**. V–VI, cut time and within-exercise meter changes are deferred. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
 
 The Uno configurations are cumulative, with independent 1–4 measure length:
 
@@ -61,7 +61,7 @@ Those records do not override this naming, architecture, persistence or mode-swi
 
 The [simple-meter triplet prompt](prompts/triplets.md) and [source-verified UIL level prompt](prompts/uil-presets.md) follow the [shared ownership and capability contract](prompts/README.md). Their implemented scope is documented in [triplets.md](triplets.md) and [uil-presets.md](uil-presets.md).
 
-[UIL teaching levels](uil-presets.md) provide inspectable I–VI generation configurations and qualified note-only I–II practice. Higher levels remain blocked by explicit capability/source gaps. Whole and dotted-half notes are opt-in shared ingredients.
+[UIL teaching levels](uil-presets.md) provide I–IV General/Percussion note-only figure practice. V–VI, cut time and within-exercise meter changes are deferred by product scope. Whole and dotted-half notes are opt-in shared ingredients.
 
 ## Uno level validation
 

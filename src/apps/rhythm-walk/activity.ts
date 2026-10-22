@@ -67,14 +67,23 @@ export function readPreferences(raw: string | null): Preferences {
     if (p.counting) { try { defaults.counting = captureCountingPreferences(p.counting); } catch { /* Invalid nested version uses migrated defaults. */ } }
     const g = p.generation;
     const selected = g?.meters ?? (g?.meter ? [g.meter] : undefined);
-    if (g && Array.isArray(selected) && selected.every(meter => meters.includes(meter)) && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) {
-      defaults.generation = { meters: [...new Set(selected)], measures: g.measures, ingredients: [...g.ingredients], allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: g.ties, syncopation: g.syncopation };
+    if (g && Array.isArray(selected) && selected.every(meter => meters.includes(meter) || String(meter) === '2/2') && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) {
+      defaults.generation = { meters: selected.some(m => meters.includes(m)) ? [...new Set(selected.filter(m => meters.includes(m)))] : selected.length ? ['4/4'] : [], measures: g.measures, ingredients: [...g.ingredients], allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: g.ties, syncopation: g.syncopation };
       if (g.restrictions && typeof g.restrictions.pairedEighths === 'boolean' && typeof g.restrictions.noQuarterRestBeatOne === 'boolean') defaults.generation.restrictions = { pairedEighths: g.restrictions.pairedEighths, noQuarterRestBeatOne: g.restrictions.noQuarterRestBeatOne };
       const identity = g.teachingPreset;
-      const definition = generationLevels.find(p => p.id === identity?.id && p.version === identity?.version);
-      if (definition && typeof identity?.customized === 'boolean') {
-        // Exact attribution requires both engine support and matching controlled fields.
-        defaults.generation.teachingPreset = { id: definition.id, version: definition.version, customized: identity.customized || !resolveTeachingPreset(definition).supported || !matchesTeachingPreset(defaults.generation, definition) };
+      const definition = generationLevels.find(p => p.id === identity?.id);
+      const retired = identity && ['uil-5', 'uil-6'].includes(identity.id);
+      if ((definition || retired) && typeof identity?.customized === 'boolean' && Number.isInteger(identity.version) && identity.version >= 1 && identity.version <= (definition?.version ?? 2)) {
+        const scope = identity.scope === 'percussion' ? 'percussion' : 'general';
+        const current = definition && identity.version === definition.version;
+        if (current && g.figureProfile?.version === 1 && g.figureProfile.level === Number(definition.id.slice(4)) && g.figureProfile.scope === scope) {
+          defaults.generation.figureProfile = { version: 1, level: g.figureProfile.level, scope };
+        }
+        defaults.generation.teachingPreset = { id: identity.id, version: definition?.version ?? identity.version,
+          customized: identity.customized || !current || Boolean(definition?.source && !['general', 'percussion'].includes(identity.scope!)) || Boolean(g.meterChanges) || selected.some(m => !meters.includes(m)),
+          ...(definition?.source || retired ? { scope } : {}) };
+        defaults.generation.teachingPreset.customized ||= !definition || !resolveTeachingPreset(definition, undefined, scope).supported || !matchesTeachingPreset(defaults.generation, definition);
+        if (defaults.generation.teachingPreset.customized) delete defaults.generation.figureProfile;
       }
       if (!defaults.generation.teachingPreset || defaults.generation.teachingPreset.customized) delete defaults.generation.restrictions;
     }

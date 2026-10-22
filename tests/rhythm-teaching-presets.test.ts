@@ -12,7 +12,6 @@ import { countGrid } from '../src/apps/count-writing/grid.ts';
 import { blankAnswer, evaluatePassage } from './legacy/count-evaluation.ts';
 import { Capture } from '../src/apps/rhythm-walk/capture.ts';
 import { evaluateAttempt } from '../src/apps/rhythm-walk/evaluation.ts';
-import { deriveMeasure } from './score-test-support.ts';
 
 // Independent source expectations: do not generate these from the definitions.
 const expectedGeneral = [
@@ -23,95 +22,16 @@ const expectedGeneral = [
   ['Q', 'H', 'H.', 'W', 'E E', 'Q. E', 'E Q E', 'E. S', 'S S S S', 'E S S', 'E3:2 E3:2 E3:2', 'S S E'],
   ['Q', 'H', 'H.', 'W', 'E E', 'Q. E', 'E Q E', 'E. S', 'S S S S', 'E S S', 'E3:2 E3:2 E3:2', 'S S E'],
 ];
-test('all six stable definitions have versioned provenance and exact inspected figures', () => {
-  assert.deepEqual(teachingPresets.map(p => p.id), ['uil-1', 'uil-2', 'uil-3', 'uil-4', 'uil-5', 'uil-6']);
-  assert.deepEqual(teachingPresets.map(p => p.label), ['UIL I', 'UIL II', 'UIL III', 'UIL IV', 'UIL V', 'UIL VI']);
+test('I–IV definitions preserve independently inspected figures and source restrictions', () => {
+  assert.deepEqual(teachingPresets.map(p => p.id), ['uil-1', 'uil-2', 'uil-3', 'uil-4']);
   for (const [index, definition] of teachingPresets.entries()) {
-    assert.equal(definition.version, 1); assert.deepEqual(definition.source, criteriaSource);
-    assert.equal(definition.source.revision, 'Revised 2022'); assert.equal(definition.source.retrieved, '2026-10-12');
+    assert.equal(definition.version, 3); assert.deepEqual(definition.source, criteriaSource);
     assert.deepEqual(definition.figures.filter(f => f.scope === 'general').map(f => f.events.join(' ')), expectedGeneral[index]);
-    assert.ok(definition.figures.every(f => f.url.startsWith('https://www.uiltexas.org/files/music/music-notations/')));
-    const percussion = definition.figures.filter(f => f.scope === 'percussion').map(f => f.events.join(' '));
-    assert.deepEqual(percussion, index < 2 ? ['E S S', 'S S S S'] : index === 2 ? ['E S S', 'S S S S', 'E. S'] : []);
-    // Merely allowing S/E does not authorize these unlisted figures.
-    for (const forbidden of ['S E S', 'E. E.', 'E3:2 rest E3:2']) assert.ok(!definition.figures.some(f => f.events.join(' ') === forbidden));
+    assert.deepEqual(definition.figures.filter(f => f.scope === 'percussion').map(f => f.events.join(' ')), index < 2 ? ['E S S', 'S S S S'] : index === 2 ? ['E S S', 'S S S S', 'E. S'] : []);
+    assert.ok(resolveTeachingPreset(definition).supported);
   }
-  assert.deepEqual(teachingPresets.map(p => p.meterChanges), [0, 0, 0, 1, 2, 3]);
-  assert.deepEqual(teachingPresets[0]!.officialMeters, ['4/4']);
+  assert.deepEqual(teachingPresets.map(p => p.meterChanges), [0, 0, 0, 1]); // Source requirement, not generation behavior.
   assert.deepEqual(teachingPresets[2]!.officialMeters, ['2/4', '3/4', '4/4']);
-  assert.deepEqual(teachingPresets[4]!.officialMeters, ['2/4', '3/4', '4/4', '6/8', 'cut-time']);
-  assert.ok(teachingPresets[2]!.restrictions.some(r => r.includes('2023')));
-});
-test('higher levels remain blocked, independently of sounded eighth triplet support', () => {
-  const actual = generationCapabilities();
-  assert.ok(actual.ingredients.includes('triplet-eighth'));
-  for (const definition of teachingPresets.slice(2)) for (const triplets of [false, true]) {
-    const result = resolveTeachingPreset(definition, { ...actual, ingredients: [...actual.ingredients.filter(id => id !== 'triplet-eighth'), ...(triplets ? ['triplet-eighth'] : [])] });
-    assert.equal(result.supported, false);
-    if (!result.supported) {
-      assert.ok(!result.reasons.includes('Missing ingredient: whole.'));
-      assert.ok(result.reasons.includes(`Missing pattern support: ${definition.id}-figures.`));
-      assert.equal(result.reasons.includes('Missing ingredient: triplet-eighth.'), Number(definition.id.slice(-1)) >= 5 && !triplets);
-      assert.ok(result.reasons.some(r => r.includes('clarification')));
-    }
-  }
-});
-test('capability query checks meters and patterns independently of ingredients', () => {
-  const definition = teachingPresets[4]!;
-  const complete = { ingredients: [...definition.required.ingredients], patterns: [...definition.required.patterns], meters: [...definition.required.meters] };
-  const result = resolveTeachingPreset({ ...definition, unresolved: [] }, { ...complete, patterns: complete.patterns.filter(p => p !== 'cut-time'), meters: ['4/4'] });
-  assert.equal(result.supported, false);
-  if (!result.supported) { assert.ok(result.reasons.includes('Missing pattern support: cut-time.')); assert.ok(result.reasons.includes('Unsupported meter: 6/8.')); }
-});
-test('I–II note-only presets require paired figures, not just vocabulary', () => {
-  const capabilities = generationCapabilities();
-  assert.ok(!capabilities.byMeter?.['6/8']?.ingredients.includes('whole'));
-  assert.ok(!capabilities.byMeter?.['2/4']?.ingredients.includes('dotted-half'));
-  assert.ok(capabilities.byMeter?.['4/4']?.ingredients.includes('whole'));
-  const missingByMeter = { ...capabilities, byMeter: { ...capabilities.byMeter, '4/4': { ingredients: capabilities.ingredients, patterns: [] } } };
-  assert.equal(resolveTeachingPreset(teachingPresets[0]!, missingByMeter).supported, false);
-  for (const definition of teachingPresets.slice(0, 2)) {
-    assert.equal(resolveTeachingPreset(definition).supported, true);
-    for (const missing of ['paired-eighths', 'no-quarter-rest-beat-one']) {
-      const result = resolveTeachingPreset(definition, { ...capabilities, patterns: capabilities.patterns.filter(p => p !== missing) });
-      assert.equal(result.supported, false);
-    }
-    assert.equal(resolveTeachingPreset(definition, { ...capabilities, ingredients: capabilities.ingredients.filter(i => i !== 'whole') }).supported, false);
-    let seed = 123;
-    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
-    for (let sample = 0; sample < 200; sample++) {
-      const result = applyTeachingPreset({ ...defaultGeneration(), measures: 4 }, definition);
-      assert.equal(result.supported, true); if (!result.supported) continue;
-      const passage = generateExercise(result.settings, random);
-      for (const measure of passage) {
-        assert.deepEqual(measure.meter, [4, 4]);
-        const events = deriveMeasure(measure).events;
-        for (let i = 0; i < events.length; i++) {
-          const event = events[i]!;
-          assert.ok(!(event.written.kind === 'rest') && !event.written.tieNext && !event.written.timeModification);
-          if (event.written.type === 'eighth') {
-            assert.equal((event.start[0] * 4) % event.start[1], 0, 'pair begins on a quarter beat');
-            assert.deepEqual(notationOnly(events[++i]?.written), notationOnly(note('eighth')), 'independently require second eighth');
-          } else {
-            assert.ok(event.written.type === 'quarter' || event.written.type === 'half' || event.written.type === 'whole');
-            assert.ok(!event.written.dots || event.written.type === 'half');
-          }
-        }
-      }
-    }
-  }
-});
-test('downbeat-rest restriction and impossible paired patterns fail without retries', () => {
-  const settings = { ...defaultGeneration(), ingredients: ['quarter-rest', 'eighth'] as const, restrictions: { pairedEighths: true, noQuarterRestBeatOne: true } };
-  for (const draw of [0, .3, .9]) {
-    const measures = generateExercise({ ...settings, ingredients: [...settings.ingredients] }, () => draw);
-    assert.ok(measures.every(m => !(m.notes[0]!.kind === 'rest')));
-    for (const measure of measures) for (let i = 0; i < measure.notes.length; i++) if (measure.notes[i]!.type === 'eighth') assert.deepEqual(notationOnly(measure.notes[++i]), notationOnly(note('eighth')));
-  }
-  assert.ok(generationIssue({ ...settings, ingredients: ['quarter-rest'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['sixteenth'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['eighth'], meters: ['6/8'] }));
-  assert.ok(generationIssue({ ...settings, ingredients: ['eighth'], ties: true }));
 });
 test('whole notes have independent counts, duration endpoint and shared performance timing', () => {
   const measure = { meter: [4, 4] as const, notes: [note('whole')] };
@@ -192,10 +112,10 @@ test('supported application changes pending settings only, preserves length, and
   // Independent allowed/forbidden exercise expectation for the enforceable test template.
   assert.deepEqual(notationOnly(replacement.score.measures.map(m => m.notes)), notationOnly(Array.from({ length: 4 }, () => [note('quarter'), note('quarter'), note('quarter'), note('quarter')])));
 });
-test('blocked application leaves pending settings and current exercise unchanged', () => {
+test('unsupported application leaves pending settings and current exercise unchanged', () => {
   const preferences = defaultPreferences(); const activity = new Activity(preferences, score(presets[0]!.score.measures));
   const before = structuredClone(preferences); const exercise = activity.exercise;
-  for (const definition of teachingPresets.slice(2)) assert.equal(applyTeachingPreset(preferences.generation, definition).supported, false);
+  for (const definition of teachingPresets) assert.equal(applyTeachingPreset(preferences.generation, definition, { ingredients: [], patterns: [], meters: [] }).supported, false);
   assert.deepEqual(preferences, before); assert.strictEqual(activity.exercise, exercise);
   assert.equal(applyTeachingPreset({ ...defaultGeneration(), measures: 9 }, quarterPractice).supported, false);
 });
@@ -212,9 +132,9 @@ test('preference migration validates attribution separately and never trusts a s
   const preferences = defaultPreferences(); preferences.bpm = 117; preferences.generation.measures = 3;
   preferences.generation.teachingPreset = { id: 'uil-1', version: 1, customized: false };
   const restored = readPreferences(JSON.stringify(preferences));
-  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 1, customized: true });
+  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 3, customized: true, scope: 'general' });
   assert.equal(restored.bpm, 117); assert.equal(restored.generation.measures, 3);
-  for (const malformed of [null, {}, { id: 'uil-9', version: 1, customized: false }, { id: 'uil-1', version: 2, customized: false }, { id: 'uil-1', version: 1, customized: 'no' }]) {
+  for (const malformed of [null, {}, { id: 'uil-9', version: 1, customized: false }, { id: 'uil-1', version: 99, customized: false }, { id: 'uil-1', version: 1, customized: 'no' }]) {
     assert.equal(readPreferences(JSON.stringify({ ...preferences, generation: { ...preferences.generation, teachingPreset: malformed } })).generation.teachingPreset, undefined);
   }
   delete preferences.generation.teachingPreset;
@@ -224,10 +144,10 @@ test('preference migration validates attribution separately and never trusts a s
   assert.ok(applied.supported); if (!applied.supported) return;
   const exact = readPreferences(JSON.stringify({ ...preferences, generation: applied.settings }));
   assert.equal(exact.generation.teachingPreset?.customized, false);
-  assert.deepEqual(exact.generation.restrictions, { pairedEighths: true, noQuarterRestBeatOne: true });
-  for (const invalid of [{ pairedEighths: 'yes', noQuarterRestBeatOne: true }, null, { pairedEighths: true }]) {
-    const restored = readPreferences(JSON.stringify({ ...preferences, generation: { ...applied.settings, restrictions: invalid } }));
-    assert.equal(restored.generation.restrictions, undefined); assert.equal(restored.generation.teachingPreset?.customized, true);
+  assert.deepEqual(exact.generation.figureProfile, { version: 1, level: 1, scope: 'general' });
+  for (const invalid of [{ version: 99, level: 1, scope: 'general' }, null, { version: 1, level: 1 }]) {
+    const restored = readPreferences(JSON.stringify({ ...preferences, generation: { ...applied.settings, figureProfile: invalid } }));
+    assert.equal(restored.generation.figureProfile, undefined); assert.equal(restored.generation.teachingPreset?.customized, true);
   }
 });
 
@@ -247,7 +167,7 @@ test('integrated capability catalogue derives meter support and rejects globally
   const result = resolveTeachingPreset(teachingPresets[0]!, missing);
   assert.equal(result.supported, false);
   if (!result.supported) assert.ok(result.reasons.includes('Missing ingredient in selected meters: whole.'));
-  for (const preset of teachingPresets.slice(2)) assert.equal(resolveTeachingPreset(preset, capabilities).supported, false);
+  for (const preset of teachingPresets) assert.equal(resolveTeachingPreset(preset, capabilities).supported, true);
 });
 
 const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

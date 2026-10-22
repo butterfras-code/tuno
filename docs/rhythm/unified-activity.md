@@ -22,7 +22,7 @@ All counting preferences are captured in one immutable plan per exercise. Pendin
 
 ## Shared ownership
 
-[UIL teaching presets](uil-presets.md) configure pending shared generation independently of fixed review fixtures. I–II support qualified general note-only practice; III–VI remain inspectable and blocked. Whole and dotted-half notes are opt-in shared generation ingredients. Application preserves the existing exercise and both responses until Next/New Exercise.
+[UIL teaching presets](uil-presets.md) configure pending shared generation independently of fixed review fixtures. I–IV support verified General/Percussion note-only figures in a single meter; V–VI are deferred. IV does not claim the composition-level meter-change requirement. Whole and dotted-half notes are opt-in shared generation ingredients. Application preserves the existing exercise and both responses until Next/New Exercise.
 
 Settings → Performance includes **How to play**: **Tap** — “Tap when each note starts.” (default for new or older preferences without this field), and **Tap + Hold** — “Hold each note for its length. Release for rests.” It applies to Tap Rhythms and Both. The choice saves as `playStyle: 'tap' | 'hold'` in the existing version-1 shared preference store; missing/invalid values independently default to Tap. It preserves exercise identity, pending configuration, writing and completed performance review. It locks during audio activation, count-in, capture and calibration. Every new attempt snapshots the choice and a detached evaluation policy before awaiting audio activation. Retry uses the current choice; completed review/timelines/downloads use that attempt's snapshot. Historical attempt JSON without a choice retains its original hold-oriented interpretation.
 

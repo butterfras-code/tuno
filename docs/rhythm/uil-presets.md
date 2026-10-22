@@ -1,12 +1,14 @@
-# UIL teaching presets
+# UIL teaching levels
 
-Uno234 offers **UIL I / UIL II · note-only practice**. Levels III–VI can be inspected but cannot be applied. The shared **Level** selector applies these generation configurations immediately to pending settings. **Customize…** edits their musical fields; **Custom** retains free-form settings without assigning a UIL level. Fixed rhythms are separate testing fixtures, exposed only by `?testing=1` or valid `?fixture=` links. Saved fixtures never enable testing on ordinary visits.
-
-These are editable rhythm teaching templates, not complete composition validators or claims of UIL endorsement. Short passages do not reproduce contest compositions.
+Levels I–IV offer **General / Percussion · note-only practice** in Write Counts,
+Tap Rhythms and Both. These are short rhythm teaching configurations informed by
+UIL criteria, not full contest-composition validators or claims of UIL endorsement.
+The shared Level selector changes pending settings; New exercise replaces the
+passage and clears responses. Mode switching preserves both independent responses.
 
 ## Reviewed source matrix
 
-Source: [official band criteria](https://www.uiltexas.org/music/concert-sight-reading/band-sight-reading-criteria), heading **Revised 2022**, retrieved **2026-10-12**. All 17 unique notation images were downloaded from that page and visually inspected, including meters. The historical handoff was background only. Reference images are linked, not bundled or relicensed.
+Source: [official band criteria](https://www.uiltexas.org/music/concert-sight-reading/band-sight-reading-criteria), heading **Revised 2022**, rechecked **2026-10-14**. All 17 unique notation images were downloaded from that page and visually inspected, including meters. The historical handoff was background only. Reference images are linked, not bundled or relicensed.
 
 `B` below means the five individually linked basic figures in the next table. These rows describe source facts; implementation choices follow separately.
 
@@ -42,59 +44,105 @@ Dots mean one written dot. These are individual figures, not ingredient sets. Sc
 
 Inspected meters: [4/4](https://www.uiltexas.org/files/music/music-notations/meter44.jpg), [2/4](https://www.uiltexas.org/files/music/music-notations/meter24.jpg), [3/4](https://www.uiltexas.org/files/music/music-notations/meter34.jpg), [6/8](https://www.uiltexas.org/files/music/music-notations/meter68.jpg), [cut time](https://www.uiltexas.org/files/music/music-notations/meterC.jpg). The last image has the vertical stroke through C; it is not common time.
 
-## Teaching choices and capability gaps
+## Source recheck
 
-I–II deliberately practice **general note figures only** in 4/4: Q, H, H., W and complete beat-aligned E E pairs. Rests, ties and percussion figures are not selected. This narrower focus is qualified in the selector, status and attribution; it is not a claim of full instrumental/vocabulary coverage. Pair alignment is a conservative teaching choice. Nothing requires every permitted figure to appear in a short random passage. No probabilities or difficulty rankings are promised.
+The official Revised 2022 page and all 17 unique notation images were downloaded
+and visually inspected again on 2026-10-14. No changes to the inventory above were
+found. In particular, meterC.jpg has the vertical stroke of cut time; R8-16-16
+is E S S, Rdot8-s is E. S, and Rtriplet is three sounded eighths with a 3 bracket.
+Image files remain externally linked rather than bundled or relicensed.
 
-The shared hooks `restrictions.pairedEighths` and `restrictions.noQuarterRestBeatOne` are independent of UIL. The first restricts basic simple-meter practice and forces the second eighth before another value can begin. The second excludes an initial quarter rest. Complete-bar feasibility uses those same rules, without retrying or inventing fill notes. Test-only quarter-rest generation exercises the second hook even though the live note-only presets omit all rests.
+## Playable scope and teaching choices
 
-Whole notes were added at the owner's explicit request: an opt-in `whole` ingredient, a hollow stemless head, four numbered counts and one complete duration line in 4/4. The customization follow-up adds opt-in whole rests in 4/4; dotted wholes remain unsupported. UIL note-only configurations still exclude rests. Existing dotted-half engraving/counting is now exposed as the opt-in `dotted-half` ingredient. Defaults are preserved. Both values stay out of 6/8 generation; whole-only selections cannot fill 2/4, 3/4 or 6/8. Other compatible selected ingredients may fill those meters.
+Let B = Q, H, H., W, and E E. The source matrix above remains authoritative for
+instrument scope. This table describes the implemented short-exercise profile:
 
-| Levels | Application | Remaining work |
-| --- | --- | --- |
-| I–II | Available, qualified note-only focus | Clarify broader rest/tie policy before expanding focus; percussion is outside this template. |
-| III | Unavailable | Enforce Q. E and the exact general figure set; review rest/tie policy. |
-| IV | Unavailable | Enforce sixteenth/dotted-eighth/syncopated combinations; review rest/tie policy. |
-| V–VI | Unavailable | IV gaps, `triplet-eighth`, cut-time application; review rest/tie policy. |
+| Level | General | Percussion | Supported meters |
+| --- | --- | --- | --- |
+| I–II | B | B + E S S, S S S S | 4/4 |
+| III | B + Q. E | General + E. S, E S S, S S S S | 2/4, 3/4, 4/4 |
+| IV | B + Q. E, E Q E, E. S, E S S, S S S S | Same | 2/4, 3/4, 4/4 |
 
-`triplet-eighth` is reserved for three sounded 3:2 eighths occupying one quarter beat in simple meters. Enabling it alone never unlocks V–VI. Tuplet rests, partial groups, other ratios and ties involving tuplets need distinct capabilities. Multiple selected meters still choose one meter for the entire passage. Within-piece changes are source metadata, not an implemented setting or a requirement for these short exercises.
+Each exercise selects **one meter** for all its measures. Default length is two,
+configurable 1–4 independently of level. IV is figure practice; it does not fulfill
+the source's composition-level meter-change requirement. V–VI, cut time and
+within-exercise meter changes are deferred by the 2026-10-22 scope decision.
+The source inventory above remains evidence, not a promise of implemented scope.
 
-## Schema and integration handoff
+Complete figures start on written-quarter boundaries and fit wholly inside a bar.
+W requires 4/4; H. requires 3/4 or 4/4. Q. E and E Q E remain indivisible sequences,
+not arbitrary permutations of ingredients. Every eligible figure is reachable;
+a short exercise need not contain every figure. No contest coverage is promised.
 
-The UIL slice owns [teaching-presets.ts](../../src/apps/rhythm-walk/shared/teaching-presets.ts): stable IDs `uil-1`–`uil-6`, definition version 1, provenance, scoped exact figures, official meter/change metadata, restrictions, unresolved items, recommended settings and required capabilities. Recommendations remain separate from active settings. `resolveTeachingPreset(definition, capabilities?)` returns `{ supported: true, settings }` or `{ supported: false, reasons }`. Tests can inject explicit capability inputs; production uses one [generationCapabilities()](../../src/apps/rhythm-walk/shared/capabilities.ts) query.
+Existing Uno/Custom 6/8 and simple-meter triplets remain available. The six numbered
+6/8 counts and dotted-quarter performance pulses are unchanged; counting preferences
+determine exposed inputs through the shared counting plan.
 
-The aggregate query now derives from `rhythmCapabilities(meter)` in the generator, so it includes integrated simple-meter triplets without duplicating support lists. `GenerationCapabilities` contains global `ingredients`, `patterns`, `meters`, and a `byMeter` map with ingredient/pattern support. Production returns the map; minimal explicit test inputs may omit it. Resolution checks required patterns in each selected meter, requires a capability description for every selected meter, and requires each ingredient to be supported by at least one selected meter. Pools intentionally use compatible subsets (whole notes only in 4/4); global catalogue membership alone cannot satisfy a requirement. The narrow paired-eighth hook rejects unsupported compound use explicitly. Higher figure capabilities must only be advertised after the generator actually consumes and enforces their declarative restrictions. Do not simply add their IDs to the query. Triplet generation, counting and engraving come from the prerequisite triplet PR.
+## Unresolved source policy and customization
 
-Shared edits: `generation.ts` adds the two ingredients, optional attribution and two narrow restriction flags; `settings.ts` adds inspection/application/customization; `activity.ts` sanitizes persisted attribution and flags; `grid.ts`/`notation.ts` add whole-note presentation; `fixtures.ts` adds a whole-note review fixture. Existing fixture IDs, scoring and count entry stay intact.
+Broader rest vocabulary and tie permissions remain unresolved at every level.
+The lower-level quarter-rest-on-count-1 and eighth-rest prohibitions remain recorded
+as source facts. They do not establish an exhaustive official rest vocabulary.
+These uncertainties do not block the verified note-only profile. Enabling existing
+rest/tie controls or editing musical ingredients/constraints retains attribution
+as **customized**, removes the exact figure profile, and uses the existing Custom
+generator. That is teacher-selected practice, not verified UIL coverage. Reapplying
+the level restores its note-only figure profile. No rest or tie rule is invented.
 
-`applyTeachingPreset(current, definition)` is a pure pending-settings operation. It preserves chosen length; UI application does not replace the current exercise or clear either response. Next/New Exercise performs replacement through the existing lifecycle. Mode, counting convention/system, Tap/Hold, tempo and calibration are independent. Default length remains two, adjustable 1–4.
+## Implementation and persistence
 
-Changing a preset-controlled field retains source attribution as **customized** and drops the preset restrictions so teachers can choose 6/8 or another supported configuration. Changing length alone preserves the template status. Reapplication deliberately restores its controlled fields. A selected unavailable level changes only inspection, and Apply level remains disabled, including after controls unlock. Pending settings still undergo the normal complete-bar validation.
+[figures.ts](../../src/apps/rhythm-walk/shared/figures.ts) represents each figure as
+canonical written events and an exact summed fraction. One memoized complete-bar
+planner supplies both feasibility and generation choices. There is no unrestricted
+fallback, filler note or retry-until-success path. All emitted bars and passages
+are validated through the canonical model. Scope selects a subset of that same
+catalogue, not a separate generator.
 
-Preference storage remains version 1. Old records preserve their valid settings; saved fixture IDs are ignored on ordinary visits. Restriction flags require booleans; unknown IDs/versions or malformed attribution are dropped. An exact saved label is restored only when controlled fields match a currently supported definition; otherwise attribution becomes customized. Unknown stored fields are not carried into active settings. Responses remain transient and calibration retains its separate store.
+The [capability query](../../src/apps/rhythm-walk/shared/capabilities.ts) describes
+Custom ingredient support separately from reachable atomic figures in each meter.
+Resolution checks required meters, ingredients, atomic figures and complete-bar
+feasibility. Unresolved rest/tie source questions do not globally block practice.
 
-## Validation
+UIL definitions are version **3**; `figureProfile` retains version **1**, level and
+instrument scope. Generation constructs the handoff branch's immutable `RhythmScore`
+directly with stable note IDs. CountingPlan, notation and capture share that score;
+there is no legacy tuple adapter. The new editor, correction cycle, counting links
+and session/default preference behavior remain authoritative.
 
-See [source/resolver/lifecycle/whole-note tests](../../tests/rhythm-teaching-presets.test.ts). Source expectations are independently written, including percussion scope and forbidden unlisted figures. Seeded I–II passages are checked independently for note vocabulary, complete beat-aligned pairs, no rests/ties/tuplets and exact bar totals. Resolver tests remove independent capabilities and verify triplets cannot bypass other gaps. Lifecycle tests cover pending application, blocked application, reapplication, customization, migration, malformed storage, independent meters and all response modes. Whole-note tests independently specify counts 1–4, the final hidden duration endpoint and one four-second sound at quarter=60.
+Saved UIL versions 1–2 retain supported ingredient selections but become customized.
+Retired V–VI identities retain customized source attribution. Unsupported 2/2 is
+removed from saved pools (4/4 is used if no supported meter remains), and old change
+budgets are removed. The UI identifies migrated UIL configurations as customized,
+single-meter practice; reapply I–IV to restore verified figure generation. No new
+vocabulary is added. Uno definitions remain version 1 and unchanged.
 
-Node **24.21.0**, `npm ci`, and `npm run check` passed: **309 tests**, TypeScript checks and hosted/portable builds. `git diff --check` and local documentation-link review passed.
+Length, tempo, counting system, response mode and Tap/Tap + Hold stay independent.
+Fixtures remain explicitly enabled testing tools, never saved practice modes.
+Deterministic fixtures `uil-percussion` and `uil-figures` exercise the retained
+scope. Cut-time and mixed-meter fixtures are removed.
 
-Native T3 [browser scenarios](../../scripts/rhythm-uil-browser-scenarios.js) passed **52 assertions at desktop and 52 at 320px**, plus **10 fresh-document persistence/migration assertions**. They cover both available templates, all blocked levels, score identity and writing/performance-response retention, independent preference preservation, length, 6/8 customization, reapplication, mode switching, Next clearing, source-detail overflow, whole-note glyphs and touch-sized Apply controls. Reload checks cover exact attribution, ingredients, length, tempo/mode/counting system, blank transient responses and malformed stored attribution/restrictions.
+## Validation and limits
 
-The environment's new server port could not be reached by the native browser. The fresh built JS/CSS was therefore loaded into a same-origin inline frame in the reachable localhost preview; existing font CSS was reused. An initial run completed a real-clock performance and retained its review through preset application. Subsequent runs backgrounded the preview and correctly produced ungraded interruptions; the final 104 lifecycle assertions retained those interruption responses instead. The first run stopped on a test assertion using `innerText` for a hidden result; the corrected assertions use `textContent` to test retained data independently of visibility. This is not a full completed-capture browser acceptance claim. Independent whole-note timing and completed scoring are covered by unit tests.
+[Independent acceptance tests](../../tests/rhythm-uil-acceptance.test.ts) specify
+figure grammar and duration expectations independently of production definitions.
+They cover I–IV, both scopes, supported meters, lengths 1–4, figure reachability,
+the live counting-plan API with both vocabularies and subdivision options,
+immutable source identity, migration, customization and completed synthetic
+Tap/Tap + Hold assessment. Existing Uno and Custom regression suites remain.
 
-320px is an actual CSS/DOM frame-layout check, not a physical phone. Physical devices, hardware latency, release-candidate Cloudflare preview and full release verification were not performed. The owner requested a PR against `t3code/rhythm-game-handoff` for this slice; no branches are automatically integrated or published.
+Browser checks include the repository's counting correction and responsive workspace
+suites plus [UIL integration](../../scripts/rhythm-uil-browser-check.mjs).
+Physical devices, actual audio latency and release-preview acceptance remain separate.
+Earlier six-level validation applied to the superseded implementation, not this scope.
 
-## Stacked integration validation (2026-10-12)
+### Reconciliation validation (2026-10-22)
 
-PR #39 is rebased onto PR #38 (`958dd49`). The generator's `rhythmCapabilities(meter)` is the single support policy; `generationCapabilities()` is only its aggregate view for presets. Whole/dotted-half meter limits, triplet exclusion from 6/8, complete triplet atoms, paired-eighth restrictions and unchanged defaults are retained. A regression test rejects UIL I when ingredients exist globally but are absent in its selected meter. Higher levels remain blocked by their independent figure/policy requirements.
-
-Node 24.21.0 with npm ci: npm run check passed all **328 tests**, type checking and hosted/portable builds. Native T3 UIL checks passed **52 assertions at 1280px and 52 at 320px**, retaining interrupted performance evidence. The preview was unfocused: audio correctly interrupted, and the full triplet keyboard suite stopped at a focus-dependent syllable-advance assertion; no completed audio or full keyboard acceptance is claimed for this integration. Combined triplet/whole fixtures and mode identity were additionally inspected. The preview served an older bundle, so the newly built JS/CSS were injected explicitly (font payload omitted); this is not deployed-preview or physical-device acceptance.
-
-## Level selection follow-up
-
-The header now owns one Level selector across all response modes. Supported selection applies pending generation configuration immediately; Source and pattern requirements retains inspection and deliberate reapplication. Customize… contains ingredients, meters, patterns, rest spelling and independent length. The current-exercise summary uses the configuration captured by the shared Activity at replacement, while the selector identifies the next exercise. Generated practice is no longer a selectable fixture/preset option. Explicit testing access exposes the separate fixed-fixture catalogue, with all historical IDs intact.
-
-Node 24.21.0, `npm ci`, and `npm run check` passed (330 tests, TypeScript and builds). Local documentation links and `git diff --check` passed. Native T3 [level scenarios](../../scripts/rhythm-level-browser-scenarios.js) passed 43 assertions and [UIL scenarios](../../scripts/rhythm-uil-browser-scenarios.js) passed 52 assertions at desktop (1265px document) and narrow (305px document inside a 320px preview). Coverage includes lengths 1–4, independent preferences, customized source attribution, pending score/response retention, mode switching, blocked application, fresh-document persistence/migration and explicit fixture access. Layout review found no level/source-detail overflow; keyboard Tab/Enter opened Customize…, and Escape closed it and restored focus.
-
-Loopback navigation initially worked, then returned connection failures. Later checks used the complete local JS/CSS in same-origin inline review documents through the native preview; fixture-query inputs were supplied explicitly to those documents. This does not validate server routing. The hidden preview interrupted real-clock performance, so response retention covered interruption evidence rather than newly completed graded performances. Physical devices, assistive technology and the full release/browser suite were not verified in this follow-up. No publication is included.
+Reconciled locally with remote handoff `5715261`. Node 24.21.0, `npm ci` and
+`npm run check` passed (449 tests, TypeScript and hosted/portable builds).
+UIL browser scenarios passed 355 assertions per width at 320 and 1280 pixels in
+Chromium and Firefox, plus native keyboard entry of explicit percussion counts in
+both vocabularies and fresh-load scope/answer checks. The repository counting-plan
+suite passed in Chromium; counting correction and responsive workspace/completed
+performance suites passed in Chromium and Firefox. Those performance checks use
+synthetic timestamps and do not validate device latency. Documentation links and
+`git diff --check` passed. No physical-device or release-preview validation was run.

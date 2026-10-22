@@ -13,7 +13,7 @@ import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeac
 function unavailableReason(reason: string): string {
   if (/Missing pattern support(?: in [\d/]+)?: uil-\d-figures\./.test(reason)) return 'The exact rhythm figures for this level are not enforced yet.';
   if (reason.includes('uil-rest-and-tie-policy')) return 'Rest and tie permissions still need review.';
-  if (reason.includes('triplet-eighth')) return 'Eighth-note triplets are not available yet.';
+  if (reason.includes('triplet-eighth')) return 'Complete sounded eighth triplets require a supported quarter-note meter.';
   if (reason.includes('cut-time')) return 'Cut time is not supported yet.';
   if (reason.includes('paired-eighths')) return 'Complete eighth-note pairs are not supported in this configuration.';
   if (reason.includes('no-quarter-rest-beat-one')) return 'The downbeat quarter-rest restriction is not supported in this configuration.';
@@ -215,7 +215,7 @@ export function createSettingsPage(callbacks: {
   function chooseLevel(value: string) {
     teachingPickers.forEach(picker => { picker.value = value; });
     if (!value) {
-      const { teachingPreset: _source, restrictions: _restrictions, ...custom } = generation;
+      const { teachingPreset: _source, restrictions: _restrictions, figureProfile: _profile, meterChanges: _changes, ...custom } = generation;
       generation = custom; generationChanged(false);
     } else { applySelectedLevel(value); renderTeachingPreset(); }
   }
@@ -234,7 +234,7 @@ export function createSettingsPage(callbacks: {
   function applySelectedLevel(value: string) {
     const definition = generationLevels.find(p => p.id === value);
     if (!definition) return;
-    const result = applyTeachingPreset(generation, definition);
+    const result = applyTeachingPreset(generation, definition, undefined, instrumentScope.value as 'general' | 'percussion');
     if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
     generation = result.settings;
     lengthField.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Number(input.value) === generation.measures; });
@@ -243,24 +243,31 @@ export function createSettingsPage(callbacks: {
     patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.generationKey as 'allowUnintuitiveNotation' | 'ties' | 'syncopation']); });
     generationChanged(false);
   }
+  const instrumentScope = select([{ value: 'general', label: 'General' }, { value: 'percussion', label: 'Percussion' }], () => applySelectedLevel(teachingPicker.value));
+  instrumentScope.dataset.setting = 'instrument-scope';
+  const scopeField = field('UIL instrument scope', instrumentScope);
   const applyPreset = button('Apply level', () => applySelectedLevel(teachingPicker.value));
   applyPreset.dataset.setting = 'apply-teaching-preset';
   function renderTeachingPreset() {
     for (const definition of generationLevels) {
-      const label = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
+      const label = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, scope: generation.teachingPreset?.scope, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
       teachingPickers.forEach(picker => { [...picker.options].find(o => o.value === definition.id)!.textContent = label; });
     }
-    teachingAttribution.textContent = 'For next exercise';
+    const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
+    scopeField.hidden = !active?.source;
+    instrumentScope.value = generation.teachingPreset?.scope ?? 'general';
+    teachingAttribution.textContent = `${teachingPresetLabel(generation.teachingPreset)} · for next exercise`;
+    if (generation.teachingPreset?.customized && generation.teachingPreset.id.startsWith('uil-')) teachingAttribution.textContent += '. Customized vocabulary; one supported meter per exercise. Reapply a level for verified figure practice.';
     const definition = generationLevels.find(p => p.id === teachingPicker.value);
     customLevelStatus.hidden = true; customLevelStatus.textContent = '';
     teachingEvidence.replaceChildren();
     if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
-    const result = resolveTeachingPreset(definition);
+    const result = resolveTeachingPreset(definition, undefined, instrumentScope.value as 'general' | 'percussion');
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
     if (!result.supported) { customLevelStatus.hidden = false; customLevelStatus.textContent = `Unavailable: ${unavailable.join(' ')}`; }
-    teachingStatus.textContent = result.supported ? 'Available: general note figures only, no rests, ties or percussion-specific figures. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
       teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
       const settings = definition.recommended;
@@ -271,12 +278,12 @@ export function createSettingsPage(callbacks: {
       return;
     }
     const source = el('a', '', `Official criteria · ${definition.source.revision} · retrieved ${definition.source.retrieved}`); source.href = definition.source.url;
-    teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice uses one meter and preserves your chosen length.`));
+    teachingEvidence.append(source, el('p', '', `Official meters: ${definition.officialMeters.map(m => m === 'cut-time' ? 'cut time (2/2)' : m).join(', ')}. Official within-piece changes: ${definition.meterChanges}. Short practice uses one meter and preserves your chosen length. UIL IV is figure practice, not fulfillment of the composition-level meter-change requirement.`));
     for (const figure of definition.figures) {
       const link = el('a', '', `${figure.events.join(' ')} (${figure.scope})`); link.href = figure.url;
       const row = el('p'); row.append(link); teachingEvidence.append(row);
     }
-    teachingEvidence.append(el('p', '', definition.restrictions.join(' ')));
+    teachingEvidence.append(el('p', '', [...definition.restrictions, ...definition.unresolved].join(' ')));
     if (!result.supported) teachingEvidence.append(el('p', '', unavailable.join(' ')));
   }
   teachingPicker.value = generation.teachingPreset?.id ?? '';
@@ -288,7 +295,7 @@ export function createSettingsPage(callbacks: {
   teachingField.append(teachingAttribution);
   teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
-  exerciseControls.append(customLevelField, meterField, lengthField, vocabulary, patternFields, generationStatus);
+  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
   available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));

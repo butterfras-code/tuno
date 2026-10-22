@@ -70,3 +70,7 @@ Historical counting evaluators and the former tuple timing implementation live o
 Other agents should reuse this model, add examples/tests here when extending it, and avoid introducing separate timing encodings in renderers, generators or evaluators. The [practice generator](../../src/apps/rhythm-walk/shared/generation.ts) now uses this model and validates complete passages. This model does not own notation UI, audio scheduling or preference persistence; their current implementation is documented in the [unified activity contract](unified-activity.md). Follow normal feature-to-dev staging and explicit production-publication rules.
 
 Duration lines and rest enclosures end at the last depicted count of their unit, not at the musical end or the next attack. Cross-bar visual continuations stop in the bar containing that final count; musical durations and performance holds remain unchanged.
+
+## UIL scope reconciliation (2026-10-22)
+
+UIL I–IV use atomic note-only figures and one meter per exercise (I–II: 4/4; III–IV: 2/4, 3/4, 4/4). IV teaches figures without claiming the composition-level meter-change requirement. V–VI, 2/2 and within-exercise changes are deferred. Existing Uno/Custom 6/8 and triplets are unchanged. Generation, counting, engraving and capture share the immutable typed score. See [UIL scope](uil-presets.md).
