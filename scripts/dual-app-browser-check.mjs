@@ -116,7 +116,15 @@ try {
     const tuner = await context.newPage();
     await tuner.goto(origin + prefix + 'tune/');
     await ready(tuner);
-    await tuner.waitForFunction(async () => (await navigator.serviceWorker.getRegistration('/'))?.active?.state === 'activated');
+    await tuner.evaluate(async () => {
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline) {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        if (registration?.active?.state === 'activated') return;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      throw new Error('Suite worker did not finish activation');
+    });
     const before = await tuner.evaluate(async () => (await caches.keys()).filter(key => !key.startsWith('suite:')));
     assert.equal(before.length, 1);
     assert.ok(before[0].startsWith(`tuno:${origin}${prefix}tune/:`));
@@ -126,7 +134,10 @@ try {
     await notes.waitForFunction(() => document.querySelector('#offline-status')?.textContent.includes('failed'));
     assert.equal(await notes.locator('h1').textContent(), 'tuNotes');
     const initialController = await notes.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
-    assert.equal(initialController, origin + '/suite-sw.js');
+    // With registration deliberately disabled, Firefox can leave this first
+    // navigation uncontrolled; Chromium inherits the root suite controller.
+    // Neither may claim the unavailable notes worker or the sibling tuner.
+    assert.ok(initialController === null || initialController === origin + '/suite-sw.js');
     const rootFetch = await tuner.evaluate(async () => {
       const html = await (await fetch('../notes/')).text();
       return { html, missing: (await fetch('../notes/missing.js')).status, controller: navigator.serviceWorker.controller.scriptURL };
