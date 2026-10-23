@@ -1,3 +1,4 @@
+import { createFeedbackLink } from '../../shared/ui/feedback.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { countingProblems, countingScore } from './counting-feedback.ts';
 import type { CountId } from '../../music/counting/plan.ts';
@@ -230,7 +231,9 @@ const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#pract
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(helpButton, nav);
 activitySurface.append(pageTitle, practiceView, settings.page);
-main.append(header, activitySurface, help, customDialog); app.append(main);
+const footer = el('footer', 'feedback-footer');
+footer.append(createFeedbackLink());
+main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;
   fixtureId = id; picker.value = id;

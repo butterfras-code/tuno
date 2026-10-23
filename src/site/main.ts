@@ -1,3 +1,4 @@
+import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './styles.css';
 import tuneArtwork from '../assets/launcher/tune.svg';
 import notesArtwork from '../assets/launcher/notes.svg';
@@ -18,5 +19,7 @@ for (const [name, subtitle, href, artwork] of [
   const arrow = el('span', 'launcher-arrow', '→'); arrow.setAttribute('aria-hidden', 'true');
   card.append(image, el('h2', '', name), el('p', '', subtitle), arrow); cards.append(card);
 }
-main.append(brand, cards);
+const footer = el('footer', 'feedback-footer');
+footer.append(createFeedbackLink());
+main.append(brand, cards, footer);
 prepareSuiteOffline();

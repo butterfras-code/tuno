@@ -1,3 +1,4 @@
+import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './information.css';
 import projectLicense from '../../LICENSE.txt';
 import { createReleaseControls } from '../distribution/release.ts';
@@ -79,6 +80,6 @@ export function createInformationControls() {
   ]);
   const footerNavigation = el('nav', 'information-navigation');
   footerNavigation.setAttribute('aria-label', 'Information and installation');
-  footerNavigation.append(install('Install'), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'));
+  footerNavigation.append(install('Install'), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'), createFeedbackLink());
   return { footerNavigation, dialogs };
 }

@@ -1,3 +1,4 @@
+import { createFeedbackLink } from '../../shared/ui/feedback.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import './styles.css';
 import projectLicense from '../../../LICENSE.txt';
@@ -73,7 +74,7 @@ export function mountNotes(root: HTMLElement) {
   const optionsLink = el('button','footer-options','Install · About'); optionsLink.type = 'button';
   optionsLink.addEventListener('click', () => { links[3]!.click(); installation.scrollIntoView({ block: 'nearest' }); installation.querySelector('h2')!.focus(); });
   installation.querySelector('h2')!.tabIndex = -1;
-  footer.append(offline, optionsLink);
+  footer.append(offline, createFeedbackLink(), optionsLink);
   home.append(header, ...views, footer);
   root.append(home);
   const stopFitting = playSurface(home,practice.options);
