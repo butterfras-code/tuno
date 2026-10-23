@@ -96,7 +96,15 @@ try {
   // navigation can race the old worker's activation.
   await probe.goto(origin + '/tune/');
   await probe.getByText('Offline ready', { exact: true }).waitFor();
-  await probe.waitForFunction(async () => (await navigator.serviceWorker.getRegistration('/'))?.active?.state === 'activated' && (await navigator.serviceWorker.getRegistration('/'))?.active?.scriptURL.endsWith('/suite-sw.js'));
+  await probe.evaluate(async () => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const registration = await navigator.serviceWorker.getRegistration('/');
+      if (registration?.active?.state === 'activated' && registration.active.scriptURL.endsWith('/suite-sw.js')) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('Replacement suite worker did not finish activation');
+  });
   assert.equal(await probe.evaluate(() => localStorage.getItem('migration-preference')), 'keep');
   const keys = await probe.evaluate(() => caches.keys());
   assert.ok(keys.includes('sibling:keep'));
