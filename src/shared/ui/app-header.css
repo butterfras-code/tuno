@@ -1,0 +1,32 @@
+/* Scoped overrides keep each practice surface and its local controls intact. */
+.app-header.suite-header {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px;
+  margin-bottom: 20px;
+}
+.app-header.suite-header .brand {
+  display: flex; flex-direction: column; align-items: flex-start;
+  justify-content: center; gap: 0; width: auto; flex: 1 0 auto;
+}
+.app-header.suite-header .wordmark { margin: 0; color: var(--color-accent); font: 700 36px/1.2 var(--font-heading); }
+.app-header.suite-header .tagline { display: block; margin: 4px 0 0; color: var(--color-muted); font: 14px/1.4 var(--font-body); }
+.app-header.suite-header .suite-tools { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 44px; padding: 10px 14px; text-decoration: none; white-space: nowrap; font: 700 14px/1.4 var(--font-heading); }
+.app-header.suite-header nav { flex-wrap: wrap; }
+.app-header.suite-header a[aria-current='page'] { background: var(--color-accent); color: var(--color-surface); }
+@media (max-width: 700px) {
+  .app-header.suite-header { gap: 10px 12px; }
+  .app-header.suite-header .brand { flex: 1; min-width: 0; }
+  .app-header.suite-header .wordmark { font-size: 30px; }
+  .app-header.suite-header .tagline { font-size: 12px; }
+  .app-header.suite-header nav { width: 100%; order: 2; }
+  .app-header.suite-header .focus-navigation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .app-header.suite-header .focus-navigation .control { padding: 10px 4px; min-height: 44px; font-size: 13px; }
+}
+.app-header.suite-header .tinker-control { display: block; margin-left: 0; }
+.app-header.suite-header .brand { height: auto; margin-left: 0; }
+.app-header.suite-header .tagline { white-space: normal; }
+#home.is-playing .suite-header .brand { display: flex; }
+.rhythm-app .app-header.suite-header { flex-wrap: wrap; }
+.rhythm-app .app-header.suite-header .brand { flex: 1; min-width: 0; }
+@media (max-width: 700px) {
+  .rhythm-app .app-header.suite-header .rhythm-nav { flex-basis: 100%; }
+}

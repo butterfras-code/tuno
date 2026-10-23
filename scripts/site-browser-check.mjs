@@ -10,8 +10,8 @@ const release = JSON.parse(await readFile(new URL('../dist/release.json', import
 const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
 try {
   const redirect = await fetch(origin, { redirect: 'manual' });
-  assert.equal(redirect.status, 302);
-  assert.equal(redirect.headers.get('location'), '/tune/');
+  assert.equal(redirect.status, 200);
+
   assert.equal((await fetch(origin + '/tune/missing.js')).status, 404);
   assert.equal((await fetch(origin + '/notes/missing.js')).status, 404);
   const context = await browser.newContext();
@@ -19,10 +19,7 @@ try {
   const failures = [];
   page.on('response', (response) => { if (response.status() >= 400) failures.push(response.url()); });
   await page.goto(origin);
-  assert.equal(page.url(), host.url);
-  const notesLink = page.getByRole('navigation', { name: 'Practice and apps' }).getByRole('link', { name: 'tuNotes (Note Reading)' });
-  assert.equal(await notesLink.getAttribute('href'), '/notes/');
-  await notesLink.click();
+  await page.locator('.launcher-card[href="/notes/"]').click();
   assert.equal(page.url(), origin + '/notes/');
   await page.goto(host.url);
   await page.getByText('Offline ready', { exact: true }).waitFor();
@@ -32,8 +29,8 @@ try {
   const manifest = await page.evaluate(async () => (await fetch(document.querySelector('link[rel="manifest"]').href)).json());
   assert.equal(manifest.id, '/');
   assert.equal(manifest.start_url, '/tune/');
-  assert.equal(manifest.scope, '/tune/');
-  assert.equal(await page.evaluate(async () => !!await navigator.serviceWorker.getRegistration('/')), false);
+  assert.equal(manifest.scope, '/');
+  assert.equal(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration('/')).active.scriptURL), origin + '/suite-sw.js');
   await page.goto(origin + '/notes/');
   assert.equal(await page.locator('h1').textContent(), 'tuNotes');
   await page.getByText('Offline ready', { exact: true }).waitFor();
@@ -55,6 +52,7 @@ try {
   // algorithm and correctly hashed resources, then deploy the new site in place.
   const current = new Map(host.files);
   const legacy = Object.fromEntries([...current].filter(([name]) => name.startsWith('tune/') && name !== 'tune/sw.js').map(([name, data]) => [name.slice(5), data]));
+  legacy['app.js'] = Buffer.from(legacy['app.js'].toString().replaceAll('/suite-sw.js', '/sw.js'));
   legacy['manifest.webmanifest'] = Buffer.from(JSON.stringify({ ...manifest, id: './', start_url: './', scope: './', icons: manifest.icons.map((icon) => ({ ...icon, src: icon.src.replace('/tune/', './') })) }));
   const integrity = Object.fromEntries(['index.html', ...Object.keys(legacy).filter((name) => name !== 'index.html')].map((name) => [name, legacy[name]]).map(([name, data]) => [name, 'sha256-' + createHash('sha256').update(data).digest('base64')]));
   const template = await readFile(new URL('../src/distribution/service-worker.js', import.meta.url), 'utf8');
@@ -98,14 +96,14 @@ try {
   // navigation can race the old worker's activation.
   await probe.goto(origin + '/tune/');
   await probe.getByText('Offline ready', { exact: true }).waitFor();
-  await probe.waitForFunction(async () => !(await navigator.serviceWorker.getRegistrations()).some((r) => r.scope === location.origin + '/'));
+  await probe.waitForFunction(async () => (await navigator.serviceWorker.getRegistration('/'))?.active?.state === 'activated' && (await navigator.serviceWorker.getRegistration('/'))?.active?.scriptURL.endsWith('/suite-sw.js'));
   assert.equal(await probe.evaluate(() => localStorage.getItem('migration-preference')), 'keep');
   const keys = await probe.evaluate(() => caches.keys());
   assert.ok(keys.includes('sibling:keep'));
   assert.ok(!keys.some((key) => key.startsWith(`tuno:${origin}/:`)));
   assert.ok(keys.some((key) => key.startsWith(`tuno:${origin}/tune/:`)));
   await probe.goto(origin);
-  assert.equal(probe.url(), host.url);
+  assert.equal(probe.url(), origin + '/');
   await probe.goto(origin + '/notes/');
   await probe.reload();
   await probe.getByText('Offline ready', { exact: true }).waitFor();

@@ -1,3 +1,4 @@
+import { createAppHeader } from '../../shared/ui/app-header.ts';
 import './styles.css';
 import projectLicense from '../../../LICENSE.txt';
 import { el } from '../../shared/ui/components.ts';
@@ -13,9 +14,7 @@ export function mountNotes(root: HTMLElement) {
   const home = el('main', 'notes-home');
   home.id = 'home';
   home.tabIndex = -1;
-  const header = el('header','app-header');
-  const brand = el('div','brand'); brand.append(el('h1', 'wordmark', 'tuNotes'), el('p', 'tagline', 'Read music with a friend.'));
-  header.append(brand);
+  const header = createAppHeader('tuNotes', 'Read Notes with a friend.');
   const practice = practiceView();
   const practicePanel = el('section'); practicePanel.append(practice.node);
   const challenge = el('section','notes-challenge'); challenge.hidden = true;

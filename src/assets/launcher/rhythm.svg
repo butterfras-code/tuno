@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+<!-- The original cartoon Uno taking a small marching step, with floating rhythm notes. Original tUno artwork, adapted for the launcher. -->
+
+<g fill="#73556F" stroke="#73556F" stroke-linecap="round">
+<g transform="translate(39 73) rotate(-16)"><ellipse rx="12" ry="8" transform="rotate(-20)" stroke="none"/><path d="M10 -3V-44" stroke-width="4" fill="none"/></g>
+<g transform="translate(101 49) rotate(10)"><ellipse rx="11" ry="7" transform="rotate(-20)" stroke="none"/><ellipse cx="37" cy="-7" rx="11" ry="7" transform="rotate(-10 37 -7)" stroke="none"/><path d="M9 -3V-40L46 -47V-10" stroke-width="4" fill="none"/><path d="M9 -39L46 -46" stroke-width="9" fill="none"/></g>
+<g transform="translate(207 42) rotate(15)" opacity=".7"><ellipse rx="11" ry="7" transform="rotate(-20)" stroke="none"/><path d="M9 -3V-34Q30 -24 19 -13" stroke-width="4" fill="none"/></g>
+</g>
+<ellipse cx="166" cy="275" rx="93" ry="8" fill="#DCD2C5"/>
+<!-- Compact puppy silhouette. Far limbs sit behind the body in a deeper shade. -->
+<path d="M133 221C143 220 150 226 150 237L151 255C159 257 165 260 163 265C160 270 145 270 140 266C134 260 130 245 127 233Z" fill="#252321"/>
+<path d="M203 220C212 216 220 223 220 234L218 258C224 260 229 265 225 269C221 273 207 274 202 269C198 265 199 260 200 253L198 234Z" fill="#252321"/>
+<!-- A short, tight J-shaped tail echoes the sitting mascot. -->
+<path d="M117 199C94 202 76 187 76 168C76 155 80 148 84 153C88 158 83 171 91 180C97 187 106 185 118 182Z" fill="#302C2B"/>
+<!-- Torso is about 27% shorter than the preceding walking pose, with a round belly. -->
+<path d="M108 188C115 176 129 173 144 176C159 179 174 173 189 174C208 175 223 186 226 203C231 222 221 239 203 243C187 247 176 242 163 238C150 235 139 240 125 235C106 230 99 213 104 199Z" fill="#302C2B"/>
+<!-- The signature cream V is broad beneath the collar and tapers toward the
+     right between the forelegs; the near shoulder overlaps its left edge. -->
+<path d="M175 193C191 203 210 203 226 191C224 208 216 224 205 238C198 233 190 227 185 218C180 209 177 200 175 193Z" fill="#F7F0E4"/>
+<!-- Short, sturdy near hind leg, with soft joints and a rounded planted paw. -->
+<path d="M122 212C133 208 142 215 142 225C143 235 135 243 132 250L129 260C139 260 145 264 142 269C138 274 120 275 115 269C112 265 115 257 118 249L122 238C114 231 113 218 122 212Z" fill="#393331"/>
+<!-- A lifted front paw gives a small marching step. The elbow folds back
+     gently, with the rounded paw carried just ahead of the wrist. -->
+<path d="M180 208C191 203 199 210 199 221L196 239C198 245 205 246 213 246C220 246 224 251 220 256C217 260 206 260 201 258C186 257 178 249 177 239L174 221C172 215 174 210 180 208Z" fill="#393331"/>
+<!-- Collar curves beneath the familiar wide head; tag hangs over the cream blaze. -->
+<path d="M161 185C175 200 207 207 232 185" stroke="#A9574D" stroke-width="7" stroke-linecap="round"/>
+<path d="M204 200V204" stroke="#D9B67A" stroke-width="2.5"/>
+<circle cx="204" cy="209" r="6" fill="#D9B67A"/>
+<!-- Exact head paths from uno-happy.svg, also used by the tuNotes launcher card.
+     Uniform scaling and translation preserve the skull, ears, eyes and muzzle. -->
+<g transform="translate(78 65) scale(.8)">
+<path xmlns="http://www.w3.org/2000/svg" d="M97.5 60.9375C106.875 46.5625 124.063 40 149.062 41.25C169.688 40 186.562 47.5 199.688 63.75L201.562 110.625C199.062 132.5 189.688 148.125 173.438 157.5C156.562 165.625 138.75 164.375 120 153.75C103.125 145 94.6875 129.063 94.6875 105.938L97.5 60.9375Z" fill="#302C2B" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M105.938 60.9375C95.3125 50.3125 84.6875 50 74.0625 60C70.9375 66.25 73.75 81.5625 82.5 105.937C88.75 114.062 95.9375 108.437 104.063 89.0625L105.938 60.9375Z" fill="#252321" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M187.5 60.9375C200 49.6875 211.563 50.9375 222.188 64.6875L210.938 108.75C204.062 113.75 196.875 106.875 189.375 88.125L187.5 60.9375Z" fill="#252321" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M110.625 74.0625C113.75 65.3125 123.125 60 138.75 58.125" stroke="#4B3B33" stroke-width="6.5625" stroke-linecap="round" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M162.188 57.1875C175.312 60.9375 183.75 68.125 187.5 78.75" stroke="#4B3B33" stroke-width="4.6875" stroke-linecap="round" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M121.875 107.812C127.053 107.812 131.25 102.776 131.25 96.5625C131.25 90.3493 127.053 85.3125 121.875 85.3125C116.697 85.3125 112.5 90.3493 112.5 96.5625C112.5 102.776 116.697 107.812 121.875 107.812Z" fill="#9B7750" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M176.25 107.812C181.428 107.812 185.625 102.776 185.625 96.5625C185.625 90.3493 181.428 85.3125 176.25 85.3125C171.072 85.3125 166.875 90.3493 166.875 96.5625C166.875 102.776 171.072 107.812 176.25 107.812Z" fill="#9B7750" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M123.75 105C126.857 105 129.375 101.642 129.375 97.5C129.375 93.3579 126.857 90 123.75 90C120.643 90 118.125 93.3579 118.125 97.5C118.125 101.642 120.643 105 123.75 105Z" fill="#211F1E" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M174.375 105C177.482 105 180 101.642 180 97.5C180 93.3579 177.482 90 174.375 90C171.268 90 168.75 93.3579 168.75 97.5C168.75 101.642 171.268 105 174.375 105Z" fill="#211F1E" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M125.625 96.5625C127.178 96.5625 128.438 95.3033 128.438 93.75C128.438 92.1967 127.178 90.9375 125.625 90.9375C124.072 90.9375 122.812 92.1967 122.812 93.75C122.812 95.3033 124.072 96.5625 125.625 96.5625Z" fill="#FFFCF7" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M176.25 96.5625C177.803 96.5625 179.062 95.3033 179.062 93.75C179.062 92.1967 177.803 90.9375 176.25 90.9375C174.697 90.9375 173.438 92.1967 173.438 93.75C173.438 95.3033 174.697 96.5625 176.25 96.5625Z" fill="#FFFCF7" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M118.125 124.688C138.125 114.063 158.75 114.063 180 124.688L173.438 140.625C156.562 153.75 140.312 153.438 124.688 139.688L118.125 124.688Z" fill="#4B4140" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M130.312 139.688C142.188 144.062 154.688 143.438 167.812 137.812C163.438 154.063 157.5 162.5 150 163.125C141.25 161.875 134.687 154.062 130.312 139.688Z" fill="#211F1E" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M140.625 146.25C147.5 143.75 153.437 144.063 158.438 147.188L157.5 155.625C151.875 162.5 146.563 162.5 141.562 155.625L140.625 146.25Z" fill="#C88F87" />
+
+<path xmlns="http://www.w3.org/2000/svg" d="M135 119.062C144.375 114.688 154.375 115 165 120C166.25 125.625 161.25 130 150 133.125C140.625 130.625 135.625 125.938 135 119.062Z" fill="#211F1E" />
+
+<g xmlns="http://www.w3.org/2000/svg">
+<path d="M141.562 120L150.938 118.125Z" fill="black" />
+<path d="M141.562 120L150.938 118.125" stroke="#746662" stroke-width="2.8125" stroke-linecap="round" />
+</g>
+
+</g>
+</svg>

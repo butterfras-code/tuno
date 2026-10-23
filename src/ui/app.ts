@@ -1,3 +1,5 @@
+import { createAppHeader } from '../shared/ui/app-header.ts';
+import { toolPaths } from '../shared/ui/tuno-routes.ts';
 import tapHeadAsset from '../assets/uno-tap-head.svg';
 import micAsset from '../assets/mic.svg';
 import playAsset from '../assets/play.svg';
@@ -23,13 +25,17 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
   const settings = createSettings(store);
   const information = createInformationControls();
-  const header = el('header', 'app-header');
-  const brand = el('div', 'brand');
-  brand.append(el('h1', 'wordmark', 'tUno'), el('p', 'tagline', 'Practice with a friend.'));
+  const header = createAppHeader('tUno', 'Practice with a friend.');
   const navigation = el('nav', 'focus-navigation');
-  navigation.setAttribute('aria-label', 'Practice and apps');
+  navigation.setAttribute('aria-label', 'tUno tools');
   const links = TOOLS.map((tool) => {
-    const control = button(tool.label, () => store.dispatch({ type: 'focus', value: tool.id }));
+    const control = el('a', 'control');
+    control.href = location.protocol === 'file:' ? '#' + tool.id : toolPaths[tool.id];
+    control.addEventListener('click', event => {
+      if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      store.dispatch({ type: 'focus', value: tool.id });
+    });
     responsiveLabel(control, tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune', tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune');
     control.setAttribute('aria-label', tool.label);
     control.setAttribute('aria-controls', `view-${tool.id}`);
@@ -37,15 +43,11 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     return control;
   });
   const tinker = button('Settings', settings.open);
-  responsiveLabel(tinker, 'Tinker', 'Tinker');
+  responsiveLabel(tinker, 'Settings', 'Settings');
   tinker.setAttribute('aria-label', 'Settings');
   tinker.classList.add('tinker-control');
   navigation.append(tinker);
-  const notes = el('a', 'control');
-  notes.append(el('span', '', 'tuNotes'), el('span', 'notes-subtitle', '(Note Reading)'));
-  notes.href = location.protocol === 'file:' ? 'https://tuno.cc/notes/' : '/notes/';
-  navigation.append(notes);
-  header.append(brand, navigation);
+  header.append(navigation);
 
   const main = el('main', 'practice-surface');
   main.id = 'practice';
@@ -135,7 +137,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   extra.append(explorer);
   root.append(header, main, tools, footer, settings.node, ...popups, ...information.dialogs);
   store.subscribe((state) => {
-    links.forEach((link, index) => link.setAttribute('aria-pressed', String(TOOLS[index]!.id === state.focus)));
+    links.forEach((link, index) => TOOLS[index]!.id === state.focus ? link.setAttribute('aria-current', 'page') : link.removeAttribute('aria-current'));
     error.textContent = state.audioError;
     const listening = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
     iconLabel(summaries[0]!.action, listening ? 'Stop listening' : 'Start listening', micAsset);

@@ -3,7 +3,7 @@ const VERSION = '__BUILD_VERSION__';
 const PREFIX = `__APP_ID__:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const INTEGRITY = __RESOURCE_INTEGRITY__;
-const requestFor = (url) => new Request(url, { cache: 'reload', integrity: INTEGRITY[new URL(url).pathname.split('/').pop()] });
+const requestFor = (url) => new Request(url, { cache: 'reload', integrity: INTEGRITY[new URL(url).href.slice(self.registration.scope.length)] });
 const RESOURCES = Object.keys(INTEGRITY).map((path) => new URL(path, self.registration.scope).href);
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -31,8 +31,7 @@ self.addEventListener('fetch', (event) => {
   const scope = new URL(self.registration.scope);
   if (url.origin !== scope.origin) return;
   if (__EXCLUDED_PATHS__.some(path => url.pathname.startsWith(scope.pathname + path))) return;
-  const key = url.pathname === scope.pathname || url.pathname === scope.pathname + 'index.html'
-    ? RESOURCES[0] : url.origin + url.pathname;
+  const key = url.origin + url.pathname + (url.pathname.endsWith('/') ? 'index.html' : '');
   if (!RESOURCES.includes(key)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);

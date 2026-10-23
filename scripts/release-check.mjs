@@ -26,7 +26,7 @@ for (const [id, release] of Object.entries(manifestRelease.apps)) {
   }
   const manifest = JSON.parse(await readFile(new URL(`${hosted}manifest.webmanifest`, dist), 'utf8'));
   assert.equal(manifest.start_url, id === 'tuno' ? '/tune/' : './');
-  assert.equal(manifest.scope, id === 'tuno' ? '/tune/' : './');
+  assert.equal(manifest.scope, id === 'tuno' ? '/' : './');
   if (id === 'tuno') {
     assert.equal(manifest.id, '/');
     assert.deepEqual(manifest, JSON.parse(await readFile(new URL('hosted/manifest.webmanifest', dist), 'utf8')));

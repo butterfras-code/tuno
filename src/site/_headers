@@ -6,3 +6,15 @@
   Cache-Control: no-cache
 /notes/*
   Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+/suite-sw.js
+  Cache-Control: no-cache
+/launcher.*
+  Cache-Control: no-cache
+/tone/*
+  Cache-Control: no-cache
+/tempo/*
+  Cache-Control: no-cache
+/rhythm/*
+  Cache-Control: no-cache

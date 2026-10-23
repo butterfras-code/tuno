@@ -1,3 +1,4 @@
+import { buildSuite } from './suite-build.mjs';
 import { buildRhythmWalk } from './rhythm-walk-build.mjs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -17,7 +18,7 @@ await mkdir(portable, { recursive: true });
 const packageInfo = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const apps = [
   { id: 'tuno', name: 'tUno', title: 'tUno — Practice with a friend', description: 'Local-first tuner, reference tones, and metronome.', entry: 'src/main.ts', template: 'src/index.html', directory: 'tune', excluded: [] },
-  { id: 'tunotes', name: 'tuNotes', title: 'tuNotes — Read music with a friend', description: 'Note-reading companion · Technical preview.', entry: 'src/apps/tunotes/main.ts', template: 'src/apps/tunotes/index.html', directory: 'notes', excluded: [] },
+  { id: 'tunotes', name: 'tuNotes', title: 'tuNotes — Read Notes with a friend', description: 'Note-reading companion · Technical preview.', entry: 'src/apps/tunotes/main.ts', template: 'src/apps/tunotes/index.html', directory: 'notes', excluded: [] },
 ];
 let revision = 'unknown';
 let dirty = true;
@@ -33,7 +34,7 @@ async function buildApp(app) {
   await mkdir(hosted, { recursive: true });
   const manifest = JSON.stringify({
     id: app.id === 'tuno' ? '/' : './', name: app.title, short_name: app.name,
-    start_url: app.id === 'tuno' ? '/tune/' : './', scope: app.id === 'tuno' ? '/tune/' : './', display: 'standalone',
+    start_url: app.id === 'tuno' ? '/tune/' : './', scope: app.id === 'tuno' ? '/' : './', display: 'standalone',
     background_color: '#f4efe7', theme_color: '#f4efe7',
     description: app.description,
     icons: [192, 512].map((size) => ({ src: app.id === 'tuno' ? `/tune/icon-${size}.png` : `./icon-${size}.png`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })),
@@ -121,6 +122,7 @@ async function buildApp(app) {
           releases[app.id] = { version: packageInfo.version, build: version, revision, dirty, checksums, portableSha256: createHash('sha256').update(html).digest('hex'), hostedDirectory: app.directory, portableFile: `${app.id}.html` };
           metadata[app.id] = result.metafile;
           await writeFile(path.join(root, 'dist/release.json'), JSON.stringify({ ...releases.tuno, apps: releases }, null, 2));
+          if (dev) await buildSuite(true);
           await writeFile(path.join(root, 'dist/build-meta.json'), JSON.stringify({ ...metadata.tuno, apps: metadata }, null, 2));
         });
       },
@@ -129,9 +131,12 @@ async function buildApp(app) {
 
   if (dev) {
     const context = await esbuild.context(options);
+    await context.rebuild();
     await context.watch();
-    const { port } = await context.serve({ servedir: hostedRoot, host: '127.0.0.1', port: 5173 });
-    console.log(`${app.name}: http://127.0.0.1:${port}/${app.directory ? app.directory + '/' : ''} — refresh after editing.`);
+    if (app.id === 'tuno') {
+      const { port } = await context.serve({ servedir: hostedRoot, host: '127.0.0.1', port: 5173 });
+      console.log(`Practice Tools: http://127.0.0.1:${port}/ — refresh after editing.`);
+    }
     const shutdown = async () => { await context.dispose(); process.exit(0); };
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
@@ -139,6 +144,7 @@ async function buildApp(app) {
     await esbuild.build(options);
   }
 }
-for (const app of apps.filter(app => !process.argv.includes('--walk') && !process.argv.includes('--counts') && (!dev || app.id === (process.argv.includes('--notes') ? 'tunotes' : 'tuno')))) await buildApp(app);
-if (!dev || process.argv.includes('--walk') || process.argv.includes('--counts')) await buildRhythmWalk(dev);
+for (const app of apps) await buildApp(app);
+await buildRhythmWalk(dev);
+await buildSuite(dev);
 console.log('App builds and portable resource checks passed.');
