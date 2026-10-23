@@ -142,4 +142,3 @@ export function assessLegacyAttempt(record: AttemptRecord) {
   }
   return { ...base, basis, rhythm, hold, tempo, steadiness, reason: confident ? null : actual.length ? 'Not enough evidence for performed tempo; rhythm uses target tempo.' : 'No attacks received.', tempoReason: tempo ? null : 'Not enough evidence: need four matched attacks spanning three performance beats with a clear tempo fit.', steadinessReason: steadiness === null ? 'Not enough evidence: need a clear tempo and four uninterrupted intervals spanning four performance beats.' : null, holdReason: hold === null ? 'No matched played notes.' : null, matchedNotes: matches.length, missing: expected.length - matches.length, extra, matches, usableIntervals: intervals.length, intervalSpan, performedBeat: confident ? beat : null, residualMedian };
 }
-
