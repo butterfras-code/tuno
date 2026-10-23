@@ -8,7 +8,7 @@ async function writingWorkspaceScenarios(w = window) {
   const choose = (selector, value) => { const input = q(selector); input.value = value; input.dispatchEvent(new w.Event('change', { bubbles: true })); };
   const fixture = async id => { choose('[data-preset]', id); await settle(); };
   const key = (target, value) => target.dispatchEvent(new w.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true }));
-  choose('[aria-label="Mode"]', 'write');
+  all('button').find(b => b.textContent === 'Counts').click();
   await fixture('dense-sixteenths');
   const scroll = q('.passage-scroll'), overview = q('.rhythm-overview');
   const targets = all('[data-count-id]');
@@ -39,9 +39,9 @@ async function writingWorkspaceScenarios(w = window) {
   key(overview, 'ArrowRight'); assert(scroll.scrollLeft > 0, 'Overview arrow navigation scrolls');
   scroll.scrollLeft = 123; await settle();
   assert(Number(overview.getAttribute('aria-valuenow')) === 123, 'Manual scroll synchronizes accessible overview value');
-  choose('[aria-label="Mode"]', 'tap'); await settle();
+  all('button').find(b => b.textContent === 'Perform').click(); await settle();
   assert(overview.hidden && !q('.passage').classList.contains('writing-workspace'), 'Performance retains its existing layout');
-  choose('[aria-label="Mode"]', 'write'); await settle();
+  all('button').find(b => b.textContent === 'Counts').click(); await settle();
   assert(Math.abs(scroll.scrollLeft - 123) < 1 && targets[0].textContent === '1', 'Returning to writing retains viewport and answer');
   targets[0].click(); key(d.activeElement, 'Delete'); assert(targets[0].textContent === '·', 'Deletion after returning to writing works');
   const action = all('.write-actions button').find(b => b.textContent === 'Check');

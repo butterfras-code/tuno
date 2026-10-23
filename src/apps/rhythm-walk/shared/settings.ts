@@ -86,7 +86,19 @@ export function createSettingsPage(callbacks: {
   const activeControls = el('div', 'settings-live-controls');
   let counting = callbacks.initialCounting;
   const countingControls = new Map<keyof CountingPreferences, HTMLInputElement | HTMLSelectElement>();
-  const labels = { longNotes: 'Long-note subdivision', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show duration line', linePlacement: 'Line placement', internalAppearance: 'Internal-count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
+  const countingGroup = el('fieldset', 'counting-settings-group'); countingGroup.append(el('legend', '', 'Counting'));
+  const longNotesGroup = el('fieldset', 'counting-settings-group'); longNotesGroup.append(el('legend', '', 'Long Notes'));
+  const longNoteKeys = new Set<keyof CountingPreferences>(['longNotes', 'showDurationLine', 'linePlacement', 'internalAppearance']);
+  const addCountingField = (key: Exclude<keyof CountingPreferences, 'version'>, input: HTMLInputElement | HTMLSelectElement) => {
+    const control = field(labels[key], input);
+    if (key === 'longNotes') {
+      const hint = el('p', 'setting-hint', 'Add counts inside long notes and rests.'); hint.id = 'subdivide-hint';
+      input.setAttribute('aria-describedby', hint.id); control.append(hint);
+    }
+    (longNoteKeys.has(key) ? longNotesGroup : countingGroup).append(control);
+  };
+  activeControls.append(countingGroup, longNotesGroup);
+  const labels = { longNotes: 'Subdivide', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show connecting line', linePlacement: 'Line placement', internalAppearance: 'Internal count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
   function change(key: keyof CountingPreferences, value: string | boolean) {
     counting = captureCountingPreferences({ ...counting, [key]: value }); callbacks.counting(counting);
     updateSavedNote();
@@ -94,11 +106,11 @@ export function createSettingsPage(callbacks: {
   }
   for (const key of ['longNotes', 'dotted', 'includeRests', 'showDurationLine'] as const) {
     const input = el('input'); input.type = 'checkbox'; input.checked = counting[key]; input.dataset.countingPreference = key;
-    input.addEventListener('change', () => change(key, input.checked)); countingControls.set(key, input); activeControls.append(field(labels[key], input));
+    input.addEventListener('change', () => change(key, input.checked)); countingControls.set(key, input); addCountingField(key, input);
   }
   for (const key of ['linePlacement', 'internalAppearance', 'restAppearance', 'vocabulary', 'offbeat'] as const) {
     const input = select(countingPreferenceOptions[key].map(value => ({ value, label: value === 'numbers' ? '1 e & a' : value === 'syllables' ? '1 ta-te-ta' : value[0]!.toUpperCase() + value.slice(1) })), value => change(key, value));
-    input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); activeControls.append(field(labels[key], input));
+    input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); addCountingField(key, input);
   }
   const share = el('div', 'counting-share');
   const shareHint = el('p', 'setting-hint', 'Share the counting preferences currently selected here, including pending changes. The current exercise is unchanged.');
@@ -127,7 +139,7 @@ export function createSettingsPage(callbacks: {
   adopt.hidden = !callbacks.isLinked();
   share.append(shareHint, copy, adopt, shareStatus, fallback);
   activeControls.append(share);
-  activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and D toggles Duration for the selected unit. Hidden lines with unchanged internal counts disable duration entry and assessment. Type t then a/e for ta/te; l and i enter la and li.'));
+  activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';

@@ -38,8 +38,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   });
   howToPlay.value = options.preferences.playStyle; howToPlay.dataset.setting = 'how-to-play';
   const playField = field('How to play', howToPlay);
-  const playHint = el('p', 'setting-hint', playInstructions[options.preferences.playStyle]);
-  playHint.id = 'how-to-play-hint'; howToPlay.setAttribute('aria-describedby', playHint.id); playField.append(playHint);
+  howToPlay.setAttribute('aria-describedby', 'instructions');
   const tempoField = field('Tempo (quarter-note BPM)', tempo); tempoField.className = 'score-tempo';
   tempoField.querySelector('.field-label')!.className = 'field-label sr-only';
   const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -50,7 +49,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   tempoField.prepend(icon, tempoUnit); tempoField.append(bpm);
   function persist() { if (tempo.checkValidity()) options.preferences.bpm = tempo.valueAsNumber; options.preferences.metronome = metronome.checked; options.changed(); }
   tempo.addEventListener('change', persist); metronome.addEventListener('change', persist);
-  const status = el('span', 'status', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const status = el('span', 'status sr-only', 'Ready'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const countInDisplay = el('span', 'count-in-display'); countInDisplay.hidden = true; countInDisplay.setAttribute('role', 'group');
   let countInDots: HTMLElement[] = [];
   function renderCountIn(plan: Plan) {
@@ -78,7 +77,8 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
     const link = el('a'); link.href = url; link.download = `rhythm-walk-${result.exercise.id}.json`; link.click(); URL.revokeObjectURL(url);
   }); download.hidden = true;
   const actions = el('div', 'pad-tools'); actions.append(stop);
-  const review = el('section'); review.setAttribute('aria-label', 'Attempt review');
+  // Retain diagnostic evidence and score descriptions without a second visible review.
+  const review = el('section'); review.setAttribute('aria-label', 'Attempt review'); review.hidden = true;
   const timing = createTimingPanel({
     audio: async () => { audio ??= new AudioContext(); await audio.resume(); return audio; },
     busy: active => { main.classList.toggle('calibrating', active); lock(active); if (active) pad.disabled = true; },
@@ -92,7 +92,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   const calibrate = button('Calibrate', () => dialog.showModal());
   actions.append(calibrate);
   const help = el('div', 'performance-help');
-  help.append(instructions, el('p', 'note', 'Timing windows are provisional. Browser and device latency can affect offsets. This prototype reports evidence, without mastery scores. Timing correction is fixed for the session; raw evidence remains available.'));
+  help.append(instructions);
   const surface = el('div', 'performance-surface'); surface.append(pad, actions);
   main.append(surface, review, dialog);
 
@@ -155,7 +155,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
     const assessment = assessAttempt(record);
     treatBag.finish(record, assessment); renderFeedback(record.status === 'interrupted');
     results?.panel.remove();
-    results = createResults(record, assessment, () => { void begin(); }, options.next, options.nextIssue());
+    results = createResults(record, () => { void begin(); }, options.next, options.nextIssue());
     surface.hidden = true; surface.after(results.panel);
     // Focus a noninteractive heading. A finishing Space/pointer release cannot
     // trigger a result action, and hidden pad click synthesis cannot restart.
@@ -261,7 +261,6 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
     const plan = planPassage(options.exercise().score.measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().score.measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
-    playHint.textContent = playInstructions[options.preferences.playStyle];
     instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
   }
   function cancel(reason: string) {

@@ -22,28 +22,42 @@ try {
       const checks = [], q = s => document.querySelector(s), all = s => [...document.querySelectorAll(s)];
       const check = (value, label) => { if (!value) throw Error(label); checks.push(label); };
       const settle = () => new Promise(r => setTimeout(r, 100));
+      const panel = name => all('.interaction-selector button').find(b => b.textContent === name).click();
       const choose = (selector, value) => { const input = q(selector); input.value = value; input.dispatchEvent(new Event('change', { bubbles: true })); };
       const rect = selector => q(selector).getBoundingClientRect();
       const visible = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      check(!q('.shared-controls') && !all('#practice-view summary').some(el => el.textContent === 'Exercise settings'), 'Practice omits the extra Exercise settings disclosure');
+      all('button').find(b => b.getAttribute('aria-label') === 'Customize next exercise').click();
+      check(q('.custom-exercise-dialog').open && q('.custom-exercise-dialog [data-level-details]') && q('.custom-exercise-dialog .testing-fixtures'), 'Customize retains level requirements and opt-in testing fixtures');
+      q('[data-level-details]').open = true; await settle();
+      check(visible(q('[data-level-details] p')) && q('.custom-exercise-dialog').scrollWidth <= q('.custom-exercise-dialog').clientWidth, 'Requirements remain readable without dialog overflow');
+      q('.custom-exercise-dialog').close(); await settle();
       const header = rect('.app-header');
       check(all('.app-header > *').filter(visible).every(el => { const r = el.getBoundingClientRect(); return r.top >= header.top && r.bottom <= header.bottom && Math.abs(r.top + r.height / 2 - header.top - header.height / 2) < 2; }), 'Header controls occupy one row');
-      check(!q('.app-header [aria-label="Mode"]') && q('.practice-workspace [aria-label="Mode"]'), 'Mode belongs to practice workspace');
+      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').length===2, 'Counts and Perform are the only response selector');
       const level = rect('.level-configuration'), bag = rect('.feedback-snapshot');
       check(Math.abs(level.top - bag.top) < 1 && level.right <= bag.left, 'Level and feedback share a horizontal row');
-      choose('[aria-label="Mode"]', 'tap');
+      panel('Perform');
       const ratings = all('.treat-ratings > li');
       check(ratings.length === 4 && ratings.every(visible), 'All four dimensions visible before scoring');
       check(ratings.every(el => el.dataset.bones === '' && el.textContent.includes('Not yet scored')), 'Unscored state never implies zero bones');
       if (innerWidth <= 768) check(all('.bone-count').every(visible), 'Mobile shows compact bone counts for every dimension');
       else check(visible(q('.feedback-snapshot h2')) && all('.treat-label-full').every(visible), 'Desktop retains Treat Bag heading and full labels');
-      choose('[aria-label="Mode"]', 'write');
+      check(q('.performance-setup').querySelectorAll('input[type=checkbox]').length===2, 'Perform contains metronome and written-count controls');
+      check(!q('.counting-rating') && q('.passage').classList.contains('counts-hidden'), 'Perform shows performance feedback and hides written counts by default');
+      const showCounts = all('.performance-setup label').find(label=>label.textContent.includes('Show written counts')).querySelector('input');
+      showCounts.checked=true; showCounts.dispatchEvent(new Event('change'));
+      check(!q('.passage').classList.contains('counts-hidden') && all('.answer-area').every(area=>area.inert), 'Perform can show read-only written counts');
+      showCounts.checked=false; showCounts.dispatchEvent(new Event('change'));
+      panel('Counts');
+      check(q('.counting-rating') && !q('[data-metric="rhythm"]') && !q('.passage').classList.contains('counts-hidden'), 'Counts restores editable counts and counting-only feedback');
       for (const fixture of ['dense-sixteenths', 'dotted-quarter', 'tie-across-bar', 'half-rest', 'triplet-mixed-3']) {
         choose('[data-preset]', fixture); await settle();
         const bars = all('.plan-measure').map(el => el.getBoundingClientRect());
         check(bars.every(r => Math.abs(r.top - bars[0].top) < 1), `${fixture}: continuous music`);
         const scroll = q('.passage-scroll');
         check(q('.rhythm-overview').hidden === (scroll.scrollWidth <= scroll.clientWidth + 1), `${fixture}: conditional minimap`);
-        check(rect('.shared-interaction').top >= rect('.response-controls').bottom - 1, `${fixture}: dock clears notation and mode controls`);
+        check(rect('.shared-interaction').top >= rect('.passage').bottom - 1, `${fixture}: dock clears notation and mode controls`);
         check(document.documentElement.scrollWidth <= innerWidth, `${fixture}: no page overflow`);
         const tokens = all('[data-count-id]');
         if (tokens.length) {
@@ -55,7 +69,7 @@ try {
       choose('[data-preset]', 'half'); await settle();
       q('[data-count-id]').click(); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: '1', bubbles: true, cancelable: true }));
       const answer = all('[data-count-id]').map(el => el.textContent).join('|'), identity = q('.passage').dataset.exerciseId;
-      for (const mode of ['both', 'tap', 'write']) choose('[aria-label="Mode"]', mode);
+      for (const name of ['Perform', 'Counts']) panel(name);
       check(answer === all('[data-count-id]').map(el => el.textContent).join('|') && q('.passage').dataset.exerciseId === identity, 'Modes retain written answers and exercise');
       choose('[data-setting="teaching-preset"]', 'uno-2');
       check(answer === all('[data-count-id]').map(el => el.textContent).join('|') && q('.passage').dataset.exerciseId === identity && q('.exercise-summary').textContent.includes('Pending settings'), 'Level applies to next exercise without replacing responses');
@@ -71,7 +85,7 @@ try {
       for (const y of [0, 120, 260]) {
         await page.evaluate(y => scrollTo(0, y), y); await page.waitForTimeout(60);
         assert.ok(await page.evaluate(() => {
-          const q = s => document.querySelector(s), dock = q('.shared-interaction').getBoundingClientRect(), mode = q('.response-controls').getBoundingClientRect(), area = q('.practice-workspace').getBoundingClientRect();
+          const q = s => document.querySelector(s), dock = q('.shared-interaction').getBoundingClientRect(), mode = q('.passage').getBoundingClientRect(), area = q('.practice-workspace').getBoundingClientRect();
           const noArtificialGap = q('.practice-workspace').classList.contains('dock-roomy') || dock.top - mode.bottom < 20;
           return noArtificialGap && dock.top >= mode.bottom - 1 && dock.bottom <= area.bottom + 1 && document.documentElement.scrollWidth <= innerWidth;
         }), `${width}x${height}: dock stays inside workspace and never overlays preceding content`);
@@ -79,14 +93,13 @@ try {
     }
     await page.evaluate(() => scrollTo(0, 0));
     await page.exposeFunction('__assessmentSnapshot', async () => {
-      const mode = page.locator('[aria-label="Mode"]');
-      await mode.selectOption('both');
+      await page.getByRole('button', {name:'Perform',exact:true}).click();
       await page.locator('.treat-details').evaluate(el => { el.open = true; });
       await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(100);
       assert.equal(await page.locator('.treat-ratings > li:not(.counting-rating)').count(), 4);
       assert.ok(await page.locator('[data-metric="hold"]').getAttribute('data-bones'));
       await page.screenshot({ path: `${output}/${width}-expanded-feedback.png`, fullPage: true });
-      await mode.selectOption('both');
+      await page.getByRole('button', {name:'Perform',exact:true}).click();
     });
     await page.evaluate(() => { window.__assessmentScenario = 'accepted'; });
     await page.addScriptTag({ content: assessmentSource });

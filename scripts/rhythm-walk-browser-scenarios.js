@@ -14,7 +14,7 @@
   const status = () => document.querySelector('.tap-response .status').textContent;
   const button = name => [...document.querySelectorAll('button')].find(b => b.textContent === name);
   const pad = document.querySelector('.tap-response .pad');
-  const picker = document.querySelector('.shared-controls select[data-preset]');
+  const picker = document.querySelector('.testing-fixtures select[data-preset]');
   const tempo = document.querySelector('input[type=number]');
   const metro = document.querySelector('.performance-settings input[type=checkbox]');
   const review = document.querySelector('[aria-label="Attempt review"]');

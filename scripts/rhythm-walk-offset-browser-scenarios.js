@@ -33,7 +33,7 @@ window.__offsetCheck = (async () => {
     if (scenario === 'automatic' || scenario === 'reuse') {
       if (scenario === 'automatic') { button('Reset timing').click(); panel.querySelector('input[type=checkbox]').checked = true; }
       const before = JSON.parse(sessionStorage.getItem('tuno.rhythm-walk.timing.v1'));
-      const picker = document.querySelector('.shared-controls select[data-preset]'); picker.value = 'quarters'; picker.dispatchEvent(new Event('change'));
+      const picker = document.querySelector('.testing-fixtures select[data-preset]'); picker.value = 'quarters'; picker.dispatchEvent(new Event('change'));
       document.querySelector('input[type=number]').value = '80';
       document.querySelector('.tap-response .pad').click(); await wait(() => status().startsWith('Count-in'));
       const start = scheduled[0] + 3, pad = document.querySelector('.tap-response .pad');
@@ -57,7 +57,7 @@ window.__offsetCheck = (async () => {
       const input = panel.querySelector('select'); input.value = scenario === 'manual-pointer' ? 'pointer' : 'keyboard';
       button('Tap-along calibration').click(); await wait(() => scheduled.length === 16);
       const pad = button('Calibration pad');
-      assert(document.querySelector('.shared-controls select[data-preset]').disabled, 'practice is locked during calibration');
+      assert(document.querySelector('.testing-fixtures select[data-preset]').disabled, 'practice is locked during calibration');
       for (let i = 4; i < 16; i++) {
         await wait(() => context.currentTime >= scheduled[i] + .2); key(pad, 'keydown'); await sleep(30); key(pad, 'keyup');
       }

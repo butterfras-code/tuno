@@ -17,8 +17,9 @@ async function countingPlanScenarios(w = window) {
   const unit = control => q(`[data-unit-control="${control}"]`);
   const activate = i => counts()[i].click();
   const defaults = () => { for (const [k,v] of Object.entries({ longNotes:true,dotted:false,includeRests:true,showDurationLine:true,linePlacement:'beside',internalAppearance:'raised',restAppearance:'parentheses',vocabulary:'numbers',offbeat:'&' })) setting(k,v); };
-  choose('select[aria-label="Mode"]', 'write');
+  all('button').find(b => b.textContent === 'Counts').click();
   defaults();
+  assert(['longNotes','showDurationLine','linePlacement','internalAppearance'].every(key => q(`[data-counting-preference="${key}"]`).closest('fieldset').querySelector('legend').textContent === 'Long Notes'), 'Long Notes groups subdivision and connection appearance');
   // Mixed-density bars exposed independently scaled notation and escaping actions.
   for (const id of ['tie-across-bar', 'six-wrap', 'dense-sixteenths', 'triplet-mixed-3']) {
     await fixture(id);
@@ -41,15 +42,21 @@ async function countingPlanScenarios(w = window) {
     assert(!q('.rhythm-overview').hidden === (q('.passage-scroll').scrollWidth > q('.passage-scroll').clientWidth + 1), id + ': overview appears only for overflow');
   }
   defaults(); await fixture('half');
-  activate(0); key('1'); activate(0);
-  const clearCount = all('button').find(b => b.textContent === 'Clear count');
+  activate(0); key('1'); activate(1); key('2'); activate(0);
+  const clearCount = all('button').find(b => b.textContent === 'Erase');
+  assert(clearCount.parentElement === all('button').find(b => b.textContent === 'Erase All').parentElement && clearCount.closest('.write-actions'), 'Erase and Erase All share the action row');
   clearCount.focus(); clearCount.click();
-  assert(d.activeElement === counts()[0] && counts()[0].textContent === '·', 'Clearing from palette restores count focus');
+  assert(d.activeElement === counts()[0] && counts()[0].textContent === '·', 'Erase restores selected count focus');
+  assert(counts()[1].textContent === '2', 'Erase preserves other entered counts');
+  click('Erase All');
+  assert(counts().every(c => c.textContent === '·') && d.activeElement === counts()[0], 'Erase All resets counts and selects the first input');
   unit('restMarked').focus(); key('r');
   assert(d.activeElement === counts()[0], 'Rest shortcut from palette restores count focus');
   key('r');
-  unit('durationIndicated').focus(); key('d');
-  assert(d.activeElement === counts()[0], 'Duration shortcut from palette restores count focus');
+  key('d'); assert(!q('.inferred-duration'), 'D no longer toggles Connect');
+  assert(unit('durationIndicated').getAttribute('aria-keyshortcuts') === 'c' && counts()[0].getAttribute('aria-keyshortcuts') === 'r c', 'Connect shortcut is exposed accessibly');
+  unit('durationIndicated').focus(); key('C');
+  assert(d.activeElement === counts()[0], 'Connect shortcut from palette restores count focus');
   key('ArrowRight');
   assert(d.activeElement === counts()[1], 'Keyboard navigation works after palette replacement');
   activate(counts().length - 1);
@@ -59,7 +66,7 @@ async function countingPlanScenarios(w = window) {
   defaults(); await fixture('half');
   assert(counts().length === 5, 'One-bar editor renders only plan counts');
   assert(!q('.line-handle, .endpoint-prompt, .rest-target'), 'No endpoint controls remain');
-  activate(1); key('d');
+  activate(1); key('c');
   assert(counts()[1].classList.contains('sustained') && !counts()[0].classList.contains('sustained'), 'Internal-count toggle preserves full-size attack');
   assert(q('.inferred-duration'), 'Duration indication projects line');
   activate(0); key('r');
@@ -73,7 +80,7 @@ async function countingPlanScenarios(w = window) {
   assert(counts().map(c => c.textContent).join('|') === before, 'Pending settings preserve tokens');
   assert(q('.counting-totals').textContent === feedback, 'Pending settings preserve results');
   assert(q('.exercise-summary').textContent.includes('Pending settings'), 'Pending state is explained');
-  for (const mode of ['both','tap','write']) choose('select[aria-label="Mode"]',mode);
+  for (const panel of ['Perform','Counts']) all('button').find(b => b.textContent === panel).click();
   assert(q('.counting-totals').textContent === feedback && counts().map(c => c.textContent).join('|') === before, 'Mode changes retain writing and results');
   click('Check Again'); assert(counts().map(c => c.textContent).join('|') === before && q('.counting-totals').textContent === feedback, 'Reassessment retains evidence and confirmed results');
   click('New exercise');
@@ -84,13 +91,13 @@ async function countingPlanScenarios(w = window) {
   activate(0); key('l'); assert(counts()[0].textContent === 'la', 'Triplet alias remains atomic');
   defaults(); await fixture('tie-wrap');
   const tied = counts().find(c => c.dataset.countId === 'count:0:3/4'), continuation = counts().find(c => c.dataset.countId === 'count:1:0/1');
-  tied.click(); key('d'); key('r');
+  tied.click(); key('c'); key('r');
   assert(continuation.classList.contains('sustained'), 'Cross-bar continuation shares duration state');
   assert(all('.inferred-duration').filter(p => p.dataset.unitId === tied.dataset.unitId).length === 2, 'Wrapped unit renders two pieces from one state');
   assert(all('.inferred-rest').filter(p => p.dataset.unitId === tied.dataset.unitId).length === 2, 'Wrong-rest marking projects across wrap');
   tied.click(); key('ArrowRight'); assert(d.activeElement === continuation, 'Arrow navigation crosses measures by count ID');
   key('r'); assert(!all('.inferred-rest').some(p => p.dataset.unitId === tied.dataset.unitId), 'Continuation toggles full cross-bar rest state');
-  key('d'); assert(!continuation.classList.contains('sustained'), 'Continuation toggles full duration state');
+  key('c'); assert(!continuation.classList.contains('sustained'), 'Continuation toggles full duration state');
   defaults(); setting('restAppearance','slashes'); setting('showDurationLine',false); await fixture('half-rest');
   activate(1); unit('restMarked').click(); unit('durationIndicated').click();
   assert(counts().slice(0,2).every(c => c.classList.contains('rest-slashed')), 'Rest slashes inherit across whole unit');
@@ -118,13 +125,13 @@ async function countingPlanScenarios(w = window) {
   checkParentheses('Adjacent rests');
   defaults(); await fixture('half-rest'); activate(0); key('r');
   checkParentheses('Subdivided rest');
-  key('d'); checkParentheses('Subdivided rest with duration');
+  key('c'); checkParentheses('Subdivided rest with duration');
 
   defaults(); setting('includeRests',false); await fixture('all-rests');
   assert(counts().length === 0, 'All-rest exercise permits zero inputs');
   assert(!unit('restMarked') && !unit('durationIndicated'), 'Empty exercise has no stale unit controls');
   click('Check'); assert(q('.counting-confirmation').textContent.includes('All applicable'), 'Zero-input Check excludes inapplicable dimensions');
-  click('Check Again'); click('Clear'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
+  click('Check Again'); click('Erase All'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
   await fixture('half'); activate(0); assert(!unit('restMarked'), 'Rest omission suppresses rest control on sounded units too');
   defaults(); await fixture('six-dotted-half');
   assert(counts().length === 2 && q('g[data-value="half"][data-dots="1"]'), 'Dotted-half engraving and two count inputs');
@@ -133,7 +140,7 @@ async function countingPlanScenarios(w = window) {
   await fixture('six-dotted'); assert(counts().length === 6 && new Set(counts().map(c=>c.dataset.unitId)).size === 2, 'Untied dotted quarters retain two units');
   setting('longNotes',false); await fixture('six-dotted-half'); assert(counts().length === 1, 'Compound dotted half has one count without long rule');
   for (const placement of ['above','below','beside']) {
-    defaults(); setting('linePlacement',placement); await fixture('half'); activate(0); key('d');
+    defaults(); setting('linePlacement',placement); await fixture('half'); activate(0); key('c');
     assert(q('.answer-area').dataset.placement === placement && q('.inferred-duration'), `Line placement ${placement} projects entered state`);
   }
   defaults(); await fixture('dense-sixteenths');
@@ -150,10 +157,10 @@ async function countingPlanScenarios(w = window) {
   strip.classList.toggle('wrapped', wasWrapped); await settle();
   activate(0); key('r'); activate(1); key('r'); checkParentheses('Dense counts');
   activate(15); key('ArrowRight'); assert(d.activeElement===counts()[16], 'Dense navigation crosses measures');
-  choose('select[aria-label="Mode"]','tap'); await settle();
+  all('button').find(b => b.textContent === 'Perform').click(); await settle();
   assert(all('.measure-editor').every(m=>m.scrollWidth<=m.clientWidth+1), 'Hidden-count performance retains compact notation');
   if (desktop) assert(all('.plan-measure').every(m=>Math.abs(m.getBoundingClientRect().top-q('.plan-measure').getBoundingClientRect().top)<1), 'Tap mode keeps all four dense bars on one row');
-  choose('select[aria-label="Mode"]','write'); await settle();
+  all('button').find(b => b.textContent === 'Counts').click(); await settle();
   defaults(); await fixture('half-rest'); activate(0);
   const restButton = unit('restMarked');
   restButton.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:12}));

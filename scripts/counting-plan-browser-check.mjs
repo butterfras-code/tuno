@@ -23,7 +23,7 @@ try {
     await page.addScriptTag({ content: source });
     report.checks.push(await page.evaluate(() => countingPlanScenarios()));
     await page.locator('[data-count-id]').first().focus();
-    await page.keyboard.press('1'); await page.keyboard.press('d');
+    await page.keyboard.press('1'); await page.keyboard.press('c');
     assert.equal(await page.locator('[data-count-id]').first().textContent(), '1');
     assert.equal(await page.locator('.sustained').count(), 1);
     await page.addScriptTag({ content: workspaceSource });

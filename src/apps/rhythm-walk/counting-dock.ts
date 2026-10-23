@@ -1,5 +1,5 @@
 /** Bottom stickiness is allowed only where the dock cannot cover the score or
- * mode controls. Normal flow reserves its space, including on short screens. */
+ * panel controls. Normal flow reserves its space, including on short screens. */
 export function keepCountingDockClear(area: HTMLElement, preceding: HTMLElement, dock: HTMLElement) {
   let frame = 0;
   function update() {

@@ -10,7 +10,8 @@ window.__assessmentCheck = (async () => {
   const choose = (node, value) => { node.value=value; node.dispatchEvent(new Event('change')); };
   const button = name => [...document.querySelectorAll('button')].find(n=>n.textContent===name);
   const pad=document.querySelector('.tap-response .pad'), surface=document.querySelector('.performance-surface');
-  const mode=document.querySelector('select[aria-label="Mode"]'), preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
+  const selectPanel = name => button(name).click();
+  const preset=document.querySelector('[data-preset]'), tempo=document.querySelector('.score-tempo input'), style=document.querySelector('[data-setting=how-to-play]');
   const id=()=>document.querySelector('.passage').dataset.exerciseId;
   const written=()=>[...document.querySelectorAll('.count-slot')].map(n=>n.textContent).join();
   // Background native preview has no OS focus; scope a focus predicate stub to
@@ -23,7 +24,7 @@ window.__assessmentCheck = (async () => {
   URL.createObjectURL=blob=>{evidence=blob.text().then(JSON.parse);return originalURL(blob);};
   const prevent=e=>{if(e.target instanceof HTMLAnchorElement && e.target.download)e.preventDefault();};document.addEventListener('click',prevent,true);
   const download=async()=>{button('Download timing evidence').click();return evidence;};
-  const begin=async(retry=false)=>{if(mode.value==='both')button('Perform').click();scheduled=[];(retry?button('Try again'):pad).click();await wait(()=>scheduled.length && document.querySelector('.tap-response .status').textContent.startsWith('Count-in'));return scheduled[0]+document.querySelectorAll('.count-in-dot').length*60/Number(tempo.value);};
+  const begin=async(retry=false)=>{selectPanel('Perform');scheduled=[];(retry?button('Try again'):pad).click();await wait(()=>scheduled.length && document.querySelector('.tap-response .status').textContent.startsWith('Count-in'));return scheduled[0]+document.querySelectorAll('.count-in-dot').length*60/Number(tempo.value);};
   let stampAnchor;
   const holdStyle = ['pointer','compound','accepted','short','tied'].includes(scenario);
   const pointer=scenario==='pointer'||scenario==='compound'||scenario==='accepted';
@@ -46,7 +47,7 @@ window.__assessmentCheck = (async () => {
     assert(!outsideMenu.defaultPrevented,'context menus elsewhere remain available');
     const outsideTouch=new Event('touchstart',{bubbles:true,cancelable:true});document.querySelector('.rhythm-nav').dispatchEvent(outsideTouch);
     assert(!outsideTouch.defaultPrevented,'touch gestures elsewhere remain available');
-    choose(mode,'both');choose(preset,'half');choose(preset,scenario==='rest-silence'?'sixteenth-all-rests':scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');choose(style,holdStyle?'hold':'tap');
+    selectPanel('Counts');choose(preset,'half');choose(preset,scenario==='rest-silence'?'sixteenth-all-rests':scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');choose(style,holdStyle?'hold':'tap');
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;
     const slot=document.querySelector('.count-slot');slot.focus();slot.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
@@ -55,7 +56,7 @@ window.__assessmentCheck = (async () => {
     const exercise=id(),answer=written();
     const start=await begin();
     if(scenario==='cancellation') {
-      const before=stopped;choose(mode,'write');choose(mode,'both');
+      const before=stopped;selectPanel('Counts');selectPanel('Counts');
       const record=await download();assert(record.status==='interrupted' && record.assessment.rhythm===null,'interrupted attempt ungraded');assert(stopped>before,'audio stopped before interruption results');
       assert(document.querySelector('.performance-results').textContent.includes('not graded'),'retry interruption explanation');assert(id()===exercise && written()===answer,'cancel retains exercise and writing');
       await begin(true);button('Stop').click();assert((await download()).status==='interrupted','retry then Stop cancels safely');
@@ -85,16 +86,17 @@ window.__assessmentCheck = (async () => {
     stamp('up',count*spacing*scale,start);pad.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));
     document.activeElement.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true}));
     assert(surface.hidden && panel.isConnected,'finishing release and synthesized click cannot retry');
-    assert(text.includes(`Rhythm accuracy at ${scenario==='compound'||scenario==='tied'?'target':'performed'} tempo:`) && Number(text.match(/tempo: (\d+)%/)[1])>=95,'pattern score and tempo basis are explicit (synthetic clock tolerance): ' + text);
+    const feedbackText = document.querySelector('.feedback-snapshot').textContent;
+    assert(feedbackText.includes(scenario==='compound'||scenario==='tied'?'target tempo':'performed tempo') && Number(feedbackText.match(/Rhythm: (\d+)%/)[1])>=95,'top feedback retains pattern score and tempo basis');
     assert(document.querySelector('.feedback-snapshot .result-summary') && !/BPM|%|ms/.test(document.querySelector('.feedback-snapshot .result-summary').textContent),'concise musical summary without technical metrics');
-    assert(!panel.querySelector('details').open && panel.querySelector('details .result-metrics'),'numbers remain available in collapsed Details');
-    assert(text.includes('Hold accuracy')===holdStyle,'hold metric follows attempt style');
+    assert(!panel.querySelector('details') && document.querySelector('.timing-evidence').closest('[hidden]'),'input area omits duplicate metrics and visible timing evidence');
+    assert(document.querySelector('.feedback-snapshot .treat-assessment').textContent.includes('Holding notes: Not assessed in Tap')===!holdStyle,'top hold metric follows attempt style');
     assert(document.querySelectorAll('.timing-timeline').length>0 && document.querySelectorAll('.notation').length>0,'score and target timelines remain');
     assert(id()===exercise && written()===answer,'Both retains independent writing');
     const record=await download();assert(record.assessmentPolicy.version===2 && record.holdPolicy.version===4 && record.assessment.matches.length===count,'download includes snapshot, estimates and counts');
     if(scenario==='tap-rest') { assert(record.assessment.rhythm===100 && record.assessment.restIntrusions.length>0,'perfect Tap rhythm retains raw rest overlap');assert(!document.querySelector('.feedback-snapshot .result-suggestion'),'Tap receives no held-overlap criticism'); }
-    if(scenario==='short') { assert(record.assessment.hold===null && record.assessment.matches.every(m=>m.holdCredit===null),'short sounds excluded, no fabricated hold credit');assert(text.includes('Hold not assessed—short notes only.'),'short-note explanation visible in Details');assert(!document.querySelector('.feedback-snapshot .result-suggestion') && !document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'short taps have no sustain warnings'); }
-    if(scenario==='tied') { assert(record.assessment.hold===100 && record.assessment.matches[0].duration.waivedFinalDuration===.25,'short tied tail optional');assert(text.includes('across 2 assessed notes') && text.includes('final tied member optional (250 ms)'),'eligible denominator and optional tail explained');assert(!document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'waived tail has no contradictory warnings'); }
+    if(scenario==='short') { assert(record.assessment.hold===null && record.assessment.matches.every(m=>m.holdCredit===null),'short sounds excluded, no fabricated hold credit');assert(feedbackText.includes('No long notes to check'),'top feedback explains unassessed short holds');assert(!document.querySelector('.feedback-snapshot .result-suggestion') && !document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'short taps have no sustain warnings'); }
+    if(scenario==='tied') { assert(record.assessment.hold===100 && record.assessment.matches[0].duration.waivedFinalDuration===.25,'short tied tail optional');assert(record.assessment.matches.filter(m=>m.holdCredit!==null).length===2,'eligible denominator retained in assessment');assert(!document.querySelector('.timeline-sustain.attention, [data-feedback=overlap]'),'waived tail has no contradictory warnings'); }
     if(scenario==='accepted') {assert(record.assessment.rhythm===100 && record.assessment.hold===100,'late start and elapsed 70/80 percent sustain accepted');assert(!document.querySelector('.timeline-sustain.attention, .timeline-hit.unmatched, [data-feedback=overlap]'),'accepted assessment has no contradictory timeline or score warnings');assert(!document.querySelector('.timeline-lift-window'),'target-time lift-credit promise removed');}
     if(scenario==='slower') assert(Math.abs(record.assessment.tempo.bpm-180/1.1)<2 && record.assessment.extra===0,'drift beyond old window retains slow tempo association');
     if(scenario==='compound') assert(record.plan.pulseSeconds===1/3 && record.assessment.tempo===null,'short compound fixture has explicit tempo evidence limit');
@@ -110,13 +112,17 @@ window.__assessmentCheck = (async () => {
     if (scenario === 'short') assert(bag.textContent.includes('No long notes to check'), 'short sounds stay unrated');
     if (scenario === 'slower') assert(bag.textContent.includes('Steady beat: 5 out of 5 bones'), 'steady pace rewarded independently of tempo');
     choose(tempo,'160');choose(style,holdStyle?'tap':'hold');
-    for(const response of ['write','tap','both']) {choose(mode,response);assert(panel.textContent===text && (response!=='both' || bag.textContent===bagText) && id()===exercise,'mode/preferences retain completed interpretation and rewards');}
+    for(const response of ['Counts','Perform']) {button(response).click();assert(panel.textContent===text && (response!=='Perform' || bag.textContent===bagText) && id()===exercise,'panel/preferences retain completed interpretation and rewards');}
+    button('Counts').click();
+    assert(!document.querySelector('.timing-timeline, [data-feedback]') && document.querySelector('.counting-rating') && !document.querySelector('[data-metric="rhythm"]'),'Counts restores counting score context without performance annotations');
     if (scenario === 'accepted') assert(document.querySelector('.counting-totals').textContent === countingScore, 'Both retains checked counting score through performance and mode changes');
+    button('Perform').click();
+    assert(document.querySelector('.timing-timeline') && !document.querySelector('[data-counting-feedback], .counting-rating'),'Perform restores timeline and performance-only feedback');
     location.hash='#settings';await sleep(40);location.hash='#practice';await sleep(40);assert(panel.textContent===text,'settings navigation retains results');
     const meters=[...document.querySelectorAll('[data-meter]')];for(const meter of meters){meter.checked=false;meter.dispatchEvent(new Event('change'));}
     assert(panel.querySelectorAll('button')[1].disabled,'invalid configuration disables results Next');
     meters.find(n=>n.dataset.meter==='4/4').checked=true;meters.find(n=>n.dataset.meter==='4/4').dispatchEvent(new Event('change'));
-    assert(!panel.querySelectorAll('button')[1].disabled && panel.textContent.includes('Rhythm accuracy'),'valid configuration restores Next without clearing score');
+    assert(!panel.querySelectorAll('button')[1].disabled && document.querySelector('.feedback-snapshot').textContent.includes('Rhythm:'),'valid configuration restores Next without clearing score');
     const retryStart=await begin(true);assert(!surface.hidden && !document.querySelector('.performance-results') && id()===exercise && written()===answer,'Try again restores pad and retains exact exercise/answer');
     assert(bag.textContent.includes('Previous completed attempt'), 'retry labels previous feedback');
     button('Stop').click(); assert(bag.textContent.includes('Previous completed attempt') && bag.querySelector('.bone-slots'), 'interruption retains earned feedback'); const retryRecord=await download();assert(retryRecord.bpm===160 && retryRecord.playStyle!==record.playStyle && retryRecord.status==='interrupted','retry snapshots current preferences');

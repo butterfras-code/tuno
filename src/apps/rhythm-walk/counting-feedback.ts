@@ -1,6 +1,6 @@
 import type { CountingAnswer, CountingEvaluation, FeedbackItem } from '../../music/counting/answer.ts';
 import type { CountingPlan, CountId, UnitId } from '../../music/counting/plan.ts';
-import { rewardPolicy, type Bones } from './rewards.ts';
+export type CountingBones = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const countingDimensions = ['tokens', 'rests', 'duration'] as const;
 export type CountingDimension = typeof countingDimensions[number];
@@ -9,8 +9,10 @@ export function countingScore(result: CountingEvaluation) {
   const points = countingDimensions.flatMap(d => result[d].items.filter(i => i.verdict !== 'not-applicable'));
   const total = points.length, correct = points.filter(i => i.verdict === 'correct').length;
   const percent = total ? correct / total * 100 : null;
-  const tier = percent === null ? -1 : rewardPolicy.rhythm.findIndex(boundary => percent >= boundary);
-  return { correct, total, percent, bones: percent === null ? null : (tier < 0 ? 1 : 5 - tier) as Bones };
+  // Counting has its own scale. Compare point totals, never rounded display percentages.
+  const bones: CountingBones | null = !total ? null : correct === total ? 5
+    : Math.min(4, Math.floor(correct * 5 / total)) as CountingBones;
+  return { correct, total, percent, bones };
 }
 export function pointChanged(dimension: CountingDimension, item: FeedbackItem, checked: CountingAnswer, current: CountingAnswer) {
   return dimension === 'tokens' ? checked.counts[item.id as CountId] !== current.counts[item.id as CountId]
@@ -26,11 +28,11 @@ export function countingProblems(plan: CountingPlan, result: CountingEvaluation 
     const missing = dimension === 'tokens' ? !checked.counts[item.id as CountId]
       : dimension === 'duration' || unit?.expectedRest;
     const state = edited ? 'edited' : missing ? 'missing' : 'incorrect';
-    const name = dimension === 'tokens' ? 'Count' : dimension === 'rests' ? 'Rest' : 'Duration';
+    const name = dimension === 'tokens' ? 'Count' : dimension === 'rests' ? 'Rest' : 'Connect';
     const message = edited ? `${name}: edited, awaiting check.` : dimension === 'tokens'
       ? missing ? 'Add a count at this position.' : 'Check the count at this position.'
       : dimension === 'rests' ? 'Review the rest marking for this group.'
-      : unit && unit.symbolIds.length > 1 ? 'Review the duration of this tied note.' : 'Review the duration indication for this group.';
+      : unit && unit.symbolIds.length > 1 ? 'Check the connected counts for this tied note.' : 'Check the connected counts for this group.';
     return [{ dimension, item, state, name, message }];
   }));
 }

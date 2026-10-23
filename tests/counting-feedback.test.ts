@@ -42,11 +42,15 @@ test('corrected answers resolve all independent errors on reassessment', () => {
   assert.equal(countingScore(result).bones, 5);
   assert.deepEqual(countingProblems(plan, result, answer, answer), []);
 });
-test('counting reuses rhythm thresholds on unrounded percentages; zero applicable points are unrated', () => {
-  for (const [correct, bones] of [[0,1],[39,1],[40,2],[59,2],[60,3],[74,3],[75,4],[89,4],[90,5],[100,5]]) {
-    const result = { tokens: { verdict: 'incorrect', items: Array.from({length:100}, (_,i) => ({id:`count:0:${i}/1`,verdict:i<correct!?'correct':'incorrect',countIds:[],symbolIds:[],labels:[]})) }, rests:{verdict:'not-applicable',items:[]},duration:{verdict:'not-applicable',items:[]} } as CountingEvaluation;
-    assert.equal(countingScore(result).bones,bones);
+test('counting tiers use exact point ratios, including fractional boundaries and perfection', () => {
+  function result(correct: number, total: number): CountingEvaluation {
+    return { tokens: { verdict: 'incorrect', items: Array.from({length:total}, (_,i) => ({id:`count:0:${i}/1`,verdict:i<correct?'correct':'incorrect',countIds:[],symbolIds:[],labels:[]})) }, rests:{verdict:'not-applicable',items:[]},duration:{verdict:'not-applicable',items:[]} } as CountingEvaluation;
   }
+  for (const [correct, bones] of [[0,0],[199,0],[200,1],[201,1],[399,1],[400,2],[401,2],[599,2],[600,3],[601,3],[799,3],[800,4],[801,4],[999,4],[1000,5]]) {
+    assert.equal(countingScore(result(correct!,1000)).bones,bones, `${correct}/1000`);
+  }
+  assert.deepEqual(countingScore(result(15,16)), {correct:15,total:16,percent:93.75,bones:4});
+  assert.equal(countingScore(result(16,16)).bones,5);
   const omitted = buildCountingPlan(score([{meter:[4,4],notes:[note('whole',{kind:'rest'})]}]), {...defaultCountingPreferences,includeRests:false});
   assert.deepEqual(countingScore(evaluateAnswer(omitted,initializeAnswer(omitted))),{correct:0,total:0,percent:null,bones:null});
 });

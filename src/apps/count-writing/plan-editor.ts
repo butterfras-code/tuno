@@ -73,7 +73,7 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   }
   function key(event: KeyboardEvent) {
     if (options.hidden() || event.ctrlKey || event.altKey || event.metaKey) return;
-    if (event.key.toLowerCase() === 'r' || event.key.toLowerCase() === 'd') { event.preventDefault(); buffer.clear(); if (!event.repeat) toggle(event.key.toLowerCase() === 'r' ? 'restMarked' : 'durationIndicated'); return; }
+    if (event.key.toLowerCase() === 'r' || event.key.toLowerCase() === 'c') { event.preventDefault(); buffer.clear(); if (!event.repeat) toggle(event.key.toLowerCase() === 'r' ? 'restMarked' : 'durationIndicated'); return; }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); buffer.clear(); if (selected) options.navigate(selected, event.key === 'ArrowLeft' ? -1 : 1); return; }
     if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); buffer.clear(); const c = event.key === 'Home' ? counts[0] : counts.at(-1); if (c) focusPosition(c.id); return; }
     if (event.key === 'Enter') { event.preventDefault(); options.check(); return; }
@@ -103,14 +103,13 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     const row = el('div', 'plan-token-palette');
     tokens.forEach(token => { const b = button(displayCount(token, prefs.offbeat), () => commit(token)); b.setAttribute('aria-label', `Enter ${displayCount(token, prefs.offbeat)}`); row.append(b); });
     const controls = el('div', 'plan-unit-controls');
-    for (const [control, name, shortcut, applicable] of [['restMarked', 'Rest', 'r', unit.restApplicable], ['durationIndicated', 'Duration', 'd', unit.durationApplicable]] as const) {
+    for (const [control, name, shortcut, applicable] of [['restMarked', 'Rest', 'r', unit.restApplicable], ['durationIndicated', 'Connect', 'c', unit.durationApplicable]] as const) {
       if (!applicable) continue;
       const b = button(`${name} (${shortcut.toUpperCase()})`, () => { toggle(control); buttons.get(selected!)?.focus({ preventScroll: true }); });
       b.dataset.unitControl = control; b.setAttribute('aria-pressed', String(state[control])); b.setAttribute('aria-keyshortcuts', shortcut); b.setAttribute('aria-label', `${name} for entire unit at ${unit.counts[0]!.label.split(', offset')[0]}`); controls.append(b);
     }
-    const clear = button('Clear count', () => { if (selected) options.change(enterToken(plan, options.answer(), selected, '')); }); controls.append(clear);
     const restoreFocus = options.palette.contains(options.palette.ownerDocument.activeElement);
-    options.palette.replaceChildren(title, explanation, row, controls, el('p', 'setting-hint', 'Rest (R) and Duration (D) affect the whole written unit, including tied notes.'));
+    options.palette.replaceChildren(title, explanation, row, controls, el('p', 'setting-hint', 'Rest (R) and Connect (C) affect the whole written unit, including tied notes.'));
     // Refresh removes palette buttons. Keep keyboard entry alive, including at
     // the last count where commit has no next position to focus.
     if (restoreFocus) buttons.get(selected)?.focus({ preventScroll: true });
@@ -124,10 +123,15 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     buffer.clear(); selected = id; active = true; options.activated(); refresh();
     const b = buttons.get(id)!; b.focus({ preventScroll: true }); options.reveal(b);
   }
+  function erase() {
+    if (!selected || options.hidden()) return;
+    options.change(enterToken(plan, options.answer(), selected, ''));
+    focusPosition(selected);
+  }
   function suspend() { active = false; buffer.clear(); }
   counts.forEach(count => {
     const b = button('', () => focusPosition(count.id)); b.className = 'count-slot'; b.dataset.countId = count.id; b.dataset.unitId = count.unitId;
-    b.style.left = `${x(count.localPosition)}%`; b.setAttribute('aria-keyshortcuts', 'r d');
+    b.style.left = `${x(count.localPosition)}%`; b.setAttribute('aria-keyshortcuts', 'r c');
     b.addEventListener('focus', () => { if (!active || selected !== count.id) { selected = count.id; active = true; options.activated(); refresh(); } options.reveal(b); });
     b.addEventListener('keydown', key); buttons.set(count.id, b); positions.append(b);
   });
@@ -147,7 +151,7 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
     counts.forEach(count => {
       const b = buttons.get(count.id)!, unit = plan.units.find(u => u.id === count.unitId)!, state = answer.units[unit.id]!;
       const token = displayCount(answer.counts[count.id]!, prefs.offbeat);
-      b.textContent = token || '·'; b.setAttribute('aria-label', `${count.label.split(', offset')[0]}, ${token || 'empty'}${state.restMarked ? ', marked as rest' : ''}${state.durationIndicated ? ', duration indicated' : ''}`);
+      b.textContent = token || '·'; b.setAttribute('aria-label', `${count.label.split(', offset')[0]}, ${token || 'empty'}${state.restMarked ? ', marked as rest' : ''}${state.durationIndicated ? ', counts connected' : ''}`);
       b.setAttribute('aria-pressed', String(active && selected === count.id));
       b.classList.toggle('sustained', state.durationIndicated && count.id !== unit.counts[0]!.id);
       b.classList.toggle('rest-slashed', state.restMarked && prefs.restAppearance === 'slashes');
@@ -157,9 +161,9 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
         const problem = relevant.find(p => p.dimension === dimension);
         if (problem) b.dataset[dimension] = problem.state; else delete b.dataset[dimension];
       }
+      b.toggleAttribute('data-correction', relevant.some(p => p.state !== 'edited'));
+      b.toggleAttribute('data-awaiting-check', relevant.some(p => p.state === 'edited'));
       if (relevant.length) {
-        const marker = el('span', 'count-problem-marker', relevant.map(p => `${p.dimension === 'tokens' ? 'C' : p.dimension === 'rests' ? 'R' : 'D'}${p.state === 'edited' ? '…' : p.state === 'missing' ? '?' : '!'}`).join(' '));
-        marker.setAttribute('aria-hidden', 'true'); b.append(marker);
         b.setAttribute('aria-label', `${b.getAttribute('aria-label')}. ${relevant.map(p => p.message).join(' ')}`);
         b.title = relevant.map(p => p.message).join(' ');
       } else b.removeAttribute('title');
@@ -212,5 +216,5 @@ export function createPlanEditor(source: RhythmMeasure, measureIndex: number, op
   });
   layoutObserver.observe(measure);
   refresh();
-  return { card, refresh, focusPosition, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { layoutObserver.disconnect(); card.remove(); } };
+  return { card, refresh, focusPosition, erase, focus: (last = false) => { const c = last ? counts.at(-1) : counts[0]; if (c) focusPosition(c.id); }, suspend, resume: refresh, destroy: () => { layoutObserver.disconnect(); card.remove(); } };
 }
