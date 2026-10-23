@@ -20,10 +20,10 @@ window.uilScenarios = async function (w = window) {
     d.querySelector('.setup-actions button').click();
     assert(d.querySelectorAll('.passage > .measure').length===length || d.querySelectorAll('.passage .notation').length===length,'Length applied');
     const score=d.querySelector('.notation'),first=d.querySelector('.count-slot');first.focus();first.dispatchEvent(new w.KeyboardEvent('keydown',{key:'1',bubbles:true,cancelable:true}));
-    for(const mode of ['tap','both','write']){
-      choose(d.querySelector('select[aria-label="Mode"]'),mode);
-      assert(d.querySelector('.notation')===score,'Mode retains typed score rendering');
-      assert(first.textContent==='1','Mode retains answer');
+    for(const panel of ['Perform','Counts']){
+      [...d.querySelectorAll('.interaction-selector button')].find(button=>button.textContent===panel).click();
+      assert(d.querySelector('.notation')===score,'Panel retains typed score rendering');
+      assert(first.textContent==='1','Panel retains answer');
     }
   }
   return {assertions};
