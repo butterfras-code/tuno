@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+<!-- Uno mid-stride with floating rhythm notes; head retains the original left-pose artwork. Original tUno artwork, adapted for the launcher. -->
+
+<g fill="#73556F" stroke="#73556F" stroke-linecap="round">
+<g transform="translate(39 73) rotate(-16)"><ellipse rx="12" ry="8" transform="rotate(-20)" stroke="none"/><path d="M10 -3V-44" stroke-width="4" fill="none"/></g>
+<g transform="translate(101 49) rotate(10)"><ellipse rx="11" ry="7" transform="rotate(-20)" stroke="none"/><ellipse cx="37" cy="-7" rx="11" ry="7" transform="rotate(-10 37 -7)" stroke="none"/><path d="M9 -3V-40L46 -47V-10" stroke-width="4" fill="none"/><path d="M9 -39L46 -46" stroke-width="9" fill="none"/></g>
+<g transform="translate(207 42) rotate(15)" opacity=".7"><ellipse rx="11" ry="7" transform="rotate(-20)" stroke="none"/><path d="M9 -3V-34Q30 -24 19 -13" stroke-width="4" fill="none"/></g>
+</g>
+<ellipse cx="153" cy="272" rx="112" ry="10" fill="#DCD2C5"/>
+<!-- Far legs and raised tail sit behind the body. -->
+<path d="M106 207L122 237L101 257Q98 265 110 265H120L143 239L133 207M183 204L196 243L221 251Q232 259 220 264H202L175 239L162 211" fill="#252321"/>
+<path d="M82 184Q37 181 35 140Q38 123 46 140Q56 166 94 160" fill="#302C2B"/>
+<path d="M75 180Q85 151 127 159L185 166Q211 161 219 189Q226 214 197 228L113 230Q73 228 70 207Q67 190 75 180Z" fill="#302C2B"/>
+<path d="M187 175Q209 185 207 212L190 230L175 218Z" fill="#F7F0E4"/>
+<!-- Near legs extend in opposite directions for a clear walking stride. -->
+<path d="M101 204L105 231L81 257L66 260Q56 265 65 270H88L124 235L128 210" fill="#393331"/>
+<path d="M185 209L202 234L239 239Q250 243 244 251L229 254L188 246L165 222" fill="#393331"/>
+<path d="M181 175Q198 193 219 187" stroke="#A9574D" stroke-width="9" stroke-linecap="round"/>
+<circle cx="203" cy="199" r="6" fill="#D6B36A"/>
+<g transform="translate(286 80) scale(-.82 .82)"><g xmlns="http://www.w3.org/2000/svg">
+<path d="M44 30C52 13.3333 68.6667 5.66667 94 7C118.667 7.66667 134 18 140 38L137 88C132.333 110.667 121.667 126 105 134C85.6667 140 68.3333 136 53 122L35 78L44 30Z" fill="#302C2B" />
+<path d="M50 31C38 20.3333 30 23 26 39L30 80C35.3333 85.3333 42.3333 80 51 64L50 31Z" fill="#252321" />
+<path d="M118 28C133.333 18.6667 144.333 22.6667 151 40L139 91C127.667 93 120.333 83.3333 117 62L118 28Z" fill="#252321" />
+<path d="M51 49C57 39 65.6667 34 77 34" stroke="#4B3B33" stroke-width="6" stroke-linecap="round" />
+<path d="M95 36C105 38.6667 112 44 116 52" stroke="#4B3B33" stroke-width="5" stroke-linecap="round" />
+<path d="M57 81C61.4183 81 65 76.0751 65 70C65 63.9249 61.4183 59 57 59C52.5817 59 49 63.9249 49 70C49 76.0751 52.5817 81 57 81Z" fill="#9B7750" />
+<path d="M103 82C108.523 82 113 76.6274 113 70C113 63.3726 108.523 58 103 58C97.4772 58 93 63.3726 93 70C93 76.6274 97.4772 82 103 82Z" fill="#9B7750" />
+<path d="M54 79C56.7614 79 59 75.4183 59 71C59 66.5817 56.7614 63 54 63C51.2386 63 49 66.5817 49 71C49 75.4183 51.2386 79 54 79Z" fill="#211F1E" />
+<path d="M99 79C102.314 79 105 75.4183 105 71C105 66.5817 102.314 63 99 63C95.6863 63 93 66.5817 93 71C93 75.4183 95.6863 79 99 79Z" fill="#211F1E" />
+<path d="M54 70C55.6569 70 57 68.6569 57 67C57 65.3431 55.6569 64 54 64C52.3431 64 51 65.3431 51 67C51 68.6569 52.3431 70 54 70Z" fill="#FFFCF7" />
+<path d="M99 70C100.657 70 102 68.6569 102 67C102 65.3431 100.657 64 99 64C97.3431 64 96 65.3431 96 67C96 68.6569 97.3431 70 99 70Z" fill="#FFFCF7" />
+<path d="M29 94C47 86 67.6667 86.3333 91 95L88 114C70.6667 126 53 125.667 35 113L29 94Z" fill="#4B4140" />
+<path d="M44 112C56.6667 116.667 70 115.333 84 108C78.6667 124 71.6667 132.333 63 133C54.3333 131.667 48 124.667 44 112Z" fill="#211F1E" />
+<path d="M55 119C61.6667 115.667 68.3333 115.667 75 119L72 129C66 135.667 60.6667 135.667 56 129L55 119Z" fill="#C88F87" />
+<path d="M28 93C39.3333 87.6667 50.3333 88 61 94C59.6667 103.333 54 108.333 44 109C33.3333 106.333 28 101 28 93Z" fill="#211F1E" />
+<g>
+<path d="M34 94L44 92Z" fill="black" />
+<path d="M34 94L44 92" stroke="#746662" stroke-width="3" stroke-linecap="round" />
+</g>
+</g>
+</g>
+</svg>
