@@ -1,6 +1,12 @@
 import { tuno, type AppIdentity } from './identity.ts';
 /** Portable files never register a worker or request hosted resources. */
-export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno) {
+export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, workerOptions = { worker: './sw.js', scope: './' }) {
+  if (app.id === 'tuno' && /^\/(tone|tempo)\//.test(location.pathname) && location.protocol !== 'file:') {
+    app = { id: 'suite', name: 'Practice Tools' };
+    workerOptions = { worker: '/suite-sw.js', scope: '/' };
+  }
+  // Resolve once: History API navigation must not change the expected worker URL.
+  const workerUrl = new URL(workerOptions.worker, location.href).href;
   status.setAttribute('role', 'status');
   if (location.protocol === 'file:') {
     status.textContent = 'Self-contained offline file';
@@ -20,7 +26,7 @@ export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno) {
   async function check() {
     if (checking || !registration) return;
     const worker = navigator.serviceWorker.controller;
-    if (!worker || worker.scriptURL !== new URL('./sw.js', location.href).href) return;
+    if (!worker || worker.scriptURL !== workerUrl) return;
     checking = true;
     try {
       const result = await new Promise<{ ready: boolean; version: string; appId: string }>((resolve, reject) => {
@@ -43,7 +49,7 @@ export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno) {
   window.addEventListener('pageshow', () => void check());
   window.addEventListener('offline', () => void check());
   document.addEventListener('visibilitychange', () => { if (!document.hidden) void check(); });
-  void navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then((value) => {
+  void navigator.serviceWorker.register(workerUrl, { scope: workerOptions.scope, updateViaCache: 'none' }).then((value) => {
     registration = value;
     const observe = (worker: ServiceWorker | null) => worker?.addEventListener('statechange', () => {
       if (worker.state === 'redundant' && !registration?.active) status.textContent = 'Offline preparation failed · Reopen online to retry';

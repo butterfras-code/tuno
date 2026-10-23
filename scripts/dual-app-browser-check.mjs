@@ -116,7 +116,8 @@ try {
     const tuner = await context.newPage();
     await tuner.goto(origin + prefix + 'tune/');
     await ready(tuner);
-    const before = await tuner.evaluate(() => caches.keys());
+    await tuner.waitForFunction(async () => (await navigator.serviceWorker.getRegistration('/'))?.active?.state === 'activated');
+    const before = await tuner.evaluate(async () => (await caches.keys()).filter(key => !key.startsWith('suite:')));
     assert.equal(before.length, 1);
     assert.ok(before[0].startsWith(`tuno:${origin}${prefix}tune/:`));
     await tuner.evaluate(() => localStorage.setItem('tuno-test-sentinel', 'preserve'));
@@ -125,7 +126,7 @@ try {
     await notes.waitForFunction(() => document.querySelector('#offline-status')?.textContent.includes('failed'));
     assert.equal(await notes.locator('h1').textContent(), 'tuNotes');
     const initialController = await notes.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
-    assert.equal(initialController, null);
+    assert.equal(initialController, origin + '/suite-sw.js');
     const rootFetch = await tuner.evaluate(async () => {
       const html = await (await fetch('../notes/')).text();
       return { html, missing: (await fetch('../notes/missing.js')).status, controller: navigator.serviceWorker.controller.scriptURL };
@@ -133,13 +134,13 @@ try {
     assert.equal(rootFetch.controller, origin + prefix + 'tune/sw.js');
     assert.ok(rootFetch.html.includes('<title>tuNotes'));
     assert.equal(rootFetch.missing, 404);
-    assert.deepEqual(await notes.evaluate(() => caches.keys()), before, 'tUno worker does not cache notes or claim its readiness');
+    assert.deepEqual(await notes.evaluate(async () => (await caches.keys()).filter(key => !key.startsWith('suite:'))), before, 'tUno worker does not cache notes or claim its readiness');
     assert.equal(await notes.evaluate(async () => (await fetch('./missing.js')).status), 404);
     blockNotesWorker = false;
     await notes.goto(origin + prefix + 'notes/');
     await ready(notes);
     assert.equal(await notes.evaluate(() => navigator.serviceWorker.controller.scriptURL), origin + prefix + 'notes/sw.js');
-    const keys = await notes.evaluate(() => caches.keys());
+    const keys = await notes.evaluate(async () => (await caches.keys()).filter(key => !key.startsWith('suite:')));
     assert.equal(keys.length, 2);
     assert.ok(keys.includes(before[0]));
     assert.ok(keys.some(key => key.startsWith(`tunotes:${origin}${prefix}notes/:`)));

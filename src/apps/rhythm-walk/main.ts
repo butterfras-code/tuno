@@ -1,3 +1,4 @@
+import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { countingProblems, countingScore } from './counting-feedback.ts';
 import type { CountId } from '../../music/counting/plan.ts';
 import type { RhythmScore } from '../../music/score.ts';
@@ -43,10 +44,7 @@ let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
 let currentMeasures: readonly RhythmMeasure[] = [];
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
-const header = el('header', 'app-header');
-const brand = el('div', 'brand');
-brand.append(el('h1', 'wordmark', 'Uno234'), el('p', 'tagline', 'Practice rhythm with a friend.'));
-header.append(brand);
+const header = createAppHeader('Uno234', 'Practice rhythm with a friend.');
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const practiceView = el('section'); practiceView.id = 'practice-view';
 const banner = el('p', 'counting-hint');

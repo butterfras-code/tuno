@@ -68,10 +68,10 @@ try {
     assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).evaluate((node) => node === document.activeElement), true);
     assert.equal(await page.getByRole('button', { name: 'A4 = 440 Hz', exact: true }).isVisible(), true);
 
-    const nav = page.getByRole('navigation', { name: 'Practice and apps' });
+    const nav = page.getByRole('navigation', { name: 'tUno tools' });
     const selectTool = async name => {
       const tab = page.getByRole('tab', { name: ({ Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' })[name], exact: true });
-      await nav.getByRole('button', { name, exact: true }).click();
+      await nav.getByRole('link', { name, exact: true }).click();
       if (await tab.isVisible()) await tab.click();
     };
     await selectTool('Reference tone');
