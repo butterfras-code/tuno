@@ -1,0 +1,27 @@
+/** Versioned initial tuning defaults, not mastery standards. Times are seconds. */
+export const legacyAssessmentPolicy = Object.freeze({
+  version: 1 as const,
+  maximumExpectedAttacks: 128, maximumCapturedAttacks: 256,
+  minimumScale: 2 / 3, maximumScale: 1.5, searchSteps: 120,
+  fullBeatRatio: .1, fullMinimum: .03, fullMaximum: .06,
+  zeroBeatRatio: .3, zeroMinimum: .09, zeroMaximum: .18,
+  associationWindowRatio: 1.5, ambiguityCost: .12, ambiguityCostPerAttack: .02,
+  minimumTempoAttacks: 4, minimumTempoSpan: 3, maximumMedianResidualBeats: .15,
+  minimumIntervals: 4, minimumIntervalSpan: 4,
+  holdErrorRatio: .25, holdErrorMaximum: .2,
+  onTargetPercent: 5, slightTempoPercent: 10, steadyPercent: 5, mostlySteadyPercent: 10,
+});
+export type AssessmentPolicy = { readonly [K in keyof typeof legacyAssessmentPolicy]: K extends 'version' ? 1 | 2 : number } & { readonly displacementMaximum?: number; readonly displacementBeatRatio?: number };
+
+export const assessmentPolicy: AssessmentPolicy = Object.freeze({ ...legacyAssessmentPolicy, version: 2, displacementMaximum: .150, displacementBeatRatio: .30 });
+/** Snapshot with assessment v2; times are seconds. No learner tolerance controls. */
+export const legacyHoldPolicy = Object.freeze({
+  version: 3, adjacentRatio: .70, restFinalRatio: .80,
+  shortAllowance: .020, minimumRatio: .60, minimumSeconds: .040,
+  overholdRatio: .15, overholdMaximum: .080,
+  restAllowanceRatio: .15, restAllowanceMaximum: .060, restPenaltyRatio: .60,
+  shortPenaltyRatio: .60, longPenaltyRatio: .75,
+});
+export type HoldPolicy = { readonly [K in keyof typeof legacyHoldPolicy]: K extends 'version' ? 3 | 4 : number } & { readonly holdThresholdSeconds?: number };
+/** Short sounds are excluded from sustain scoring; only the final short tied member may be waived. */
+export const holdPolicy: HoldPolicy = Object.freeze({ ...legacyHoldPolicy, version: 4, holdThresholdSeconds: .400 });

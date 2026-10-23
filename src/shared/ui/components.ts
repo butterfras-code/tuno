@@ -39,3 +39,21 @@ export function numberInput(min: number, max: number, value: number, step = '1')
   Object.assign(node, { type: 'number', min: String(min), max: String(max), step, value: String(value), required: true });
   return node;
 }
+/** Native checkboxes or radios with a shared segmented presentation. */
+export function segmentedOption(options: {
+  label: string;
+  content: Node;
+  type: 'checkbox' | 'radio';
+  checked: boolean;
+  name?: string;
+  value: string;
+  changed: (input: HTMLInputElement) => void;
+}) {
+  const label = el('label', 'segmented-option');
+  const input = el('input');
+  Object.assign(input, { type: options.type, checked: options.checked, value: options.value, name: options.name ?? '' });
+  input.setAttribute('aria-label', options.label);
+  input.addEventListener('change', () => options.changed(input));
+  label.append(input, options.content);
+  return { label, input };
+}

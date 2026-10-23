@@ -1,47 +1,93 @@
-# Rhythm activities: current direction
+# Uno234: current direction
 
-Updated 2026-10-10. An editable one-measure Count Writing prototype is implemented for teacher review; see [implementation and validation](prototype.md).
+Updated 2026-10-22. **Uno234 is one activity with two interchangeable input panels: Counts and Perform.** The current activity is named **Uno234**. **Rhythm Walk** is reserved for an eventual continuous gameplay mode; it is not a current response mode. Existing prototype URLs, source directories, and preference keys retain their historical names for compatibility. Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes the Write/Tap/Both selector, descriptions of separate activities and the earlier Count Writing-first sequencing. Saved Tap opens Perform; saved Write or Both opens Counts. The legacy mode preference remains a compatibility detail. It does not authorize production publication.
 
-## Read this first
+Write Counts now places a continuous, readable horizontal score above its input palette. A notation overview appears only when the passage overflows and supports pointer/keyboard navigation. Count targets stay 44px; entry follows the active count without moving the page. Level and responsive Treat Bag ratings share the row above the score; Counts / Perform selects the input panel and contextual feedback. The mobile counting palette docks inside the workspace when space permits and stays in normal flow on short screens. Other exercise settings collapse below, with pending changes still explicit. Counts uses this workspace; Perform shows the performance controls and review graph. See the [responsive layout contract](responsive-layout-audit.md).
 
-**The first rhythm release will focus on functional Count Writing.** Establish notation, count entry, and musical correctness before building Rhythm Walk's real-time performance features. Resolve performance-specific questions when that work begins.
+The shared **Level** selector chooses a generation configuration: **Uno1–Uno4**, UIL I–IV General/Percussion note-only figure practice, or **Custom**. V–VI, cut time and within-exercise meter changes are deferred. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
 
-This is the owner's decision following review of the supplied handoff. It supersedes the handoff's Rhythm Walk-first sequencing, its treatment of Count Writing as a later sibling, and its proposed performance prototype as the first deliverable. It does not cancel the longer-term Rhythm Walk requirements.
+The Uno configurations are cumulative, with independent 1–4 measure length:
 
-Read in this order:
+| Level | Musical configuration |
+| --- | --- |
+| Uno1 | 4/4; whole, half, quarter and eighth notes; quarter and half rests; no ties or syncopation. |
+| Uno2 | Uno1 plus 2/4 and 3/4, dotted-half and dotted-quarter notes, and ties. |
+| Uno3 | Uno2 plus 6/8, sixteenth notes, eighth rests, syncopation, sounded eighth triplets and dotted-eighth notes. |
+| Uno4 | All currently supported ingredients (also sixteenth and dotted-quarter rests), ties, syncopation and unintuitive notation in all four meters. |
 
-1. [Count Writing first-release plan](count-writing.md): current requirements, proposed delivery sequence, and unresolved interaction decisions.
-2. [Original handoff](reference/RHYTHM_GAME_HANDOFF.md): preserved source context, broader rhythm requirements, and future performance planning. Section 12 contains the original Count Writing requirements.
-3. [Reference provenance](reference/README.md): origin and usage of the supplied screenshot and document.
+These are Uno practice configurations, separate from UIL criteria. Each exercise draws one selected meter and uses only its compatible ingredients: whole notes and whole rests require 4/4; dotted halves are skipped in 2/4; half/whole values, sixteenths, dotted eighths and triplets are skipped in 6/8. “Everything” does not expand the supported repertoire.
 
-Where these documents differ, this current direction and the Count Writing plan take precedence over the original handoff. The handoff's confirmed/proposal/open labels remain useful; importing it does not approve its proposals. Its Rhythm Walk acceptance matrix is not the first-release checklist for Count Writing.
+Configure one exercise, then choose how to respond without changing its identity, notation or configuration. The lower interaction surface shows a contextual counting palette or the performance pad. Counts / Perform is the only response selector (vertical on wide screens, horizontal on phones). Counts shows editable written answers and counting feedback; Perform shows performance feedback and score/timeline annotations. The Show written counts toggle lives beside the performance controls and reveals read-only written answers before, during and after an attempt. Tempo, Tap / Tap + Hold and metronome controls belong beside the pad. Rest (R) and Connect (C) in the palette toggle the selected inferred unit, including cross-bar ties. Connect replaces the former Duration action and uses C instead of D. Settings groups Subdivide, Show connecting line, Line placement and Internal count appearance under Long Notes. Preference keys and musical duration rules are unchanged. Erase clears the selected count; Erase All clears the written response. Practice opens Counts with the first count selected. Check focuses the first unresolved count, or Next Exercise when all applicable answers are correct. Customize contains the exercise controls, source and pattern requirements, and opt-in developer fixtures. Practice has no separate bottom Exercise settings disclosure; the current/pending exercise summary remains visible. There are no endpoint gestures. Switching panels preserves writing and performance independently; completing or checking the writing is never required. Each response and its evaluation survives panel switching within the exercise. Switching to Counts during count-in, capture or calibration cancels safely and stops scheduled audio. A canceled performance is interrupted, never completed or graded.
 
-## Decision record
+The shared repertoire is the actual implemented exercise set: 2/4, 3/4, 4/4 and 6/8; 1–4 measures (default two); half, quarter, eighth and dotted-quarter notes/rests, plus opt-in simple-meter sixteenth notes/rests, dotted-eighth notes and complete sounded eighth triplets; opt-in whole notes/rests in 4/4 and dotted-half generation; bounded ties and syncopation; readable versus unintuitive rest spelling; all historical writing and performance testing fixtures. In 6/8, Write Counts labels available positions with numbers 1–6; enabled rules determine which inputs appear, while Tap Rhythms uses two dotted-quarter pulses. See [meter rules](meters.md) and the [canonical music model](music-model.md).
 
-| Date | Decision | Reason / consequence |
-| --- | --- | --- |
-| 2026-10-10 | Preserve the supplied handoff and its reference image in the repository. | Future work must not depend on access to another conversation or attachment. |
-| 2026-10-10 | Focus the first release on functional Count Writing. | Pin down notation and correctness before real-time performance. |
-| 2026-10-10 | Resolve remaining performance questions as that work approaches. | Timing tolerances, latency calibration, performance scores, and interruption policy do not block Count Writing. |
-| 2026-10-10 | Dotted-quarter internal `&` is teacher-dependent. | The prototype offers required, optional, and provisional review of both variants. |
+Read [the triplet contract](triplets.md) for complete simple-meter groups, shared capability queries, exact thirds and atomic `la`/`li` entry.
 
-## Shared foundation and future work
+Read [the sixteenth/counting record](sixteenths.md) for vocabulary/generation history. All counting choices now apply on New exercise, preserving the active answer and result. The plan supplies exact sparse count IDs; R/C mark inferred units.
 
-Both activities should consume a shared symbolic representation of musical positions, durations, rests, ties, and meters. Count Writing evaluates entered counts and markings; Rhythm Walk evaluates timed input. Keep those answer and evaluation models separate. Audit existing code before choosing interfaces, dependencies, or notation rendering technology.
+Read [the unified activity contract](unified-activity.md) for shared ownership, lifecycle, persistence, entry points and validation. Shared generation, teaching levels, settings, meter policy and notation have one implementation. Answer coordinates and count evaluation stay separate from audio timing, capture, calibration and performance evaluation. [Timing calibration](timing-calibration.md) still governs the fixed session offset and raw versus corrected evidence.
 
-The original handoff preserves the future performance requirements: short/continuous/journey formats, tap and hold, independent presentation/review guidance, bounded vocabulary progression, and separate rhythm/pulse/tempo assessment. Their release order and detailed numerical policies remain unresolved.
+The refined [musical assessment slice](assessment.md) now reports rhythm accuracy, optional hold accuracy, performed tempo and typical pulse steadiness. It separates spacing-based tempo, analytical starting displacement, rhythm and own-attack sustain. Shared assessment outcomes color score/timelines while actual received positions and target-relative evidence remain intact. The shared Treat Bag presents independent bone rewards and concise musical feedback; result actions replace the completed pad. Feedback stays in the upper Treat Bag and score timelines; the input area omits duplicate metrics and visible timing/raw evidence. Tap instructions live in Practice help. Results are provisional feedback, not mastery standards. Hold policy v4 excludes sounds below 400 ms from hold scoring and waives only a short final tied member in eligible chains, while retaining forgiving own-attack sustain and small overholds; current expected bars show target duration without fixed lift-credit bands. Legacy release policy v2 and its dashed lift bands remain available only for saved older attempts. Internal ties stay continuous, and saved attempts retain their original policy.
 
-Additional performance questions identified during handoff review:
+## Decisions carried forward
 
-- How much evidence is needed to report each score or claim recovery? Short or sparse passages may need an insufficient-evidence outcome.
-- Does capture stop at the target final barline or allow a slower performance and late final release to finish?
-- Which measure indicators, page turns, and Uno animations reveal timing in stationary mode?
-- Which acceptance criteria belong to each performance release?
+- Performance **How to play** is selectable in shared settings: Tap (default) or Tap + Hold. Both reuse canonical sounding chains and raw capture. Attempts retain the choice/policy used; completed reviews do not change when preferences do. Tap reviews attacks only; Tap + Hold adds actual duration bars and provisional release/articulation feedback. See [performance policy](performance-prototype.md#selectable-tap--tap--hold).
 
-These are review questions, not approved behavior. Official UIL figures and source revision must be checked before implementing reference presets; this import does not independently verify the handoff's external-source claims.
+- One shared exercise/configuration with freely switchable Counts and Perform input panels; writing then performing is optional. Switching preserves the exact exercise; Next replaces it and clears both responses.
+- Musical source is a flat written-event sequence with exact fractional time, not stored base-twelve positions. The twelve-subdivision beat coordinate is derived; ties join written members into one sounding attack. Thirty-second notes and quintuplets remain out of scope. Domain support for other values does not imply UI support.
+- Default generated length is two measures, configurable 1–4. 6/8 uses six numbered eighth counts, grouped 123 / 456, and two dotted-quarter performance pulses.
+- Each written rest is a separate inferred unit. Rest and duration indications are independent evidence. All exposed count positions are required; optional-subdivision and endpoint grading have been removed.
+- Performance capture ends at the written ending plus 300 ms and any positive fixed calibration offset. Slower playing does not extend the deadline; unfinished notes remain part of the feedback.
+- Timing normalization estimates one constant, input-specific offset and reuses it for the tab session. Manual tap-along is the fallback; retries do not refit the offset or stretch time. Raw evidence is retained.
+- Browser defaults survive reloads; linked counting and edits stay session-only until explicitly saved as defaults. Exercise responses/results do not survive reloads. Calibration uses a separate session store. Prototype routes are compatible entry points, not a production release.
 
-## Keeping the record current
+## Document authority
 
-Record new product decisions and their rationale here; maintain Count Writing scope, examples, and acceptance criteria in its plan. Mark proposals as approved only when decided. Keep the source handoff intact, and add actual architecture and validation evidence as implementation establishes them.
+The [counting-schemes overhaul specification](counting-schemes-spec.md) records the agreed replacement design for configurable counting, MusicXML-based source access, inferred duration/rest groups, and shareable preferences. Its core, editor, browser-settings and counting URL/session contracts are implemented in the current feature branch. Versioned links override counting for a session; Settings shares pending selections and offers explicit Save as my defaults. Generation, fixtures, counting, engraving and performance now share the typed score; the temporary source adapter is removed. Historical counting tables in older slice records are superseded by this specification.
 
-Follow the repository's [branching instructions](../../AGENTS.md), [hosting workflow](../hosting.md), and [release instructions](../releasing.md). A planning document is not implementation or device-validation evidence.
+Use this page and the [unified activity contract](unified-activity.md) for product scope and lifecycle; [music-model.md](music-model.md) for canonical musical data; [meters.md](meters.md) and [ties-syncopation.md](ties-syncopation.md) for counting/notation policy; [settings.md](settings.md) for settings ownership and inventory; and [assessment.md](assessment.md), [performance-prototype.md](performance-prototype.md) plus [timing-calibration.md](timing-calibration.md) for performance behavior. Numerical timing thresholds remain provisional. When extending the activity, update the relevant contract and shared fixtures/tests together.
+
+The original handoff and first-release plans preserve provenance, not additional approved requirements. Historical validation counts describe their named slice, not the current suite; see the [reviewed baseline](unified-activity.md#reviewed-baseline).
+
+Supporting documents retain musical decisions and implementation history:
+
+- [Write Counts planning record](count-writing.md), [count editor review](prototype.md), [practice loop](practice-loop.md), and [ties/syncopation](ties-syncopation.md).
+- [Settings inventory](settings.md) and [Tap Rhythms performance contract](performance-prototype.md).
+- [Original handoff](reference/RHYTHM_GAME_HANDOFF.md) and [reference provenance](reference/README.md), preserved without modification. Their proposals are not approved defaults.
+
+Those records do not override this naming, architecture, persistence or mode-switching contract. Teaching tolerances, mastery scores, adaptive progression, journey mechanics, imported content, additional meters/vocabulary and physical-device acceptance remain unresolved or deferred. Follow [AGENTS.md](../../AGENTS.md), [hosting](../hosting.md), and [release instructions](../releasing.md); feature validation does not authorize publishing to `main`.
+
+## Coordinated implementation prompts
+
+The [simple-meter triplet prompt](prompts/triplets.md) and [source-verified UIL level prompt](prompts/uil-presets.md) follow the [shared ownership and capability contract](prompts/README.md). Their implemented scope is documented in [triplets.md](triplets.md) and [uil-presets.md](uil-presets.md).
+
+[UIL teaching levels](uil-presets.md) provide I–IV General/Percussion note-only figure practice. V–VI, cut time and within-exercise meter changes are deferred by product scope. Whole and dotted-half notes are opt-in shared ingredients.
+
+## Uno level validation
+
+The Uno configuration follow-up passed Node 24.21.0, `npm ci` and `npm run check` (333 tests, TypeScript and builds). [Focused unit tests](../../tests/rhythm-uno-presets.test.ts) verify the exact cumulative definitions, independent preferences, source customization/persistence, blocked UIL scope and generated vocabulary across all configured meters and lengths. [Native browser scenarios](../../scripts/rhythm-uno-browser-scenarios.js) passed 50 assertions each at desktop (1265px) and narrow (305px inside a 320px preview), covering application, current-score/writing retention, generation, shared modes, customization, fresh-document restoration and overflow. Loopback navigation failed, so browser checks used the complete local bundle in same-origin inline documents. Physical-device and completed-performance checks were not performed in this follow-up.
+
+## Coordinated counting validation
+
+The counting-editor/settings migration passed Node 24.21.0, `npm ci` and `npm run check` (430 tests, TypeScript, application and portable builds). [Native browser scenarios](../../scripts/counting-plan-browser-scenarios.js) passed 48 assertions at each of 1536px and 320px, plus fresh-document preference migration/reload checks. Native keyboard entry and R/D toggling were verified. Workspace loopback was unavailable, so T3 ran the exact local bundle in an isolated same-origin frame with test storage. Synthetic touch events were exercised; physical-device/assistive-technology and cross-browser runner checks remain unperformed. A focus-interrupted performance record retained its state through mode changes; completed capture remains unverified in this slice. No publication or branch integration occurred.
+
+
+## Counting sharing validation
+
+The [URL/session slice](counting-schemes-spec.md#counting-urlsession-slice-implemented-2026-10-15) passed Node 24 checks (437 tests plus TypeScript/builds). Native T3 scenarios passed 20 sharing/session and 65 editor assertions at both 1536px and 320px. Workspace loopback was unavailable; checks used the full local bundle in fresh same-origin frames, isolated storage and simulated clipboard success/failure. Real OS clipboard permissions, physical-device and full release verification remain unperformed. This historical check preceded the source migration described below.
+
+## Typed source migration
+
+Generation, fixtures, counting, notation and performance now use the same immutable typed score. The temporary adapter is removed, and empty input names no longer disclose expected answers. Scoring policies are unchanged. See [migration validation](source-migration-validation.md) for regression, completed-attempt and cross-browser checks, plus the outstanding physical touch and screen-reader acceptance.
+
+## Counting correction cycle
+
+Counting feedback now shares the top Treat Bag with independent performance results. Each applicable evaluator item earns one point: count tokens individually, and rest/duration evidence once per inferred unit, including cross-bar ties. Not-applicable items are excluded. Correctly leaving a sounded unit unmarked as a rest earns its existing rest-identification point; correctness criteria are unchanged.
+
+Counting uses an independent 0–5 bone scale: below 20% earns 0, ≥20/40/60/80% earns 1/2/3/4, and only all applicable points correct earns 5. Integer point totals determine tiers before display rounding; Tap and Tap + Hold reward policies are unchanged. Zero applicable points have no percentage or bone rating. Unchecked exercises are unscored. Percentages are rounded only for display.
+
+Check captures the answer and evaluation. Subsequent edits retain that confirmed score and mark changed aspects as awaiting Check Again; no grading runs on input. Purple dashed borders indicate unresolved aspects, dotted count-box borders indicate edits awaiting check, and an outer solid teal outline identifies editing focus. There are no letter annotations; the palette explains count, rest and duration independently, including multiple problems at one position. Selecting a position explains the relevant aspects without supplying answers. Feedback links navigate through the existing horizontal workspace. Reassessment replaces the snapshot, and completion offers Next Exercise while allowing review. Both keeps counting and performance results independent. Exact evaluator evidence is available in the top Feedback → Technical counting evidence disclosure.
+
+Regression entry points: `node scripts/counting-corrections-browser-check.mjs`, `npm run test:counts:browser`, and `node scripts/responsive-workspace-browser-check.mjs` after a full build; set `TUNO_BROWSER=firefox` for Firefox. Physical-device and screen-reader acceptance remain separate.
+
+Validation for the correction slice: Node 24.21.0, `npm ci`, `npm run check` (446 tests, TypeScript and builds), and `git diff --check` passed. Chromium's existing counting suite passed at ten widths (320–2560px). The correction workflow passed in Chromium and Firefox at 320/390/1024/1440px, with screenshots for incomplete, incorrect, edited-awaiting-check and corrected work. The responsive/performance suite passed eight scenarios per engine at 320/390/768/1024/1440px, including checked counting-result retention in Both, completed rewards, interruption, retry, timing downloads and replacement. Synthetic timing tests now anchor timestamps at the first scheduled click rather than resampling after count-in; production timing code is unchanged. Final screenshots/reports are generated under `dist/validation/counting-corrections-{chromium,firefox}/` and `dist/validation/responsive-workspace-firefox/` (builds replace these artifacts).

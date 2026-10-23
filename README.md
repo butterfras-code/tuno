@@ -10,7 +10,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 
 ## Project documents
 
-- [Rhythm activities: current direction](docs/rhythm/README.md) and [Count Writing first-release plan](docs/rhythm/count-writing.md): Count Writing first, with the original rhythm handoff preserved for future performance work.
+- [Rhythm Walk: current direction](docs/rhythm/README.md) and [shared activity contract](docs/rhythm/unified-activity.md): one exercise with Write Counts, Tap Rhythms and Both modes.
 - [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 4 Practice and solo Challenge preview with full presets, adaptation and optional local progress ([validation](docs/validation/tunotes-stage4.md)).
 
 - [Hosting setup](docs/hosting.md): Cloudflare Pages, tuno.cc, automatic production deployments, and the feature-branch/PR workflow.

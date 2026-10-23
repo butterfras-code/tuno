@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uno234 · Tap / Tap + Hold</title>
+  <style>
+    :root { color-scheme: light; --paper:#f6f3ed; --ink:#252e2c; --muted:#626a65; --teal:#226a64; --line:#d8ddd5; --accent:#87513e; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 system-ui,sans-serif; }
+    main { max-width:1080px; margin:auto; padding:56px 32px 72px; } a { color:var(--teal); text-underline-offset:4px; }
+    header { border-top:3px solid var(--ink); padding-top:16px; } .masthead { display:flex; justify-content:space-between; gap:20px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { font:normal clamp(44px,7vw,80px)/1.08 Georgia,serif; letter-spacing:-.035em; margin:52px 0 24px; max-width:780px; }
+    .lead { max-width:670px; font-size:21px; line-height:1.5; } .label { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+    h2 { font:normal 30px/1.25 Georgia,serif; margin:0 0 16px; } h3 { font-size:16px; margin:0 0 8px; } p { margin:0 0 18px; }
+    .demo { margin:40px 0; padding:28px; background:#fffdf8; border:1px solid var(--line); border-radius:8px; }
+    .demo-header { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:20px; }
+    .switch { display:flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:28px; }
+    button { font:inherit; padding:8px 20px; border:0; border-radius:24px; color:var(--ink); background:transparent; cursor:pointer; }
+    button[aria-pressed=true] { color:white; background:var(--teal); } button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+    svg { display:block; width:100%; height:auto; overflow:visible; } .rail { stroke:var(--line); stroke-width:2; } .hit { stroke:var(--teal); stroke-width:3; } .hold { stroke:var(--teal); stroke-width:5; } .svg-label { font:16px system-ui,sans-serif; fill:var(--muted); }
+    .result { padding-top:18px; color:var(--teal); margin:0; font-weight:600; }
+    .chapters { display:grid; grid-template-columns:1fr 1fr; gap:48px; padding-top:40px; border-top:1px solid var(--line); }
+    .number { display:block; font-size:12px; color:var(--muted); margin-bottom:12px; }
+    table { width:100%; border-collapse:collapse; margin:20px 0; font-size:14px; } th,td { text-align:left; vertical-align:top; padding:12px 0; border-bottom:1px solid var(--line); } th { padding-right:20px; font-weight:500; width:48%; }
+    .full { grid-column:1/-1; } .evidence { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; } .evidence > div { padding-top:18px; border-top:2px solid var(--teal); }
+    .stat { font:normal 42px Georgia,serif; color:var(--teal); display:block; margin-bottom:8px; }
+    .note { font-size:14px; color:var(--muted); } footer { margin-top:48px; border-top:1px solid var(--line); padding-top:20px; font-size:13px; color:var(--muted); }
+    @media(max-width:700px) { main { padding:28px 20px 48px; } h1 { margin-top:36px; } .chapters,.evidence { grid-template-columns:1fr; gap:32px; } .demo { padding:20px 16px; } .masthead { letter-spacing:.06em; } }
+    @media print { main { padding:16px; } .demo,.chapters article { break-inside:avoid; } button { border:1px solid var(--line); } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="masthead"><span>Uno234 / Performance</span><span>Implementation review · 11 Oct 2026</span></div>
+    <h1>Same score.<br>Two ways to play.</h1>
+    <p class="lead">Tap the starts, or sustain the notes. One saved setting changes the performance task while keeping the exercise and written answer intact.</p>
+    <p class="label">Settings → Performance → How to play</p>
+  </header>
+  <section class="demo" aria-label="Illustrative comparison of the two settings">
+    <div class="demo-header"><div><strong>One quarter note at 80 BPM</strong><br><span class="note">Same attack. A release after 100 ms.</span></div>
+      <div class="switch" role="group" aria-label="Example performance setting"><button type="button" aria-pressed="true" data-style="tap">Tap</button><button type="button" aria-pressed="false" data-style="hold">Tap + Hold</button></div>
+    </div>
+    <svg viewBox="0 0 760 130" role="img" aria-label="Expected and received attacks at zero; the release is ignored in Tap" id="example">
+      <text x="0" y="35" class="svg-label">Expected</text><text x="0" y="90" class="svg-label">Received</text>
+      <path d="M120 30H740 M120 85H740" class="rail"/>
+      <g id="durations" hidden style="display:none"><path d="M150 30H680 M150 85H221" class="hold"/><path d="M680 25V35 M221 80V90" class="hit"/></g>
+      <path d="M150 20V40 M150 75V95" class="hit"/>
+      <text x="138" y="124" class="svg-label">0</text><text x="642" y="124" class="svg-label">750 ms</text>
+    </svg>
+    <p class="result" id="result" role="status">Attack on time. Release is not graded.</p>
+    <p class="note" style="margin:10px 0 0">Illustrative diagram. Actual review uses recorded input times and the score’s shared geometry.</p>
+  </section>
+  <div class="chapters">
+    <article><span class="number">01 / Behavior</span><h2>Choice without replacement</h2>
+      <h3>Tap · default</h3><p>“Tap when each note starts.” Attacks, missing notes, extra attacks and attacks during rests receive feedback. Release and sustain do not.</p>
+      <h3>Tap + Hold</h3><p>“Hold each note for its length. Release for rests.” Separate notes need release and reattack. Tied chains need one continuous hold.</p>
+      <p class="note">The setting locks during count-in and capture. Completed attempts keep their original choice and policy; retry uses the current selection. Calibration continues to use the fixed input-specific session offset.</p>
+    </article>
+    <article><span class="number">02 / Review</span><h2>Show what happened</h2>
+      <p>Tap keeps attack markers. Tap + Hold adds thin bars from onset to actual release, with tied durations continuing across bars and wrapped systems.</p>
+      <p>Accepted gaps stay visible. Accepted early attacks after rests retain raw overlap without a rest violation. Matched bars start at their attack markers, including just before a barline. Early releases, overholds and unmatched holds keep their actual timing. Incomplete holds use a distinct dashed extent, no release endpoint, and “no release observed.”</p>
+      <p class="note">Text, SVG descriptions and endpoint shapes supplement color. No live sustain animation or additional guidance mode.</p>
+    </article>
+    <article><span class="number">03 / Provisional policy</span><h2>Bounded allowances</h2>
+      <table aria-label="Provisional evaluation defaults">
+        <tr><th>Attack acceptance</th><td>±80 ms; association remains ±180 ms</td></tr>
+        <tr><th>Ordinary release</th><td>Smaller of 60 ms or 10% of sounding duration</td></tr>
+        <tr><th>Adjacent early release</th><td>Smaller of 80 ms or 15% of preceding sounding duration</td></tr>
+        <tr><th>Minimum sustain</th><td>70% of expected duration</td></tr>
+      </table>
+      <p class="note">Engineering defaults for review, not approved teaching thresholds. Ordinary and articulation allowances never add together. Next attacks are checked independently against expected onset. No student tolerance controls.</p>
+    </article>
+    <article><span class="number">04 / Decisions remaining</span><h2>Teaching &amp; devices</h2>
+      <p>Review the attack, release, articulation and minimum-sustain defaults with teaching examples before treating them as instructional thresholds.</p>
+      <p>Physical keyboard/touch timing, native held-pointer capture, Chromebook, Safari/mobile devices, audio hardware and assistive technology remain unverified.</p>
+      <p class="note">This stays on the feature branch. No production publication, mastery scores, progression or new vocabulary.</p>
+    </article>
+    <article class="full"><span class="number">05 / Evidence</span><h2>Automated coverage</h2>
+      <div class="evidence">
+        <div><span class="stat">238</span><h3>Tests pass</h3><p class="note">Type checking and builds pass. Tests cover both settings, scaled boundaries, rests, ties, final releases, calibration invariance and raw evidence.</p></div>
+        <div><span class="stat">4</span><h3>Count browser suites</h3><p class="note">Chromium regression suites preserve the shared editor, modes, keyboard/touch writing, supported meters and narrow layouts.</p></div>
+        <div><span class="stat">320</span><h3>Pixels, narrow review</h3><p class="note">Native preview scenarios cover both settings, synthetic input, 6/8, persistence, cancellation and wrapped durations. Desktop width: 1521 px.</p></div>
+      </div>
+      <p class="note">Synthetic input and real audio-clock waits verify software behavior, not physical timing. Invented pointer IDs use a capture stub. The separate background-tab incomplete-evidence check overrides its hidden flag; it does not validate background lifecycle.</p>
+    </article>
+  </div>
+  <footer><a href="performance-prototype.md">Evaluation contract</a> · <a href="unified-activity.md">Activity &amp; validation</a> · <a href="timing-calibration.md">Calibration</a> · <a href="../../tests/rhythm-play-style.test.ts">Policy tests</a><p style="margin-top:12px">Uno234 is the current activity. Rhythm Walk is reserved for a future continuous game mode. The existing layout audit remains separate.</p></footer>
+</main>
+<script>
+  document.querySelectorAll('[data-style]').forEach(button => button.addEventListener('click', () => {
+    const hold = button.dataset.style === 'hold';
+    document.querySelectorAll('[data-style]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+    document.querySelector('#durations').style.display = hold ? '' : 'none';
+    document.querySelector('#durations').removeAttribute('hidden');
+    document.querySelector('#result').textContent = hold ? 'Attack on time. Release is 650 ms early; duration needs attention.' : 'Attack on time. Release is not graded.';
+    document.querySelector('#example').setAttribute('aria-label', hold ? 'Expected hold 750 milliseconds; received hold 100 milliseconds. Attack on time, release 650 milliseconds early.' : 'Expected and received attacks at zero; the release is ignored in Tap.');
+  }));
+</script>
+</body>
+</html>
