@@ -4,10 +4,8 @@ import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
 import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
 import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../../music/counting/preferences.ts';
-import { settingsGroups } from './settings-catalog.ts';
 import { generationIssue, ingredients, enableMeter } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
-import type { Setting } from './settings-catalog.ts';
 import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
 
 function unavailableReason(reason: string): string {
@@ -18,49 +16,6 @@ function unavailableReason(reason: string): string {
   if (reason.includes('paired-eighths')) return 'Complete eighth-note pairs are not supported in this configuration.';
   if (reason.includes('no-quarter-rest-beat-one')) return 'The downbeat quarter-rest restriction is not supported in this configuration.';
   return reason;
-}
-
-function placeholder(setting: Setting): HTMLElement {
-  const row = el('div', 'setting-row');
-  row.dataset.setting = setting.id;
-  row.dataset.availability = setting.availability ?? 'planned';
-  const label = el('div', 'setting-heading');
-  const title = el('h3', '', setting.label); title.id = `setting-${setting.id}`;
-  const status = setting.availability === 'decision' ? 'To be decided' : setting.availability === 'deferred' ? 'Outside this release' : 'Not available yet';
-  const badge = el('span', 'availability', status);
-  badge.id = `status-${setting.id}`;
-  label.append(title, badge); row.append(label);
-  const hint = el('p', 'setting-hint', setting.hint ?? (setting.availability === 'decision' ? 'Behavior and defaults still need review.' : 'This control will be available in a later version.'));
-  hint.id = `hint-${setting.id}`;
-  const describe = (control: HTMLElement) => control.setAttribute('aria-describedby', `${badge.id} ${hint.id}`);
-  if (setting.kind === 'select' || setting.kind === 'checklist') {
-    const group = el('fieldset', 'settings-options');
-    group.append(el('legend', 'sr-only', setting.label));
-    describe(group);
-    for (const option of setting.options ?? []) {
-      const optionLabel = el('label', 'setting-option');
-      const input = el('input');
-      input.type = setting.kind === 'select' ? 'radio' : 'checkbox';
-      input.name = `setting-${setting.id}`;
-      input.disabled = true; input.checked = setting.value === option;
-      input.dataset.setting = setting.id; describe(input);
-      optionLabel.append(input, el('span', '', option)); group.append(optionLabel);
-    }
-    row.append(group);
-  } else if (setting.kind === 'check') {
-    const checkbox = el('input'); checkbox.type = 'checkbox'; checkbox.disabled = true;
-    checkbox.checked = setting.checked ?? false;
-    checkbox.indeterminate = setting.checked === undefined;
-    checkbox.setAttribute('aria-labelledby', title.id); describe(checkbox);
-    row.append(checkbox);
-  } else if (setting.kind === 'number') {
-    const input = el('input', 'control'); input.type = 'number'; input.disabled = true; input.placeholder = 'Not set';
-    input.setAttribute('aria-labelledby', title.id); describe(input); row.append(input);
-  } else if (setting.kind === 'action') {
-    const action = button(setting.label); action.disabled = true; describe(action); row.append(action);
-  }
-  row.append(hint);
-  return row;
 }
 
 export function createSettingsPage(callbacks: {
@@ -80,9 +35,8 @@ export function createSettingsPage(callbacks: {
   const newExercise = button('New exercise', callbacks.newExercise, true);
   const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
   const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
-  const heading = el('h2', '', 'Available now'); heading.id = 'available-settings';
-  const activeBadge = el('span', 'availability availability--active', 'Working controls');
-  const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading, activeBadge);
+  const heading = el('h2', '', 'Counting preferences'); heading.id = 'available-settings';
+  const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading);
   const activeControls = el('div', 'settings-live-controls');
   let counting = callbacks.initialCounting;
   const countingControls = new Map<keyof CountingPreferences, HTMLInputElement | HTMLSelectElement>();
@@ -139,7 +93,10 @@ export function createSettingsPage(callbacks: {
   adopt.hidden = !callbacks.isLinked();
   share.append(shareHint, copy, adopt, shareStatus, fallback);
   activeControls.append(share);
-  activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
+  const countingHelp = el('details', 'counting-help');
+  countingHelp.append(el('summary', '', 'Counting and keyboard help'));
+  countingHelp.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
+  activeControls.append(countingHelp);
   let generation = structuredClone(callbacks.initialGeneration);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';
@@ -308,31 +265,8 @@ export function createSettingsPage(callbacks: {
   teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
   exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
-  available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
-  const browse = el('div', 'settings-browse');
-  browse.append(el('h2', '', 'Planned settings'));
-  const sections: HTMLDetailsElement[] = [];
-  const expand = button('Expand all groups', () => {
-    const open = sections.some(section => !section.open);
-    sections.forEach(section => { section.open = open; });
-    expand.textContent = open ? 'Collapse all groups' : 'Expand all groups';
-  });
-  browse.append(expand);
-  const planned = el('details', 'planned-settings');
-  planned.append(el('summary', '', 'Future options'), browse, el('p', 'setting-hint', 'These options are planned or still being decided. They do not change your exercises.'));
-  page.append(intro, savedNote, settingsActions, available, planned);
-  for (const group of settingsGroups) {
-    const plannedSettings = group.settings.filter(setting => !['count-system', 'passage-length', 'meter-pool', 'beat-grouping', 'activity-mode', 'performance-input'].includes(setting.id));
-    const section = el('details', 'settings-group'); section.dataset.group = group.id;
-    section.addEventListener('toggle', () => { expand.textContent = sections.every(s => s.open) ? 'Collapse all groups' : 'Expand all groups'; });
-    const summary = el('summary');
-    const title = el('h2', '', group.title);
-    summary.append(title, el('span', 'group-count', `${plannedSettings.length} settings`));
-    const content = el('div', 'settings-group-body');
-    content.append(el('p', 'group-description', group.description));
-    plannedSettings.forEach(setting => content.append(placeholder(setting)));
-    section.append(summary, content); planned.append(section); sections.push(section);
-  }
+  available.append(activeHeader, activeControls);
+  page.append(intro, savedNote, settingsActions, available);
   const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
   const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
   updateGenerationStatus();

@@ -128,7 +128,7 @@ window.__assessmentCheck = (async () => {
     button('Stop').click(); assert(bag.textContent.includes('Previous completed attempt') && bag.querySelector('.bone-slots'), 'interruption retains earned feedback'); const retryRecord=await download();assert(retryRecord.bpm===160 && retryRecord.playStyle!==record.playStyle && retryRecord.status==='interrupted','retry snapshots current preferences');
     document.querySelector('.performance-results button:last-of-type').click();
     assert(!bag.querySelector('.bone-slots') && bag.textContent.includes('Play the rhythm'), 'Next clears Treat Bag');
-    assert(id()!==exercise && !document.querySelector('.performance-results') && !surface.hidden && document.querySelector('.pad-action').textContent==='Start','Next shared lifecycle replaces exercise and restores ready pad');
+    assert(id()!==exercise && !document.querySelector('.performance-results') && !surface.hidden && document.querySelector('.pad-action').textContent==='Tap to start','Next shared lifecycle replaces exercise and restores ready pad');
     assert(!document.querySelector('[aria-label="Attempt review"]').textContent && !document.querySelectorAll('.timing-timeline').length,'Next clears review/timelines');
     assert(![...document.querySelectorAll('.count-slot')].some(n=>/^\d/.test(n.textContent)),'Next clears writing');
     assert(document.documentElement.scrollWidth<=innerWidth,'no horizontal overflow');
