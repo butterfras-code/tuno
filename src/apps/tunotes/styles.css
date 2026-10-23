@@ -418,7 +418,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .brand { width: 100%; justify-content: space-between; gap: 8px; }
   .tagline { font-size: 12px; }
   .wordmark { font-size: 28px; }
-  #notes-practice { height: auto; min-height: calc(100svh - 190px); padding: 16px 12px; border-radius: 20px; overflow: visible; scrollbar-gutter: auto; }
+  #notes-practice { height: auto; min-height: calc(100svh - 230px); padding: 16px 12px; border-radius: 20px; overflow: visible; scrollbar-gutter: auto; }
   #notes-practice .practice-view { position: relative; display: block; min-height: 0; }
   #notes-practice .practice-companion { position: absolute; top: 0; right: 0; width: 72px; }
   #notes-practice .practice-companion .uno { width: 72px; height: 72px; }
@@ -549,7 +549,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 @media (max-width: 760px) {
   #notes-practice:has(.preset-setup.is-editing) { min-height: 0; }
-  #notes-practice .custom-editor, .custom-editor { height: max(470px, calc(100dvh - 224px)); max-height: none; }
+  #notes-practice .custom-editor, .custom-editor { height: max(470px, calc(100dvh - 264px)); max-height: none; }
   #notes-practice .custom-editor > h2 { font-size: 21px; }
   .custom-editor-actions .control { font-size: 14px; padding: 10px 12px; }
   .custom-editor-actions .custom-save-toggle { font-size: 13px; padding-inline: 0; }
@@ -625,7 +625,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { overflow: hidden; }
 #notes-challenge .custom-editor { height: calc(clamp(520px, calc(100dvh - 180px), 680px) - 56px); max-height: none; }
 @media (max-width: 760px) {
-  #notes-challenge, #notes-multi\ player { height: auto; min-height: calc(100svh - 190px); padding: 16px 12px; overflow: visible; scrollbar-gutter: auto; border-radius: 20px; }
+  #notes-challenge, #notes-multi\ player { height: auto; min-height: calc(100svh - 230px); padding: 16px 12px; overflow: visible; scrollbar-gutter: auto; border-radius: 20px; }
   #notes-challenge .practice-view { position: relative; display: block; min-height: 0; }
   #notes-challenge .practice-companion { position: absolute; top: 0; right: 0; width: 72px; }
   #notes-challenge .practice-companion .uno { width: 72px; height: 72px; }
@@ -637,7 +637,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .multiplayer-slot { width: auto; flex: none; }
   .multiplayer-player-tab { max-width: 150px; }
 
-  #notes-challenge .custom-editor, #notes-multi\ player .multiplayer-setup:has(.preset-setup.is-editing) .custom-editor { height: max(470px, calc(100dvh - 224px)); }
+  #notes-challenge .custom-editor, #notes-multi\ player .multiplayer-setup:has(.preset-setup.is-editing) .custom-editor { height: max(470px, calc(100dvh - 264px)); }
   #notes-challenge:has(.preset-setup.is-editing), #notes-multi\ player:has(.preset-setup.is-editing) { min-height: 0; }
 }
 

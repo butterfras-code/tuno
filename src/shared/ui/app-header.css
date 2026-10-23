@@ -24,7 +24,6 @@
 .app-header.suite-header .tinker-control { display: block; margin-left: 0; }
 .app-header.suite-header .brand { height: auto; margin-left: 0; }
 .app-header.suite-header .tagline { white-space: normal; }
-#home.is-playing .suite-header .brand { display: flex; }
 .rhythm-app .app-header.suite-header { flex-wrap: wrap; }
 .rhythm-app .app-header.suite-header .brand { flex: 1; min-width: 0; }
 @media (max-width: 700px) {
