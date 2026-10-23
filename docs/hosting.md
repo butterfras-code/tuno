@@ -14,8 +14,12 @@ The Git-connected Pages project uses these settings:
 | Root directory | Repository root |
 | Build command | `npm run build` |
 | Build output directory | `dist/hosted` |
-| Build environment variable | `NODE_VERSION=24` |
+| Build environment variable | `NODE_VERSION=24.22.1` (production and preview) |
 | Custom domain | `tuno.cc` |
+
+Keep the production and preview `NODE_VERSION` settings aligned with `.nvmrc`, and confirm the resolved Node version in each deployment's build log. The settings above describe the required configuration; editing this document does not update the Cloudflare dashboard. Cloudflare supports explicit versions through [`NODE_VERSION` or `.nvmrc`](https://developers.cloudflare.com/pages/configuration/build-image/), and its v3 build system does not select Node from `package.json` engines.
+
+Node 24.22.1 includes the [October 21, 2026 security fixes](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). The package engine minimum excludes earlier Node 24 releases, but the Node executable itself must be upgraded; installing npm dependencies does not patch it. Future Node security updates should advance the pin, engine minimum, matching lockfile metadata, and Cloudflare settings together.
 
 This is a **Pages** project. Its configuration uses a build output directory; the Workers setup form with a Wrangler deploy command is a different deployment flow.
 
