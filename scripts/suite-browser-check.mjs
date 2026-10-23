@@ -5,6 +5,31 @@ const host = await hostBuild();
 const origin = new URL(host.url).origin;
 const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
 try {
+  // Installing tUno must prepare Uno234 without visiting rhythm online first.
+  const fresh = await browser.newContext();
+  const installed = await fresh.newPage();
+  await installed.goto(origin + '/tune/');
+  await installed.evaluate(async () => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const registration = await navigator.serviceWorker.getRegistration('/');
+      if (registration?.active?.state === 'activated' && registration.active.scriptURL.endsWith('/suite-sw.js')) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('Suite worker did not activate');
+  });
+  await fresh.setOffline(true);
+  await installed.goto(origin + '/');
+  await installed.locator('.launcher-card[href="/rhythm/"]').click();
+  await installed.reload();
+  assert.equal(await installed.locator('h1').textContent(), 'Uno234');
+  assert.equal(await installed.locator('link[rel="manifest"]').getAttribute('href'), '/manifest.webmanifest');
+  const manifest = await installed.evaluate(async () => (await fetch('/manifest.webmanifest')).json());
+  assert.equal(manifest.id, '/');
+  assert.equal(manifest.scope, '/');
+  await installed.getByRole('link', { name: '← Tools' }).click();
+  await installed.locator('.launcher-card').first().waitFor();
+  await fresh.close();
   const context = await browser.newContext({ hasTouch: true });
   let page = await context.newPage();
   page.setDefaultTimeout(15000); page.setDefaultNavigationTimeout(15000);
@@ -79,9 +104,10 @@ try {
   }
   console.log('Checking offline route entry and Tools');
   await context.setOffline(true); host.setAvailable(false);
-  for (const path of ['/tone/', '/tempo/', '/tune/', '/notes/']) {
+  for (const path of ['/tone/', '/tempo/', '/tune/', '/notes/', '/rhythm/']) {
     await page.goto(origin + path); await page.reload();
-    await page.getByText('Offline ready', { exact: true }).waitFor();
+    if (path !== '/rhythm/') await page.getByText('Offline ready', { exact: true }).waitFor();
+    else assert.equal(await page.locator('h1').textContent(), 'Uno234');
     await page.getByRole('link', { name: '← Tools' }).click();
     await page.locator('.launcher-card').first().waitFor();
     assert.equal(await page.locator('.launcher-card').count(), 3);

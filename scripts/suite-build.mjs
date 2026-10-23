@@ -34,7 +34,9 @@ export async function buildSuite(dev) {
   const launcher = await readFile(new URL('index.html', out), 'utf8');
   const tune = await readFile(new URL('tune/index.html', out), 'utf8');
   const tuneHtml = tune.replaceAll('href="./', 'href="/tune/').replaceAll('src="./', 'src="/tune/').replaceAll('content="./', 'content="/tune/');
-  const version = createHash('sha256').update(launcher).update(tuneHtml).update(await readFile(new URL('launcher.js', out))).update(await readFile(new URL('launcher.css', out))).digest('hex').slice(0, 16);
+  const rhythmNames = ['rhythm/index.html', 'rhythm/app.js', 'rhythm/app.css'];
+  const rhythmBytes = dev ? [] : await Promise.all(rhythmNames.map(name => readFile(new URL(name, out))));
+  const version = createHash('sha256').update(launcher).update(tuneHtml).update(await readFile(new URL('launcher.js', out))).update(await readFile(new URL('launcher.css', out))).update(Buffer.concat(rhythmBytes)).digest('hex').slice(0, 16);
   const alias = tuneHtml.replace('</head>', `<meta name="suite-version" content="${version}"></head>`);
   for (const route of ['tone', 'tempo']) {
     await mkdir(new URL(route + '/', out), { recursive: true });
@@ -42,10 +44,10 @@ export async function buildSuite(dev) {
   }
   if (dev) return;
   const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
-  const names = ['index.html', 'launcher.js', 'launcher.css', 'tone/index.html', 'tempo/index.html', ...Object.keys(release.apps.tuno.checksums).filter(name => name !== 'sw.js').map(name => 'tune/' + name)];
+  const names = [...rhythmNames, 'manifest.webmanifest', 'index.html', 'launcher.js', 'launcher.css', 'tone/index.html', 'tempo/index.html', ...Object.keys(release.apps.tuno.checksums).filter(name => name !== 'sw.js').map(name => 'tune/' + name)];
   const integrity = Object.fromEntries(await Promise.all(names.map(async name => [name, 'sha256-' + createHash('sha256').update(await readFile(new URL(name, out))).digest('base64')])));
   const worker = (await readFile(new URL('../src/distribution/service-worker.js', import.meta.url), 'utf8'))
-    .replaceAll('__APP_ID__', 'suite').replace('__BUILD_VERSION__', version).replace('__EXCLUDED_PATHS__', JSON.stringify(['notes/', 'rhythm/', 'prototypes/'])).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));
+    .replaceAll('__APP_ID__', 'suite').replace('__BUILD_VERSION__', version).replace('__EXCLUDED_PATHS__', JSON.stringify(['notes/', 'prototypes/'])).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));
   // A new root registration can replace the retirement worker before it activates.
   // Retire only the old root tUno cache after all of its existing clients close.
   const retirement = `self.addEventListener('activate', event => event.waitUntil((async () => {
