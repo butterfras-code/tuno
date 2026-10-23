@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
-import { mkdir, mkdtemp, copyFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { hostBuild } from './test-host.mjs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 
 const name=process.env.TUNO_BROWSER || 'chromium';
 const browser=await ({chromium,firefox})[name].launch(),host=await hostBuild();
-const temporary=await mkdtemp(join(tmpdir(),'notes-multiplayer-'));
 const evidence=[];
 const button=(scope,label)=>scope.getByRole('button',{name:label,exact:true});
 async function open(page,url) { await page.goto(url); await button(page,'Multi Player').click(); }
@@ -340,7 +336,11 @@ async function run(page,url,label) {
 try {
   await mkdir('dist/validation',{recursive:true});
   const page=await browser.newPage();await run(page,new URL('/notes/', host.url).href,'hosted');await page.close();
-  const file=join(temporary,'moved notes.html');await copyFile('dist/portable/tunotes.html',file);
-  const offline=await browser.newContext({offline:true});await run(await offline.newPage(),pathToFileURL(file).href,'portable-offline');await offline.close();
+  const offline = await browser.newContext();
+  const offlineUrl = new URL('/notes/', host.url).href;
+  await prepareOfflineContext(offline, offlineUrl);
+  host.setAvailable(false);
+  await run(await offline.newPage(), offlineUrl, 'hosted-offline');
+  await offline.close(); host.setAvailable(true);
   await writeFile(`dist/validation/notes-multiplayer-${name}.json`,JSON.stringify({browser:name,evidence},null,2));console.log(evidence.join('\n'));
-} finally {await browser.close();await host.close();await rm(temporary,{recursive:true,force:true});}
+} finally {await browser.close();await host.close();}

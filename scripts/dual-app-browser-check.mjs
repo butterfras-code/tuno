@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile, mkdtemp, copyFile, rm, mkdir, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
 import { contentType } from './test-host.mjs';
 
 const browserName = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({ chromium, firefox })[browserName].launch({ headless: true });
-const temporary = await mkdtemp(join(tmpdir(), 'tunotes-portable-'));
 const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
 let blockNotesWorker = true;
 let online = true;
@@ -80,23 +76,6 @@ try {
   await lifecycle.close();
   results.push('Immediate and ancestor unmount dispose once; connected moves and cancelled observers do not dispose');
   results.push('Repeated Uno mount/dispose cancels active animations and is idempotent');
-  for (const [id, title] of [['tuno', 'tUno'], ['tunotes', 'tuNotes']]) {
-    const file = join(temporary, `${id}-renamed.html`);
-    await copyFile(new URL(`../dist/portable/${id}.html`, import.meta.url), file);
-    const context = await browser.newContext({ offline: true });
-    const page = await context.newPage();
-    const requests = [], errors = [];
-    page.on('request', request => { if (/^https?:/.test(request.url())) requests.push(request.url()); });
-    page.on('pageerror', error => errors.push(error.message));
-    await page.goto(pathToFileURL(file).href);
-    assert.equal(await page.locator('h1').textContent(), title);
-    assert.equal(await page.locator('#offline-status').textContent(), 'Self-contained offline file');
-    assert.equal(await page.evaluate(() => document.fonts.ready.then(() => document.fonts.check('18px Nunito'))), true);
-    assert.deepEqual(requests, []);
-    assert.deepEqual(errors, []);
-    await context.close();
-    results.push(`${id}: moved standalone file cold-opens offline without network requests`);
-  }
   for (const prefix of ['/', '/nested/classroom/']) {
     blockNotesWorker = true;
     const context = await browser.newContext({ acceptDownloads: true });
@@ -187,13 +166,8 @@ try {
     assert.equal(await reopened.locator('h1').textContent(), 'tuNotes');
     await reopened.getByRole('button', { name: 'Install · About', exact: true }).click();
     assert.equal(await reopened.getByRole('heading', { name: 'Install and offline access' }).evaluate(node => node === document.activeElement), true);
-    const downloadEvent = reopened.waitForEvent('download');
-    await reopened.getByRole('link', { name: 'Download offline HTML' }).click();
-    const download = await downloadEvent;
-    assert.equal(download.suggestedFilename(), `tunotes-${release.apps.tunotes.build}.html`);
-    const downloaded = join(temporary, download.suggestedFilename());
-    await download.saveAs(downloaded);
-    assert.deepEqual(await readFile(downloaded), await readFile(new URL('../dist/portable/tunotes.html', import.meta.url)));
+    assert.equal(await reopened.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
+    assert.equal(await reopened.getByRole('button', { name: 'Install tuNotes', exact: true }).isVisible(), true);
     assert.equal(await reopened.evaluate(() => localStorage.getItem('tuno-test-sentinel')), 'preserve');
     for (const width of [360, 768, 1280]) {
       await reopened.setViewportSize({ width, height: 900 });
@@ -207,7 +181,7 @@ try {
     await tuner.waitForFunction(() => window.unoListeners === 0);
     await context.close();
     online = true;
-    results.push(`${prefix}: separate workers, distinct manifests/caches, scoped cleanup, offline reload/download, narrow layouts and Uno disposal passed`);
+    results.push(`${prefix}: separate workers, distinct manifests/caches, scoped cleanup, offline reload and install guidance, narrow layouts and Uno disposal passed`);
   }
   await mkdir('dist/validation', { recursive: true });
   await writeFile(`dist/validation/dual-app-${browserName}.json`, JSON.stringify({ builds: Object.fromEntries(Object.entries(release.apps).map(([id, app]) => [id, app.build])), results }, null, 2));
@@ -215,5 +189,4 @@ try {
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
-  await rm(temporary, { recursive: true, force: true });
 }

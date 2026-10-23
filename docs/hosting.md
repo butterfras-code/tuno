@@ -39,7 +39,7 @@ The hosting build runs `npm run build`, not the full test suite. Follow [release
 
 The first visit requires connectivity. The app reports **Offline ready** after verifying its essential cached resources. A newly downloaded service worker waits until all existing tUno tabs close before activating, so deployment does not interrupt an active practice session. An offline device must reconnect to obtain an update.
 
-Deploy the complete hosted output together, including the matching portable download. The caching, resource-serving, and release-retention requirements are documented in [release instructions](releasing.md).
+Deploy the complete hosted output together, including each app’s manifest, icons and worker. The caching, resource-serving, and release-retention requirements are documented in [release instructions](releasing.md).
 
 ## Site URLs
 
@@ -56,7 +56,7 @@ All destinations have real directory index files. No SPA rewrite or additional C
 
 Tune, Tone and Tempo share one bundle and use History API navigation without recreating the store or audio controller. Direct loads select the view named by the path, overriding the last saved focus. Settings remains a dialog. Cross-app and Tools links use normal document navigation, preserving app isolation and normal browser history. Existing page-hide/visibility handlers stop or pause active practice resources. Portable HTML retains local view switching without rewriting its file URL; its Tools link opens the hosted launcher.
 
-Both `/prototypes/rhythm-walk/` and `/prototypes/count-writing/` remain compatible entry pages using the canonical `/rhythm/` assets. Their query strings and hashes, including counting preferences and Settings links, remain intact. Uno234 is included in the existing tUno PWA: the suite worker precaches its HTML, JavaScript and CSS even before the first rhythm visit. Its manifest link uses the same tUno identity, so it does not create a separate rhythm installation. There is no rhythm portable release.
+Both `/prototypes/rhythm-walk/` and `/prototypes/count-writing/` remain compatible entry pages using the canonical `/rhythm/` assets. Their query strings and hashes, including counting preferences and Settings links, remain intact. Uno234 is included in the existing tUno PWA: the suite worker precaches its HTML, JavaScript and CSS even before the first rhythm visit. Uno234 also has an independent installation with its own `/rhythm/` manifest identity, worker and offline-readiness status. Standalone HTML releases are retired across all apps.
 
 `npm run dev` now serves all three apps and the launcher on port 5173. The notes/counts/walk development aliases serve the same complete site. Offline preparation stays disabled in development.
 
@@ -74,6 +74,6 @@ Migration requires connectivity. An old cached root page may appear on the first
 
 ## Staging acceptance before promotion
 
-Enable preview deployments for `dev` and test its exact HTTPS deployment URL. Confirm `/` displays the launcher, all six routes survive direct loading and refresh, and missing assets return 404. Check MIME types and revalidation headers for both manifests/workers. Confirm fresh installations start at their respective app paths, then close/reopen them offline and exercise the core controls on real hardware.
+Enable preview deployments for `dev` and test its exact HTTPS deployment URL. Confirm `/` displays the launcher, all six routes survive direct loading and refresh, and missing assets return 404. Check MIME types and revalidation headers for all app manifests/workers. Confirm fresh installations start at their respective app paths, then close/reopen them offline and exercise the core controls on real hardware.
 
 Also test an installation from the previous root deployment **on the same staging origin**, without clearing site data: keep two old app windows open through deployment, confirm practice continues and retirement waits, close all controlled windows, reopen online, and wait for offline readiness at `/tune/`. Check that the legacy `/sw.js` registration is retired or replaced by `/suite-sw.js` while `/tune/` and `/notes/` retain separate registrations, preferences remain, and the existing OS icon launches correctly online and offline after its metadata refreshes. A clean preview origin cannot establish legacy migration. Automated browser tests simulate the old root worker/cache lifecycle; they do not prove OS installation behavior, Cloudflare account-level rules, or physical-device acceptance.

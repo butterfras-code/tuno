@@ -130,7 +130,6 @@ export const settingsGroups: readonly SettingsGroup[] = [
       undecided('profiles', 'Teacher / student profiles', 'Profile separation, permissions and teacher locks need definition. Accounts and classroom dashboards are not in scope.'),
       { id: 'reset-preferences', label: 'Reset saved preferences', kind: 'action', availability: 'decision' },
       { id: 'delete-progress', label: 'Delete saved progress', kind: 'action', availability: 'decision', hint: 'Practice progress is not currently saved. Preferences and session calibration are stored separately; deleting future progress needs its own policy.' },
-      undecided('offline', 'Offline availability', 'This prototype has no dedicated installation or offline download. Rhythm distribution needs its own acceptance checks.'),
     ],
   },
 ];

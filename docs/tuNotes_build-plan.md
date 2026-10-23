@@ -1,5 +1,7 @@
 # tuNotes staged build plan
 
+> Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
+
 Status: Stages 0–5 implemented as a local Practice, solo Challenge and Multi Player preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 5 adds turns and pairs through a separate Multi Player entry; Stages 6–8 remain unimplemented.
 
 Use the existing repository and short-lived feature branches/worktrees. Each stage should be reviewable in a PR, with shared-code refactors separated from behavior changes where practical. Merge/push to `main` publishes automatically and requires publication authorization. An integration branch may collect preview stages when main must not expose unfinished navigation. Do not create a permanent second development trunk.

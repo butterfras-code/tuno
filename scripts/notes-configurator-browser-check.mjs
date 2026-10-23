@@ -2,9 +2,7 @@ import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { hostBuild } from './test-host.mjs';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 import { choosePreset, setEndpoint, setModifiers, setKey, customTab, endpointTab } from './notes-setup-helpers.mjs';
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
@@ -128,8 +126,13 @@ async function run(page,mode) {
 try {
   await mkdir('dist/validation',{recursive:true});
   const page = await browser.newPage(); await page.goto(new URL('/notes/', host.url).href); await run(page,'hosted');
-  const context = await browser.newContext({offline:true}); const file = await context.newPage(); const requests=[]; file.on('request',r => {if(/^https?:/.test(r.url())) requests.push(r.url());});
-  await file.goto(pathToFileURL(resolve('dist/portable/tunotes.html')).href); await run(file,'portable'); assert.deepEqual(requests,[]);
+  const context = await browser.newContext();
+  const offlineUrl = new URL('/notes/', host.url).href;
+  await prepareOfflineContext(context, offlineUrl);
+  host.setAvailable(false);
+  const file = await context.newPage();
+  await file.goto(offlineUrl); await run(file, 'hosted-offline');
+  await context.close(); host.setAvailable(true);
   if (name === 'chromium') {
     const touchContext = await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
     const touch = await touchContext.newPage(); await touch.goto(new URL('/notes/', host.url).href); await choosePreset(touch,'custom');

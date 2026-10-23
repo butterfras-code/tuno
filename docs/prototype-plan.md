@@ -1,5 +1,7 @@
 # Prototype plan
 
+> Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
+
 ## Purpose
 
 Turn feasibility questions into a small playable experiment and recorded evidence. This document tracks proposed work and implementation evidence. The integrated tuner/reference/metronome prototype, both builds, hosted offline support, and release controls are implemented. Physical-device acceptance remains pending; historical implementation evidence below records each stage.

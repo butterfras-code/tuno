@@ -1,0 +1,6 @@
+.install-icon { display: inline-block; width: 32px; height: 32px; vertical-align: middle; margin: 0 6px; }
+.install-help { max-width: 60ch; line-height: 1.5; }
+.install-help p { margin: 12px 0; }
+.install-dialog { color: var(--color-ink, #342f2d); background: var(--color-paper, #f4efe7); border: 1px solid var(--color-line, #ccc); border-radius: 20px; padding: 24px; width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow: auto; box-sizing: border-box; }
+.install-dialog::backdrop { background: #342f2d66; }
+.install-control > button, .install-dialog button { font: inherit; padding: 10px 16px; border-radius: 12px; cursor: pointer; }

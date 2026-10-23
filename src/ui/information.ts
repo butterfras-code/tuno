@@ -1,7 +1,7 @@
 import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './information.css';
 import projectLicense from '../../LICENSE.txt';
-import { createReleaseControls } from '../distribution/release.ts';
+import { createReleaseControls, requestInstall } from '../distribution/release.ts';
 import { button, el } from './components.ts';
 
 /** Native dialogs contain focus, handle Escape, and restore focus to the opener. */
@@ -22,18 +22,14 @@ export function createInformationControls() {
     dialogs.push(dialog);
     return (label: string) => {
       const trigger = button(label, popover ? undefined : () => (dialog as HTMLDialogElement).showModal());
-      if (popover) trigger.popoverTargetElement = dialog;
+      if (popover) trigger.addEventListener('click', () => requestInstall(() => dialog.showPopover()));
       trigger.setAttribute('aria-haspopup', 'dialog');
       trigger.setAttribute('aria-controls', id);
       return trigger;
     };
   };
   const install = createDialog('install-information', 'Keep tUno close', [
-    el('p', '', 'tUno is free and ad-free. Install it in your browser or download one HTML file to practice offline.'),
-    el('p', '', location.protocol === 'file:'
-      ? 'You are using the downloaded offline copy. Keep this HTML file and open it whenever you want to practice.'
-      : 'Use Install tUno when offered, or look for Install app / Add to Home Screen in your browser’s menu. On iPhone or iPad, open Safari’s Share menu and choose Add to Home Screen.'),
-    el('p', '', 'Wait for “Offline ready” before reopening the browser app without a connection. The downloaded HTML is a separate copy; keep the file to use it again.'),
+    el('p', '', 'tUno is free and ad-free. Install it from your browser to keep it close and practice offline.'),
     createReleaseControls(),
   ], true);
   const licenses = el('details', 'licenses');
@@ -71,7 +67,7 @@ export function createInformationControls() {
   ]);
   const privacy = createDialog('privacy-information', 'Your privacy', [
     el('p', '', 'Your microphone helps tUno hear a note. That sound stays on your device. tUno does not record it or send it to a server.'),
-    el('p', '', 'Your practice settings are saved in this browser when storage is available. Clear this site’s data in your browser to remove them. A downloaded file may keep settings separately, depending on your browser.'),
+    el('p', '', 'Your practice settings are saved in this browser when storage is available. Clear this site’s data in your browser to remove them.'),
     el('p', '', 'There are no ads or tracking analytics in tUno. Opening the website or getting an update uses the internet. Once it says “Offline ready,” you can practice without a connection.'),
   ]);
   const tips = createDialog('tips-information', 'Tech tips', [

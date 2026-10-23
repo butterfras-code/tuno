@@ -1,3 +1,4 @@
+import { createInstallControl } from '../distribution/release.ts';
 import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './styles.css';
 import tuneArtwork from '../assets/launcher/tune.svg';
@@ -20,6 +21,6 @@ for (const [name, subtitle, href, artwork] of [
   card.append(image, el('h2', '', name), el('p', '', subtitle), arrow); cards.append(card);
 }
 const footer = el('footer', 'feedback-footer');
-footer.append(createFeedbackLink());
+footer.append(createInstallControl(), createFeedbackLink());
 main.append(brand, cards, footer);
-prepareSuiteOffline();
+prepareSuiteOffline(footer);

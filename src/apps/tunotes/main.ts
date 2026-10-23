@@ -8,7 +8,7 @@ import { multiplayerView } from './ui/multiplayer-view.ts';
 import { playSurface } from './ui/play-surface.ts';
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
-import { createReleaseControls } from '../../distribution/release.ts';
+import { createReleaseControls, requestInstall } from '../../distribution/release.ts';
 import { tunotes } from '../../distribution/identity.ts';
 
 export function mountNotes(root: HTMLElement) {
@@ -72,7 +72,7 @@ export function mountNotes(root: HTMLElement) {
   installation.append(el('h2','','Install and offline access'), createReleaseControls(tunotes), notices);
   practice.options.append(installation);
   const optionsLink = el('button','footer-options','Install · About'); optionsLink.type = 'button';
-  optionsLink.addEventListener('click', () => { links[3]!.click(); installation.scrollIntoView({ block: 'nearest' }); installation.querySelector('h2')!.focus(); });
+  optionsLink.addEventListener('click', () => requestInstall(() => { links[3]!.click(); installation.scrollIntoView({ block: 'nearest' }); installation.querySelector('h2')!.focus(); }));
   installation.querySelector('h2')!.tabIndex = -1;
   footer.append(offline, createFeedbackLink(), optionsLink);
   home.append(header, ...views, footer);
