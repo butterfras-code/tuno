@@ -42,7 +42,11 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const friend = el('div', 'pulse-friend');
   friend.append(pet.node);
   const petHint = el('p', 'tempo-pet-hint');
-  responsiveLabel(petHint, 'Tap head for tempo · Double-tap body for visuals', 'Head: tap tempo · Body: double-tap visuals');
+  const tapHint = el('span', 'tempo-pet-hint-line');
+  const visualsHint = el('span', 'tempo-pet-hint-line');
+  responsiveLabel(tapHint, 'Tap head for tempo', 'Head: tap tempo');
+  responsiveLabel(visualsHint, 'Double-tap body for visuals', 'Body: double-tap visuals');
+  petHint.append(tapHint, visualsHint);
   const sharedTempo = el('div', 'tempo-and-uno');
   const dragHint = el('img', 'tempo-drag-hint') as HTMLImageElement;
   Object.assign(dragHint, { src: dragHintAsset, alt: '', draggable: false });

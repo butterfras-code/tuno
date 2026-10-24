@@ -43,6 +43,8 @@ try {
         const hint = box('.tempo-pet-hint');
         if (Math.abs(center(hint) - center(box('.pulse-friend .uno'))) > 1) issues.push('Uno and hint centers differ');
         if (hint.bottom > box('.rhythm-controls').top) issues.push('Uno hint overlaps controls');
+        const hintLines = [...metronome.querySelectorAll('.tempo-pet-hint-line')].map(line => line.getBoundingClientRect());
+        if (hintLines.length !== 2 || hintLines[1].top < hintLines[0].bottom - 1) issues.push('Visualization hint needs its own line');
         const marker = box('.tempo-drag-hint'), label = box('.tempo-drag-label');
         if (Math.abs(center(marker) - center(label)) > 1 || Math.abs(marker.top + marker.height / 2 - label.top - label.height / 2) > 1) issues.push('Adjust label not centered on marker');
         if (Math.abs(box('.tempo-drag-area').height - marker.height) > 1) issues.push('Tempo drag target height changed');
