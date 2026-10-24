@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { TUNER_ACCURACIES } from '../src/practice/state.ts';
 import { createTunerFeedback, type FeedbackEvidence } from '../src/practice/feedback.ts';
 
 function fixture() {
@@ -29,35 +30,71 @@ test('patient poses, one catch per note, and happy sit after the reward', () => 
   assert.equal(f.advance(10).pose, 'happy');
   assert.equal(f.advance(5000).reward, 1);
 });
-test('5/8 cent hysteresis and 150ms grace pause progress without pose flicker', () => {
+test('6/10 cent hysteresis and 220ms grace pause progress without pose flicker', () => {
   const f = fixture();
   f.set({ note: 69, cents: 6 }); // Already entered at zero.
   assert.equal(f.advance(1000).pose, 'wag');
   const before = f.advance(0).progress;
   f.set(null);
-  assert.equal(f.advance(140).progress, before);
+  assert.equal(f.advance(210).progress, before);
   f.set({ note: 69, cents: 0 });
   assert.ok(Math.abs(f.advance(100).progress - before - 0.04) < 0.01);
-  f.set({ note: 69, cents: 9 });
-  assert.equal(f.advance(160).progress, 0);
-  assert.equal(f.advance(240).pose, 'rest');
-  f.set({ note: 69, cents: 6 });
+  f.set({ note: 69, cents: 11 });
+  assert.equal(f.advance(230).progress, 0);
+  assert.equal(f.advance(170).pose, 'rest');
+  f.set({ note: 69, cents: 7 });
   assert.equal(f.advance(1000).pose, 'rest');
-  f.set({ note: 69, cents: 5 });
+  f.set({ note: 69, cents: 6 });
   assert.equal(f.advance(250).pose, 'wag');
 });
-test('intermediate and beginner scales relax both edges of the accuracy window', () => {
-  const intermediate = createTunerFeedback();
-  intermediate.update(0, { note: 69, cents: 5.5 }, false, 1.1);
-  assert.equal(intermediate.update(250, { note: 69, cents: 8.8 }, false, 1.1).pose, 'wag');
+test('every configured level rewards newly accepted pitches and rejects sustained errors', () => {
+  for (const { value, scale } of TUNER_ACCURACIES) {
+    for (const sign of [-1, 1]) {
+      const feedback = createTunerFeedback();
+      const entry = { note: 69, cents: sign * 6 * scale };
+      feedback.update(0, entry, false, scale);
+      // A small wobble may leave the entry window once a hold has begun.
+      const wobble = { note: 69, cents: sign * 10 * scale };
+      let result;
+      for (let time = 100; time <= 2500; time += 100) result = feedback.update(time, wobble, false, scale);
+      assert.equal(result!.reward, 1, value);
 
-  const beginner = createTunerFeedback();
-  beginner.update(0, { note: 69, cents: 6 }, false, 1.2);
-  assert.equal(beginner.update(250, { note: 69, cents: 9.6 }, false, 1.2).pose, 'wag');
+      const outside = createTunerFeedback();
+      for (let time = 0; time <= 3000; time += 100) {
+        assert.equal(outside.update(time, { note: 69, cents: sign * 6.1 * scale }, false, scale).reward, 0, value);
+      }
+      // Beyond the outer edge, a longer excursion still loses the hold.
+      feedback.reset();
+      feedback.update(4000, entry, false, scale);
+      feedback.update(4200, entry, false, scale);
+      const error = { note: 69, cents: sign * 10.1 * scale };
+      feedback.update(4210, error, false, scale);
+      assert.equal(feedback.update(4440, error, false, scale).progress, 0, value);
+    }
+  }
+});
 
-  const advanced = createTunerFeedback();
-  advanced.update(0, { note: 69, cents: 5.5 });
-  assert.equal(advanced.update(250, { note: 69, cents: 5.5 }).pose, 'rest');
+test('repeated brief pitch wobbles pause progress without erasing the hold or earning time', () => {
+  const f = fixture();
+  f.advance(1000);
+  for (let i = 0; i < 5; i++) {
+    const before = f.advance(0).progress;
+    f.set({ note: 69, cents: 15 });
+    assert.equal(f.advance(220).progress, before);
+    f.set({ note: 69, cents: 0 });
+    assert.equal(f.advance(0).progress, before);
+    assert.equal(f.advance(250).reward, 0);
+  }
+  assert.equal(f.advance(240).reward, 0);
+  assert.equal(f.advance(10).reward, 1);
+});
+
+test('stale updates and changing notes cannot carry progress into a treat', () => {
+  const f = fixture();
+  f.advance(2000);
+  assert.equal(f.feedback.update(2300, { note: 69, cents: 0 }).progress, 0);
+  assert.equal(f.feedback.update(2400, { note: 71, cents: 0 }).progress, 0);
+  assert.equal(f.feedback.update(2500, null).reward, 0);
 });
 test('silence, sustained out-of-tune input and stable new notes rearm rewards', () => {
   for (const reason of ['silence', 'out', 'note']) {
