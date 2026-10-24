@@ -1,6 +1,5 @@
-import { createInstallControl } from '../../distribution/release.ts';
+import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
-import { createFeedbackLink } from '../../shared/ui/feedback.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { countingProblems, countingScore } from './counting-feedback.ts';
 import type { CountId } from '../../music/counting/plan.ts';
@@ -238,8 +237,7 @@ const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#pract
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(helpButton, nav);
 activitySurface.append(pageTitle, practiceView, settings.page);
-const footer = el('footer', 'feedback-footer install-footer');
-footer.append(createInstallControl({ id: 'rhythm', name: 'Uno234' }), offlineStatus, createFeedbackLink());
+const footer = createAppFooter({ app: { id: 'rhythm', name: 'Uno234' }, status: offlineStatus });
 main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;

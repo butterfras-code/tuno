@@ -16,7 +16,10 @@ try {
     const check = async (state) => {
       await page.screenshot({path:`dist/validation/practice-${engine}-${width}-${state}.png`,fullPage:true});
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true,`${width} ${state}: horizontal page overflow`);
-      if (height >= 768) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
+      assert.equal(await page.locator('.suite-footer').isVisible(), !['intro','playing','paused'].includes(state), `${width} ${state}: footer visibility`);
+      // Setup and results scroll naturally to the shared suite information;
+      // live practice must still fit without page scrolling.
+      if (height >= 768 && ['intro','playing','paused'].includes(state)) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
     };
     await check('setup');
     const notesTab = page.getByRole('tab',{name:'Notes',exact:true});

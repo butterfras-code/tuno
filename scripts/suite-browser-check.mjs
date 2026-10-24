@@ -1,6 +1,34 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
+
+async function checkFooter(page, appName, width) {
+  const footer = page.locator('footer.suite-footer');
+  assert.equal(await footer.count(), 1);
+  const nav = footer.getByRole('navigation', { name: 'Information and installation' });
+  for (const rect of await nav.locator('button:visible, a:visible').evaluateAll(nodes => nodes.map(node => {
+    const r = node.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height };
+  }))) assert.ok(rect.x >= 0 && rect.right <= width && rect.height >= 44, 'Footer target clipped or too small');
+  assert.equal(await nav.getByRole('link', { name: 'Feedback/Suggestions?' }).getAttribute('href'), 'mailto:feedback@tuno.cc');
+  for (const [name, title] of [['About', `About ${appName}`], ['Uno', 'Meet Uno'], ['Tech tips', 'Tech tips'], ['Privacy', 'Your privacy'], ['Install', `Install ${appName}`]]) {
+    const trigger = nav.getByRole('button', { name, exact: true });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: title, exact: true });
+    await dialog.waitFor();
+    assert.ok(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth), title + ' overflows');
+    const bounds = await dialog.boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, title + ' outside viewport');
+    assert.equal(await dialog.evaluate(node => node.scrollTop), 0, title + ' must open at the beginning');
+    if (name === 'Uno') assert.match(await dialog.textContent(), /Uno was my first dog and my best friend/);
+    if (name === 'About') {
+      assert.match(await dialog.locator('.license-text').first().textContent(), /GNU GENERAL PUBLIC LICENSE/);
+      assert.match(await dialog.locator('.license-text').last().textContent(), /SIL OPEN FONT LICENSE/);
+    }
+    await page.keyboard.press('Escape');
+    assert.ok(await trigger.evaluate(node => document.activeElement === node), title + ' failed to restore focus');
+  }
+}
+
 const host = await hostBuild();
 const origin = new URL(host.url).origin;
 const browser = await (process.env.TUNO_BROWSER === 'firefox' ? firefox : chromium).launch();
@@ -35,7 +63,7 @@ try {
   page.setDefaultTimeout(15000); page.setDefaultNavigationTimeout(15000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   const routes = [['/tune/', 'tUno', 'Practice with a friend.'], ['/tone/', 'tUno', 'Practice with a friend.'], ['/tempo/', 'tUno', 'Practice with a friend.'], ['/notes/', 'tuNotes', 'Read Notes with a friend.'], ['/rhythm/', 'Uno234', 'Practice rhythm with a friend.']];
-  for (const width of [360, 1280]) {
+  for (const width of [320, 360, 768, 1280]) {
     console.log(`Checking suite navigation at ${width}px`);
     if (width === 1280) {
       await page.close(); page = await context.newPage();
@@ -62,9 +90,12 @@ try {
       for (const box of await page.locator('.suite-header .control:visible').evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height }; }))) {
         assert.ok(box.x >= 0 && box.right <= width && box.height >= 40, path + ' navigation clipped');
       }
+      await checkFooter(page, title, width);
       await page.getByRole('link', { name: '← Tools' }).click();
       assert.equal(new URL(page.url()).pathname, '/');
     }
+    await page.goto(origin);
+    await checkFooter(page, 'tUno', width);
   }
   console.log('Checking in-place history and audio exit');
   await page.goto(origin + '/tune/');

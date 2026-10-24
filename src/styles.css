@@ -75,7 +75,6 @@ img { display: block; max-width: 100%; }
 .tempo-adjust:focus { cursor: text; }
 .tool-status .tempo-adjust { width: 3.5ch; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; appearance: textfield; }
 .tempo-adjust::-webkit-inner-spin-button, .tempo-adjust::-webkit-outer-spin-button { appearance: none; margin: 0; }
-.app-footer { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); padding: var(--space-3) var(--space-1); font-size: 11px; color: var(--color-muted); }
 .licenses { flex-basis: 100%; }
 .license-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 300px; overflow-y: auto; font-size: 11px; }
 .settings-dialog { width: min(480px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto; padding: var(--space-6); border: 1px solid var(--color-line); border-radius: var(--radius-surface); background: var(--color-surface); color: var(--color-ink); }
@@ -126,7 +125,6 @@ img { display: block; max-width: 100%; }
 .release-controls .small { overflow-wrap: anywhere; }
 
 .mobile-only, .mobile-label { display: none; }
-.local-status { display: flex; gap: 4px; }
 .footer-extra { width: 100%; }
 .footer-extra > summary { display: none; }
 .footer-extra > * + * { margin-top: 8px; }
@@ -164,10 +162,6 @@ img { display: block; max-width: 100%; }
   .tool-card:first-child .control-row > .control { grid-column: 2; }
   .accuracy-icon { width: 24px; }
   .tool-card .accuracy-choice { grid-row: auto; grid-column: auto; min-width: 40px; min-height: 30px; padding: 5px 7px; }
-  .app-footer { padding: 14px 4px 0; gap: 12px; }
-  .app-footer > p:empty { display: none; }
-  .local-status { flex-basis: 100%; }
-  .local-status .teal { color: var(--color-muted); }
   .footer-extra > summary { display: block; padding: 10px 0; cursor: pointer; }
   .footer-extra > .sample-panel { font-size: 14px; }
   .settings-dialog { padding: 24px; }
@@ -300,7 +294,6 @@ img { display: block; max-width: 100%; }
 .compact-tool .accuracy-choice[aria-pressed='true'] { position: static; width: auto; height: auto; opacity: 1; padding: 0; background: transparent; color: inherit; font-size: 12px; }
 .compact-tool .accuracy-toggle::after { content: '▾'; margin-left: 4px; font-size: 9px; }
 .footer-extra { display: none; }
-.app-footer { height: 26px; padding-top: 10px; }
 
 @media (max-width: 650px) {
   .app { max-width: 390px; padding: 18px 16px 12px; }
@@ -320,7 +313,6 @@ img { display: block; max-width: 100%; }
   .compact-tool > .control, .compact-tool > .tool-status, .compact-tool > .accuracy-toggle { width: 100%; height: 30px; min-height: 30px; border-radius: 10px; font-size: 10px; padding: 0 3px; }
   .compact-tool .accuracy-choice[aria-pressed='true'] { font-size: 10px; }
   .tool-card:first-child .accuracy-toggle { grid-row: auto; grid-column: auto; align-self: auto; }
-  .app-footer { padding-top: 10px; }
 }
 
 /* Figma frame geometry, with normal-flow controls so small screens cannot overlap. */
@@ -336,7 +328,6 @@ img { display: block; max-width: 100%; }
 .selector-popup .control[aria-checked='true'] { background: var(--color-tint); }
 .footer-extra { display: block; }
 .footer-extra > summary { display: block; cursor: pointer; }
-.app-footer { height: auto; }
 #view-metronome { position: relative; padding: 26px 32px 33px; }
 .metronome-heading { display: flex; align-items: start; justify-content: center; min-height: 66px; flex-wrap: nowrap; }
 .metronome-heading .control-row { display: flex; flex-wrap: nowrap; gap: 12px; }
@@ -412,7 +403,6 @@ img { display: block; max-width: 100%; }
   .compact-label { height: 11px; font: 400 8px/11px var(--font-body); }
   .compact-tool > .control, .compact-tool > .tool-status { height: 34px; min-height: 34px; border-radius: 11px; font-size: 13px; }
   .compact-tool > .tool-status { font-size: 11px; }
-  .app-footer { padding-top: 14px; }
   #view-metronome { padding: 12px 16px; min-height: 484px; }
   .metronome-heading { display: block; min-height: 44px; }
   .metronome-heading .control-row { display: grid; grid-template-columns: 145fr 173fr; gap: 8px; }
@@ -471,8 +461,7 @@ img { display: block; max-width: 100%; }
   .metronome--numbered .tempo-and-uno { gap: 8px; }
 }
 .beat-hint { position: absolute; top: 76px; left: 0; right: 0; text-align: center; font-size: 12px; }
-.local-status { gap: 24px; }
-@media (max-width: 650px) { .beat-hint { top: 62px; } .local-status { gap: 4px; } }
+@media (max-width: 650px) { .beat-hint { top: 62px; } }
 /* Tone follows the same 546px desktop surface as Tune and Tempo. */
 @media (min-width: 651px) {
   .tone-heading { margin-bottom: 16px; }
