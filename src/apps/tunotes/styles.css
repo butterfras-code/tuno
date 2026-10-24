@@ -44,7 +44,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .answer-flat { border-radius: 4px 4px 8px 8px; }
 .answer-natural { min-height: 56px; }
 .answer-default { border: 2px solid var(--color-teal); box-shadow: inset 0 -3px var(--color-teal); }
-.answer-unavailable { opacity: .7; background: transparent; }
+.answer-unavailable { opacity: 1; background: transparent; border-color: transparent; color: var(--color-muted); }
 .answer[aria-disabled="true"] { cursor: default; }
 .answer-modifier, .keycap-held { border-color: var(--color-teal); background: color-mix(in srgb, var(--color-teal) 16%, var(--color-surface)); box-shadow: inset 0 0 0 2px var(--color-teal), 0 0 8px color-mix(in srgb, var(--color-teal) 65%, transparent); }
 .answer-modifier.answer-unavailable { background: color-mix(in srgb, var(--color-teal) 8%, var(--color-surface)); box-shadow: inset 0 0 0 1px var(--color-teal), 0 0 5px color-mix(in srgb, var(--color-teal) 35%, transparent); }
@@ -376,7 +376,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 .practice-setup-tabs .control { min-width: 0; max-width: 100%; overflow-wrap: anywhere; background: transparent; border: 1px solid var(--color-line); border-radius: 8px; }
 .practice-setup-tabs [aria-selected='true'] { background: var(--color-tint); border-color: var(--color-accent); color: var(--color-accent); }
-.practice-setup-panels > [role='tabpanel'] { min-height: 350px; }
+.practice-setup-panels > [role='tabpanel'] { min-height: 0; }
 .practice-setup-summary { border-top: 1px solid var(--color-line); padding-top: 12px; margin: 16px 0 0; font-size: 13px; }
 .practice-settings .practice-toggles { margin: 8px 0; }
 .practice-settings .pacing-setting { margin: 12px 0 16px; }
@@ -804,4 +804,37 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .preset-dialog--preview .picker-range-preview { margin-bottom: 4px; padding-bottom: 4px; }
   .preset-dialog--preview .picker-footer { margin-top: 4px; padding-top: 4px; }
   .preset-dialog--preview .picker-notation { margin-top: 0; }
+}
+
+/* Setup follows the form; active play retains its independent viewport layout. */
+:is(#notes-practice, #notes-challenge):has(.practice-view[data-screen='setup']):not(:has(.preset-setup.is-editing)) {
+  height: auto; min-height: 0; padding: 20px; overflow: visible; scrollbar-gutter: auto;
+}
+:is(#notes-practice, #notes-challenge) .practice-view[data-screen='setup'] { min-height: 0; }
+.activity-setup { width: 100%; }
+.practice-settings { max-width: 600px; }
+.activity-setup-toolbar { margin-bottom: 16px; padding-bottom: 12px; }
+/* The source rest scene occupies x=7..198, y=18..200 in a 218-square
+   viewBox. Keep the whole window/bed, with the same frame for every pose. */
+#home .play-stage.practice-view:not(.challenge-active):not(.previewing):not(.play-stage--compact):not(.play-stage--short) {
+  grid-template-columns: minmax(0,1fr) clamp(220px, 24vw, 320px);
+}
+#home .play-stage:not(.play-stage--compact):not(.play-stage--short) .practice-companion {
+  align-self: start; display: grid; justify-items: center; margin-top: 58px;
+}
+#home .play-stage:not(.play-stage--compact):not(.play-stage--short) .practice-companion .uno {
+  width: 100%; height: auto; aspect-ratio: 1; max-width: 320px;
+}
+#home .play-stage .practice-companion .treat-progress { margin: 4px 0 0; }
+/* Override the shared filled-control treatment without changing target bounds. */
+#home .answer.answer-unavailable:not(.answer-pending):not(.answer-modifier) { background: transparent; border-color: transparent; box-shadow: none; color: var(--color-muted); }
+#home .play-stage:not(.play-stage--compact):not(.play-stage--short) .practice-companion { justify-self: stretch; }
+/* Phones keep a small companion beside the music, above the fixed answer map. */
+#home .play-stage--compact.practice-view:not(.challenge-active):not(.previewing) > .practice-companion {
+  display: block; position: absolute; top: 118px; right: 12px; width: 96px; margin: 0;
+}
+#home .play-stage--compact .practice-companion .uno { width: 96px; height: 96px; }
+#home .play-stage--compact.practice-view:not(.challenge-active):not(.previewing) .practice-play > .staff-panel { padding-right: 96px; }
+@media (max-width: 700px) {
+  #home.is-playing .notes-fullscreen { max-width: 104px; padding: 8px; font-size: 13px; }
 }

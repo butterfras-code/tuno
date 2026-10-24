@@ -29,3 +29,5 @@
 @media (max-width: 700px) {
   .rhythm-app .app-header.suite-header .rhythm-nav { flex-basis: 100%; }
 }
+/* Suite navigation shares a readable boundary; practice may extend beyond it. */
+.app-header.suite-header { width: 100%; max-width: var(--content-width); margin-inline: auto; }

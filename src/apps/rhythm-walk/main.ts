@@ -52,6 +52,7 @@ const offlineStatus = el('p', 'small'); offlineStatus.id = 'offline-status';
 prepareOffline(offlineStatus, { id: 'rhythm', name: 'Uno234' }, { worker: '/rhythm/sw.js', scope: '/rhythm/' });
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const practiceView = el('section'); practiceView.id = 'practice-view';
+practiceView.dataset.phase = 'setup';
 const banner = el('p', 'counting-hint');
 banner.append(el('span', '', 'Click a box to add counting symbols or use your keyboard.'));
 const lineShortcut = el('span', 'counting-shortcut');
@@ -159,6 +160,7 @@ function focusProblem(id: CountId) {
   if (bounds.top < 0 || bounds.bottom > innerHeight) passage.scrollIntoView({ block: 'start', behavior: 'instant' });
 }
 function evaluateAnswer() {
+  practiceView.dataset.phase = 'review';
   activity.countingResult = evaluateCountingAnswer(activity.countingPlan, activity.countingAnswer);
   activity.checkedCountingAnswer = activity.countingAnswer;
   refreshCounting();
@@ -186,13 +188,14 @@ function newExercise(returnToPractice = false) {
   activity.preferences.generation = generation; activity.next();
   loadExercise(activity.exercise.score, !returnToPractice, false);
   if (customDialog.open) customDialog.close();
+  practiceView.dataset.phase = 'input';
   if (returnToPractice) location.hash = '#practice';
 }
 const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
 const erase = button('Erase', () => editors.find(editor => editor.card.classList.contains('active-count-measure'))?.erase());
 const reset = button('Erase All', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); refreshCounting(); focusCounts(); });
 const eraseActions = el('div', 'count-erase-actions'); eraseActions.append(erase, reset);
-actions.append(eraseActions, check, completionNext);
+actions.append(check, completionNext, eraseActions);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 
 writeResponse.append(summary);
@@ -266,7 +269,7 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
       },
       hidden: () => Boolean(practiceView.hidden) || responsePanel === 'perform' || performing,
       reveal: target => workspace.reveal(target),
-      change: answer => { activity.countingAnswer = answer; refreshCounting(); },
+      change: answer => { if (practiceView.dataset.phase === 'review') practiceView.dataset.phase = 'input'; activity.countingAnswer = answer; refreshCounting(); },
       check: evaluateAnswer,
       navigate: (id, delta) => {
         const counts = activity.countingPlan.counts, target = counts[counts.findIndex(c => c.id === id) + delta];
@@ -331,6 +334,7 @@ function selectResponsePanel(panel: 'counts' | 'perform') {
     performance.cancel('Response panel changed');
     editors.forEach(editor => editor.suspend());
     responsePanel = panel;
+    if (panel === 'counts') practiceView.dataset.phase = activity.countingResult ? 'review' : 'input';
     activity.setMode(panel === 'perform' ? 'tap' : 'write');
     persist();
   }
@@ -363,6 +367,7 @@ function updateResponseView() {
   tieNotation?.refresh();
 }
 function decoratePerformance(record: AttemptRecord | null) {
+  if (responsePanel === 'perform') practiceView.dataset.phase = performing ? 'input' : record?.status === 'completed' ? 'review' : 'setup';
   if (responsePanel !== 'perform') record = null;
   passage.querySelectorAll('.timing-timeline').forEach(node => node.remove());
   if (record && record.status === 'completed') {
