@@ -235,7 +235,7 @@ const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#pract
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(helpButton, nav);
 activitySurface.append(pageTitle, practiceView, settings.page);
-const footer = el('footer', 'feedback-footer');
+const footer = el('footer', 'feedback-footer install-footer');
 footer.append(createInstallControl({ id: 'rhythm', name: 'Uno234' }), offlineStatus, createFeedbackLink());
 main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {

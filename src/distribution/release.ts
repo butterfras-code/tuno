@@ -29,7 +29,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 /** Called directly from a click to preserve the browser's user activation. */
-export function requestInstall(fallback: () => void) {
+function requestInstall(fallback: () => void) {
   if (installing) return;
   const request = prompt;
   if (!request || installed) { fallback(); return; }
@@ -51,7 +51,7 @@ export function requestInstall(fallback: () => void) {
   })();
 }
 
-export function createReleaseControls(app: AppIdentity = tuno) {
+function createReleaseControls(app: AppIdentity = tuno) {
   const node = el('section', 'release-controls');
   node.setAttribute('aria-label', `Keep ${app.name}`);
   const help = el('div', 'install-help');
@@ -91,16 +91,20 @@ export function createReleaseControls(app: AppIdentity = tuno) {
 }
 
 /** Install directly where supported; otherwise open accessible browser guidance. */
-export function createInstallControl(app: AppIdentity = tuno) {
+export function createInstallControl(app: AppIdentity = tuno, details: HTMLElement[] = []) {
   const wrapper = el('div', 'install-control');
   const dialog = el('dialog', 'install-dialog');
   const heading = el('h2', '', `Install ${app.name}`);
   heading.id = `install-${app.id}-heading`;
+  dialog.id = `install-${app.id}`;
   dialog.setAttribute('aria-labelledby', heading.id);
   const close = button('Close', () => dialog.close()); close.autofocus = true;
-  dialog.append(heading, createReleaseControls(app), close);
+  dialog.append(heading, createReleaseControls(app), ...details, close);
   const trigger = button('Install', () => requestInstall(() => { if (!dialog.open) dialog.showModal(); }));
+  trigger.className = 'install-link';
   trigger.setAttribute('aria-haspopup', 'dialog');
+  trigger.setAttribute('aria-controls', dialog.id);
+  dialog.addEventListener('close', () => trigger.focus());
   wrapper.append(trigger, dialog);
   return wrapper;
 }

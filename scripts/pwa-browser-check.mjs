@@ -33,8 +33,13 @@ try {
       const brand = await page.locator('.app-header .brand').boundingBox();
       assert.ok(title.x + title.width <= brand.x + brand.width + 1, 'Rhythm title fits without overlapping header controls');
     }
-    const trigger = page.getByRole('button', { name: route === '/notes/' ? 'Install · About' : 'Install', exact: true });
+    const trigger = page.getByRole('button', { name: 'Install', exact: true });
+    const originalMode = route === '/notes/' ? await page.locator('.focus-navigation [aria-pressed="true"]').textContent() : null;
+    assert.equal(await trigger.evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)', 'Install is a text control');
+    assert.match(await trigger.evaluate(node => getComputedStyle(node).textDecorationLine), /underline/);
     await trigger.click();
+    const dialog = page.getByRole('dialog', { name: `Install ${name}`, exact: true });
+    assert.equal(await dialog.evaluate(node => node.matches(':modal')), true);
     const help = page.locator('.install-help');
     await help.waitFor();
     assert.match(await help.textContent(), /Install or Add to Home Screen/);
@@ -43,10 +48,8 @@ try {
     assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
     assert.equal(await page.locator('meta[name$="-download"]').count(), 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    if (route !== '/notes/') {
-      await page.keyboard.press('Escape');
-      assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
-    }
+    await page.keyboard.press('Escape');
+    assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
     // The outer Install action must call the native flow immediately, even if the panel is closed.
     await page.evaluate(() => {
       const event = new Event('beforeinstallprompt', { cancelable: true });
@@ -57,6 +60,11 @@ try {
     await trigger.click();
     await page.getByText('Installation cancelled. You can keep practicing here.', { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.installCalls), 1);
+    assert.equal(await dialog.evaluate(node => node.matches(':modal')), true, 'Cancellation opens the shared modal');
+    if (originalMode) assert.equal(await page.locator('.focus-navigation [aria-pressed="true"]').textContent(), originalMode, 'Install does not navigate to Options');
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
+    await trigger.click();
     await page.getByRole('button', { name: `Install ${name}`, exact: true }).click();
     assert.equal(await page.evaluate(() => window.installCalls), 1, 'A captured prompt is used only once');
     await page.evaluate(() => dispatchEvent(new Event('appinstalled')));

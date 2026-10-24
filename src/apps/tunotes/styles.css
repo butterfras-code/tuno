@@ -358,9 +358,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .app-header { margin-bottom: 20px; }
 .notes-home > footer { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-top: 12px; font-size: 12px; color: var(--color-muted); }
 .notes-home > footer p { margin: 0; }
-.footer-options { flex-shrink: 0; min-height: 44px; padding: 8px 4px; border: 0; background: none; color: var(--color-ink); text-decoration: underline; font: inherit; cursor: pointer; }
-.notes-installation { margin-top: 28px; border-top: 1px solid var(--color-line); }
-.notes-installation .row { display: flex; flex-wrap: wrap; gap: 8px; }
 #notes-practice { height: clamp(520px, calc(100dvh - 180px), 680px); padding: 28px; overflow: auto; scrollbar-gutter: stable; border-radius: 28px; background: var(--color-surface); }
 #notes-practice .practice-view { min-height: 100%; margin: 0; align-items: start; grid-template-columns: minmax(0,1fr) 170px; gap: 24px; }
 #notes-practice .practice-companion { align-self: center; }

@@ -1,6 +1,18 @@
 .install-icon { display: inline-block; width: 32px; height: 32px; vertical-align: middle; margin: 0 6px; }
 .install-help { max-width: 60ch; line-height: 1.5; }
 .install-help p { margin: 12px 0; }
-.install-dialog { color: var(--color-ink, #342f2d); background: var(--color-paper, #f4efe7); border: 1px solid var(--color-line, #ccc); border-radius: 20px; padding: 24px; width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow: auto; box-sizing: border-box; }
+.install-dialog { color: var(--color-ink, #342f2d); background: var(--color-surface, #fffcf7); border: 1px solid var(--color-line, #ccc); border-radius: 20px; padding: 24px; width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow: auto; box-sizing: border-box; font: 16px/1.5 var(--font-body, sans-serif); text-align: left; }
 .install-dialog::backdrop { background: #342f2d66; }
-.install-control > button, .install-dialog button { font: inherit; padding: 10px 16px; border-radius: 12px; cursor: pointer; }
+.install-control .install-dialog button.control { font: 700 16px/1.5 var(--font-heading, sans-serif); min-height: 44px; height: auto; padding: 10px 16px; border: 0; border-radius: 12px; background: var(--color-tint); color: var(--color-ink); box-shadow: none; text-decoration: none; cursor: pointer; }
+
+.install-control { display: inline-flex; flex-shrink: 0; }
+.install-control > .install-link { display: inline-flex; align-items: center; justify-content: center; width: auto; min-height: 44px; padding: 8px 4px; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--color-ink, #342f2d); font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.install-control > .install-link:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+.install-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.install-footer > .install-control { margin-inline-start: auto; order: 1; }
+.install-dialog > details { margin-block: 16px; }
+.install-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; font-size: 12px; }
+
+.install-control .install-dialog h2 { color: var(--color-accent); margin: 0 0 20px; font: 700 26px/1.25 var(--font-heading, sans-serif); }
+.install-control .install-dialog p { margin: 12px 0; }
+.install-control .install-dialog .small { font-size: 12px; }

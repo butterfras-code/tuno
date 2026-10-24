@@ -27,7 +27,7 @@ try {
   const installControl = page.getByRole('button', { name: 'Install', exact: true });
   assert.equal(await page.getByRole('navigation', { name: 'Information and installation' }).getByRole('button', { name: 'Install' }).count(), 1);
   await installControl.click();
-  await page.getByRole('dialog', { name: 'Keep tUno close' }).waitFor();
+  await page.getByRole('dialog', { name: 'Install tUno' }).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
   await page.getByRole('img', { name: 'Install icon: a downward arrow into a computer screen' }).waitFor();
   assert.match(await page.locator('.install-help').textContent(), /Add to Home Screen/);

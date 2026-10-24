@@ -164,8 +164,8 @@ try {
     await ready(tuner); await ready(reopened);
     assert.equal(await tuner.locator('h1').textContent(), 'tUno');
     assert.equal(await reopened.locator('h1').textContent(), 'tuNotes');
-    await reopened.getByRole('button', { name: 'Install · About', exact: true }).click();
-    assert.equal(await reopened.getByRole('heading', { name: 'Install and offline access' }).evaluate(node => node === document.activeElement), true);
+    await reopened.getByRole('button', { name: 'Install', exact: true }).click();
+    await reopened.getByRole('dialog', { name: 'Install tuNotes' }).waitFor();
     assert.equal(await reopened.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
     assert.equal(await reopened.getByRole('button', { name: 'Install tuNotes', exact: true }).isVisible(), true);
     assert.equal(await reopened.evaluate(() => localStorage.getItem('tuno-test-sentinel')), 'preserve');

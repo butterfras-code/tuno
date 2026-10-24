@@ -4,7 +4,7 @@
 
 Serve the tools from the official HTTPS site. Standalone HTML downloads are retired: the build produces no `dist/portable/`, versioned HTML downloads, download metadata or portable checksums. Previously saved copies cannot be revoked. Historical specs and validation reports describe the former delivery format; this decision supersedes those distribution requirements.
 
-Tuner, Tone and Tempo share the tUno PWA (manifest identity `/`, start URL `/tune/`, scope `/`). tuNotes and Uno234 have independent manifests, identities, icons and workers under `/notes/` and `/rhythm/`. The launcher links the tUno manifest. All Install controls use the captured browser install prompt directly from a user click when available, with accessible menu guidance and an address-bar icon example otherwise. Installed-window detection suppresses redundant install actions. A simulated prompt is not evidence of an OS installation.
+Tuner, Tone and Tempo share the tUno PWA (manifest identity `/`, start URL `/tune/`, scope `/`). tuNotes and Uno234 have independent manifests, identities, icons and workers under `/notes/` and `/rhythm/`. The launcher links the tUno manifest. All tools use the same underlined footer Install control and shared modal. The control opens the captured browser install prompt directly from a user click when available; cancellation or failure returns to the shared modal. Without a native prompt, the modal opens immediately with menu guidance and an address-bar icon example. Installation never switches the active practice view to Options. Installed-window detection suppresses redundant install actions. A simulated prompt is not evidence of an OS installation.
 
 ## Offline use and updates
 

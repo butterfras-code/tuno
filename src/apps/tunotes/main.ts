@@ -8,7 +8,7 @@ import { multiplayerView } from './ui/multiplayer-view.ts';
 import { playSurface } from './ui/play-surface.ts';
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
-import { createReleaseControls, requestInstall } from '../../distribution/release.ts';
+import { createInstallControl } from '../../distribution/release.ts';
 import { tunotes } from '../../distribution/identity.ts';
 
 export function mountNotes(root: HTMLElement) {
@@ -58,7 +58,7 @@ export function mountNotes(root: HTMLElement) {
   const updateFullscreen = () => { fullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'; };
   document.addEventListener('fullscreenchange',updateFullscreen);
   header.append(fullscreen,fullscreenStatus);
-  const footer = el('footer');
+  const footer = el('footer', 'install-footer');
   const offline = el('p');
   offline.id = 'offline-status';
   prepareOffline(offline, tunotes);
@@ -68,13 +68,7 @@ export function mountNotes(root: HTMLElement) {
   notices.append(el('summary', '', 'About tuNotes and licenses'),
     el('p', '', 'Copyright © 2026 Justin Butterfras. Code and original artwork are licensed under GNU GPLv3. No warranty.'),
     source, el('pre', '', projectLicense), el('h2', '', 'Bundled font licenses'), el('pre', '', FONT_LICENSES));
-  const installation = el('section','notes-installation');
-  installation.append(el('h2','','Install and offline access'), createReleaseControls(tunotes), notices);
-  practice.options.append(installation);
-  const optionsLink = el('button','footer-options','Install · About'); optionsLink.type = 'button';
-  optionsLink.addEventListener('click', () => requestInstall(() => { links[3]!.click(); installation.scrollIntoView({ block: 'nearest' }); installation.querySelector('h2')!.focus(); }));
-  installation.querySelector('h2')!.tabIndex = -1;
-  footer.append(offline, createFeedbackLink(), optionsLink);
+  footer.append(offline, createFeedbackLink(), createInstallControl(tunotes, [notices]));
   home.append(header, ...views, footer);
   root.append(home);
   const stopFitting = playSurface(home,practice.options);

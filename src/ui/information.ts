@@ -1,37 +1,31 @@
 import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './information.css';
 import projectLicense from '../../LICENSE.txt';
-import { createReleaseControls, requestInstall } from '../distribution/release.ts';
+import { createInstallControl } from '../distribution/release.ts';
 import { button, el } from './components.ts';
 
 /** Native dialogs contain focus, handle Escape, and restore focus to the opener. */
 export function createInformationControls() {
   const dialogs: HTMLElement[] = [];
-  const createDialog = (id: string, title: string, content: HTMLElement[], popover = false) => {
-    const dialog = popover ? el('div', 'settings-dialog information-dialog install-popover') : el('dialog', 'settings-dialog information-dialog');
-    if (popover) { dialog.popover = 'auto'; dialog.setAttribute('role', 'dialog'); }
+  const createDialog = (id: string, title: string, content: HTMLElement[]) => {
+    const dialog = el('dialog', 'settings-dialog information-dialog');
     dialog.id = id;
     dialog.setAttribute('aria-labelledby', `${id}-heading`);
     const heading = el('h2', '', title);
     heading.id = `${id}-heading`;
-    const close = button('Close', () => popover ? dialog.hidePopover() : (dialog as HTMLDialogElement).close());
+    const close = button('Close', () => dialog.close());
     close.autofocus = true;
     const actions = el('div', 'information-actions');
     actions.append(close);
     dialog.append(heading, ...content, actions);
     dialogs.push(dialog);
     return (label: string) => {
-      const trigger = button(label, popover ? undefined : () => (dialog as HTMLDialogElement).showModal());
-      if (popover) trigger.addEventListener('click', () => requestInstall(() => dialog.showPopover()));
+      const trigger = button(label, () => dialog.showModal());
       trigger.setAttribute('aria-haspopup', 'dialog');
       trigger.setAttribute('aria-controls', id);
       return trigger;
     };
   };
-  const install = createDialog('install-information', 'Keep tUno close', [
-    el('p', '', 'tUno is free and ad-free. Install it from your browser to keep it close and practice offline.'),
-    createReleaseControls(),
-  ], true);
   const licenses = el('details', 'licenses');
   licenses.append(el('summary', '', 'Font licenses'), el('pre', 'license-text', FONT_LICENSES));
   const fontSources = el('p', '', 'Font source and license: ');
@@ -76,6 +70,6 @@ export function createInformationControls() {
   ]);
   const footerNavigation = el('nav', 'information-navigation');
   footerNavigation.setAttribute('aria-label', 'Information and installation');
-  footerNavigation.append(install('Install'), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'), createFeedbackLink());
+  footerNavigation.append(createInstallControl(), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'), createFeedbackLink());
   return { footerNavigation, dialogs };
 }

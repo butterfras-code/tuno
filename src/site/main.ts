@@ -20,7 +20,7 @@ for (const [name, subtitle, href, artwork] of [
   const arrow = el('span', 'launcher-arrow', '→'); arrow.setAttribute('aria-hidden', 'true');
   card.append(image, el('h2', '', name), el('p', '', subtitle), arrow); cards.append(card);
 }
-const footer = el('footer', 'feedback-footer');
+const footer = el('footer', 'feedback-footer install-footer');
 footer.append(createInstallControl(), createFeedbackLink());
 main.append(brand, cards, footer);
 prepareSuiteOffline(footer);
