@@ -264,6 +264,17 @@ try {
     await page.evaluate(() => { window.signal.gain.gain.value = 0.2; });
     await pose('catch');
     assert.equal(await page.evaluate(() => window.rewards), 1, 'reduced motion catch is static');
+    // Exercise the real detector and reward loop just outside each former entry
+    // window. Changing accuracy resets the hold, so each level must earn afresh.
+    for (const [label, cents] of [['ADV', 6], ['INT', -6.7], ['BEG', 7.6]]) {
+      await page.evaluate(cents => { window.signal.oscillator.frequency.value = 440 * 2 ** (cents / 1200); }, cents);
+      await page.getByRole('button', { name: 'Tuner accuracy', exact: true }).click();
+      await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('.hold-progress').value < 0.2);
+      await pose('catch');
+      assert.match(await page.locator('.pitch-feedback').textContent(), /Hold steady\./, `${label}: feedback matches the relaxed window`);
+      await pose('happy');
+    }
     await page.getByRole('button', { name: 'Stop listening', exact: true }).first().click();
     await pose('sleep');
     assert.equal(await hint.textContent(), 'Wake Uno! (Turn on mic above)');

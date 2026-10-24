@@ -2,6 +2,12 @@
 export type FeedbackEvidence = { note: number; cents: number } | null;
 import type { UnoPose } from '../shared/ui/uno-pose.ts';
 export type { UnoPose } from '../shared/ui/uno-pose.ts';
+export const TUNER_FEEDBACK = {
+  enterCents: 6,
+  leaveCents: 10,
+  graceMs: 220,
+} as const;
+
 export function createTunerFeedback() {
   let previous: number | null = null;
   let zone = false;
@@ -31,16 +37,17 @@ export function createTunerFeedback() {
       if (evidence === null) noteSince = now;
       if (silent) silentSince ??= now;
       else silentSince = null;
-      zone = evidence !== null && Math.abs(evidence.cents) <= (zone ? 8 : 5) * toleranceScale;
+      zone = evidence !== null && Math.abs(evidence.cents) <= (zone ? TUNER_FEEDBACK.leaveCents : TUNER_FEEDBACK.enterCents) * toleranceScale;
       if (evidence !== null && !zone) outSince ??= now;
       else outSince = null;
       if (zone) {
-        if (badSince !== null && now - badSince > 150) held = 0;
+        if (badSince !== null && now - badSince > TUNER_FEEDBACK.graceMs) held = 0;
         if (wasGood) held += dt;
         badSince = null;
       } else {
         badSince ??= now;
-        if (now - badSince > 150) held = 0;
+        // Brief wobbles pause the hold; they never contribute time toward a treat.
+        if (now - badSince > TUNER_FEEDBACK.graceMs) held = 0;
       }
       wasGood = zone;
       if (rewardedNote !== null && (

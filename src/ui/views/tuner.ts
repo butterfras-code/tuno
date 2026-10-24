@@ -1,7 +1,7 @@
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import type { AudioController } from '../../audio/controller.ts';
 import { animatedUno } from '../uno.ts';
-import { createTunerFeedback } from '../../practice/feedback.ts';
+import { createTunerFeedback, TUNER_FEEDBACK } from '../../practice/feedback.ts';
 import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
 import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
@@ -87,7 +87,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
       live && fresh && state.micStatus === 'no-signal', accuracy.scale);
     dog.pose(live ? result.pose : 'sleep');
     hold.value = live ? result.progress : 0;
-    const encouragementText = reading && Math.abs(reading.cents) <= 8 * accuracy.scale ? 'Hold steady.'
+    const encouragementText = reading && Math.abs(reading.cents) <= TUNER_FEEDBACK.leaveCents * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
     const holdText = live ? 'Hold a note to give Uno a treat' : 'Wake Uno! (Turn on mic above)';
@@ -138,7 +138,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);
     const reading = pitchReading(state);
-    const centered = reading !== null && Math.abs(reading.cents) <= 8 * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
+    const centered = reading !== null && Math.abs(reading.cents) <= TUNER_FEEDBACK.leaveCents * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
     const cents = reading ? `${reading.cents < 0 ? '−' : reading.cents > 0 ? '+' : ''}${Math.abs(reading.cents).toFixed(0)}` : '';
     responsiveLabel(feedback, centered ? 'Right there. Hold steady.' : text.direction, centered ? `${cents} cents · In tune` : text.direction);
     summary.textContent = state.micStatus === 'idle' ? text.summary : 'Stop listening to explore manual samples.';
