@@ -4,9 +4,9 @@ Free, local-first music practice tools for students and teachers.
 
 tUno aims to make a dependable tuner, metronome, and reference tones available without purchases or accounts, including offline use. The name honors Uno, the founder's departed dog. The capital **U** will be drawn as a tuning fork; the accessible text name remains **tUno**.
 
-tUno will ship as a hosted, downloadable app and, in parallel, a self-contained offline HTML file. Both releases share the same core practice tools.
+tUno is a hosted, installable PWA with verified offline caching. Standalone HTML downloads are retired; open or install the tools from https://tuno.cc.
 
-The app provides a responsive tuner, reference-note keyboard, and metronome with shared session state. Microphone capture, live pitch detection, reference-tone playback, tap tempo, meter, subdivisions, accents, and click volume/sound work. Hosted builds prepare their essential resources for offline use and verify readiness. Hosted installation controls and a matching offline download are included. Animated Uno rewards and physical-device acceptance checks remain ahead.
+The app provides a responsive tuner, reference-note keyboard, and metronome with shared session state. Microphone capture, live pitch detection, reference-tone playback, tap tempo, meter, subdivisions, accents, and click volume/sound work. Hosted builds prepare their essential resources for offline use and verify readiness. Installation controls open the browser’s native prompt when available and provide menu guidance otherwise. Animated Uno rewards and physical-device acceptance checks remain ahead.
 
 ## Project documents
 
@@ -17,7 +17,7 @@ The app provides a responsive tuner, reference-note keyboard, and metronome with
 - [Release validation](docs/release-validation.md): candidate thresholds, automated results, and remaining device checks.
 - [Release instructions](docs/releasing.md): verification, artifacts, and deployment handoff.
 - [Project charter](docs/charter.md): why tUno exists, who it serves, and the principles that guide scope.
-- [Distribution architecture](docs/architecture.md): the hosted app and portable HTML releases, their shared core, and offline guarantees.
+- [Distribution architecture](docs/architecture.md): PWA installation, shared core, and offline guarantees.
 - [Prototype plan](docs/prototype-plan.md): what to build first and how to decide whether it works well enough.
 - [Approved design direction](docs/design-summary.md): identity, corrected pitch colors, and interaction decisions.
 - [Figma design handoff](docs/design-handoff.md): reviewed screens, visual tokens, interaction contracts, and first-slice integration.
@@ -45,18 +45,17 @@ npx playwright install chromium firefox
 npm run verify
 ```
 
-`check` runs TypeScript checking, Node's built-in unit tests, and the production build with portable-resource checks. `test:browser` rebuilds and exercises the hosted page and a relocated portable file in Chromium, including offline loading without subresource requests. It also checks hosted offline reopening, update deferral across tabs, failed/incomplete cache preparation, synthetic audio coexistence, scheduler interruption, and rendered click timing. `verify` additionally runs Firefox, rendered reference-tone/CPU measurements, HTTPS/download/install checks, and release integrity checks; it writes reports into `dist/validation/`. These checks do not establish physical-device or microphone support.
+`check` runs TypeScript checking, Node's built-in unit tests, and the production PWA builds. `test:browser` rebuilds and exercises online and cached offline pages in Chromium. It also checks hosted offline reopening, update deferral across tabs, failed/incomplete cache preparation, synthetic audio coexistence, scheduler interruption, and rendered click timing. `verify` additionally runs Firefox, rendered reference-tone/CPU measurements, HTTPS/install checks, and release integrity checks; it writes reports into `dist/validation/`. These checks do not establish physical-device or microphone support.
 
 ## Build outputs
 
 `npm run build` clears `dist/` once and builds both apps from per-app descriptors:
 
 - `dist/hosted/`: serve this directory at the origin root over HTTPS; `/` redirects to `/tune/`; the first visit requires connectivity. Wait for **Offline ready** before closing and reopening without networking. Updates activate after all existing tUno tabs close; they never replace an active practice session.
-- `dist/hosted/notes/`: tuNotes Practice and Challenge preview with its own manifest, worker, cache, and versioned download; tUno navigation does not link to this preview.
-- `dist/portable/tunotes.html`: independent tuNotes Practice and Challenge app, including shared Uno artwork, fonts, and license notices.
-- `dist/portable/tuno.html`: open this single file directly in a browser, including offline. It contains the same JavaScript and CSS as the hosted build.
+- `dist/hosted/rhythm/`: Uno234 with its own manifest, worker and verified offline cache.
+- `dist/hosted/notes/`: tuNotes Practice and Challenge preview with its own manifest, worker and cache; available from the Tools launcher.
 
-The header **Install** button explains offline use and offers **Download offline HTML**, plus **Install tUno** when the browser offers installation. Footer dialogs contain About, a tribute to Uno, Support with a Ko-fi link, and Privacy information. Both formats display the same build identifier. `dist/release.json` records checksums and source revision; see the release instructions before distribution.
+**Install** opens the browser’s PWA prompt when available, or instructions for browser menus, Add to Home Screen and the address-bar install icon. Tuner/Tone/Tempo share the tUno installation; tuNotes and Uno234 have separate installations. Wait for **Offline ready** in each tool before disconnecting. Data backup exports remain available. `dist/release.json` records build IDs, checksums and source revision; see the release instructions before distribution.
 
 Build outputs are ignored by Git. The build script owns and replaces `dist/`; stop the development server before running a production build or browser checks. Its ES2022 output target is a tooling choice, not a minimum-browser support claim.
 
@@ -70,7 +69,7 @@ Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the appl
 - `src/ui/views/`: focused presentations mounted once and updated in place. Editing a control preserves DOM focus; switching views preserves session values.
 - `src/assets/`: Figma-derived SVG artwork and local font files/notices. The build embeds these assets as data URLs in both distributions and includes complete font notices in the About dialog.
 
-`src/audio/controller.ts` owns microphone, reference tone, and metronome resources. `src/music/rhythm.ts` defines beat/subdivision timing and tap tempo; `src/audio/click.ts` synthesizes click envelopes. `src/distribution/` handles hosted caching and readiness, with no portable-file worker dependency.
+`src/audio/controller.ts` owns microphone, reference tone, and metronome resources. `src/music/rhythm.ts` defines beat/subdivision timing and tap tempo; `src/audio/click.ts` synthesizes click envelopes. `src/distribution/` handles hosted caching and readiness, and installation guidance.
 
 Keep audio resources outside the view modules. Extend shared actions and selectors so focused views and compact tool controls stay synchronized. Keep musical rules independent of the DOM. Add global tokens or shared components for recurring patterns; leave view-specific composition in its view module.
 
@@ -82,8 +81,8 @@ Both artifacts carry the same content-derived version in HTML metadata. Producti
 
 The metronome schedules 150 ms ahead on a 25 ms timer. Visual beat identity follows the audio output timeline. Long foreground stalls stop metronome playback with explicit restart. Hiding the page pauses capture and all output; start a tool explicitly after returning. Background continuity is not supported. Uno currently uses static directional beat cues, with numbered/current-beat text available; tail animation remains a visual follow-up. Microphone input can hear reference tones and clicks through speakers.
 
-The shared presentation boundary is `src/shared/ui/`: Uno renderer/poses, fonts, Uno styles, generic DOM controls, and unmount cleanup. Assets and `src/tokens.css` remain shared in place. Tuner feedback, pitch display, stores, and audio controller stay tUno-specific. `verify` includes cross-app cold-offline, nested hosting, worker/cache isolation, download and Uno cleanup checks.
+The shared presentation boundary is `src/shared/ui/`: Uno renderer/poses, fonts, Uno styles, generic DOM controls, and unmount cleanup. Assets and `src/tokens.css` remain shared in place. Tuner feedback, pitch display, stores, and audio controller stay tUno-specific. `verify` includes cross-app cached offline, nested hosting, worker/cache isolation, installation and Uno cleanup checks.
 
 ## tUno family URLs
 
-`tuno.cc/` redirects to `/tune/`, the tUno application. `/notes/` serves tuNotes with its own manifest, worker, and offline cache. The root may later become a family launcher. See [hosting and migration](docs/hosting.md) for installed tUno migration and staging checks.
+`tuno.cc/` is the Practice Tools launcher. `/tune/`, `/tone/` and `/tempo/` share the tUno application. `/notes/` serves tuNotes with its own manifest, worker, and offline cache. `/rhythm/` serves Uno234 with its own PWA installation. See [hosting and migration](docs/hosting.md) for installed tUno migration and staging checks.

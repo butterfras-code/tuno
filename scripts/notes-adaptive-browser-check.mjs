@@ -1,17 +1,14 @@
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
-import { mkdir, readFile, writeFile, mkdtemp, copyFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { hostBuild } from './test-host.mjs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 import { choosePreset } from './notes-setup-helpers.mjs';
 import { presets, fingerprint } from '../src/apps/tunotes/domain/presets.ts';
 import { keySignature, pitchLabel } from '../src/apps/tunotes/domain/notation.ts';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 const name=process.env.TUNO_BROWSER||'chromium', browser=await ({chromium,firefox})[name].launch();
-const host=await hostBuild(), temporary=await mkdtemp(join(tmpdir(),'tunotes phase3 '));
+const host=await hostBuild();
 const results=[],errors=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true}).first();
 const readData=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')));
@@ -180,11 +177,15 @@ async function keylessRange(page) {
 try {
   await mkdir('dist/validation',{recursive:true});
   const hosted=await browser.newPage();await run(hosted,new URL('/notes/', host.url).href,'hosted');await hosted.close();
-  const file=join(temporary,'moved notes.html');await copyFile('dist/portable/tunotes.html',file);
-  const offline=await browser.newContext({offline:true});const portable=await offline.newPage();await run(portable,pathToFileURL(file).href,'portable-offline');await offline.close();
+  const offline = await browser.newContext();
+  const offlineUrl = new URL('/notes/', host.url).href;
+  await prepareOfflineContext(offline, offlineUrl);
+  host.setAvailable(false);
+  await run(await offline.newPage(), offlineUrl, 'hosted-offline');
+  await offline.close(); host.setAvailable(true);
   const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await expansion(page);await page.close();
   const keyless=await browser.newPage();keyless.on('pageerror',e=>errors.push(e.message));await keylessRange(keyless);await keyless.close();
   assert.deepEqual(errors,[]);
   const release=JSON.parse(await readFile('dist/release.json','utf8'));
   await writeFile(`dist/validation/notes-adaptive-${name}.json`,JSON.stringify({build:release.apps.tunotes.build,browser:browser.version(),results},null,2));console.log(results.join('\n'));
-} finally {await browser.close();await host.close();await rm(temporary,{recursive:true,force:true});}
+} finally {await browser.close();await host.close();}

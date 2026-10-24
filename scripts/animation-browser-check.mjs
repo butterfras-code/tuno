@@ -1,17 +1,16 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
 import { chromium, firefox } from 'playwright';
-import { hostBuild } from './test-host.mjs';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 
 const engine = ({ chromium, firefox })[process.env.TUNO_BROWSER || 'chromium'];
 const host = await hostBuild();
 const browser = await engine.launch();
 await mkdir('dist/validation/animations', { recursive: true });
 try {
-  for (const [mode, url] of [['hosted', host.url], ['portable', pathToFileURL(resolve('dist/portable/tuno.html')).href]]) {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, offline: mode === 'portable' });
+  for (const [mode, url] of [['hosted', host.url], ['hosted-offline', host.url]]) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    if (mode === 'hosted-offline') { await prepareOfflineContext(context, url); host.setAvailable(false); }
     const defaults = await context.newPage();
     await defaults.emulateMedia({ reducedMotion: 'reduce' });
     await defaults.goto(url);
@@ -272,7 +271,7 @@ try {
     assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.evaluate(() => window.signal.ac.close());
     assert.deepEqual(errors, []);
-    await context.close();
+    await context.close(); host.setAvailable(true);
     console.log(`${engine.name()} ${mode}: poses, rewards, audio phase, pet taps/drags, cancellation and reduced motion passed`);
   }
 } finally { await browser.close(); await host.close(); }

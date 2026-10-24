@@ -30,7 +30,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   navigation.setAttribute('aria-label', 'tUno tools');
   const links = TOOLS.map((tool) => {
     const control = el('a', 'control');
-    control.href = location.protocol === 'file:' ? '#' + tool.id : toolPaths[tool.id];
+    control.href = toolPaths[tool.id];
     control.addEventListener('click', event => {
       if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();

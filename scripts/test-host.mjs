@@ -49,3 +49,12 @@ export async function hostBuild({ tls = false } = {}) {
     },
   };
 }
+
+/** Prepare a real cache online, then reopen in an offline browser context. */
+export async function prepareOfflineContext(context, url) {
+  const page = await context.newPage();
+  await page.goto(url);
+  await page.waitForFunction(() => document.querySelector('#offline-status')?.textContent === 'Offline ready');
+  await page.close();
+  await context.setOffline(true);
+}

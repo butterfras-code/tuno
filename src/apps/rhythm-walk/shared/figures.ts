@@ -58,13 +58,25 @@ export function drawIndex(length: number, random: () => number): number {
   if (!Number.isFinite(value) || value < 0 || value >= 1) throw new Error('Random source must return a number in [0, 1).');
   return Math.floor(value * length);
 }
-export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, random: () => number) {
+export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, random: () => number, minimumAttacks = 4) {
   const plans = new Map(pool.map(m => [m, figurePlan(profile, m)]));
   const meter = pool[pool.length === 1 ? 0 : drawIndex(pool.length, random)]!;
-  const passage = Array.from({ length: measures }, (): RhythmMeasure => {
+  const plan = plans.get(meter)!;
+  const capacity = new Map<string, number>();
+  function maxAttacks(position: Fraction): number {
+    if (compare(position, plan.policy.length) === 0) return 0;
+    const key = position.join('/');
+    if (!capacity.has(key)) capacity.set(key, Math.max(...plan.choicesAt(position).map(f => f.events.length + maxAttacks(add(position, f.duration)))));
+    return capacity.get(key)!;
+  }
+  const perBar = maxAttacks(fraction(0));
+  if (perBar * measures < minimumAttacks) throw new Error('These figures cannot supply at least four attacks.');
+  let attacks = 0;
+  const passage = Array.from({ length: measures }, (_, bar): RhythmMeasure => {
     const plan = plans.get(meter)!, written: RhythmEvent[] = [];
     for (let position = fraction(0); compare(position, plan.policy.length) < 0;) {
-      const choices = plan.choicesAt(position), choice = choices[drawIndex(choices.length, random)]!;
+      const choices = plan.choicesAt(position).filter(f => attacks + f.events.length + maxAttacks(add(position, f.duration)) + (measures - bar - 1) * perBar >= minimumAttacks), choice = choices[drawIndex(choices.length, random)]!;
+      attacks += choice.events.length;
       written.push(...structuredClone(choice.events)); position = add(position, choice.duration);
     }
     return { meter: plan.policy.meter, notes: written };

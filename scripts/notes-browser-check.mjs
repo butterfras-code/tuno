@@ -2,16 +2,12 @@ import { notesMode, openData, setToggle, setPacing, openPracticeSettings } from 
 import { choosePreset } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
-import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
-import { hostBuild } from './test-host.mjs';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({ chromium, firefox })[name].launch();
 const host = await hostBuild();
-const temporary = await mkdtemp(join(tmpdir(), 'notes practice '));
 const results = [];
 const expected = page => page.locator('.staff').getAttribute('aria-label').then(label => {
   const positions = ['first line','first space','second line','second space','third line','third space','fourth line','fourth space','fifth line'];
@@ -163,18 +159,18 @@ try {
   await fixture.addScriptTag({ content: notation.outputFiles[0].text });
   assert.equal(await fixture.locator('.ledger').count(), 2);
   await fixture.screenshot({ path: `dist/validation/notes-${name}-clefs.png` }); await fixture.close();
-  const file = join(temporary, 'renamed practice.html'); await copyFile('dist/portable/tunotes.html', file);
-  const portable = await browser.newContext({ offline: true }); await portable.addInitScript(instrument); const portablePage = await portable.newPage();
-  const requests = []; portablePage.on('request', r => { if (/^https?:/.test(r.url())) requests.push(r.url()); });
-  await portablePage.goto(pathToFileURL(file).href); await loop(portablePage, 'portable'); assert.deepEqual(requests, []); await portable.close();
   const hosted = await browser.newContext(); await hosted.addInitScript(instrument); const page = await hosted.newPage(); await page.goto(new URL('/notes/', host.url).href);
   await page.waitForFunction(() => document.querySelector('#offline-status')?.textContent === 'Offline ready');
   await page.evaluate(() => localStorage.setItem('tuno-test-sentinel', 'preserve'));
   host.setAvailable(false); await hosted.setOffline(true); await page.reload(); await loop(page, 'hosted-offline');
   assert.equal(await page.evaluate(() => localStorage.getItem('tuno-test-sentinel')), 'preserve'); await hosted.close();
   if (name === 'chromium') {
-    const touch = await browser.newContext({ offline: true, hasTouch: true, viewport: { width: 390, height: 844 } });
-    const p = await touch.newPage(); await p.goto(pathToFileURL(file).href);
+    host.setAvailable(true);
+    const touch = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } });
+    const offlineUrl = new URL('/notes/', host.url).href;
+    await prepareOfflineContext(touch, offlineUrl);
+  host.setAvailable(false);
+    const p = await touch.newPage(); await p.goto(offlineUrl);
     await setToggle(p,'meet-notes',false); await p.getByRole('button', { name: 'Start Practice', exact: true }).first().tap();
     await p.getByRole('button', { name: await expected(p), exact: true }).first().tap(); await count(p, 1);
     await p.getByRole('button', { name: 'Finish', exact: true }).first().tap(); assert.match(await p.locator('#result-summary').textContent(), /1 correct \/ 1 attempts/);
@@ -183,4 +179,4 @@ try {
   const release = JSON.parse(await readFile('dist/release.json', 'utf8'));
   await writeFile(`dist/validation/notes-${name}.json`, JSON.stringify({ build: release.apps.tunotes.build, browser: browser.version(), results }, null, 2));
   console.log(results.join('\n'));
-} finally { await browser.close(); await host.close(); await rm(temporary, { recursive: true, force: true }); }
+} finally { await browser.close(); await host.close(); }

@@ -1,5 +1,7 @@
 # Integrated prototype release validation
 
+> Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
+
 Status: implementation complete for the integrated release candidate; physical acceptance pending. This is a local prototype, not a published release or a claim of supported school hardware.
 
 A later [tuner investigation](validation/tuner-investigation/README.md) records expanded synthetic coverage, octave-selection and pending-capture interruption fixes, and their before/after evidence. The historical candidate results below remain unchanged; neither investigation establishes physical acceptance.
