@@ -1,13 +1,9 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { hostBuild } from './test-host.mjs';
 
 const host = await hostBuild({ tls: true });
-const temp = await mkdtemp(join(tmpdir(), 'tuno-download-'));
 const engineName = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({ chromium, firefox })[engineName].launch(engineName === 'chromium' ? { args: [`--ignore-certificate-errors-spki-list=${host.certificateSpki}`] } : {});
 try {
@@ -31,8 +27,10 @@ try {
   const installControl = page.getByRole('button', { name: 'Install', exact: true });
   assert.equal(await page.getByRole('navigation', { name: 'Information and installation' }).getByRole('button', { name: 'Install' }).count(), 1);
   await installControl.click();
-  await page.getByRole('dialog', { name: 'Keep tUno close' }).waitFor();
-  assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).isVisible(), true);
+  await page.getByRole('dialog', { name: 'Install tUno' }).waitFor();
+  assert.equal(await page.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
+  await page.getByRole('img', { name: 'Install icon: a downward arrow into a computer screen' }).waitFor();
+  assert.match(await page.locator('.install-help').textContent(), /Add to Home Screen/);
   await page.keyboard.press('Escape');
   assert.equal(await installControl.evaluate((button) => document.activeElement === button), true);
   for (const [name, title] of [['About', 'About tUno'], ['Uno', 'Meet Uno'], ['Tech tips', 'Tech tips'], ['Privacy', 'Your privacy']]) {
@@ -71,13 +69,6 @@ try {
   host.setAvailable(false);
   await context.setOffline(true);
   await installControl.click();
-  const downloading = page.waitForEvent('download');
-  await page.getByRole('link', { name: 'Download offline HTML' }).click();
-  const download = await downloading;
-  assert.equal(download.suggestedFilename(), `tuno-${version}.html`);
-  const saved = join(temp, download.suggestedFilename());
-  await download.saveAs(saved);
-  assert.deepEqual(await readFile(saved), await readFile(new URL('../dist/portable/tuno.html', import.meta.url)));
   // Installation lifecycle uses a synthetic event; an OS installation is not automated here.
   await page.evaluate(() => {
     const event = new Event('beforeinstallprompt', { cancelable: true });
@@ -105,28 +96,17 @@ try {
   await clickHiddenButton('Install tUno');
   await waitForHiddenText('Installation requested.');
   await page.evaluate(() => dispatchEvent(new Event('appinstalled')));
-  await waitForHiddenText('tUno installed.');
-  await page.close();
-  const fileContext = await browser.newContext({ offline: true });
-  const portable = await fileContext.newPage();
-  const requests = [];
-  portable.on('request', (request) => requests.push(request.url()));
-  const fileUrl = pathToFileURL(saved).href;
-  await portable.goto(fileUrl);
-  assert.equal(await portable.getByRole('link', { name: '← Tools' }).getAttribute('href'), 'https://tuno.cc/');
-  assert.equal(await portable.locator('meta[name="tuno-version"]').getAttribute('content'), version);
-  assert.equal(await portable.getByRole('link', { name: 'Download offline HTML' }).count(), 0);
-  await portable.getByRole('button', { name: 'Play tone', exact: true }).click();
-  await portable.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
-  await portable.getByRole('button', { name: 'Start metronome', exact: true }).click();
-  await portable.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
-  await portable.locator('button', { hasText: 'Stop all audio' }).evaluate((button) => button.click());
-  assert.deepEqual(requests.filter((request) => request !== fileUrl), []);
-  await fileContext.close();
+  await waitForHiddenText('App installed.');
+  await page.reload();
+  await page.getByText('Offline ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Play tone', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
+  await clickHiddenButton('Stop all audio');
   await context.close();
-  console.log(`${engineName}: accessible install/footer dialogs, localhost HTTPS manifest/icons, offline download, matching file launch/playback, and simulated install lifecycle passed.`);
+  console.log(`${engineName}: accessible install/footer dialogs, localhost HTTPS manifest/icons, cached offline reopening/playback, and simulated install lifecycle passed.`);
 } finally {
   await browser.close();
   await host.close();
-  await rm(temp, { recursive: true, force: true });
 }

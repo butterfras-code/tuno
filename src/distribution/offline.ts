@@ -1,17 +1,13 @@
 import { tuno, type AppIdentity } from './identity.ts';
-/** Portable files never register a worker or request hosted resources. */
+/** Verify cached resources before promising offline use. */
 export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, workerOptions = { worker: './sw.js', scope: './' }) {
-  if (app.id === 'tuno' && /^\/(tone|tempo)\//.test(location.pathname) && location.protocol !== 'file:') {
+  if (app.id === 'tuno' && /^\/(tone|tempo)\//.test(location.pathname)) {
     app = { id: 'suite', name: 'Practice Tools' };
     workerOptions = { worker: '/suite-sw.js', scope: '/' };
   }
   // Resolve once: History API navigation must not change the expected worker URL.
   const workerUrl = new URL(workerOptions.worker, location.href).href;
   status.setAttribute('role', 'status');
-  if (location.protocol === 'file:') {
-    status.textContent = 'Self-contained offline file';
-    return;
-  }
   if (!HOSTED_OFFLINE_ENABLED) {
     status.textContent = 'Development build · Offline preparation disabled';
     return;

@@ -1,41 +1,31 @@
 import { createFeedbackLink } from '../shared/ui/feedback.ts';
 import './information.css';
 import projectLicense from '../../LICENSE.txt';
-import { createReleaseControls } from '../distribution/release.ts';
+import { createInstallControl } from '../distribution/release.ts';
 import { button, el } from './components.ts';
 
 /** Native dialogs contain focus, handle Escape, and restore focus to the opener. */
 export function createInformationControls() {
   const dialogs: HTMLElement[] = [];
-  const createDialog = (id: string, title: string, content: HTMLElement[], popover = false) => {
-    const dialog = popover ? el('div', 'settings-dialog information-dialog install-popover') : el('dialog', 'settings-dialog information-dialog');
-    if (popover) { dialog.popover = 'auto'; dialog.setAttribute('role', 'dialog'); }
+  const createDialog = (id: string, title: string, content: HTMLElement[]) => {
+    const dialog = el('dialog', 'settings-dialog information-dialog');
     dialog.id = id;
     dialog.setAttribute('aria-labelledby', `${id}-heading`);
     const heading = el('h2', '', title);
     heading.id = `${id}-heading`;
-    const close = button('Close', () => popover ? dialog.hidePopover() : (dialog as HTMLDialogElement).close());
+    const close = button('Close', () => dialog.close());
     close.autofocus = true;
     const actions = el('div', 'information-actions');
     actions.append(close);
     dialog.append(heading, ...content, actions);
     dialogs.push(dialog);
     return (label: string) => {
-      const trigger = button(label, popover ? undefined : () => (dialog as HTMLDialogElement).showModal());
-      if (popover) trigger.popoverTargetElement = dialog;
+      const trigger = button(label, () => dialog.showModal());
       trigger.setAttribute('aria-haspopup', 'dialog');
       trigger.setAttribute('aria-controls', id);
       return trigger;
     };
   };
-  const install = createDialog('install-information', 'Keep tUno close', [
-    el('p', '', 'tUno is free and ad-free. Install it in your browser or download one HTML file to practice offline.'),
-    el('p', '', location.protocol === 'file:'
-      ? 'You are using the downloaded offline copy. Keep this HTML file and open it whenever you want to practice.'
-      : 'Use Install tUno when offered, or look for Install app / Add to Home Screen in your browser’s menu. On iPhone or iPad, open Safari’s Share menu and choose Add to Home Screen.'),
-    el('p', '', 'Wait for “Offline ready” before reopening the browser app without a connection. The downloaded HTML is a separate copy; keep the file to use it again.'),
-    createReleaseControls(),
-  ], true);
   const licenses = el('details', 'licenses');
   licenses.append(el('summary', '', 'Font licenses'), el('pre', 'license-text', FONT_LICENSES));
   const fontSources = el('p', '', 'Font source and license: ');
@@ -71,7 +61,7 @@ export function createInformationControls() {
   ]);
   const privacy = createDialog('privacy-information', 'Your privacy', [
     el('p', '', 'Your microphone helps tUno hear a note. That sound stays on your device. tUno does not record it or send it to a server.'),
-    el('p', '', 'Your practice settings are saved in this browser when storage is available. Clear this site’s data in your browser to remove them. A downloaded file may keep settings separately, depending on your browser.'),
+    el('p', '', 'Your practice settings are saved in this browser when storage is available. Clear this site’s data in your browser to remove them.'),
     el('p', '', 'There are no ads or tracking analytics in tUno. Opening the website or getting an update uses the internet. Once it says “Offline ready,” you can practice without a connection.'),
   ]);
   const tips = createDialog('tips-information', 'Tech tips', [
@@ -80,6 +70,6 @@ export function createInformationControls() {
   ]);
   const footerNavigation = el('nav', 'information-navigation');
   footerNavigation.setAttribute('aria-label', 'Information and installation');
-  footerNavigation.append(install('Install'), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'), createFeedbackLink());
+  footerNavigation.append(createInstallControl(), about('About'), uno('Uno'), tips('Tech tips'), privacy('Privacy'), createFeedbackLink());
   return { footerNavigation, dialogs };
 }

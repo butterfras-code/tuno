@@ -1,3 +1,5 @@
+import { createInstallControl } from '../../distribution/release.ts';
+import { prepareOffline } from '../../distribution/offline.ts';
 import { createFeedbackLink } from '../../shared/ui/feedback.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { countingProblems, countingScore } from './counting-feedback.ts';
@@ -46,6 +48,8 @@ let currentMeasures: readonly RhythmMeasure[] = [];
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
 const header = createAppHeader('Uno234', 'Practice rhythm with a friend.');
+const offlineStatus = el('p', 'small'); offlineStatus.id = 'offline-status';
+prepareOffline(offlineStatus, { id: 'rhythm', name: 'Uno234' }, { worker: '/rhythm/sw.js', scope: '/rhythm/' });
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const practiceView = el('section'); practiceView.id = 'practice-view';
 const banner = el('p', 'counting-hint');
@@ -231,8 +235,8 @@ const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#pract
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
 header.append(helpButton, nav);
 activitySurface.append(pageTitle, practiceView, settings.page);
-const footer = el('footer', 'feedback-footer');
-footer.append(createFeedbackLink());
+const footer = el('footer', 'feedback-footer install-footer');
+footer.append(createInstallControl({ id: 'rhythm', name: 'Uno234' }), offlineStatus, createFeedbackLink());
 main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;

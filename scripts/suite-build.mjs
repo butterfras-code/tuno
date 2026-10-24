@@ -3,9 +3,9 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 const out = new URL('../dist/hosted/', import.meta.url);
 let launcherContext;
-async function writeLauncher() {
+async function writeLauncher(dev) {
   const template = await readFile(new URL('../src/site/index.html', import.meta.url), 'utf8');
-  const launcher = template.replace('<!-- styles -->', '<link rel="stylesheet" href="/launcher.css">').replace('<!-- scripts -->', '<script defer src="/launcher.js"></script>');
+  const launcher = template.replace('<link rel="manifest" href="/manifest.webmanifest">', dev ? '' : '<link rel="manifest" href="/manifest.webmanifest">').replace('<!-- styles -->', '<link rel="stylesheet" href="/launcher.css">').replace('<!-- scripts -->', '<script defer src="/launcher.js"></script>');
   await writeFile(new URL('index.html', out), launcher);
 }
 
@@ -19,7 +19,7 @@ export async function buildSuite(dev) {
         contents: await readFile(args.path, 'utf8'), loader: 'ts',
         watchFiles: [new URL('../src/site/index.html', import.meta.url).pathname],
       }));
-      build.onEnd(async result => { if (!result.errors.length) await writeLauncher(); });
+      build.onEnd(async result => { if (!result.errors.length) await writeLauncher(dev); });
     } }],
   };
   if (dev) {
@@ -37,6 +37,7 @@ export async function buildSuite(dev) {
   const rhythmNames = ['rhythm/index.html', 'rhythm/app.js', 'rhythm/app.css'];
   const rhythmBytes = dev ? [] : await Promise.all(rhythmNames.map(name => readFile(new URL(name, out))));
   const version = createHash('sha256').update(launcher).update(tuneHtml).update(await readFile(new URL('launcher.js', out))).update(await readFile(new URL('launcher.css', out))).update(Buffer.concat(rhythmBytes)).digest('hex').slice(0, 16);
+  await writeFile(new URL('index.html', out), launcher.replace('</head>', `<meta name="suite-version" content="${version}"></head>`));
   const alias = tuneHtml.replace('</head>', `<meta name="suite-version" content="${version}"></head>`);
   for (const route of ['tone', 'tempo']) {
     await mkdir(new URL(route + '/', out), { recursive: true });
@@ -44,7 +45,7 @@ export async function buildSuite(dev) {
   }
   if (dev) return;
   const release = JSON.parse(await readFile(new URL('../dist/release.json', import.meta.url), 'utf8'));
-  const names = [...rhythmNames, 'manifest.webmanifest', 'index.html', 'launcher.js', 'launcher.css', 'tone/index.html', 'tempo/index.html', ...Object.keys(release.apps.tuno.checksums).filter(name => name !== 'sw.js').map(name => 'tune/' + name)];
+  const names = [...Object.keys(release.apps.rhythm.checksums).filter(name => name !== 'sw.js').map(name => 'rhythm/' + name), 'manifest.webmanifest', 'index.html', 'launcher.js', 'launcher.css', 'tone/index.html', 'tempo/index.html', ...Object.keys(release.apps.tuno.checksums).filter(name => name !== 'sw.js').map(name => 'tune/' + name)];
   const integrity = Object.fromEntries(await Promise.all(names.map(async name => [name, 'sha256-' + createHash('sha256').update(await readFile(new URL(name, out))).digest('base64')])));
   const worker = (await readFile(new URL('../src/distribution/service-worker.js', import.meta.url), 'utf8'))
     .replaceAll('__APP_ID__', 'suite').replace('__BUILD_VERSION__', version).replace('__EXCLUDED_PATHS__', JSON.stringify(['notes/', 'prototypes/'])).replace('__RESOURCE_INTEGRITY__', JSON.stringify(integrity));

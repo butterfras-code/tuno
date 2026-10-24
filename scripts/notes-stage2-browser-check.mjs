@@ -4,9 +4,7 @@ import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
-import { hostBuild } from './test-host.mjs';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch(); const host = await hostBuild();
 const results = []; const errors = [];
@@ -62,12 +60,17 @@ try {
   results.push('Profile names render as text; progress/configuration survive reload into setup; export, previewed replacement, malformed/future-schema rejection, Guest isolation and tUno preferences preserved');
   for(const width of [360,768,1280]) { await page.setViewportSize({width,height:900}); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true); await page.screenshot({path:`dist/validation/notes-stage2-${name}-${width}.png`,fullPage:true}); }
   await page.setViewportSize({width:640,height:900}); await page.evaluate(() => { document.documentElement.style.zoom='2'; }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true); await page.evaluate(() => { document.documentElement.style.zoom=''; });
-  const portable = await browser.newContext({offline:true}); const file = await portable.newPage(); file.on('pageerror',e => errors.push(e.message)); const requests=[]; file.on('request',r => {if(/^https?:/.test(r.url())) requests.push(r.url());});
-  await file.goto(pathToFileURL(resolve('dist/portable/tunotes.html')).href); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); assert.match(await file.locator('#profile-history').textContent(),/20 correct/); assert.deepEqual(requests,[]);
-  const portableDownload = file.waitForEvent('download'); await file.getByRole('button',{name:'Export backup',exact:true}).first().click(); const portableBackup = await readFile(await (await portableDownload).path(),'utf8'); await upload(page,portableBackup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
+  const offlineContext = await browser.newContext();
+  const offlineUrl = new URL('/notes/', host.url).href;
+  await prepareOfflineContext(offlineContext, offlineUrl);
+  host.setAvailable(false);
+  const file = await offlineContext.newPage(); file.on('pageerror', e => errors.push(e.message));
+  await file.goto(offlineUrl); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); assert.match(await file.locator('#profile-history').textContent(),/20 correct/);
+  const offlineDownload = file.waitForEvent('download'); await file.getByRole('button',{name:'Export backup',exact:true}).first().click(); const offlineBackup = await readFile(await (await offlineDownload).path(),'utf8'); await upload(page,offlineBackup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete selected profile',exact:true}).first().click(); assert.equal(await page.locator('#profile option').count(),1);
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.locator('#preset').getAttribute('value'),'treble-lines-and-spaces'); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
-  results.push('Hosted ↔ cold-offline portable JSON backup round trip, confirmed profile/all-data deletion and 360/768/1280 setup layouts');
+  await offlineContext.close(); host.setAvailable(true);
+  results.push('Online ↔ cached offline JSON backup round trip, confirmed profile/all-data deletion and 360/768/1280 setup layouts');
   for (const mode of ['denied','corrupt','quota']) {
     const ctx = await browser.newContext(); await ctx.addInitScript(mode => {
       if(mode==='denied') Object.defineProperty(window,'localStorage',{get(){throw new Error('denied');}});
