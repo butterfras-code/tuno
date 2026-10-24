@@ -16,7 +16,7 @@ import { createTone } from './views/tone.ts';
 import { createMetronome } from './views/metronome.ts';
 import { tempoInput } from './tempo.ts';
 import { createMobileTools } from './mobile-tools.ts';
-import { createInformationControls } from './information.ts';
+import { createAppFooter } from '../shared/ui/app-footer.ts';
 
 /** Mount once. Views observe the same store and retain DOM/focus across updates. */
 export function mountApp(root: HTMLElement, store: PracticeStore) {
@@ -24,7 +24,6 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   window.addEventListener('pagehide', audio.stopAll);
   document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
   const settings = createSettings(store);
-  const information = createInformationControls();
   const header = createAppHeader('tUno', 'Practice with a friend.');
   const navigation = el('nav', 'focus-navigation');
   navigation.setAttribute('aria-label', 'tUno tools');
@@ -117,7 +116,6 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     return { title, status, action, tempoStatus };
   });
   createMobileTools(tools);
-  const footer = el('footer', 'app-footer');
   const availability = el('p', '', 'Reference tones and metronome clicks may be picked up by the microphone. Use headphones to compare.');
   availability.id = 'audio-availability';
   const offline = el('p', 'teal');
@@ -125,17 +123,13 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   prepareOffline(offline);
   const error = el('p');
   error.setAttribute('role', 'status');
-  const local = el('div', 'local-status');
-  const privacy = el('span');
-  privacy.textContent = 'Your microphone audio and practice data stay on your device. Free and Ad-Free.';
-  local.append(privacy, offline);
+  const footer = createAppFooter({ status: offline, message: error });
   const extra = el('details', 'footer-extra');
   extra.append(el('summary', '', 'More practice tools'), button('Stop all audio', audio.stopAll), availability);
-  footer.append(local, error, information.footerNavigation);
   settings.node.append(extra);
   const explorer = main.querySelector<HTMLElement>('.sample-panel')!;
   extra.append(explorer);
-  root.append(header, main, tools, footer, settings.node, ...popups, ...information.dialogs);
+  root.append(header, main, tools, footer, settings.node, ...popups);
   store.subscribe((state) => {
     links.forEach((link, index) => TOOLS[index]!.id === state.focus ? link.setAttribute('aria-current', 'page') : link.removeAttribute('aria-current'));
     error.textContent = state.audioError;

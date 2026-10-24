@@ -65,7 +65,7 @@ Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the appl
 
 - `src/tokens.css`: global Figma colors, typography, spacing, and radii; `src/styles.css` defines shared controls and responsive layouts.
 - `src/practice/state.ts`: one application-owned store, typed actions, validation limits, tool/meter definitions, and derived pitch/frequency values. Views do not own duplicate practice state.
-- `src/ui/components.ts`: shared semantic DOM controls, labels, artwork, and pitch formatting. `src/ui/app.ts` owns the header, focus navigation, tool strip, footer, and settings and information dialogs.
+- `src/ui/components.ts`: shared semantic DOM controls, labels, artwork, and pitch formatting. `src/ui/app.ts` owns the header, focus navigation, tool strip, and settings dialog. The shared suite footer and information dialogs live in `src/shared/ui/app-footer.ts` and `src/shared/ui/information.ts`.
 - `src/ui/views/`: focused presentations mounted once and updated in place. Editing a control preserves DOM focus; switching views preserves session values.
 - `src/assets/`: Figma-derived SVG artwork and local font files/notices. The build embeds these assets as data URLs in both distributions and includes complete font notices in the About dialog.
 
@@ -81,7 +81,7 @@ Both artifacts carry the same content-derived version in HTML metadata. Producti
 
 The metronome schedules 150 ms ahead on a 25 ms timer. Visual beat identity follows the audio output timeline. Long foreground stalls stop metronome playback with explicit restart. Hiding the page pauses capture and all output; start a tool explicitly after returning. Background continuity is not supported. Uno currently uses static directional beat cues, with numbered/current-beat text available; tail animation remains a visual follow-up. Microphone input can hear reference tones and clicks through speakers.
 
-The shared presentation boundary is `src/shared/ui/`: Uno renderer/poses, fonts, Uno styles, generic DOM controls, and unmount cleanup. Assets and `src/tokens.css` remain shared in place. Tuner feedback, pitch display, stores, and audio controller stay tUno-specific. `verify` includes cross-app cached offline, nested hosting, worker/cache isolation, installation and Uno cleanup checks.
+The shared presentation boundary is `src/shared/ui/`: Uno renderer/poses, fonts, Uno styles, generic DOM controls, the responsive suite footer and information dialogs, and unmount cleanup. Assets and `src/tokens.css` remain shared in place. Tuner feedback, pitch display, stores, and audio controller stay tUno-specific. `verify` includes cross-app cached offline, nested hosting, worker/cache isolation, installation and Uno cleanup checks.
 
 ## tUno family URLs
 

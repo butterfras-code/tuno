@@ -1,14 +1,12 @@
-import { createFeedbackLink } from '../../shared/ui/feedback.ts';
+import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import './styles.css';
-import projectLicense from '../../../LICENSE.txt';
 import { el } from '../../shared/ui/components.ts';
 import { practiceView } from './ui/practice-view.ts';
 import { multiplayerView } from './ui/multiplayer-view.ts';
 import { playSurface } from './ui/play-surface.ts';
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
-import { createInstallControl } from '../../distribution/release.ts';
 import { tunotes } from '../../distribution/identity.ts';
 
 export function mountNotes(root: HTMLElement) {
@@ -58,17 +56,10 @@ export function mountNotes(root: HTMLElement) {
   const updateFullscreen = () => { fullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'; };
   document.addEventListener('fullscreenchange',updateFullscreen);
   header.append(fullscreen,fullscreenStatus);
-  const footer = el('footer', 'install-footer');
   const offline = el('p');
   offline.id = 'offline-status';
   prepareOffline(offline, tunotes);
-  const notices = el('details');
-  const source = el('a', '', 'Source code for this version');
-  source.href = document.querySelector<HTMLMetaElement>('meta[name="tunotes-source"]')?.content ?? 'https://github.com/butterfras-code/tuno';
-  notices.append(el('summary', '', 'About tuNotes and licenses'),
-    el('p', '', 'Copyright © 2026 Justin Butterfras. Code and original artwork are licensed under GNU GPLv3. No warranty.'),
-    source, el('pre', '', projectLicense), el('h2', '', 'Bundled font licenses'), el('pre', '', FONT_LICENSES));
-  footer.append(offline, createFeedbackLink(), createInstallControl(tunotes, [notices]));
+  const footer = createAppFooter({ app: tunotes, status: offline });
   home.append(header, ...views, footer);
   root.append(home);
   const stopFitting = playSurface(home,practice.options);

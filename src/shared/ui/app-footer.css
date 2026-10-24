@@ -1,0 +1,81 @@
+/* Scoped to the suite shell so activity and dialog footers keep their layouts. */
+footer.suite-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 24px;
+  width: 100%;
+  height: auto;
+  margin: 20px auto 0;
+  padding: 12px 0 max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font: 13px/1.5 var(--font-body);
+  text-align: left;
+}
+.suite-footer .suite-footer-status { min-width: 0; display: grid; gap: 2px; }
+.suite-footer .suite-footer-status p { margin: 0; font: inherit; overflow-wrap: anywhere; }
+.suite-footer #offline-status { color: var(--color-teal); }
+.suite-footer > [role='status'] { grid-column: 1 / -1; margin: 0; color: var(--color-destructive); }
+.suite-footer > [role='status']:empty { display: none; }
+.suite-footer .information-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+.suite-footer .information-navigation :is(.control, .install-link, .feedback-link) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  height: auto;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-accent);
+  font: 700 13px/1.4 var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.suite-footer .information-navigation :is(button, a):hover { background: var(--color-tint); }
+.suite-footer :is(button, a, summary):focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+.suite-footer .information-dialog {
+  box-sizing: border-box;
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 16px/1.6 var(--font-body);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.suite-footer .information-dialog::backdrop { background: #342f2d66; }
+.suite-footer .information-dialog h2 { margin: 0 0 16px; color: var(--color-accent); font: 700 26px/1.25 var(--font-heading); }
+.suite-footer .information-dialog p { margin: 16px 0; }
+.suite-footer .information-dialog a { color: var(--color-accent); }
+.suite-footer .information-dialog .control {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; height: auto; padding: 10px 16px;
+  border: 0; border-radius: 12px; background: var(--color-tint); color: var(--color-ink);
+  font: 700 16px/1.5 var(--font-heading); cursor: pointer;
+}
+.suite-footer .information-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.suite-footer .licenses { margin-block: 16px; }
+.suite-footer .licenses summary { min-height: 44px; padding-block: 10px; cursor: pointer; }
+.suite-footer .license-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; font: 12px/1.5 monospace; }
+@media (max-width: 1000px) {
+  footer.suite-footer { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .suite-footer .information-navigation { margin-inline: -8px; }
+}
+@media (max-width: 400px) {
+  .suite-footer .information-navigation { column-gap: 0; }
+}

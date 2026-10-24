@@ -12,7 +12,7 @@ async function writeLauncher(dev) {
 /** Static directory entries work on Pages, ordinary hosts, refresh and bookmarks. */
 export async function buildSuite(dev) {
   const options = { entryPoints: ['src/site/main.ts'], bundle: true, outfile: new URL('launcher.js', out).pathname,
-    loader: { '.svg': 'dataurl', '.ttf': 'dataurl' }, format: 'iife', target: 'es2022', minify: !dev,
+    loader: { '.svg': 'dataurl', '.ttf': 'dataurl', '.txt': 'text' }, format: 'iife', target: 'es2022', minify: !dev,
     define: { HOSTED_OFFLINE_ENABLED: String(!dev) },
     plugins: [{ name: 'launcher-html', setup(build) {
       build.onLoad({ filter: /site[/\\]main\.ts$/ }, async args => ({

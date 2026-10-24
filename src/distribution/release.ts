@@ -96,9 +96,11 @@ export function createInstallControl(app: AppIdentity = tuno, details: HTMLEleme
   const dialog = el('dialog', 'install-dialog');
   const heading = el('h2', '', `Install ${app.name}`);
   heading.id = `install-${app.id}-heading`;
+  heading.tabIndex = -1;
+  heading.autofocus = true;
   dialog.id = `install-${app.id}`;
   dialog.setAttribute('aria-labelledby', heading.id);
-  const close = button('Close', () => dialog.close()); close.autofocus = true;
+  const close = button('Close', () => dialog.close());
   dialog.append(heading, createReleaseControls(app), ...details, close);
   const trigger = button('Install', () => requestInstall(() => { if (!dialog.open) dialog.showModal(); }));
   trigger.className = 'install-link';

@@ -1,5 +1,4 @@
-import { createInstallControl } from '../distribution/release.ts';
-import { createFeedbackLink } from '../shared/ui/feedback.ts';
+import { createAppFooter } from '../shared/ui/app-footer.ts';
 import './styles.css';
 import tuneArtwork from '../assets/launcher/tune.svg';
 import notesArtwork from '../assets/launcher/notes.svg';
@@ -20,7 +19,7 @@ for (const [name, subtitle, href, artwork] of [
   const arrow = el('span', 'launcher-arrow', '→'); arrow.setAttribute('aria-hidden', 'true');
   card.append(image, el('h2', '', name), el('p', '', subtitle), arrow); cards.append(card);
 }
-const footer = el('footer', 'feedback-footer install-footer');
-footer.append(createInstallControl(), createFeedbackLink());
+const status = el('div');
+const footer = createAppFooter({ status });
 main.append(brand, cards, footer);
-prepareSuiteOffline(footer);
+prepareSuiteOffline(status);
