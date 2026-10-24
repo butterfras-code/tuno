@@ -9,8 +9,8 @@ import dragHintAsset from '../../assets/tempo-drag-hint.svg';
 
 export function createMetronome(store: PracticeStore, audio: AudioController) {
   const node = view('metronome', 'Metronome');
-  const meter = select(METERS.map(item => ({ ...item, label: String(item.beats || 1) })), (value) => store.dispatch({ type: 'meter', value: value as Meter }));
-  const mode = button('View · Uno', () => store.dispatch({ type: 'numbered', value: !store.get().numbered }));
+  const meter = select(METERS.map(item => ({ ...item, label: `Meter: ${item.label}` })), (value) => store.dispatch({ type: 'meter', value: value as Meter }));
+  const mode = button('View: Uno', () => store.dispatch({ type: 'numbered', value: !store.get().numbered }));
   const top = el('div', 'metronome-heading');
   const meterField = field('Meter', meter);
   meterField.classList.add('meter-field');
@@ -49,7 +49,9 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
   const dragArea = button('Drag to adjust tempo');
   dragArea.className = 'tempo-drag-area';
   dragArea.setAttribute('aria-label', 'Drag to adjust tempo');
-  dragArea.textContent = '';
+  const dragLabel = el('span', 'tempo-drag-label', 'Adjust');
+  dragLabel.setAttribute('aria-hidden', 'true');
+  dragArea.replaceChildren(dragLabel);
   tempoDrag(dragArea, store, pet.look);
   dragArea.addEventListener('keydown', event => {
     if (['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].includes(event.key)) {
@@ -58,8 +60,8 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
       store.dispatch({ type: 'tempo', value: Math.max(LIMITS.tempo.min, Math.min(LIMITS.tempo.max, store.get().tempo + direction)) });
     }
   });
-  sharedTempo.append(transport, dragHint, friend, dragArea);
-  body.append(sharedTempo, petHint);
+  sharedTempo.append(transport, dragHint, friend, dragArea, petHint);
+  body.append(sharedTempo);
   const beatHint = el('p', 'beat-hint muted', 'Touch to toggle accents');
   const beats = el('ol', 'beat-grid');
   beats.setAttribute('aria-label', 'Meter beats');
@@ -73,13 +75,12 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     return beat;
   });
   const subdivision = select([
-    ...Array.from({ length: 7 }, (_, i) => ({ value: i + 1, label: `Subdiv: ${i + 1}` })),
+    ...Array.from({ length: 7 }, (_, i) => ({ value: i + 1, label: `Subdivision: ${i + 1}` })),
   ], (value) => store.dispatch({ type: 'subdivision', value: Number(value) }));
   const sound = select(CLICK_SOUNDS,
     (value) => store.dispatch({ type: 'click-sound', value: value as ClickSound }));
   const mobile = matchMedia('(max-width: 650px)');
   const syncLabels = () => {
-    [...subdivision.options].forEach(option => { option.textContent = `${mobile.matches ? 'Subdiv' : 'Subdivision'}: ${option.value}`; });
     [...sound.options].forEach(option => { option.textContent = `${mobile.matches ? '' : 'Sound · '}${CLICK_SOUNDS.find(sound => sound.value === option.value)!.label}`; });
   };
   mobile.addEventListener('change', syncLabels);
@@ -115,7 +116,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     meter.value = state.meter;
     unit.textContent = 'BPM';
     tempo.classList.toggle('tempo-input--three', state.tempo >= 100);
-    responsiveLabel(mode, `View · ${state.numbered ? 'Numbered' : 'Uno'}`, `View · ${state.numbered ? 'Numbers' : 'Uno'}`);
+    mode.textContent = `View: ${state.numbered ? 'Numbered' : 'Uno'}`;
     mode.setAttribute('aria-pressed', String(state.numbered));
     node.classList.toggle('metronome--numbered', state.numbered);
     beats.hidden = beatHint.hidden = !state.numbered;

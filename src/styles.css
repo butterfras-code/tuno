@@ -257,7 +257,8 @@ img { display: block; max-width: 100%; }
 .pet-head, .pet-body { position: absolute; padding: 0; border: 0; border-radius: 24px; background: transparent; appearance: none; -webkit-tap-highlight-color: transparent; touch-action: none; cursor: pointer; }
 .pet-head { left: 15%; top: 0; width: 75%; height: 48%; }
 .pet-body { left: 20%; top: 48%; width: 70%; height: 52%; }
-.tempo-drag-area { position: absolute; grid-column: 2 / 3; top: 0; left: 0; width: calc(100% + 24px); height: 100%; z-index: 2; padding: 0; border: 0; background: transparent; touch-action: none; cursor: ns-resize; }
+.tempo-drag-area { position: absolute; grid-column: 2 / 3; grid-row: 1 / 2; top: 0; left: 0; width: calc(100% + 24px); height: 100%; z-index: 2; padding: 0; border: 0; background: transparent; touch-action: none; cursor: ns-resize; }
+.tempo-drag-label { position: absolute; top: 50%; left: 5px; transform: translate(-50%, -50%); writing-mode: vertical-rl; padding-block: var(--space-1); padding-inline: var(--space-2); background: var(--color-surface); color: var(--color-muted); font: 400 11px/1.3 var(--font-body); pointer-events: none; }
 .pet-head:focus-visible, .pet-body:focus-visible, .tempo-drag-area:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .hold-caption { font-size: 13px; margin: 8px 0 10px; }
 .hold-progress { appearance: none; border: 0; width: 100%; max-width: 236px; height: 7px; border-radius: 4px; overflow: hidden; background: var(--color-tint); }
@@ -332,15 +333,13 @@ img { display: block; max-width: 100%; }
 .metronome-heading { display: flex; align-items: start; justify-content: center; min-height: 66px; flex-wrap: nowrap; }
 .metronome-heading .control-row { display: flex; flex-wrap: nowrap; gap: 12px; }
 .metronome-heading .field-label, .rhythm-controls .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.meter-field { position: relative; width: 110px; }
-.meter-field::before { content: 'Meter:'; position: absolute; left: calc(50% - 33px); top: 50%; transform: translateY(-50%); pointer-events: none; font-weight: 700; }
-.meter-field select.control { padding-left: 48px; }
-.beat-mode { width: 178px; }
-.metronome-body { display: flex; position: relative; justify-content: center; padding: 20px 0 0; height: 372px; }
-.tempo-and-uno { position: relative; display: grid; grid-template-columns: 127.2px 10.6px 279.84px; gap: 4px; align-items: start; height: 280px; transform: none; }
+.meter-field, .beat-mode { min-width: 0; width: auto; }
+.meter-field select.control, .metronome-heading .beat-mode, .subdivision-field select.control { padding-inline: var(--space-2); text-align: center; font: 700 16px/1.3 var(--font-heading); }
+.metronome-body { display: flex; position: relative; justify-content: center; padding: 20px 0 var(--space-5); min-height: 372px; }
+.tempo-and-uno { position: relative; display: grid; grid-template-columns: 127.2px 10.6px 279.84px; gap: var(--space-3) 4px; align-items: start; align-content: start; transform: none; }
 .tempo-controls, .metronome--numbered .tempo-controls { display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; width: 127.2px; height: 279.84px; }
 .tempo-reading { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.tempo-input, .metronome--numbered .tempo-input { width: 100%; font-size: 91.584px; line-height: 1.2; color: var(--color-ink); }
+.tempo-input, .metronome--numbered .tempo-input { width: 100%; font-size: 91.584px; line-height: 1.2; color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-muted); text-decoration-thickness: 1px; text-underline-offset: .1em; }
 .tempo-input--three, .metronome--numbered .tempo-input--three { font-size: 70px; }
 .tempo-reading .muted { font-size: 17.808px; }
 .tempo-nudges .control { min-height: 40.7px; height: 40.7px; padding: 5px 7px; border-radius: 12.72px; font-size: 20.35px; }
@@ -348,7 +347,8 @@ img { display: block; max-width: 100%; }
 .pulse-friend { position: relative; width: 279.84px; height: 279.84px; }
 .pulse-friend .pet-tempo { position: absolute; left: -29.04px; top: -46.46px; }
 .pulse-friend .uno, .metronome--numbered .pulse-friend .uno { width: 337.92px; height: 337.92px; max-width: none; }
-.tempo-pet-hint { position: absolute; top: 309px; left: calc(50% + 6px); margin: 0; white-space: nowrap; font-size: 14px; }
+/* Share Uno's column rather than the wider tempo-and-Uno group's center. */
+.tempo-pet-hint { grid-column: 3; grid-row: 2; min-width: 0; margin: 0; text-align: center; text-wrap: balance; font-size: 14px; }
 .rhythm-controls { display: grid; grid-template-columns: 220fr 220fr 268fr 232fr; gap: 12px; }
 .rhythm-controls > *, .rhythm-controls select, .rhythm-controls .control { min-width: 0; width: 100%; }
 .rhythm-controls .control { padding-inline: 12px; }
@@ -363,7 +363,7 @@ img { display: block; max-width: 100%; }
 .beat:has([aria-pressed='true'])::after { content: ''; position: absolute; left: 25%; right: 25%; bottom: -7px; height: 3px; border-radius: 2px; background: var(--color-teal); }
 .metronome--numbered .metronome-body { padding-top: 72px; }
 .metronome--numbered .tempo-controls { height: 228px; width: 115px; }
-.metronome--numbered .tempo-and-uno { grid-template-columns: 115px 10px 228px; height: 228px; }
+.metronome--numbered .tempo-and-uno { grid-template-columns: 115px 10px 228px; }
 .metronome--numbered .tempo-drag-hint { height: 228px; }
 .metronome--numbered .tempo-input { font-size: 77px; }
 .metronome--numbered .tempo-input--three { font-size: 60px; }
@@ -382,7 +382,6 @@ img { display: block; max-width: 100%; }
   .brand { flex-basis: 100%; }
   .tool-card { padding-inline: 8px; }
   .compact-tool > .control, .compact-tool > .tool-status { font-size: 10px; }
-  .meter-field, .beat-mode { width: 125px; }
 }
 @media (max-width: 650px) {
   .app { max-width: 540px; padding: 18px 16px 12px; }
@@ -405,11 +404,11 @@ img { display: block; max-width: 100%; }
   .compact-tool > .tool-status { font-size: 11px; }
   #view-metronome { padding: 12px 16px; min-height: 484px; }
   .metronome-heading { display: block; min-height: 44px; }
-  .metronome-heading .control-row { display: grid; grid-template-columns: 145fr 173fr; gap: 8px; }
+  .metronome-heading .control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .meter-field, .beat-mode, .metronome--numbered .meter-field, .metronome--numbered .beat-mode { position: static; width: 100%; font-size: 16px; }
-  .metronome-heading .control, .rhythm-controls .control { min-height: 44px; height: 44px; padding: 8px; }
-  .metronome-body, .metronome--numbered .metronome-body { display: flex; height: 297px; padding: 31px 0 0; }
-  .tempo-and-uno { position: relative; inset: auto; width: 100%; max-width: 338px; height: 220px; grid-template-columns: 100px 10px minmax(0, 1fr); gap: 8px; transform: none; }
+  .metronome-heading .control, .rhythm-controls .control { min-height: 44px; padding: 8px; }
+  .metronome-body, .metronome--numbered .metronome-body { display: flex; min-height: 297px; padding: 31px 0 0; }
+  .tempo-and-uno { position: relative; inset: auto; width: 100%; max-width: 338px; grid-template-columns: 100px 10px minmax(0, 1fr); gap: var(--space-1) 8px; transform: none; }
   .tempo-controls { width: 100px; height: 220px; }
   .tempo-nudges .control { height: 32px; min-height: 32px; padding: 4px 6px; border-radius: 10px; font-size: 16px; }
   .tempo-input { font-size: 72px; }
@@ -419,7 +418,8 @@ img { display: block; max-width: 100%; }
   .pulse-friend { width: 100%; height: 220px; }
   .pulse-friend .pet-tempo { left: -22.83px; top: -36.53px; width: calc(100% + 45.66px); height: 265.66px; }
   .pulse-friend .uno { width: 100%; height: 100%; }
-  .tempo-pet-hint, .metronome--numbered .tempo-pet-hint { top: auto; bottom: 9px; left: 0; right: 0; text-align: center; font-size: 12px; white-space: normal; }
+  .tempo-pet-hint, .metronome--numbered .tempo-pet-hint { font-size: 12px; line-height: 1.2; }
+  .meter-field select.control, .metronome-heading .beat-mode, .subdivision-field select.control { font-size: 14px; }
   .rhythm-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .metronome-play { position: static; grid-column: 1 / -1; width: 100%; }
   .subdivision-field, .sound-field, .beat-volume, .metronome--numbered .subdivision-field { position: static; width: 100%; }
@@ -431,7 +431,8 @@ img { display: block; max-width: 100%; }
   .beat:first-child { background: var(--color-tint); color: var(--color-ink); }
   .beat[aria-current='true'] { background: var(--color-accent); color: var(--color-surface); }
   .metronome--numbered .metronome-body { padding-top: 76px; }
-  .metronome--numbered .tempo-and-uno { inset: auto; width: 100%; max-width: 304px; height: 190px; grid-template-columns: 96px 10px minmax(0, 1fr); }
+  .metronome--numbered .tempo-pet-hint { font-size: 11px; }
+  .metronome--numbered .tempo-and-uno { inset: auto; width: 100%; max-width: 304px; grid-template-columns: 96px 10px minmax(0, 1fr); }
   .metronome--numbered .tempo-controls { width: 96px; height: 190px; }
   .metronome--numbered .tempo-input { font-size: 64px; }
   .metronome--numbered .tempo-input--three { font-size: 52px; }
@@ -446,6 +447,7 @@ img { display: block; max-width: 100%; }
   .tuner-friend .hold-caption { font-size: 12px; }
 }
 @media (max-width: 370px) {
+  .meter-field select.control, .metronome-heading .beat-mode, .subdivision-field select.control { font-size: 13px; padding-inline: var(--space-1); }
   .focus-navigation .control { font-size: 14px; }
   .tuner-options .control { font-size: 13px; padding-inline: 8px; }
   .tuner-body { grid-template-columns: 100px minmax(0, 1fr); gap: 20px 4px; }
@@ -458,7 +460,7 @@ img { display: block; max-width: 100%; }
 .compact-tool .tool-status input.tempo-adjust { padding: 0; height: 24px; min-height: 0; border: 0; }
 @media (max-width: 650px) {
   .tempo-and-uno { width: calc(100% + 12px); flex-shrink: 0; grid-template-columns: 100px 10px minmax(0, 1fr); gap: 4px; }
-  .metronome--numbered .tempo-and-uno { gap: 8px; }
+  .metronome--numbered .tempo-and-uno { gap: var(--space-1) 8px; }
 }
 .beat-hint { position: absolute; top: 76px; left: 0; right: 0; text-align: center; font-size: 12px; }
 @media (max-width: 650px) { .beat-hint { top: 62px; } }
@@ -529,14 +531,13 @@ img { display: block; max-width: 100%; }
   .beat button { font-size: 28px; line-height: 54px; }
   .beat-hint { left: 0; right: 0; }
   .metronome--numbered .metronome-body { padding-top: 73px; }
-  .metronome--numbered .tempo-and-uno { grid-template-columns: 122.112px 10.6px 241.68px; gap: 8px; height: 241.68px; }
+  .metronome--numbered .tempo-and-uno { grid-template-columns: 122.112px 10.6px 241.68px; gap: var(--space-3) 8px; }
   .metronome--numbered .tempo-controls { width: 122.112px; height: 241.68px; }
   .metronome--numbered .tempo-drag-hint { height: 241.68px; }
   .metronome--numbered .tempo-input { font-size: 81.4px; }
   .metronome--numbered .tempo-input--three { font-size: 64px; }
   .metronome--numbered .pulse-friend { width: 241.68px; height: 241.68px; }
   .metronome--numbered .pulse-friend .uno { left: -25.08px; top: -40.128px; width: 291.84px; height: 291.84px; }
-  .metronome--numbered .tempo-pet-hint { top: 323.68px; }
   .beat button[aria-pressed='true'] { background: transparent; color: inherit; }
 }
 @media (min-width: 1001px) {
