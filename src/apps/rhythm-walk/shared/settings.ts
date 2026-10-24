@@ -197,8 +197,6 @@ export function createSettingsPage(callbacks: {
     }
     vocabulary.append(valueRow);
   }
-  const groupingField = el('fieldset', 'sixteenth-groupings');
-  groupingField.append(el('legend', '', 'Sixteenth-note groupings'));
   const groupingOptions = el('div', 'sixteenth-grouping-options');
   for (const pattern of sixteenthPatterns) {
     const { label, input } = segmentedOption({ label: pattern.label, content: renderRhythmPattern(pattern.events), type: 'checkbox', value: pattern.id,
@@ -213,7 +211,7 @@ export function createSettingsPage(callbacks: {
     label.title = pattern.label;
     groupingOptions.append(label);
   }
-  groupingField.append(groupingOptions);
+  vocabulary.querySelector('[data-value="16th"] .ingredient-row')!.append(groupingOptions);
   const patternFields = el('div', 'segmented-options pattern-toggles');
   for (const [key, id, title] of [
     ['allowUnintuitiveNotation', 'unintuitive-notation', 'Unusual Notation'],
@@ -327,7 +325,7 @@ export function createSettingsPage(callbacks: {
   teachingField.append(teachingAttribution);
   teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
-  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, groupingField, patternFields, generationStatus);
+  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
   available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));

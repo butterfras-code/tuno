@@ -7,7 +7,7 @@ const output = 'dist/validation/rhythm-patterns';
 await mkdir(output, { recursive: true });
 const results = [];
 try {
-  for (const width of [320, 1280]) {
+  for (const width of [320, 580, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -23,7 +23,8 @@ try {
     await level.selectOption('uno-4');
     const patterns = dialog.locator('[data-sixteenth-pattern]');
     assert.equal(await patterns.count(), 5);
-    assert.equal(await dialog.locator('.rhythm-pattern-preview').count(), 5);
+    assert.equal(await dialog.locator('[data-value="16th"] .ingredient-row:first-child .rhythm-pattern-preview').count(), 5);
+    assert.equal(await dialog.locator('[data-value="16th"]').evaluate(row => row.scrollWidth <= row.clientWidth + 1), true);
     assert.equal(await dialog.locator('[data-ingredient="sixteenth"]').count(), 0);
     const identity = await page.locator('.passage').getAttribute('data-exercise-id');
     for (const pattern of await patterns.all()) await pattern.uncheck();
