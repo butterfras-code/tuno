@@ -23,10 +23,10 @@ try {
   await installed.locator('.launcher-card[href="/rhythm/"]').click();
   await installed.reload();
   assert.equal(await installed.locator('h1').textContent(), 'Uno234');
-  assert.equal(await installed.locator('link[rel="manifest"]').getAttribute('href'), '/manifest.webmanifest');
-  const manifest = await installed.evaluate(async () => (await fetch('/manifest.webmanifest')).json());
-  assert.equal(manifest.id, '/');
-  assert.equal(manifest.scope, '/');
+  assert.equal(await installed.locator('link[rel="manifest"]').getAttribute('href'), './manifest.webmanifest');
+  const manifest = await installed.evaluate(async () => (await fetch('/rhythm/manifest.webmanifest')).json());
+  assert.equal(manifest.id, './');
+  assert.equal(manifest.scope, './');
   await installed.getByRole('link', { name: '← Tools' }).click();
   await installed.locator('.launcher-card').first().waitFor();
   await fresh.close();

@@ -545,3 +545,37 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .sixteenth-grouping-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .sixteenth-grouping-options label { border: 1px solid var(--color-line); border-radius: 10px; min-height: 48px; }
 .rhythm-pattern-preview { width: 100px; height: 56px; pointer-events: none; }
+
+/* Keep the submit action beside the counting palette, including long scores. */
+.rhythm-app .write-actions { justify-content: flex-start; flex-wrap: wrap; }
+.rhythm-app .write-actions > :first-child { margin-right: 0; }
+.rhythm-app .count-erase-actions { margin-left: 8px; }
+.rhythm-app .count-erase-actions .control { background: transparent; color: var(--color-muted); }
+/* Session controls are outside the tappable outline and reserve their space. */
+.performance-surface { border: 0; background: none; overflow: visible; }
+.performance-surface > .pad { border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); padding: 12px; }
+.pad-tools { position: static; flex-direction: row; justify-content: flex-start; margin-top: 8px; }
+/* Lifecycle emphasis never changes target geometry during entry. */
+#practice-view[data-phase='setup'] .level-configuration { background: var(--color-tint); border-radius: 12px; }
+#practice-view[data-phase='input'] .interaction-body { border-color: var(--color-teal); }
+#practice-view[data-phase='review'] .interaction-body { background: var(--color-surface); }
+#practice-view[data-phase='review'] .feedback-snapshot { border-color: var(--color-accent); }
+.exercise-overview-row .feedback-snapshot[data-scored='false'] { background: transparent; border-color: transparent; padding: 8px 12px; }
+.feedback-snapshot[data-scored='false'] .treat-ratings { display: none; }
+.feedback-snapshot[data-scored='false'] .treat-details { display: none; }
+.rhythm-app[data-view='settings'] { max-width: var(--content-width); }
+.rhythm-settings .settings-live { max-width: 760px; }
+.settings-live-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.counting-settings-group { min-width: 0; }
+.counting-settings-group .field:has(input[type='checkbox']) { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; }
+.counting-settings-group .field:has(input[type='checkbox']) input { order: -1; margin: 0; flex: none; }
+.counting-settings-group .field .setting-hint { flex-basis: 100%; }
+.counting-share, .counting-help { grid-column: 1 / -1; }
+.counting-help summary { padding-block: 12px; cursor: pointer; }
+@media (max-width: 540px) { .settings-live-controls { grid-template-columns: minmax(0,1fr); } }
+.rhythm-app .count-erase-actions button.control { background: transparent; border-color: transparent; box-shadow: none; color: var(--color-muted); }
+/* Keep the palette near the score instead of manufacturing a tall workspace. */
+.practice-workspace.editing-counts.dock-roomy { min-height: 0; }
+.practice-workspace.editing-counts.dock-roomy > .shared-interaction { margin-top: 8px; }
+
+.rhythm-settings .control { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

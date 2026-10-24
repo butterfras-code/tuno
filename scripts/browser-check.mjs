@@ -1,25 +1,20 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox, webkit } from 'playwright';
-import { hostBuild } from './test-host.mjs';
+import { hostBuild, prepareOfflineContext } from './test-host.mjs';
 const engineName = process.env.TUNO_BROWSER || 'chromium';
 
 const host = await hostBuild();
-const temp = await mkdtemp(join(tmpdir(), 'tuno-portable-'));
 const measurements = [];
 let browser;
 try {
   browser = await ({ chromium, firefox, webkit })[engineName].launch();
-  const relocated = join(temp, 'renamed tuno.html');
-  await copyFile(new URL('../dist/portable/tuno.html', import.meta.url), relocated);
   for (const [mode, url] of [
     ['hosted', host.url],
-    ['portable', pathToFileURL(relocated).href],
+    ['hosted-offline', host.url],
   ]) {
-    const context = await browser.newContext({ offline: mode === 'portable', viewport: { width: 1120, height: 1000 } });
+    const context = await browser.newContext({ viewport: { width: 1120, height: 1000 } });
     let page = await context.newPage();
     const stopAllAudio = () => page.locator('button', { hasText: 'Stop all audio' }).evaluate((button) => button.click());
     const errors = [];
@@ -33,6 +28,7 @@ try {
         constructor(...args) { super(...args); window.audioContexts.push(this); }
       };
     });
+    if (mode === 'hosted-offline') { await prepareOfflineContext(context, url); host.setAvailable(false); }
     await page.goto(url);
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
@@ -319,7 +315,6 @@ try {
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
     assert.equal(await page.locator('.pitch-lane').isVisible(), true);
     assert.deepEqual(errors, []);
-    if (mode === 'portable') assert.deepEqual(requests.filter((request) => request !== url), [], 'Portable must not request subresources.');
 
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {
       const directory = process.env.TUNO_SCREENSHOT_DIR;
@@ -336,7 +331,7 @@ try {
         }
       }
     }
-    console.log(`${mode}: shared state, controls, font/image decoding, responsive layouts, and keyboard checks passed in ${engineName} ${browser.version()}${mode === 'portable' ? '; relocated file, offline, no subresource requests' : ''}.`);
+    console.log(`${mode}: shared state, controls, font/image decoding, responsive layouts, and keyboard checks passed in ${engineName} ${browser.version()}.`);
     await context.close();
     host.setAvailable(true);
   }
@@ -346,5 +341,4 @@ try {
 } finally {
   await browser?.close();
   await host.close();
-  await rm(temp, { recursive: true, force: true });
 }

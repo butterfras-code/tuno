@@ -1,4 +1,6 @@
 # tuNotes  
+
+> Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
 ## Note-Reading Practice for tUno
 
 **Implementation follow-up:** See the [full specification](tuNotes_spec.md) and [staged build plan](tuNotes_build-plan.md). This document is retained as the original design input.

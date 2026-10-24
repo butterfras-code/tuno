@@ -69,7 +69,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   const pulse = el('span', 'pulse'); pulse.hidden = true; pulse.setAttribute('aria-hidden', 'true');
   const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
   const pad = button(''); pad.className = 'pad'; pad.setAttribute('aria-label', 'Performance pad');
-  const padAction = el('span', 'pad-action', 'Start'); pad.append(padAction, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
+  const padAction = el('span', 'pad-action', 'Tap to start'); pad.append(padAction, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
   const stop = button('Stop', () => cancel('Stopped by learner')); stop.disabled = true;
   const download = button('Download timing evidence', () => {
     if (!result) return;
@@ -100,7 +100,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
     timing.setLocked(active);
     main.classList.toggle('active', active); options.busy(active);
     tempo.disabled = metronome.disabled = howToPlay.disabled = active;
-    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Start'; download.disabled = calibrate.disabled = active;
+    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Tap to start'; download.disabled = calibrate.disabled = active;
   }
   function tick(time: number) {
     if (!transport) return;
@@ -284,7 +284,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
     record: () => result,
     syncResults: () => results?.sync(options.nextIssue()),
     refreshFeedback: renderFeedback,
-    reset: () => { cancel('Exercise changed'); treatBag.clear(); delete options.treatBag.dataset.exerciseId; renderFeedback(); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
+    reset: () => { cancel('Exercise changed'); treatBag.clear(); delete options.treatBag.dataset.exerciseId; renderFeedback(); result = null; results?.panel.remove(); results = null; surface.hidden = false; review.replaceChildren(); download.hidden = true; padAction.textContent = 'Tap to start'; status.textContent = 'Ready'; options.decorate(null); refreshExercise(); },
   };
 
 }

@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+<!-- Staff lines are y=65,85,105,125,145. The clef body rests on the bottom
+     line, its upper crossing meets the fourth, and its curl surrounds G (125). -->
 <!-- Uno sitting in front of a treble staff; clef from the note-reading renderer. Original tUno artwork, adapted for the launcher. -->
 
 <g transform="rotate(-7 150 105)">
 <path d="M18 65H282M18 85H282M18 105H282M18 125H282M18 145H282" stroke="#C5B4C3" stroke-width="3" stroke-linecap="round"/>
-<path d="M 66 156 C 87 159 87 132 76 105 L 62 64 C 53 35 72 19 76 38 C 81 58 45 82 43 104 C 39 130 79 142 88 116 C 96 93 59 82 55 105 C 52 116 64 123 73 118 M 66 156 C 52 154 54 143 61 143" transform="translate(-9 5)" stroke="#73556F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 66 156 C 87 159 87 132 76 105 L 62 64 C 53 35 72 19 76 38 C 81 58 45 82 43 104 C 39 130 79 142 88 116 C 96 93 59 82 55 105 C 52 116 64 123 73 118 M 66 156 C 52 154 54 143 61 143" transform="translate(-9 15)" stroke="#73556F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 <g transform="translate(64 49) scale(.79)"><g xmlns="http://www.w3.org/2000/svg">
 <path d="M150 289.688C204.883 289.688 249.375 283.392 249.375 275.625C249.375 267.858 204.883 261.562 150 261.562C95.1167 261.562 50.625 267.858 50.625 275.625C50.625 283.392 95.1167 289.688 150 289.688Z" fill="#DCD2C5" />

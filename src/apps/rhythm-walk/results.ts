@@ -62,6 +62,7 @@ const rewardDimensions = [
 ] as const;
 
 export function renderTreatBag(host: HTMLElement, state: TreatBagState, interrupted = false, counting?: CountingFeedbackContext) {
+  host.dataset.scored = String(counting && counting.mode !== 'tap' ? Boolean(counting.result) : Boolean(state.completed));
   const wasOpen = host.querySelector<HTMLDetailsElement>('.treat-details')?.open ?? false;
   const heading = el('h2', '', 'Treat Bag: Earn Treats for Uno'); heading.id = 'feedback-snapshot-title';
   const list = el('ul', 'treat-ratings');
