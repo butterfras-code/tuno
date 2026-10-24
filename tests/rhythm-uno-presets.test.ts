@@ -14,6 +14,7 @@ const second = [...base, 'dotted-half', 'dotted-quarter'];
 const third = [...second, 'sixteenth', 'eighth-rest', 'triplet-eighth', 'dotted-eighth'];
 const all = [...third, 'dotted-quarter-rest', 'sixteenth-rest', 'whole-rest'];
 const expected = [
+  { meters: ['4/4'], ingredients: ['quarter', 'quarter-rest', 'half'], ties: false, syncopation: false, notation: false },
   { meters: ['4/4'], ingredients: base, ties: false, syncopation: false, notation: false },
   { meters: ['4/4', '2/4', '3/4'], ingredients: second, ties: true, syncopation: false, notation: false },
   { meters: ['4/4', '2/4', '3/4', '6/8'], ingredients: third, ties: true, syncopation: true, notation: false },
@@ -21,7 +22,7 @@ const expected = [
 ];
 
 test('Uno levels match the requested cumulative configurations without changing UIL scope', () => {
-  assert.deepEqual(generationLevels.map(p => p.id), ['uno-1', 'uno-2', 'uno-3', 'uno-4', 'uil-1', 'uil-2', 'uil-3', 'uil-4']);
+  assert.deepEqual(generationLevels.map(p => p.id), ['uno-1', 'uno-2', 'uno-3', 'uno-4', 'uno-5', 'uil-1', 'uil-2', 'uil-3', 'uil-4']);
   for (const [index, definition] of unoPresets.entries()) {
     const wanted = expected[index]!;
     assert.equal(definition.label, `Uno${index + 1}`); assert.equal(definition.source, null);
@@ -34,7 +35,7 @@ test('Uno levels match the requested cumulative configurations without changing 
   }
   for (const definition of teachingPresets.slice(2)) assert.equal(resolveTeachingPreset(definition).supported, true);
   const capabilities = generationCapabilities();
-  assert.equal(resolveTeachingPreset(unoPresets[2]!, { ...capabilities, ingredients: capabilities.ingredients.filter(id => id !== 'sixteenth') }).supported, false);
+  assert.equal(resolveTeachingPreset(unoPresets[3]!, { ...capabilities, ingredients: capabilities.ingredients.filter(id => id !== 'sixteenth') }).supported, false);
 });
 
 test('Uno application, customization and reload preserve independent preferences and source identity', () => {

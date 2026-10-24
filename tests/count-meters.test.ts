@@ -65,11 +65,10 @@ test('readable silence exposes the middle boundary and respects enabled spelling
   assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(0), '6/8'), true);
   assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(3, 8), '6/8'), true);
   assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(1, 8), '6/8'), false);
-  assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['dotted-quarter-rest'] }), null);
+  assert.match(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['dotted-quarter-rest'] })!, /15% rests/);
   assert.match(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest'] })!, /cannot fill/);
-  assert.equal(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['half-rest', 'eighth-rest'] }), null);
-  const bar = generateExercise({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest', 'eighth-rest'] }, () => 0)[0]!;
-  assert.deepEqual(notationOnly(bar.notes), notationOnly([note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' })]));
+  assert.match(generationIssue({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['half-rest', 'eighth-rest'] })!, /15% rests/);
+  assert.throws(() => generateExercise({ ...defaultGeneration(), meters: ['6/8'], ingredients: ['quarter-rest', 'eighth-rest'] }, () => 0), /15% rests/);
   for (const meter of ['2/4', '3/4', '4/4'] as const) {
     assert.equal(readableRestPlacement(note('quarter', { kind: 'rest' }), fraction(1, 8), meter), false);
     assert.equal(readableRestPlacement(note('half', { kind: 'rest' }), fraction(1, 4), meter), true);

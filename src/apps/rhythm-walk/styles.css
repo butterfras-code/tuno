@@ -97,7 +97,7 @@ main.rhythm-app {
 .shared-exercise-settings input[type=checkbox] { width: 20px; height: 20px; }
 .shared-exercise-settings .setting-option { min-height: 44px; align-items: center; }
 .active-ingredients { grid-column: 1 / -1; min-width: 0; border: 0; padding: 0; }
-.ingredient-headings, .ingredient-value-row { display: grid; grid-template-columns: minmax(136px, 180px) minmax(90px, 1fr); gap: 8px; }
+.ingredient-headings, .ingredient-value-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 8px; }
 .ingredient-headings { padding: 0 0 8px; }
 .ingredient-headings h3 { margin: 0; font: 700 14px/1.4 var(--font-heading); }
 .ingredient-value-row { padding: 6px 0; border-top: 1px solid var(--color-line); }
@@ -126,7 +126,7 @@ main.rhythm-app {
 .custom-exercise-dialog .ingredient-toggle { min-height: 48px; }
 @media (min-width: 441px) { .ingredient-row { gap: 6px; } .ingredient-toggle { flex-basis: 48px; } }
 @media (max-width: 440px) { .custom-exercise-dialog .shared-exercise-settings { grid-template-columns: minmax(0, 1fr); } .custom-exercise-header h2 { font-size: 18px; } }
-@media (max-width: 380px) { .ingredient-headings, .ingredient-value-row { grid-template-columns: minmax(136px, 3fr) minmax(90px, 2fr); } }
+@media (max-width: 380px) { .ingredient-headings, .ingredient-value-row { grid-template-columns: minmax(0, 1fr) 90px; } }
 @media (min-width: 760px) { .shared-exercise-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .timing-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow: auto; border: 1px solid var(--color-line); border-radius: 18px; padding: 20px; background: var(--color-paper, white); color: var(--color-ink); }
 .timing-dialog::backdrop { background: #152b3b80; }
@@ -540,6 +540,11 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 }
 .rhythm-app .count-erase-actions button.control:active:not(:disabled) { box-shadow: 0 1px 0 var(--color-destructive-line); }
 .rhythm-app .count-erase-actions button.control:focus-visible { outline-color: var(--color-destructive); }
+
+.ingredient-value-row[data-value="16th"] .ingredient-row { min-width: 0; align-self: start; }
+.sixteenth-grouping-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.sixteenth-grouping-options label { border: 1px solid var(--color-line); border-radius: 10px; min-height: 48px; }
+.rhythm-pattern-preview { width: 100px; height: 56px; pointer-events: none; }
 
 /* Keep the submit action beside the counting palette, including long scores. */
 .rhythm-app .write-actions { justify-content: flex-start; flex-wrap: wrap; }

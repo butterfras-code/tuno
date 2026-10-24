@@ -63,6 +63,21 @@ export function renderRhythmSymbol(written: RhythmEvent) {
   }
   return svg;
 }
+/** Compact beamed figures using the same written glyphs as the exercise. */
+export function renderRhythmPattern(events: readonly RhythmEvent[]) {
+  const width = events.length * 44 + 16;
+  const svg = node('svg', { viewBox: `0 24 ${width} 92`, class: 'rhythm-pattern-preview', 'aria-hidden': 'true', focusable: 'false' });
+  events.forEach((event, index) => {
+    const x = 22 + index * 44;
+    svg.append(writtenSymbol(event, x));
+    if (index < events.length - 1) svg.append(node('line', { x1: x + 10, x2: x + 54, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7 }));
+    if (event.type === '16th') {
+      const next = events[index + 1]?.type === '16th', previous = events[index - 1]?.type === '16th';
+      if (next || !previous) svg.append(node('line', { x1: x + 10, x2: x + 10 + (next ? 44 : index === events.length - 1 ? -16 : 16), y1: 54, y2: 54, stroke: 'currentColor', 'stroke-width': 6 }));
+    }
+  });
+  return svg;
+}
 export function renderMeasure(measure: RhythmMeasure, label = 'Practice rhythm', passage: { first: boolean; last: boolean } = { first: true, last: true }) {
   const grid = countGrid(measure);
   const svg = node('svg', { viewBox: '0 0 800 150', role: 'group', 'aria-label': `${measure.meter.join("/")} rhythm: ${label}`, class: 'notation' });

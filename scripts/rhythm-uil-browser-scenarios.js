@@ -5,7 +5,7 @@ window.uilScenarios = async function (w = window) {
   const choose=(node,value)=>{node.value=value;node.dispatchEvent(new w.Event('change',{bubbles:true}));};
   const generation=()=>JSON.parse(w.localStorage.getItem('tuno.rhythm-walk.preferences.v1')).generation;
   const picker=d.querySelector('[data-setting="teaching-preset"]');
-  assert(picker.options.length===9,'Only Uno1–4 and UIL I–IV plus Custom');
+  assert(picker.options.length===10,'Only Uno1–5 and UIL I–IV plus Custom');
   assert(!d.querySelector('select[data-setting="meter-changes"]'),'No meter-change control');
   assert(!d.querySelector('[data-meter="2/2"]'),'No cut-time control');
   for(const level of [1,2,3,4])for(const scope of ['general','percussion'])for(const length of [1,2,3,4]){

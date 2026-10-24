@@ -52,7 +52,7 @@ test('I–IV both scopes, all meters and lengths use complete figures and the li
 test('every eligible figure is reachable deterministically without filler or partial atoms',()=>{
   for(let level=1;level<=4;level++)for(const scope of ['general','percussion'] as const)for(const meter of meters(level)){
     const wanted=expected(level,scope).filter(id=>meter==='2/4'?!['H.','W'].includes(id):meter==='3/4'?id!=='W':true), seen=new Set<string>();
-    for(let i=0;i<100;i++)parse(generateExercise({...config(level,scope),meters:[meter],measures:1},()=>i/100).measures[0]!,expected(level,scope)).forEach(id=>seen.add(id));
+    for(let i=0;i<100;i++)parse(generateExercise({...config(level,scope),meters:[meter],measures:4},()=>i/100).measures[0]!,expected(level,scope)).forEach(id=>seen.add(id));
     assert.deepEqual([...seen].sort(),wanted.sort());
   }
 });

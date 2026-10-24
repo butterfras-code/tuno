@@ -6,7 +6,7 @@ import { defaultCountingPreferences, captureCountingPreferences } from '../../mu
 import type { CountingPreferences } from '../../music/counting/preferences.ts';
 import { createScore } from '../../music/score.ts';
 import type { RhythmScore } from '../../music/score.ts';
-import { defaultGeneration, generateExercise, generationIssue, ingredients } from './shared/generation.ts';
+import { defaultGeneration, generateExercise, generationIssue, ingredients, sixteenthPatterns } from './shared/generation.ts';
 import type { GenerationSettings } from './shared/generation.ts';
 import type { PassageFixture } from './shared/fixtures.ts';
 import { practiceFixtures } from './shared/fixtures.ts';
@@ -70,7 +70,10 @@ export function readPreferences(raw: string | null): Preferences {
     if (g && Array.isArray(selected) && selected.every(meter => meters.includes(meter) || String(meter) === '2/2') && Number.isInteger(g.measures) && g.measures >= 1 && g.measures <= 4 && Array.isArray(g.ingredients) && g.ingredients.every(id => ingredients.some(i => i.id === id)) && typeof g.allowUnintuitiveNotation === 'boolean' && (g.ties === undefined || typeof g.ties === 'boolean') && (g.syncopation === undefined || typeof g.syncopation === 'boolean')) {
       defaults.generation = { meters: selected.some(m => meters.includes(m)) ? [...new Set(selected.filter(m => meters.includes(m)))] : selected.length ? ['4/4'] : [], measures: g.measures, ingredients: [...g.ingredients], allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: g.ties, syncopation: g.syncopation };
       if (g.restrictions && typeof g.restrictions.pairedEighths === 'boolean' && typeof g.restrictions.noQuarterRestBeatOne === 'boolean') defaults.generation.restrictions = { pairedEighths: g.restrictions.pairedEighths, noQuarterRestBeatOne: g.restrictions.noQuarterRestBeatOne };
-      const identity = g.teachingPreset;
+      if (Array.isArray(g.sixteenthPatterns) && g.sixteenthPatterns.every(id => sixteenthPatterns.some(p => p.id === id))) defaults.generation.sixteenthPatterns = [...new Set(g.sixteenthPatterns)];
+      const oldIdentity = g.teachingPreset;
+      const identity = oldIdentity?.version === 1 && /^uno-[1-4]$/.test(oldIdentity.id)
+        ? { ...oldIdentity, id: `uno-${Number(oldIdentity.id.slice(4)) + 1}`, version: 2 } : oldIdentity;
       const definition = generationLevels.find(p => p.id === identity?.id);
       const retired = identity && ['uil-5', 'uil-6'].includes(identity.id);
       if ((definition || retired) && typeof identity?.customized === 'boolean' && Number.isInteger(identity.version) && identity.version >= 1 && identity.version <= (definition?.version ?? 2)) {
