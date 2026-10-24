@@ -2,7 +2,7 @@ import { eligibleFigures } from './figures.ts';
 import type { InstrumentScope } from './figures.ts';
 import { generationCapabilities } from './capabilities.ts';
 import type { GenerationCapabilities } from './capabilities.ts';
-import { generationIssue, ingredients, figureIngredients } from './generation.ts';
+import { generationIssue, ingredients, figureIngredients, selectedSixteenthPatterns } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { CountMeter } from './meter.ts';
 
@@ -54,6 +54,7 @@ export const teachingPresets: readonly (TeachingPresetDefinition & { source: typ
 });
 /** User-defined Uno configurations; independent of official UIL figure criteria. */
 const unoConfigurations: Omit<GenerationSettings, 'measures'>[] = [
+  { meters: ['4/4'], ingredients: ['quarter', 'quarter-rest', 'half'], ties: false, syncopation: false, allowUnintuitiveNotation: false },
   { meters: ['4/4'], ingredients: ['whole', 'half', 'quarter', 'eighth', 'quarter-rest', 'half-rest'], ties: false, syncopation: false, allowUnintuitiveNotation: false },
   { meters: ['4/4', '2/4', '3/4'], ingredients: ['whole', 'half', 'quarter', 'eighth', 'quarter-rest', 'half-rest', 'dotted-half', 'dotted-quarter'], ties: true, syncopation: false, allowUnintuitiveNotation: false },
   { meters: ['4/4', '2/4', '3/4', '6/8'], ingredients: ['whole', 'half', 'quarter', 'eighth', 'quarter-rest', 'half-rest', 'dotted-half', 'dotted-quarter', 'sixteenth', 'eighth-rest', 'triplet-eighth', 'dotted-eighth'], ties: true, syncopation: true, allowUnintuitiveNotation: false },
@@ -62,7 +63,7 @@ const unoConfigurations: Omit<GenerationSettings, 'measures'>[] = [
 export const unoPresets: readonly TeachingPresetDefinition[] = unoConfigurations.map((configuration, index) => {
   const recommended: GenerationSettings = { ...configuration, measures: 2 };
   return {
-    id: `uno-${index + 1}`, version: 1, label: `Uno${index + 1}`, source: null,
+    id: `uno-${index + 1}`, version: 2, label: `Uno${index + 1}`, source: null,
     figures: [], officialMeters: [], meterChanges: 0, restrictions: [], unresolved: [], recommended,
     required: { ingredients: recommended.ingredients, patterns: [], meters: recommended.meters! },
   };
@@ -75,7 +76,7 @@ export function teachingPresetLabel(identity?: TeachingPresetIdentity): string {
 }
 export type PresetResolution = { supported: true; settings: GenerationSettings } | { supported: false; reasons: string[] };
 export function matchesTeachingPreset(settings: GenerationSettings, definition: TeachingPresetDefinition): boolean {
-  const controlled = (g: GenerationSettings) => JSON.stringify({ meters: [...(g.meters ?? [g.meter ?? '4/4'])].sort(), ingredients: [...g.ingredients].sort(), allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: Boolean(g.ties), syncopation: Boolean(g.syncopation), pairedEighths: Boolean(g.restrictions?.pairedEighths), noQuarterRestBeatOne: Boolean(g.restrictions?.noQuarterRestBeatOne), figureProfile: g.figureProfile });
+  const controlled = (g: GenerationSettings) => JSON.stringify({ meters: [...(g.meters ?? [g.meter ?? '4/4'])].sort(), ingredients: [...g.ingredients].sort(), allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: Boolean(g.ties), syncopation: Boolean(g.syncopation), pairedEighths: Boolean(g.restrictions?.pairedEighths), noQuarterRestBeatOne: Boolean(g.restrictions?.noQuarterRestBeatOne), figureProfile: g.figureProfile, sixteenthPatterns: selectedSixteenthPatterns(g).sort() });
   return controlled(settings) === controlled(scopedSettings(definition, settings.teachingPreset?.scope ?? 'general')) && (settings.meterChanges ?? 0) === 0;
 }
 function scopedSettings(definition: TeachingPresetDefinition, scope: InstrumentScope): GenerationSettings {

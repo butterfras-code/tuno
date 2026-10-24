@@ -106,11 +106,11 @@ test('bounded seeded generation respects independent pattern controls, written i
     observedSync ||= offbeats.some(Boolean);
   }
   assert.ok(observedTie && observedTriple && observedBarTie && observedSync);
-  assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['half-rest'], ties: true }), null);
+  assert.match(generationIssue({ ...defaultGeneration(), ingredients: ['half-rest'], ties: true })!, /15% rests/);
   assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['quarter'], syncopation: true }), null);
   assert.equal(generationIssue({ ...defaultGeneration(), ingredients: ['eighth'], ties: true, syncopation: true }), null);
-  assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: true }), null);
-  assert.equal(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: false }), null);
+  assert.match(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: true })!, /15% rests/);
+  assert.match(generationIssue({ ...defaultGeneration(), measures: 1, ingredients: ['dotted-quarter', 'eighth-rest'], ties: false })!, /15% rests/);
 });
 
 const generateExercise = (...args: Parameters<typeof generateScore>) => generateScore(...args).measures;

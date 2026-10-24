@@ -1,19 +1,24 @@
 # Uno234: current direction
 
-Updated 2026-10-22. **Uno234 is one activity with two interchangeable input panels: Counts and Perform.** The current activity is named **Uno234**. **Rhythm Walk** is reserved for an eventual continuous gameplay mode; it is not a current response mode. Existing prototype URLs, source directories, and preference keys retain their historical names for compatibility. Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes the Write/Tap/Both selector, descriptions of separate activities and the earlier Count Writing-first sequencing. Saved Tap opens Perform; saved Write or Both opens Counts. The legacy mode preference remains a compatibility detail. It does not authorize production publication.
+Updated 2026-10-23. **Uno234 is one activity with two interchangeable input panels: Counts and Perform.** The current activity is named **Uno234**. **Rhythm Walk** is reserved for an eventual continuous gameplay mode; it is not a current response mode. Existing prototype URLs, source directories, and preference keys retain their historical names for compatibility. Count Writing is the historical name of Write Counts; the original performance-only Rhythm Walk prototype is now Tap Rhythms. This decision supersedes the Write/Tap/Both selector, descriptions of separate activities and the earlier Count Writing-first sequencing. Saved Tap opens Perform; saved Write or Both opens Counts. The legacy mode preference remains a compatibility detail. It does not authorize production publication.
 
 Write Counts now places a continuous, readable horizontal score above its input palette. A notation overview appears only when the passage overflows and supports pointer/keyboard navigation. Count targets stay 44px; entry follows the active count without moving the page. Level and responsive Treat Bag ratings share the row above the score; Counts / Perform selects the input panel and contextual feedback. The mobile counting palette docks inside the workspace when space permits and stays in normal flow on short screens. Other exercise settings collapse below, with pending changes still explicit. Counts uses this workspace; Perform shows the performance controls and review graph. See the [responsive layout contract](responsive-layout-audit.md).
 
-The shared **Level** selector chooses a generation configuration: **Uno1–Uno4**, UIL I–IV General/Percussion note-only figure practice, or **Custom**. V–VI, cut time and within-exercise meter changes are deferred. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
+The shared **Level** selector chooses a generation configuration: **Uno1–Uno5**, UIL I–IV General/Percussion note-only figure practice, or **Custom**. V–VI, cut time and within-exercise meter changes are deferred. **Customize…** edits ingredients and musical constraints. Normal practice always generates; fixed rhythms live only in explicitly enabled developer/testing access (`?testing=1` or a valid `?fixture=` link). Level changes are pending until **New exercise**, retaining the current score and responses. Musical edits retain source attribution as customized; length, tempo, mode, counting system and Tap/Tap + Hold are independent. Reload restores the configuration, never a saved fixture mode.
 
 The Uno configurations are cumulative, with independent 1–4 measure length:
 
 | Level | Musical configuration |
 | --- | --- |
-| Uno1 | 4/4; whole, half, quarter and eighth notes; quarter and half rests; no ties or syncopation. |
-| Uno2 | Uno1 plus 2/4 and 3/4, dotted-half and dotted-quarter notes, and ties. |
-| Uno3 | Uno2 plus 6/8, sixteenth notes, eighth rests, syncopation, sounded eighth triplets and dotted-eighth notes. |
-| Uno4 | All currently supported ingredients (also sixteenth and dotted-quarter rests), ties, syncopation and unintuitive notation in all four meters. |
+| Uno1 | 4/4; quarter notes, quarter rests and half notes only; no ties or syncopation. |
+| Uno2 | 4/4; whole, half, quarter and eighth notes; quarter and half rests; no ties or syncopation. |
+| Uno3 | Uno2 plus 2/4 and 3/4, dotted-half and dotted-quarter notes, and ties. |
+| Uno4 | Uno3 plus 6/8, sixteenth notes, eighth rests, syncopation, sounded eighth triplets and dotted-eighth notes. |
+| Uno5 | All currently supported ingredients (also sixteenth and dotted-quarter rests), ties, syncopation and unintuitive notation in all four meters. |
+
+Generated exercises contain at least four sounded attacks (ties count as one attack), start with a sounded note and cap total rest duration at 15% of the exercise. A one-measure Uno1 exercise therefore uses four quarter notes. These automatic limits can omit longer notes or rests in short exercises; impossible custom pools show a validation message. UIL note-only figure profiles remain unchanged. Saved Uno1–Uno4 selections migrate to Uno2–Uno5.
+
+Customize offers five independent, notated sixteenth groupings: four sixteenths, eighth–sixteenth–sixteenth, sixteenth–sixteenth–eighth, sixteenth–eighth–sixteenth, and dotted eighth–sixteenth. Each is a complete beat-aligned figure in simple meters. No frequency controls are added.
 
 These are Uno practice configurations, separate from UIL criteria. Each exercise draws one selected meter and uses only its compatible ingredients: whole notes and whole rests require 4/4; dotted halves are skipped in 2/4; half/whole values, sixteenths, dotted eighths and triplets are skipped in 6/8. “Everything” does not expand the supported repertoire.
 

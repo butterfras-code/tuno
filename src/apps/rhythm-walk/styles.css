@@ -540,3 +540,8 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 }
 .rhythm-app .count-erase-actions button.control:active:not(:disabled) { box-shadow: 0 1px 0 var(--color-destructive-line); }
 .rhythm-app .count-erase-actions button.control:focus-visible { outline-color: var(--color-destructive); }
+
+.sixteenth-groupings { min-width: 0; }
+.sixteenth-grouping-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.sixteenth-grouping-options label { border: 1px solid var(--color-line); border-radius: 10px; min-height: 48px; }
+.rhythm-pattern-preview { width: 100px; height: 56px; pointer-events: none; }

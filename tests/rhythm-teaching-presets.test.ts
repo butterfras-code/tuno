@@ -50,14 +50,15 @@ test('whole notes have independent counts, duration endpoint and shared performa
   const result = evaluateAttempt(capture.advance(capture.plan.captureEnd)!);
   assert.deepEqual(result.missing, []); assert.deepEqual(result.extra, []);
   assert.equal(result.matches[0]!.releaseOffset, 0);
-  assert.deepEqual(notationOnly(generateExercise({ ...defaultGeneration(), ingredients: ['whole'] }, () => 0).map(m => m.notes)), notationOnly([[note('whole')], [note('whole')]]));
+  assert.deepEqual(notationOnly(generateExercise({ ...defaultGeneration(), ingredients: ['whole'], measures: 4 }, () => 0).map(m => m.notes)), notationOnly(Array.from({ length: 4 }, () => [note('whole')])));
   for (const meter of ['2/4', '3/4', '6/8'] as const) assert.ok(generationIssue({ ...defaultGeneration(), meters: [meter], ingredients: ['whole'] }));
 });
 
-test('whole rests generate only in 4/4, require one full count/rest span, and permit silent performance', () => {
+test('whole rests exceed the generation cap but authored rests retain counting and silent performance', () => {
   const settings = { ...defaultGeneration(), ingredients: ['whole-rest' as const] };
   assert.ok(!defaultGeneration().ingredients.includes('whole-rest'));
-  const measures = generateExercise(settings, () => 0);
+  assert.throws(() => generateExercise(settings, () => 0), /15% rests/);
+  const measures = score([{ meter: [4, 4], notes: [note('whole', { kind: 'rest' })] }, { meter: [4, 4], notes: [note('whole', { kind: 'rest' })] }]).measures;
   assert.deepEqual(notationOnly(measures.map(m => m.notes)), notationOnly([[note('whole', { kind: 'rest' })], [note('whole', { kind: 'rest' })]]));
   for (const meter of ['2/4', '3/4', '6/8'] as const) {
     assert.ok(!rhythmCapabilities(meter).ingredients.includes('whole-rest'));

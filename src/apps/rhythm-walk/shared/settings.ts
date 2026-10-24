@@ -1,11 +1,11 @@
 import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
-import { renderTimeSignature, renderRhythmSymbol } from './notation.ts';
+import { renderTimeSignature, renderRhythmSymbol, renderRhythmPattern } from './notation.ts';
 import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
 import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../../music/counting/preferences.ts';
 import { settingsGroups } from './settings-catalog.ts';
-import { generationIssue, ingredients, enableMeter } from './generation.ts';
+import { generationIssue, ingredients, enableMeter, sixteenthPatterns, selectedSixteenthPatterns } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import type { Setting } from './settings-catalog.ts';
 import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
@@ -141,6 +141,7 @@ export function createSettingsPage(callbacks: {
   activeControls.append(share);
   activeControls.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
   let generation = structuredClone(callbacks.initialGeneration);
+  generation.sixteenthPatterns = selectedSixteenthPatterns(generation);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
   lengthField.dataset.setting = 'exercise-length';
   lengthField.append(el('legend', '', 'Measures'));
@@ -181,10 +182,10 @@ export function createSettingsPage(callbacks: {
     const valueRow = el('div', 'ingredient-value-row'); valueRow.dataset.value = value;
     for (const rest of [false, true]) {
       const row = el('div', 'ingredient-row'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', `${name} ${rest ? 'rests' : 'notes'}`);
-      for (const ingredient of ingredients.filter(i => i.event.type === value && (i.event.kind === 'rest') === rest)) {
+      for (const ingredient of ingredients.filter(i => !['sixteenth', 'dotted-eighth'].includes(i.id) && i.event.type === value && (i.event.kind === 'rest') === rest)) {
         const { label, input } = segmentedOption({ label: ingredient.label, content: renderRhythmSymbol(ingredient.event), type: 'checkbox', value: ingredient.id,
           checked: generation.ingredients.includes(ingredient.id), changed: () => {
-            generation = { ...generation, ingredients: ingredients.filter(i => vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)!.checked).map(i => i.id) };
+            generation = { ...generation, ingredients: ingredients.filter(i => (vocabulary.querySelector<HTMLInputElement>(`[data-ingredient="${i.id}"]`)?.checked ?? generation.ingredients.includes(i.id))).map(i => i.id) };
             generationChanged();
           },
         });
@@ -196,6 +197,23 @@ export function createSettingsPage(callbacks: {
     }
     vocabulary.append(valueRow);
   }
+  const groupingField = el('fieldset', 'sixteenth-groupings');
+  groupingField.append(el('legend', '', 'Sixteenth-note groupings'));
+  const groupingOptions = el('div', 'sixteenth-grouping-options');
+  for (const pattern of sixteenthPatterns) {
+    const { label, input } = segmentedOption({ label: pattern.label, content: renderRhythmPattern(pattern.events), type: 'checkbox', value: pattern.id,
+      checked: selectedSixteenthPatterns(generation).includes(pattern.id), changed: () => {
+        const selected = sixteenthPatterns.filter(p => groupingOptions.querySelector<HTMLInputElement>(`[data-sixteenth-pattern="${p.id}"]`)!.checked).map(p => p.id);
+        generation = { ...generation, sixteenthPatterns: selected,
+          ingredients: [...generation.ingredients.filter(id => !['sixteenth', 'dotted-eighth'].includes(id)),
+            ...(selected.length ? ['sixteenth' as const] : []), ...(selected.includes('dotted-8-16') ? ['dotted-eighth' as const] : [])] };
+        generationChanged();
+      } });
+    input.dataset.sixteenthPattern = pattern.id;
+    label.title = pattern.label;
+    groupingOptions.append(label);
+  }
+  groupingField.append(groupingOptions);
   const patternFields = el('div', 'segmented-options pattern-toggles');
   for (const [key, id, title] of [
     ['allowUnintuitiveNotation', 'unintuitive-notation', 'Unusual Notation'],
@@ -249,9 +267,11 @@ export function createSettingsPage(callbacks: {
     const result = applyTeachingPreset(generation, definition, undefined, instrumentScope.value as 'general' | 'percussion');
     if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
     generation = result.settings;
+    generation.sixteenthPatterns = selectedSixteenthPatterns(generation);
     lengthField.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Number(input.value) === generation.measures; });
     meterField.querySelectorAll<HTMLInputElement>('[data-meter]').forEach(input => { input.checked = (generation.meters ?? []).includes(input.dataset.meter as typeof meters[number]); });
     vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(input => { input.checked = generation.ingredients.includes(input.dataset.ingredient as typeof generation.ingredients[number]); });
+    groupingOptions.querySelectorAll<HTMLInputElement>('[data-sixteenth-pattern]').forEach(input => { input.checked = selectedSixteenthPatterns(generation).some(id => id === input.dataset.sixteenthPattern); });
     patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.generationKey as 'allowUnintuitiveNotation' | 'ties' | 'syncopation']); });
     generationChanged(false);
   }
@@ -307,7 +327,7 @@ export function createSettingsPage(callbacks: {
   teachingField.append(teachingAttribution);
   teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
-  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
+  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, groupingField, patternFields, generationStatus);
   available.append(activeHeader, el('h3', '', 'Writing preferences · next exercise'), activeControls);
   const browse = el('div', 'settings-browse');
   browse.append(el('h2', '', 'Planned settings'));

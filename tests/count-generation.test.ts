@@ -51,7 +51,8 @@ test('impossible selections fail; unavailable ingredients are skipped without mu
   assert.ok(generateExercise(subset, () => 0).every(bar => bar.notes.every(event => event.type === 'half')));
   for (const id of ['quarter', 'eighth-rest', 'half-rest'] as const) {
     const settings = { ...defaultGeneration(), measures: 4, ingredients: [id] }; const before = structuredClone(settings);
-    assert.equal(generateExercise(settings, () => 0).length, 4);
+    if (id === 'quarter') assert.equal(generateExercise(settings, () => 0).length, 4);
+    else assert.throws(() => generateExercise(settings, () => 0), /15% rests/);
     assert.deepEqual(settings, before);
   }
   assert.throws(() => generateExercise({ ...defaultGeneration(), measures: 0 }), /1 to 4/);
@@ -111,19 +112,17 @@ test('beginner rest placement forbids offbeat starts at beat length or longer, b
   for (const beat of [0, 1, 2]) assert.equal(readableRestPlacement(note('half', { kind: 'rest' }), fraction(beat, 4)), true);
   assert.equal(readableRestPlacement(note('quarter', { dots: 1, kind: 'rest' }), fraction(0)), false);
   assert.equal(readableRestPlacement(note('half'), fraction(1, 8)), true, 'note syncopation remains available');
-  const draws = [0, .99, 0];
-  const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['quarter', 'half-rest'] }, () => draws.shift()!);
-  assert.deepEqual(notationOnly(passage[0]!.notes), notationOnly([note('quarter'), note('half', { kind: 'rest' }), note('quarter')]), 'a half rest starting on beat 2 is allowed');
+  const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['quarter', 'half-rest'] }, () => .99);
+  assert.ok(passage[0]!.notes.every(e => e.kind === 'note'), 'a half rest exceeds the duration budget of one bar');
 });
 test('the screenshot silence can be written as eighth, quarter, eighth rests; opt-in still generates less usual spellings', () => {
-  const draws = [0, .99, .5, .99, .99, 0, 0];
-  const passage = generateExercise({ ...defaultGeneration(), measures: 1, ingredients: ['eighth', 'quarter-rest', 'eighth-rest'] }, () => draws.shift()!);
-  assert.deepEqual(notationOnly(passage[0]!.notes), notationOnly([note('eighth'), note('eighth', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth'), note('eighth')]));
+  // Dense authored examples remain valid for grading, but no longer for generation.
+  const passage = [{ meter: [4, 4] as const, notes: [note('eighth'), note('eighth', { kind: 'rest' }), note('quarter', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth', { kind: 'rest' }), note('eighth'), note('eighth')] }];
   const readableAnswer: CountAnswer = { symbols: ['1', '&', '2', '', '3', '&', '4', '&'], spans: [], rests: [{ start: 1, end: 1 }, { start: 2, end: 2 }, { start: 4, end: 4 }, { start: 5, end: 5 }] };
   assert.ok(Object.values(evaluatePassage(passage, [readableAnswer], 'required')[0]!).every(d => d.verdict === 'correct'), 'grading follows the separate written rests');
   readableAnswer.rests = [{ start: 1, end: 4 }, { start: 5, end: 5 }];
   assert.equal(evaluatePassage(passage, [readableAnswer], 'required')[0]!.rests.verdict, 'revise');
-  const advanced = { ...defaultGeneration(), allowUnintuitiveNotation: true, ingredients: ingredients.map(i => i.id) };
+  const advanced = { ...defaultGeneration(), measures: 4, allowUnintuitiveNotation: true, ingredients: ingredients.map(i => i.id) };
   let offbeatHalf = false, dottedRest = false;
   for (let seed = 0; seed < 100; seed++) generateExercise(advanced, seeded(seed)).forEach(bar => {
     deriveMeasure(bar).events.forEach(event => {
