@@ -837,3 +837,5 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 /* Keep live note-reading targets full size; information returns with setup/results. */
 #home.is-playing > .suite-footer { display: none; }
+
+.keyboard-guidance-dismiss { margin-left: 12px; padding: 4px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 0.85em; text-decoration: underline; cursor: pointer; }

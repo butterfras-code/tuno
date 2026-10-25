@@ -14,7 +14,10 @@ const center = async locator => { await locator.scrollIntoViewIfNeeded(); const 
 const count = async (page, n) => assert.match(await page.locator('#practice-counts').textContent(), new RegExp(`/ ${n} attempts`));
 try {
   await mkdir('dist/validation', { recursive: true });
-  const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
+  const page = await browser.newPage();
+  // This suite exercises literal input; guidance behavior has its own browser check.
+  await page.addInitScript(() => localStorage.setItem('tunotes:keyboard-accidental-guidance', 'false'));
+  page.on('pageerror', e => errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href);
   await choosePreset(page,'flute-starter');
   await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
