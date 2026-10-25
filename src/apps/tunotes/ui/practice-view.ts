@@ -28,7 +28,7 @@ function button(text: string, action: () => void) {
 }
 export function practiceView() {
   let activity: 'practice' | 'challenge' = 'practice';
-  const rulesUI = challengeSetup('Solo Challenge',true);
+  const rulesUI = challengeSetup('Challenge Mode',true);
   const node = el('section', 'practice-view');
   node.dataset.activity = 'practice';
   node.dataset.screen = 'setup';

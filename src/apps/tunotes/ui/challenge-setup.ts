@@ -3,11 +3,11 @@ import { segments } from './range-editor.ts';
 import { validateRules } from '../engine/challenge.ts';
 export function challengeSetup(title = 'Solo Challenge', inline = false) {
   const node = inline ? el('section','challenge-settings visual-content-section practice-mode-section') : el('fieldset','challenge-settings'); node.hidden = true;
-  node.append(el(inline ? 'h3' : 'legend','',inline ? 'Challenge Mode' : title));
-  if (inline) node.setAttribute('aria-label','Challenge Mode');
+  node.append(el(inline ? 'h3' : 'legend','',title));
+  if (inline) node.setAttribute('aria-label',title);
   let goal: 'timed' | 'target' = 'timed';
   const timed = el('div','control-row challenge-main-fields'), target = el('div','control-row challenge-main-fields'); target.hidden = true;
-  const mode = segments<'timed' | 'target'>(inline ? 'Challenge Mode' : 'Challenge goal',[['timed','Timed'],['target',inline ? 'Goal' : 'Target']], value => {
+  const mode = segments<'timed' | 'target'>(inline ? title : 'Challenge goal',[['timed','Timed'],['target',inline ? 'Goal' : 'Target']], value => {
     goal = value; mode.update([goal]); timed.hidden = goal !== 'timed'; target.hidden = goal !== 'target';
   }); mode.update([goal]);
   if (inline) {

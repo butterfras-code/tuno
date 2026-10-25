@@ -11,22 +11,17 @@ try {
    await notesMode(page,mode);
    const action=page.getByRole('button',{name:mode==='Multi Player'?'Start round':`Start ${mode}`,exact:true});
    assert.equal(await action.isVisible(),true);
-   if(mode==='Multi Player') {
-    const settings=page.getByRole('tab',{name:'Multi Player Settings',exact:true});
-    const before=await action.boundingBox();await settings.click();const after=await action.boundingBox();assert.ok(Math.abs(before.y-after.y)<1);
-    const duration=page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true});await duration.fill('14');
-    await page.getByRole('tab',{name:'Choose Notes',exact:true}).focus();await page.keyboard.press('Home');
-    await action.click();assert.equal(await settings.getAttribute('aria-selected'),'true');assert.equal(await duration.evaluate(n=>n===document.activeElement),true);
-    await duration.fill('60');
-   }
-   if(mode==='Challenge') {
+   if(mode!=='Practice') {
     const duration=page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true});
     await duration.fill('14');await action.click();
     assert.equal(await duration.evaluate(n=>n===document.activeElement),true);
     await duration.fill('60');
-    const modes=page.getByRole('group',{name:'Challenge Mode',exact:true});
+    const modes=page.getByRole('group',{name:mode==='Challenge'?'Challenge Mode':'Multi Player Mode',exact:true});
+    assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).isDisabled(),true);
+    assert.equal(await modes.getByText('Coming soon',{exact:true}).isVisible(),true);
+    assert.equal(await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).count(),0);
     await modes.getByRole('button',{name:'Goal',exact:true}).click();
-    assert.equal(await page.getByLabel('Correct notes',{exact:true}).isVisible(),true);
+    assert.equal(await page.getByRole('spinbutton',{name:'Correct notes',exact:true}).isVisible(),true);
     assert.equal(await modes.getByRole('button',{name:'Goal',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await modes.getByRole('button',{name:'Timed',exact:true}).getAttribute('aria-pressed'),'false');
     await modes.getByRole('button',{name:'Timed',exact:true}).click();

@@ -50,7 +50,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   presetUI.setupPresentation(true);
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
-  const rules = challengeSetup('Round rules'); rules.node.hidden = false;
+  const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
   const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
   let selectedFormat: Format = 'pairs'; format.update([selectedFormat]);
   const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
@@ -63,13 +63,13 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   adapt.setAttribute('aria-pressed',String(adaptive));
   const adaptation = el('div','setting');
   adaptation.append(adapt,el('p','muted','Applies to all players. Each player’s notes expand independently as they improve.'));
-  roundSetup.append(formatGroup,pairAdvice,rules.node,adaptation);
+  roundSetup.append(rules.node,formatGroup,pairAdvice,adaptation);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
-  const setupUI = activitySetup(editor,roundSetup,'multiplayer',presetUI.rangeTrigger);
-  setupUI.settingsLabel('Multi Player Settings');
-  setupUI.node.append(setupError,setupFullscreen); setupUI.action(start);
+  const setupUI = activitySetup(editor,el('section'),'multiplayer',presetUI.rangeTrigger);
+  setupUI.practiceLayout(true);
+  setupUI.node.append(roundSetup,setupError,setupFullscreen); setupUI.action(start);
   setup.append(rosterSection,setupUI.node);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
@@ -280,7 +280,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
-    const nextRules = rules.read(() => setupUI.select('settings')); if (!nextRules) return;
+    const nextRules = rules.read(); if (!nextRules) return;
     finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
     rulesValue = nextRules; completed = new Map(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });

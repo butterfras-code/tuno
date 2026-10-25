@@ -60,7 +60,7 @@ try {
       } else {
         await button(page,'Multi Player').click();
         await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
-        await page.getByRole('tab',{name:'Multi Player Settings'}).click();await button(page,mode).click();
+        await button(page,mode).click();
         assert.equal(await button(page,'Start round').isDisabled(),false);
         await button(page,'Start round').click();
       }

@@ -24,7 +24,7 @@ async function answerLetter(panel) {
   return 'CDEFGAB'[(4*7+2+position)%7];
 }
 async function start(page,format='turns') {
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:format==='pairs'?'Split Screen':format==='turns'?'Turns':'Head to Head'}).click();
   await button(page,'Start round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
@@ -109,7 +109,7 @@ async function run(page,url,label) {
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-head-to-head.png`});
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Head to Head'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   if(await button(page,'Enter fullscreen').isVisible()) {
@@ -247,7 +247,7 @@ async function run(page,url,label) {
   assert.match(await page.locator('.multiplayer-panel').first().locator('.muted').first().textContent(),/0 attempts/);
   await button(page,'End round').click();await button(page,'Edit setup').click();
 
-  await button(page,'Target').click();await page.locator('.multiplayer-view').getByLabel('Correct-note target').fill('1');await page.locator('.multiplayer-view').getByLabel('Timeout (seconds)').fill('15');
+  await button(page,'Goal').click();await page.locator('.multiplayer-view').getByLabel('Correct notes',{exact:true}).fill('1');await page.locator('.multiplayer-view').getByLabel('Timeout (seconds)').fill('15');
   await button(page,'Start round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   const first=page.locator('.multiplayer-panel').nth(0),second=page.locator('.multiplayer-panel').nth(1);
   const left='QWERTYU',right='ZXCVBNM',letters='ABCDEFG';
@@ -287,25 +287,24 @@ async function run(page,url,label) {
   const dialog=rangeDialog(page);
   await button(dialog,'Clef').click();await button(dialog,'Bass').click();await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(dialog,'Keep this range').click();
   assert.equal(await page.locator('.multiplayer-editor').getByRole('button',{name:'Adapt Range',exact:true}).count(),0);
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   await button(page,'Adapt Range').click();
   assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Adapt Range on/);
-  await page.getByRole('tab',{name:'Choose Notes',exact:true}).focus();await page.keyboard.press('Home');
   assert.match(await page.locator('.multiplayer-editor').innerText(),/Bass — Lines \+ Spaces/);
   await button(page,'Select Player 1').click();
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   assert.equal(await button(page,'Adapt Range').getAttribute('aria-pressed'),'true');
   await button(page,'Add player').click();
   await button(page.getByRole('dialog'),'Save').click();
   assert.equal(await page.locator('.multiplayer-player-tab').count(),3);
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   assert.equal(await button(page,'Adapt Range').getAttribute('aria-pressed'),'true');
   await start(page,'pairs');await button(page,'Ready').click();await page.clock.runFor(3050);
   assert.match(await page.locator('.multiplayer-panel').nth(0).locator('.staff-panel .staff').getAttribute('aria-label'),/treble/i);
   assert.match(await page.locator('.multiplayer-panel').nth(1).locator('.staff-panel .staff').getAttribute('aria-label'),/bass/i);
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:760,height:900});
-  await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
+
   await page.getByRole('group',{name:'Play format'}).getByRole('button',{name:'Split Screen'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   assert.match(await page.locator('.multiplayer-round-setup').textContent(),/may work better with Turns/);
@@ -326,7 +325,6 @@ async function run(page,url,label) {
   await button(page,'Challenge').click();
   assert.match(await page.locator('#notes-challenge .preset-name').textContent(),/Bass — Lines \+ Spaces/);
   await button(page,'Multi Player').click();
-  await page.getByRole('tab',{name:'Choose Notes',exact:true}).focus();await page.keyboard.press('Home');
   await button(page,'Edit Player 2').click();
   await page.getByLabel('Player 2 saved profile').selectOption({label:'Bass Player'});
   await button(page.getByRole('dialog'),'Save').click();
