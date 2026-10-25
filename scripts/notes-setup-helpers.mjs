@@ -2,7 +2,7 @@ import { presets, stringInstruments } from '../src/apps/tunotes/domain/presets.t
 export const rangeDialog = page => page.locator('.range-picker-dialog[open]');
 export async function openRange(page) {
   if (await rangeDialog(page).isVisible()) return;
-  await page.locator('.activity-setup-toolbar:visible').getByText('Choose Notes',{exact:true}).click();
+  await page.locator('.activity-setup-toolbar:visible').getByRole('button',{name:/^Choose Notes(?: — .+)?$/}).click();
 }
 export async function choosePreset(page,id,adaptive=false) {
   await notesMode(page,'Practice');

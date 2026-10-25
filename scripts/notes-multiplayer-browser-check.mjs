@@ -182,9 +182,9 @@ async function run(page,url,label) {
   assert.equal(await selected.getByRole('button').count(),4);
   assert.equal(await selected.getByRole('button').nth(1).textContent(),'Player 3');
   await button(page,'Select Player 2').click();
-  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),'Choose Notes');
+  assert.match(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),/^Choose Notes — /);
   await button(page,'Select Player 3').click();
-  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),'Choose Notes');
+  assert.match(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),/^Choose Notes — /);
   const remove=button(page,'Remove Player 3');
   assert.equal(await page.locator('.multiplayer-editor .multiplayer-player-controls').count(),0);
   assert.equal(await remove.locator('svg').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(143, 63, 72)');

@@ -106,7 +106,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const start = button('Start round',startRound); start.classList.add('control--primary');
   const setupUI = activitySetup(editor,el('section'),'multiplayer',presetUI.rangeTrigger);
   setupUI.practiceLayout(true);
-  setupUI.node.append(roundSetup,setupError,setupFullscreen); setupUI.action(start);
+  const setupUtilities = el('div','multiplayer-setup-utilities'); setupUtilities.append(setupFullscreen);
+  editor.prepend(setupUtilities);
+  setupUI.node.append(roundSetup,setupError); setupUI.action(start);
   setup.append(rosterSection,setupUI.node);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
@@ -266,6 +268,10 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function renderSetup() {
     const current = players.find(p => p.id === selectedId) ?? players[0]!; selectedId = current.id;
+    const playerName = current.name.trim() || `Player ${players.indexOf(current)+1}`;
+    const chooserPlayer = el('span','multiplayer-notes-player',playerName); chooserPlayer.title = playerName;
+    presetUI.rangeTrigger.replaceChildren(el('span','','Choose Notes'),chooserPlayer);
+    presetUI.rangeTrigger.setAttribute('aria-label',`Choose Notes — ${playerName}`);
     playersHeading.textContent = `Players (${players.length})`;
     updateSetupSummary();
     roster.replaceChildren();

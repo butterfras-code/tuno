@@ -11,6 +11,19 @@ try {
    await notesMode(page,mode);
    const action=page.getByRole('button',{name:mode==='Multi Player'?'Start round':`Start ${mode}`,exact:true});
    assert.equal(await action.isVisible(),true);
+   const setup=page.locator('.activity-setup:visible');
+   const toolbar=await setup.locator('.activity-setup-toolbar').boundingBox();
+   const actionBox=await action.boundingBox();
+   assert.ok(Math.abs(actionBox.x+actionBox.width-toolbar.x-toolbar.width)<1,'start aligns with toolbar right edge');
+   const setupBox=await setup.boundingBox();
+   assert.ok(Math.abs(setupBox.width-toolbar.width)<1,'toolbar uses full setup width');
+   if(mode==='Multi Player') {
+    const full=setup.locator('.multiplayer-setup-fullscreen');
+    if(await full.isVisible()) {
+     const fullBox=await full.boundingBox(), preview=await setup.locator('.preset-preview-scene').boundingBox();
+     assert.ok(fullBox.y+fullBox.height<=preview.y,'fullscreen appears above note preview');
+    }
+   }
    if(mode!=='Practice') {
     const duration=page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true});
     await duration.fill('14');await action.click();
@@ -59,7 +72,7 @@ try {
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByLabel('Player 2 name').fill('Cancelled');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
   await page.getByRole('button',{name:'Edit Player 2',exact:true}).click();await page.getByLabel('Player 2 name').fill('A'.repeat(40));await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
-  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),'Choose Notes');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  assert.equal(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),`Choose Notes — ${'A'.repeat(40)}`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const direction=width>760?'up':'left';assert.equal(await page.getByRole('button',{name:`Move Player 2 ${direction}`,exact:true}).isVisible(),true);
   await page.getByRole('button',{name:'Remove Player 1',exact:true}).click();assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
   assert.deepEqual(errors,[]);await page.close();
