@@ -67,6 +67,7 @@ export function practiceView() {
   const guidanceGroup = el('section', 'keyboard-guidance-settings'); guidanceGroup.append(guidanceLabel, guidanceDescription); options.append(guidanceGroup);
   let keyboardHint = '';
   const setGuidance = (enabled: boolean) => {
+    if (keyboardHint) answerNotice.clear();
     keyboardGuidance = enabled; guidanceSetting.checked = enabled; keyboardHint = '';
     try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
   };
@@ -141,7 +142,7 @@ export function practiceView() {
   const answerNotice = answerFeedback();
   const feedback = el('p', 'feedback'); feedback.id = 'feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
   const feedbackText = el('span');
-  const dismissGuidance = button('Don’t show this again', () => { setGuidance(false); render(); });
+  const dismissGuidance = button('Dismiss accidental reminders', () => { setGuidance(false); render(); });
   dismissGuidance.classList.add('keyboard-guidance-dismiss'); dismissGuidance.hidden = true;
   feedback.append(feedbackText, dismissGuidance);
   const encouragement = el('p', 'encouragement'); encouragement.setAttribute('role', 'status');
@@ -246,7 +247,7 @@ export function practiceView() {
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
     dismissGuidance.hidden = paused || !keyboardHint;
-    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : keyboardHint;
+    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
@@ -330,8 +331,8 @@ export function practiceView() {
         ? missingAccidentalHint(letter as Letter, session.pitch, session.preset, store.data.configuration.showKeySignature) : undefined;
       if (hint) {
         answers.reset(); keyboardHint = hint;
-        // Refresh the instructional feedback on every fresh matching press.
-        feedbackText.textContent = ''; render();
+        render();
+        answerNotice.show(hint, false, 2500);
       } else answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0);
     } else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
       event.preventDefault(); if (fresh) answers.focused(event.target as HTMLButtonElement);

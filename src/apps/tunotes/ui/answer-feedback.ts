@@ -2,10 +2,12 @@ import { el } from '../../../shared/ui/components.ts';
 
 function verticalBounds(element: SVGGraphicsElement) {
   const box = element.getBBox();
-  const matrix = element.transform.baseVal.consolidate()?.matrix;
+  const transforms = element.transform.baseVal;
+  let matrix = new DOMMatrix();
+  for (let i = 0; i < transforms.numberOfItems; i++) matrix = matrix.multiply(transforms.getItem(i).matrix);
   const ys = [box.x, box.x + box.width].flatMap(x => [box.y, box.y + box.height].map(y => {
     const point = new DOMPoint(x, y);
-    return matrix ? point.matrixTransform(matrix).y : y;
+    return point.matrixTransform(matrix).y;
   }));
   return { top: Math.min(...ys), bottom: Math.max(...ys) };
 }
@@ -53,7 +55,7 @@ export function answerFeedback() {
     mount(staff: SVGSVGElement) {
       if (text.parentNode !== staff) { staff.append(text); place(staff); }
     },
-    show(message: string, correct: boolean) {
+    show(message: string, correct: boolean, duration = 1000) {
       clear();
       text.textContent = message;
       text.dataset.correct = String(correct);
@@ -66,7 +68,7 @@ export function answerFeedback() {
         { opacity: 0.65, offset: 0.12 },
         { opacity: 0.65, offset: reduced ? 0.99 : 0.7 },
         { opacity: 0, offset: 1 },
-      ], { duration: 1000, fill: 'forwards' });
+      ], { duration, fill: 'forwards' });
     },
   };
 }
