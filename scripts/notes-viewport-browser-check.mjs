@@ -1,3 +1,4 @@
+import { startPractice } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
@@ -52,8 +53,8 @@ try {
       await page.clock.install(); await page.goto(new URL('/notes/',host.url).href);
       await page.evaluate(()=>document.fonts.ready);
       if (mode === 'Practice') {
-        await setToggle(page,'meet-notes',false);
-        await button(page,'Start Practice').click();
+
+        await startPractice(page);
       } else if (mode === 'Challenge') {
         await button(page,'Challenge').click();await button(page,'Start Challenge').click();
       } else {
@@ -104,7 +105,7 @@ try {
   await button(page,'Options').click();await page.getByLabel('Classroom display',{exact:true}).check();
   await page.reload();await button(page,'Options').click();
   assert.equal(await page.getByLabel('Classroom display',{exact:true}).isChecked(),true,'Classroom setting persists on this display');
-  await button(page,'Practice').click();await setToggle(page,'meet-notes',false);await button(page,'Start Practice').click();
+  await button(page,'Practice').click();await startPractice(page);
   await check(page,'Classroom display');
   const large=await page.locator('.answer-natural:visible').first().boundingBox();
   await button(page,'Options').click();await page.getByLabel('Classroom display',{exact:true}).uncheck();await button(page,'Practice').click();

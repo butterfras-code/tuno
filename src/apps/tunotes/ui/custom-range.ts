@@ -8,8 +8,8 @@ import { rangeEditor } from './range-editor.ts';
 import { keySignatureControl } from './key-signature-control.ts';
 import { renderStaff } from './staff.ts';
 
-/** Graphical range draft; remaining custom settings stay in the existing editor. */
-export function customRange(apply: (source: PresetSource) => void) {
+/** Graphical range draft shared by all activity setup screens. */
+export function customRange(apply: (source: PresetSource, showSignature: boolean, save: boolean) => void) {
   const node = el('section','visual-custom-range'); node.setAttribute('aria-label','Range');
   let base: PresetSource = defaultPreset;
   let available: Clef[] = ['treble'];
@@ -56,11 +56,31 @@ export function customRange(apply: (source: PresetSource) => void) {
     });
     endpoints[0].setLimits(0,diatonic(endpoints[1].pitch));
     endpoints[1].setLimits(diatonic(endpoints[0].pitch),62);
-    try { normalizePreset(source()); use.disabled = false; validation.textContent = ''; }
-    catch (error) { use.disabled = true; validation.textContent = (error as Error).message; }
+    try { normalizePreset(source()); use.disabled = save.disabled = false; validation.textContent = ''; }
+    catch (error) { use.disabled = save.disabled = true; validation.textContent = (error as Error).message; }
   }
-  const use = control('Save',() => apply(source())); use.classList.add('control--primary');
-  const footer = el('div','visual-range-actions'); footer.append(validation,use);
+  const nameDialog = el('dialog','key-picker-dialog preset-name-dialog');
+  nameDialog.setAttribute('aria-label','Save Preset');
+  const name = el('input','control'); name.maxLength = 80; name.setAttribute('aria-label','Preset name');
+  const nameError = el('p','muted'); nameError.setAttribute('role','alert');
+  const commit = (save: boolean) => {
+    try {
+      const draft = source();
+      if (save && !name.value.trim()) { nameError.textContent = 'Enter a preset name.'; name.focus(); return; }
+      apply(save ? {...draft,id:`custom-${crypto.randomUUID()}`,name:name.value.trim()} : draft,keyControl.showSignature,save);
+      nameDialog.close();
+    } catch (error) { (save ? nameError : validation).textContent = (error as Error).message; }
+  };
+  const save = control('Save Preset',() => {
+    name.value = source().name; nameError.textContent = ''; nameDialog.showModal(); name.focus(); name.select();
+  });
+  const confirm = control('Save Preset',() => commit(true)); confirm.classList.add('control--primary');
+  const cancel = control('Cancel',() => nameDialog.close());
+  name.addEventListener('keydown',event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); commit(true); } });
+  nameDialog.append(el('h3','','Save Preset'),name,nameError,cancel,confirm);
+  const use = control('Accept',() => commit(false)); use.classList.add('control--primary');
+  const actions = el('div','control-row'); actions.append(save,use);
+  const footer = el('div','visual-range-actions'); footer.append(validation,actions,nameDialog);
   const pair = el('div','visual-range-pair'); pair.append(...endpoints.map(e => e.node));
   const header = el('div','visual-range-header');
   header.append(el('p','muted','Tap clefs or accidentals to change them. Drag notes or use arrows to move them.'));
@@ -110,10 +130,10 @@ export function customRange(apply: (source: PresetSource) => void) {
   });
   clefPanel.append(el('h4','','Clefs'),clefOptions);
   node.append(header,pair,notice);
-  return {node,contentPanel,keyPanel:keyControl.node,clefPanel,footer,closePopovers: () => keyControl.close(),load(p: PresetSource) {
+  return {node,contentPanel,keyPanel:keyControl.node,clefPanel,footer,closePopovers: () => { keyControl.close(); nameDialog.close(); },load(p: PresetSource, showSignature = false) {
     base = p; explicitClefs = p.editorVersion === 2;
     lines = p.content !== 'spaces'; spaces = p.content !== 'lines';
-    keyControl.load(p);
+    keyControl.load(p,showSignature);
     let bounds = p.range;
     if (p.editorVersion !== 2) {
       const pool = [...normalizePreset(p,{legacySpellings:true}).pool].sort((a,b) => diatonic(a)-diatonic(b) || a.accidental-b.accidental);

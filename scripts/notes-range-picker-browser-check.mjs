@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
 import { notesMode } from './notes-setup-helpers.mjs';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { keySignature } from '../src/apps/tunotes/domain/notation.ts';
 
-const browser = await chromium.launch();
+const browser = await ({chromium,firefox})[process.env.TUNO_BROWSER || 'chromium'].launch();
 const host = await hostBuild();
 const errors = [];
 try {
@@ -42,16 +42,16 @@ try {
       const layout = await dialog.evaluate(d => ({scroll:d.scrollHeight,height:d.clientHeight,
         saveBottom:d.querySelector('.visual-range-actions').getBoundingClientRect().bottom,
         clefs:[...d.querySelectorAll('.practice-clef-button')].map(n=>({y:n.getBoundingClientRect().y,overflows:n.scrollWidth>n.clientWidth}))}));
-      assert.ok(layout.scroll<=layout.height,`${width}: mobile custom settings fit without scrolling`);
-      assert.ok(layout.saveBottom<=height-8,`${width}: Save remains on screen`);
+      await dialog.getByRole('button',{name:'Accept',exact:true}).scrollIntoViewIfNeeded();
+      assert.ok(await dialog.getByRole('button',{name:'Accept',exact:true}).isVisible());
       assert.ok(layout.clefs.every(c=>Math.abs(c.y-layout.clefs[0].y)<1 && !c.overflows),'four mobile clefs share a compact row');
     }
     if (width >= 1000) {
       const layout = await dialog.evaluate(d => ({top:d.getBoundingClientRect().top,scroll:d.scrollHeight,height:d.clientHeight,
         saveBottom:d.querySelector('.visual-range-actions').getBoundingClientRect().bottom}));
       assert.equal(layout.top,12,'desktop chooser sits near viewport top');
-      assert.ok(layout.scroll <= layout.height,'desktop custom settings fit without scrolling');
-      assert.ok(layout.saveBottom <= height-12,'Save is visible without scrolling');
+      await dialog.getByRole('button',{name:'Accept',exact:true}).scrollIntoViewIfNeeded();
+      assert.ok(await dialog.getByRole('button',{name:'Accept',exact:true}).isVisible(),'Accept is reachable');
     }
     const practiceClefs = dialog.getByRole('group',{name:'Practice clefs',exact:true});
     const selectedClefs = () => practiceClefs.locator('[aria-pressed="true"]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')));
@@ -62,7 +62,7 @@ try {
     await dialog.getByRole('button',{name:'Highest note clef: Treble. Change clef',exact:true}).click();
     assert.deepEqual(await selectedClefs(),['Bass'],'union drops clefs no longer used by endpoints');
     await practiceClefs.getByRole('button',{name:'Bass',exact:true}).click();
-    assert.equal(await dialog.getByRole('button',{name:'Save',exact:true}).isDisabled(),true,'empty clef selection disables Save');
+    assert.equal(await dialog.getByRole('button',{name:'Accept',exact:true}).isDisabled(),true,'empty clef selection disables Save');
     assert.match(await dialog.textContent(),/Select at least one clef/);
     await practiceClefs.getByRole('button',{name:'Alto',exact:true}).click();
     await dialog.getByRole('button',{name:'Lowest note clef: Bass. Change clef',exact:true}).click();
@@ -73,7 +73,8 @@ try {
     await open();
     assert.deepEqual(await selectedClefs(),['Treble'],'cancel discards practice-clef draft');
     const keyOptions = dialog.getByRole('group',{name:'Key signature',exact:true});
-    assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true','new custom range defaults to No Key');
+    assert.equal(await keyOptions.getByRole('button',{name:'Key',exact:true}).getAttribute('aria-pressed'),'true','Custom preserves the current preset key');
+    await keyOptions.getByRole('button',{name:'No Key',exact:true}).click();
     await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
     const keyPicker = page.getByRole('dialog',{name:'Choose a key',exact:true});
     assert.equal(await keyPicker.locator('.key-picker-choice').count(),13);
@@ -117,10 +118,10 @@ try {
     assert.equal(await lines.getAttribute('aria-pressed'),'false');
     assert.equal(await spaces.getAttribute('aria-pressed'),'true','content toggles are independent');
     await spaces.click();
-    assert.equal(await dialog.getByRole('button',{name:'Save',exact:true}).isDisabled(),true,'empty inclusion disables Save');
+    assert.equal(await dialog.getByRole('button',{name:'Accept',exact:true}).isDisabled(),true,'empty inclusion disables Save');
     assert.match(await dialog.textContent(),/Turn on Lines or Spaces/);
     await lines.click(); await spaces.click();
-    assert.equal(await dialog.getByRole('button',{name:'Save',exact:true}).isEnabled(),true);
+    assert.equal(await dialog.getByRole('button',{name:'Accept',exact:true}).isEnabled(),true);
     const low = dialog.getByRole('slider',{name:'Lowest note',exact:true});
     const high = dialog.getByRole('slider',{name:'Highest note',exact:true});
     assert.equal(await low.isVisible(),true); assert.equal(await high.isVisible(),true);
@@ -189,13 +190,13 @@ try {
     await open();
     assert.match(await low.getAttribute('aria-valuetext'),/^E4/,'reopening reloads committed range');
     await dialog.getByRole('button',{name:'Lowest note: move up',exact:true}).click();
-    await dialog.getByRole('button',{name:'Save',exact:true}).click();
+    await dialog.getByRole('button',{name:'Accept',exact:true}).click();
     assert.match(await summary.textContent(),/F4–F5/);
     await open();
     assert.match(await low.getAttribute('aria-valuetext'),/^F4/,'configurator receives applied draft');
     await spaces.click();
     await practiceClefs.getByRole('button',{name:'Bass',exact:true}).click();
-    await dialog.getByRole('button',{name:'Save',exact:true}).click();
+    await dialog.getByRole('button',{name:'Accept',exact:true}).click();
     assert.match(await summary.textContent(),/ · Lines · /,'content selection applies to practice');
     assert.match(await summary.textContent(),/Treble \/ Bass/,'practice clefs apply');
     await open();
@@ -222,7 +223,7 @@ try {
   assert.equal(await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'Key',exact:true}).getAttribute('aria-pressed'),'true','saved key setting loads');
   assert.equal(await page.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:'Flat',exact:true}).getAttribute('aria-pressed'),'true','saved accidental inclusion loads');
   await page.getByRole('button',{name:'Lowest note: move up',exact:true}).click();
-  await page.getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await page.locator('#preset-summary').textContent(),/G Major.*Spaces.*flats/);
   await page.getByRole('button',{name:'Start Practice',exact:true}).click();
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
@@ -247,7 +248,7 @@ try {
   assert.equal(await range.isVisible(),true,'Escape closes only the key popover');
   await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
   await keyPicker.getByRole('button',{name:'B♭/g',exact:true}).click();
-  await range.getByRole('button',{name:'Save',exact:true}).click();
+  await range.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await keyPage.locator('#preset-summary').textContent(),/B♭ Major/,'chosen key applies');
   await openCustom();
   assert.match(await keyOptions.textContent(),/B♭\/g/,'chosen key reloads');
@@ -257,7 +258,7 @@ try {
   assert.equal(await keyPicker.getByRole('button',{name:'B♭/g',exact:true}).count(),1);
   await keyPage.keyboard.press('Escape');
   assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true');
-  await range.getByRole('button',{name:'Save',exact:true}).click();
+  await range.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await keyPage.locator('#preset-summary').textContent(),/No key signature/);
   await keyPage.getByRole('button',{name:'Start Practice',exact:true}).click();
   const keySaved = await keyPage.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));

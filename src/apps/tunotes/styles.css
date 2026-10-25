@@ -1021,3 +1021,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .practice-mode-choices .range-content-mark { font-size: 20px; min-width: 16px; }
 }
 .keyboard-guidance-dismiss { margin-left: 12px; padding: 4px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 0.85em; text-decoration: underline; cursor: pointer; }
+
+.custom-notation-setting { margin: 0; }
+.custom-notation-setting h4 { margin: 0 0 6px; font-size: 13px; }
+.visual-range-actions > .control-row { margin: 0; justify-content: flex-end; }
+.preset-name-dialog .control { margin: 4px; }
+.preset-name-dialog input { width: calc(100% - 8px); }
+.range-picker-choices:has(> .my-presets-choice:not([hidden])) { grid-template-columns: repeat(2,minmax(0,1fr)); }

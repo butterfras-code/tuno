@@ -1,9 +1,9 @@
 import { el } from '../../../shared/ui/components.ts';
 import { control, titleCase } from './preset-picker.ts';
-import { clefs, instruments, presets, stringInstruments } from '../domain/presets.ts';
+import { clefs, instruments, presets, stringInstruments, normalizePreset } from '../domain/presets.ts';
 import type { Clef } from '../domain/notation.ts';
 import { renderStaff, renderRangeStaff } from './staff.ts';
-import { C_MAJOR, parsePitch, diatonic } from '../domain/notation.ts';
+import { C_MAJOR, parsePitch, diatonic, chromatic } from '../domain/notation.ts';
 import { onUnmount } from '../../../shared/ui/unmount.ts';
 import type { PresetSource } from '../domain/presets.ts';
 import { customRange } from './custom-range.ts';
@@ -35,8 +35,9 @@ function instrumentIcon(asset: string) {
 }
 
 /** Guided visual range and exercise chooser. */
-export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource) => void; showKeySignature: () => boolean }) {
+export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource, showSignature: boolean, save: boolean) => void; saved: () => readonly PresetSource[]; showKeySignature: () => boolean }) {
   let screen: 'home' | 'Clef' | 'Instrument' | 'Custom' | 'Presets' | 'Adaptive' = 'home';
+  let myPresets = false;
   let selectedClef: Clef = 'treble';
   let selectedInstrument: { id: string; name: string } | undefined;
   let pendingPreset: string | undefined;
@@ -46,14 +47,18 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   dialog.setAttribute('aria-labelledby',heading.id);
   const trigger = control('Select range',() => {
     pendingPreset = undefined;
+    savedChoice.hidden = !custom.saved().length;
     showSignature = custom.showKeySignature();
     show('home',false);
-    dialog.showModal(); position(); heading.focus();
+    dialog.showModal();
+    // The shared Choose Notes tab reveals this panel later in the same click.
+    // Measure only after that listener has made its ancestor visible.
+    requestAnimationFrame(() => { if (dialog.open) { position(); heading.focus(); } });
     window.addEventListener('resize',position);
   });
   trigger.setAttribute('aria-haspopup','dialog');
   const header = el('div','picker-header');
-  const back = control('←',() => show(screen === 'Adaptive' ? 'Presets' : screen === 'Presets' ? selectedInstrument ? 'Instrument' : 'Clef' : 'home')); back.setAttribute('aria-label','Back to range options'); back.hidden = true;
+  const back = control('←',() => show(screen === 'Adaptive' ? 'Presets' : screen === 'Presets' ? myPresets ? 'home' : selectedInstrument ? 'Instrument' : 'Clef' : 'home')); back.setAttribute('aria-label','Back to range options'); back.hidden = true;
   const close = control('×',() => dialog.close()); close.setAttribute('aria-label','Close range selection');
   header.append(back,heading,close);
   const intro = el('p','muted range-picker-intro','Select preset options or create your own.');
@@ -70,7 +75,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     return icon;
   };
   for (const clef of clefs) {
-    const tile = control('',() => { selectedClef = clef; selectedInstrument = undefined; renderPresets(); show('Presets'); });
+    const tile = control('',() => { myPresets = false; selectedClef = clef; selectedInstrument = undefined; renderPresets(); show('Presets'); });
     tile.classList.add('range-picker-choice');
     tile.append(clefIcon(clef,true),el('strong','',titleCase(clef))); clefChoices.append(tile);
   }
@@ -108,17 +113,18 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   adaptivePanel.append(pendingName,adaptiveDescription,adaptiveChoices);
   function renderPresets() {
     presetChoices.replaceChildren();
-    const available = presets.filter(preset => selectedInstrument ? preset.instrument === selectedInstrument.id : !preset.instrument && preset.clef === selectedClef);
+    const available = myPresets ? custom.saved().map(p => normalizePreset(p,{legacySpellings:true})) : presets.filter(preset => selectedInstrument ? preset.instrument === selectedInstrument.id : !preset.instrument && preset.clef === selectedClef);
     notation.hidden = !available.some(p => !p.keyless && p.key.fifths !== 0);
     updateNotation();
-    if (selectedInstrument && stringIds.has(selectedInstrument.id)) available.sort((a,b) => diatonic(a.pool[0]!)-diatonic(b.pool[0]!));
+    if (!myPresets && selectedInstrument && stringIds.has(selectedInstrument.id)) available.sort((a,b) => diatonic(a.pool[0]!)-diatonic(b.pool[0]!));
     emptyPresets.hidden = available.length > 0;
-    emptyPresets.textContent = available.length ? '' : `Range presets for ${selectedInstrument!.name} are coming soon.`;
+    emptyPresets.textContent = available.length ? '' : myPresets ? 'No saved presets yet.' : `Range presets for ${selectedInstrument!.name} are coming soon.`;
     for (const preset of available) {
-      const low = preset.pool[0]!, high = preset.pool.at(-1)!;
+      const ordered = [...preset.pool].sort((a,b) => diatonic(a)-diatonic(b) || chromatic(a)-chromatic(b));
+      const low = ordered[0]!, high = ordered.at(-1)!;
       const tile = control('',() => { pendingPreset = preset.id; pendingName.textContent = preset.name; show('Adaptive'); });
       tile.classList.add('range-picker-choice'); tile.dataset.presetId = preset.id;
-      tile.append(el('strong','',preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key,preset.keyless));
+      tile.append(el('strong','',myPresets ? preset.name : preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key,preset.keyless));
       presetChoices.append(tile);
     }
   }
@@ -137,7 +143,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     instrumentChoices.replaceChildren();
     for (const name of catalogs[ensemble]) {
       const tile = control('',() => {
-        selectedInstrument = { id: instruments.find(instrument => instrument.name === name)?.id ?? name, name };
+        myPresets = false; selectedInstrument = { id: instruments.find(instrument => instrument.name === name)?.id ?? name, name };
         renderPresets(); show('Presets');
       });
       tile.classList.add('range-picker-choice');
@@ -146,15 +152,15 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     }
   }
   renderInstruments(); instrumentPanel.append(ensembles,instrumentChoices);
-  const customEditor = customRange(source => { custom.apply(source); dialog.close(); });
+  const customEditor = customRange((source,signature,save) => { custom.apply(source,signature,save); dialog.close(); });
   const customPanel = el('div','range-picker-panel'); customPanel.append(customEditor.node,customEditor.contentPanel,customEditor.keyPanel,customEditor.clefPanel,customEditor.footer);
   const panels = { home, Clef: clefPanel, Instrument: instrumentPanel, Custom: customPanel, Presets: presetPanel, Adaptive: adaptivePanel };
   function show(nextScreen: keyof typeof panels, focus = true) {
     screen = nextScreen;
     dialog.dataset.screen = screen;
     for (const [name,panel] of Object.entries(panels)) panel.hidden = name !== screen;
-    heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:`${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?'}[screen];
-    back.setAttribute('aria-label',screen === 'Adaptive' ? 'Back to presets' : screen === 'Presets' ? selectedInstrument ? 'Back to instruments' : 'Back to clefs' : 'Back to range options');
+    heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:myPresets ? 'My Presets' : `${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?'}[screen];
+    back.setAttribute('aria-label',screen === 'Adaptive' ? 'Back to presets' : screen === 'Presets' ? myPresets ? 'Back to range options' : selectedInstrument ? 'Back to instruments' : 'Back to clefs' : 'Back to range options');
     back.hidden = screen === 'home'; dialog.scrollTop = 0;
     if (dialog.open) position();
     if (focus) heading.focus();
@@ -175,7 +181,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
       group.append(shortcuts,el('strong','','Instrument')); choices.append(group);
       continue;
     }
-    const tile = control('',() => { if (name === 'Custom') customEditor.load(custom.current()); show(name); });
+    const tile = control('',() => { if (name === 'Custom') customEditor.load(custom.current(),custom.showKeySignature()); show(name); });
     tile.classList.add('range-picker-choice');
     if (name === 'Clef') {
       tile.append(clefIcon('treble',true));
@@ -189,6 +195,16 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     }
     tile.append(el('strong','',name)); choices.append(tile);
   }
+  const savedChoice = control('',() => { myPresets = true; renderPresets(); show('Presets'); });
+  savedChoice.classList.add('range-picker-choice','my-presets-choice'); savedChoice.hidden = !custom.saved().length;
+  const savedIcon = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  savedIcon.setAttribute('viewBox','0 0 64 64'); savedIcon.setAttribute('aria-hidden','true');
+  const savedPath = document.createElementNS(savedIcon.namespaceURI,'path');
+  savedPath.setAttribute('d','M16 8h32v48L32 46 16 56Z M24 20h16 M24 28h16');
+  savedPath.setAttribute('fill','none'); savedPath.setAttribute('stroke','currentColor');
+  savedPath.setAttribute('stroke-width','3'); savedPath.setAttribute('stroke-linejoin','round');
+  savedIcon.append(savedPath); savedChoice.append(savedIcon,el('strong','','My Presets'));
+  choices.append(savedChoice);
   dialog.append(header,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel); show('home',false);
   function position() {
     const scale = dialog.getBoundingClientRect().width / dialog.offsetWidth || 1;
