@@ -127,33 +127,47 @@ async function run(page,url,mode) {
   results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, one centered note, right-side Uno, edge wrap, tail waiting until catch, altered labels/review, profile preferences and Guest memory passed`);
 }
 async function expansion(page) {
+  await page.setViewportSize({width:360,height:900});
   page.setDefaultTimeout(10000);
   const p=presets.find(p=>p.id==='keyboards-starter');
   const data=emptySnapshot();data.configuration={remember:true,profileId:'learner',presetId:p.id,selfPaced:true};
   const notes=Object.fromEntries(p.pool.map(pitch=>[pitchLabel(pitch),Array.from({length:5},()=>({pitch,answer:{letter:pitch.letter,accidental:pitch.accidental},correct:true,responseMs:500000,activity:'practice',preset:p.id}))]));
-  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
+  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[{version:1,context:fingerprint(p,true),attempts:20,correct:20,first20:20,interrupted:false,at:1,activeMs:1000}],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
   await page.addInitScript(data=>localStorage.setItem('tunotes:data:v1',JSON.stringify(data)),data);await page.goto(new URL('/notes/', host.url).href);
   await page.clock.install(); await button(page,'Start Practice').click();
   // Let font loading and the animation-frame play-surface resize settle before measuring.
   await page.evaluate(() => document.fonts.ready);
   await page.clock.runFor(100);
-  const before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
+  let before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
   const expected=async()=>{
     const label=await page.locator('.staff').getAttribute('aria-label');
     if(label.includes('below')) return label.includes('2 half')?'c':'d';
     const positions=['first line','first space','second line','second space','third line','third space','fourth line','fourth space','fifth line'];
     return 'efgabcdef'[positions.findIndex(v=>label.includes(v))];
   };
-  for(let i=0;i<20;i++) {await page.keyboard.press(await expected());if(i<19)await button(page,'Continue').click();}
-  assert.equal(await page.locator('#expansion-announcement').textContent(),'New Note! Uno added a lower B!');
+  for(let i=0;i<20;i++) {
+    await page.keyboard.press(await expected());
+    if(i===18) before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
+    if(i<19)await button(page,'Continue').click();
+  }
+  assert.equal(await page.locator('.answer-feedback').textContent(),'A treat for Uno! New Note! Uno added a lower B!');
   assert.equal(await page.locator('.answer-added').count(),1);
   assert.equal(await page.locator('.answer-added').getAttribute('data-letter'),'B');
   const after=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
-  // The announcement may move the answer block vertically, but every target keeps its relative geometry.
+  assert.equal(await page.locator('#expansion-announcement, .encouragement').count(),0);
+  const placement=await page.locator('.staff').evaluate(svg=>{
+    const text=svg.querySelector('.answer-feedback').getBoundingClientRect(), frame=svg.getBoundingClientRect();
+    const notes=[...svg.querySelectorAll('.notehead,.note-accidental,.ledger')].map(note=>note.getBoundingClientRect());
+    return {overlaps:notes.some(note=>text.left<note.right && text.right>note.left && text.top<note.bottom && text.bottom>note.top),contained:text.left>=frame.left && text.right<=frame.right && text.top>=frame.top && text.bottom<=frame.bottom};
+  });
+  assert.deepEqual(placement,{overlaps:false,contained:true});
+  await page.waitForTimeout(200);
+  await page.screenshot({path:`dist/validation/notes-adaptive-${name}-floating-expansion.png`});
+  // Floating announcements preserve every answer target’s position.
   assert.equal(after.length,before.length);
   after.forEach((n,i)=> {
     assert.ok(Math.abs(n.x-before[i].x)<0.01,'Answer target keeps its horizontal position');
-    assert.ok(Math.abs((n.y-after[0].y)-(before[i].y-before[0].y))<0.01,'Answer target keeps its relative row position');
+    assert.ok(Math.abs(n.y-before[i].y)<0.01,'Answer target keeps its vertical position');
   });
   await button(page,'Finish').click(); await button(page,'Edit setup').click();await setToggle(page,'meet-notes',true);
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();

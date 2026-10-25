@@ -20,12 +20,12 @@ try {
   await action('Start Practice').click();
   for (let i=0;i<5;i++) { await correct(); await page.waitForTimeout(300); }
   assert.match(await stats(),/5 correct \/ 5 attempts.*Streak 5 \(best 5\)/);
-  assert.match(await page.locator('.encouragement').textContent(),/5 in a row/);
-  await page.waitForTimeout(2300); assert.equal(await page.locator('.encouragement').isVisible(),false);
+  assert.match(await page.locator('.answer-feedback').textContent(),/5 in a row/);
+  await page.waitForTimeout(2300); assert.equal(await page.locator('.answer-feedback').evaluate(text=>Number(getComputedStyle(text).opacity)),0);
   const before = await pitch();
   await page.locator('.answer[data-letter="C"][data-accidental="1"]').first().click();
   assert.match(await stats(),/5 correct \/ 6 attempts.*Streak 0 \(best 5\)/);
-  assert.match(await page.locator('#feedback').textContent(),/That note is/);
+  assert.match(await page.locator('.answer-feedback-announcement').textContent(),/That note is/);
   await page.waitForTimeout(850); assert.notEqual(await pitch(),before);
   // Keyboard and assistive clicks must count out-of-pool guesses too.
   await page.keyboard.down('ArrowDown'); await page.keyboard.press('d'); await page.keyboard.up('ArrowDown');
@@ -43,5 +43,5 @@ try {
   await correct(); assert.match(await stats(),/1 correct \/ 2 attempts.*Streak 1/);
   await page.waitForTimeout(300); assert.notEqual(await pitch(),retry);
   assert.deepEqual(errors,[]);
-  console.log('Out-of-pool pointer/keyboard/assistive guesses count as misses; default advances; streak resets, best streak persists, toast expires; Correct retries and persists.');
+  console.log('Out-of-pool pointer/keyboard/assistive guesses count as misses; default advances; streak resets, best streak persists, floating feedback expires; Correct retries and persists.');
 } finally { await browser.close(); await host.close(); }

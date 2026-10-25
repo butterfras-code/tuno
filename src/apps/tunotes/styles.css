@@ -54,7 +54,9 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 @keyframes answer-added { from { box-shadow: 0 0 0 5px var(--color-teal); } to { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .answer-added { animation: none; } }
 .feedback { min-height: 3em; }
-.encouragement { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; margin: 0; width: max-content; max-width: calc(100vw - 32px); padding: 12px 20px; border-radius: var(--radius-control); background: var(--color-surface); box-shadow: 0 4px 20px #0002; color: var(--color-teal); pointer-events: none; }
+.answer-feedback { opacity: 0; pointer-events: none; fill: var(--color-teal); stroke: var(--color-surface); stroke-width: 4px; paint-order: stroke fill; stroke-linejoin: round; font: 700 28px/1.2 var(--font-heading); }
+.answer-feedback[data-correct='false'] { fill: var(--color-ink); }
+.answer-feedback-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .pace-option { display: flex; gap: 10px; align-items: center; min-height: 48px; }
 .pace-option input { width: 24px; height: 24px; }
 select.control { max-width: 100%; }
@@ -170,7 +172,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .note-preview.preview-introducing .uno-tail { animation: none !important; transform: rotate(0deg) !important; }
 @media (prefers-reduced-motion: reduce) { .preview-toy { display: none; } }
 .practice-view.previewing { grid-template-columns: minmax(0, 1fr); }
-#expansion-announcement { min-height: 3em; color: var(--color-teal); }
 /* The introduction catches its own toy, not the practice reward bone. */
 .note-preview .uno-reward { display: none; }
 
@@ -197,7 +198,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 [id$='preset-summary'] { font-size: 16px; max-height: none; }
 .notes-options { max-width: 640px; }
 .notes-options > .setting { max-width: 400px; }
-#expansion-announcement:empty, .encouragement:empty { display: none; }
 @media (max-width: 760px) {
   .app-header { gap: 16px; }
   .brand { gap: 12px; }
@@ -383,7 +383,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .staff-panel { display: grid; align-items: center; height: clamp(160px, 27dvh, 240px); }
 #notes-practice .staff { max-height: 100%; }
 #notes-practice .feedback { min-height: 2.5em; margin: 4px 0; font-size: 15px; }
-#notes-practice #expansion-announcement { min-height: 0; margin: 4px 0; font-size: 14px; }
 .practice-help { margin: 0 0 8px; font-size: 14px; }
 .practice-help summary { width: fit-content; min-height: 44px; padding: 10px 0; color: var(--color-muted); }
 .practice-help p { margin: 0 0 12px; }
@@ -694,9 +693,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage .practice-play > .staff-panel { flex: 1; min-height: 100px; height: auto; display: grid; }
 #home .play-stage .staff-panel { min-width: 0; min-height: 0; height: 100%; }
 #home .play-stage .staff { width: 100%; height: 100%; max-height: none; }
-#home .play-stage .feedback { flex: none; min-height: 24px; margin: 2px 0; font-size: 14px; }
-#home .play-stage #expansion-announcement { min-height: 0; margin: 0; }
-#home .play-stage #expansion-announcement:empty { display: none; }
+#home .play-stage .feedback { flex: none; min-height: 44px; margin: 2px 0; font-size: 14px; }
 #home .play-stage .answer-input { flex: none; }
 #home .play-stage .answer-rows { gap: 8px; }
 #home .play-stage .answers { grid-template-rows: 44px 48px 44px; gap: 4px 0; }
@@ -708,7 +705,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage .practice-help[open] p { position: absolute; bottom: 100%; right: 0; width: 270px; margin: 0; padding: 12px; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 12px; z-index: 2; }
 #home .play-stage .practice-companion { position: static; width: auto; align-self: center; }
 #home .play-stage .practice-companion .uno { width: 140px; height: 160px; }
-#home .play-stage .encouragement { position: absolute; bottom: 4px; font-size: 14px; }
 #home .play-stage .challenge-scene { flex: 1; min-height: 200px; margin: 0; --dog-size: 130px; }
 #home .play-stage .challenge-notation { top: 48px; bottom: 0; height: auto; }
 #home .play-stage .challenge-dog { top: 55px; }
@@ -776,7 +772,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--short .answer-key-hints { display: none; }
 #home .play-stage--short .practice-play > .control-row { grid-column: 1 / -1; grid-row: 4; }
 #home .play-stage--short .challenge-scene { grid-column: 1; grid-row: 1 / 4; min-height: 0; }
-#home .play-stage--short #expansion-announcement:not(:empty) { position: absolute; left: 12px; bottom: 64px; width: 40%; font-size: 12px; background: var(--color-surface); }
 #home .play-stage--short .challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { top: 70px; width: 75px; }
 #home .play-stage .note-preview { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 #home .play-stage .preview-scene { flex: 1; min-height: 0; margin-top: 8px; grid-template-rows: minmax(0,1fr); }
