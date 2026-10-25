@@ -29,7 +29,7 @@ test('every key has the expected signature and explicitly spelled single acciden
   assert.equal(parsePitch('B#3').octave,3);
 });
 test('catalog pools exactly follow specified staff and ledger envelopes', () => {
-  assert.equal(presets.length,104);
+  assert.equal(presets.length,108);
   for (const p of presets) {
     const start = staffPosition(parsePitch(p.range[0]),p.clef), end = staffPosition(parsePitch(p.range[1]),p.clef);
     const positions = Array.from({length:end-start+1},(_,i) => start+i).filter(n => p.content === 'lines-and-spaces' || Math.abs(n%2) === (p.content === 'lines' ? 0 : 1));
@@ -73,7 +73,7 @@ test('all instrument written-to-concert fixtures preserve sign and octave', () =
   instruments.forEach((i,n) => assert.equal(writtenToConcert(parsePitch('C4'),i.transpose),expected[n]));
   assert.equal(writtenToConcert(parsePitch('C4'),14),46); // future octave-transposing B-flat instrument
 });
-test('four string Starters begin at the actual open strings and use five major-scale notes', () => {
+test('four string Big 5 presets begin at the actual open strings and use five major-scale notes', () => {
   const fixtures = [
     { id:'violin',clef:'treble',transpose:0,strings:['G3','D4','A4','E5'],sounding:['G3','D4','A4','E5'] },
     { id:'viola',clef:'alto',transpose:0,strings:['C3','G3','D4','A4'],sounding:['C3','G3','D4','A4'] },
@@ -88,7 +88,7 @@ test('four string Starters begin at the actual open strings and use five major-s
     assert.equal(instrument.transpose,fixture.transpose);
     for (const [index,preset] of choices.entries()) {
       const open = fixture.strings[index]!;
-      assert.equal(preset.name.split(' — ')[1],`Starter: ${open[0]}`);
+      assert.equal(preset.name.split(' — ')[1],`Big 5: ${open[0]}`);
       assert.equal(preset.clef,fixture.clef);
       assert.equal(preset.key.fifths,keySignature(open[0]!).fifths);
       assert.equal(preset.pool.length,5);

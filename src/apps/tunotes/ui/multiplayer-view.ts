@@ -1,3 +1,7 @@
+import { resultReward } from './result-reward.ts';
+import headToHeadIcon from '../../../assets/uno-head-to-head.svg';
+import sideBySideIcon from '../../../assets/uno-side-by-side.svg';
+import passAndPlayIcon from '../../../assets/uno-pass-and-play.svg';
 import { answerFeedback } from './answer-feedback.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
@@ -21,7 +25,7 @@ import { button, presetSetup } from './setup.ts';
 import { renderStaff } from './staff.ts';
 import { segments } from './range-editor.ts';
 
-interface Player extends PlayerEntry { preset: Preset; profileId?: string }
+interface Player extends PlayerEntry { preset: Preset; profileId?: string; notesChosen: boolean }
 interface Lane {
   player: Player; session: Challenge; progress: NotesProgress;
   node: HTMLElement; heading: HTMLElement; status: HTMLElement; stats: HTMLElement; announcement: HTMLElement;
@@ -46,7 +50,11 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   add.classList.add('multiplayer-add');
   rosterSection.append(playersHeading,roster);
   const editor = el('section','multiplayer-editor');
-  const presetUI = presetSetup(store,'multi-');
+  const presetUI = presetSetup(store,'multi-',() => players.flatMap((player,index) => {
+    if (player.id === selectedId) return [];
+    const { pool,version,...source } = player.preset;
+    return [{ id: player.id, name: player.name.trim() || `Player ${index+1}`, preset: source }];
+  }));
   presetUI.setupPresentation(true);
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
@@ -64,7 +72,10 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       const hintText = { turns: 'Take turns', pairs: 'Sit together', 'head-to-head': 'Face each other' }[control.dataset.value as Format];
       const hint = el('span','multiplayer-style-hint',hintText);
       hint.id = `multiplayer-style-hint-${control.dataset.value}`; control.setAttribute('aria-describedby',hint.id);
-      control.replaceChildren(heading,hint);
+      const illustration = el('img','multiplayer-style-icon');
+      illustration.src = { turns: passAndPlayIcon, pairs: sideBySideIcon, 'head-to-head': headToHeadIcon }[control.dataset.value as Format];
+      illustration.alt = '';
+      control.replaceChildren(heading,illustration,hint);
     });
   }
   refreshFormat();
@@ -106,9 +117,35 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   roundSetup.append(selector);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
-  const start = button('Start round',startRound); start.classList.add('control--primary');
+  const start = button('Start round',() => startRound(true)); start.classList.add('control--primary');
+  start.setAttribute('aria-haspopup','dialog');
+  const styleDialog = el('dialog','key-picker-dialog multiplayer-style-dialog');
+  styleDialog.setAttribute('aria-labelledby','multiplayer-style-title');
+  const styleTitle = el('h2','','Choose a play style'); styleTitle.id = 'multiplayer-style-title';
+  const styleDescription = el('p','muted','How will you play this round?');
+  const styleActions = el('div','control-row');
+  const continueRound = button('Continue to round',() => { styleDialog.close(); startRound(); });
+  continueRound.classList.add('control--primary');
+  styleActions.append(button('Cancel',() => styleDialog.close()),continueRound);
+  styleDialog.append(styleTitle,styleDescription,styleActions);
+  styleDialog.addEventListener('close',() => { stylePanel.append(formatGroup); });
+  styleDialog.addEventListener('click',event => {
+    const rect = styleDialog.getBoundingClientRect();
+    if (event.target === styleDialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) styleDialog.close();
+  });
   const setupUI = activitySetup(editor,el('section'),'multiplayer',presetUI.rangeTrigger);
   setupUI.practiceLayout(true);
+  const copyToAll = button('Copy to all players',() => {
+    if (!commitEditor()) return;
+    const current = players.find(player => player.id === selectedId);
+    if (!current?.notesChosen) return;
+    for (const player of players) {
+      player.preset = normalizePreset(structuredClone(current.preset));
+      player.notesChosen = true;
+    }
+    setupError.textContent = ''; renderSetup();
+  });
+  presetUI.rangeTrigger.after(copyToAll);
   const setupUtilities = el('div','multiplayer-setup-utilities'); setupUtilities.append(setupFullscreen);
   editor.prepend(setupUtilities);
   setupUI.node.append(roundSetup,setupError); setupUI.action(start);
@@ -144,9 +181,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const resultSummary = el('p','muted');
   const board = el('div','multiplayer-board');
   const resultActions = el('div','control-row');
-  resultActions.append(button('Retry',startRound),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
+  resultActions.append(button('Retry',() => startRound()),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
   result.append(resultTitle,resultSummary,board,resultActions);
-  node.append(setup,fitWarning,round,result);
+  node.append(setup,fitWarning,round,result,styleDialog);
 
   let players: Player[] = [newPlayer(1)];
   let selectedId = players[0]!.id;
@@ -155,6 +192,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   let heatIndex = 0;
   let active: Lane[] = [];
   let completed = new Map<string,Challenge>();
+  const sessionTreats = new Map<string,number>();
   const guestContexts = new Map<string,Context>();
   const gate = new PressGate();
   const held = [new Set<string>(),new Set<string>()];
@@ -192,7 +230,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
 
   function newPlayer(number: number): Player {
     const profile = number === 1 ? store.profile() : undefined;
-    return { id: crypto.randomUUID(), name: profile?.name ?? `Player ${number}`, preset: profile ? profilePreset(profile.defaultPresetId) : defaultPreset, profileId: profile?.id };
+    return { id: crypto.randomUUID(), name: profile?.name ?? `Player ${number}`, preset: profile ? profilePreset(profile.defaultPresetId) : defaultPreset, profileId: profile?.id, notesChosen: false };
   }
   function profilePreset(id: string): Preset { return presets.find(p => p.id === id) ?? normalizePreset(store.data.customPresets.find(p => p.id === id)!); }
   function pairFits() {
@@ -205,6 +243,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
+    start.textContent = players.some(player => !player.notesChosen) ? 'Choose Notes for all players' : 'Start round';
+    copyToAll.disabled = players.length < 2 || !players.find(player => player.id === selectedId)?.notesChosen;
     setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Pass and Play' : selectedFormat === 'pairs' ? 'Side by Side' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
   }
   rules.onChange(updateSetupSummary);
@@ -311,22 +351,39 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function move(index: number,delta: number) { if (!commitEditor()) return; const [player] = players.splice(index,1); players.splice(index+delta,0,player!); renderSetup(); focusSelectedPlayer(); }
   presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) { player.preset = chosen; updateSetupSummary(); } });
+  presetUI.onRangeChoice(() => {
+    const player = players.find(p => p.id === selectedId);
+    if (player) player.notesChosen = true;
+    updateSetupSummary();
+  });
   function commitEditor() {
     if (!presetUI.selected()) return false;
     if (!presets.some(p => p.id === presetUI.selected()!.id)) return Boolean(presetUI.saveForRoster());
     return true;
   }
 
-  function startRound() {
+  function startRound(chooseStyle = false) {
     setupError.textContent = '';
     if (!commitEditor()) { setupError.textContent = 'Fix the selected preset before starting.'; return; }
+    const unconfigured = players.find(player => !player.notesChosen);
+    if (unconfigured) {
+      selectedId = unconfigured.id; setupUI.select('notes'); renderSetup();
+      presetUI.rangeTrigger.click();
+      return;
+    }
     const names = players.map(p => p.name.trim());
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
     const nextRules = rules.read(() => selectModeTab(0)); if (!nextRules) return;
+    if (chooseStyle) {
+      styleActions.before(formatGroup);
+      styleDialog.showModal();
+      format.buttons.find(control => control.dataset.value === selectedFormat)?.focus();
+      return;
+    }
     finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
-    rulesValue = nextRules; completed = new Map(); heatIndex = 0;
+    rulesValue = nextRules; completed = new Map(); sessionTreats.clear(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
     round.classList.toggle('multiplayer-round--head-to-head',selectedFormat === 'head-to-head');
@@ -371,6 +428,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function record(lane: Lane) {
     if (lane.recorded || lane.session.state !== 'finished') return;
     lane.recorded = true; completed.set(lane.player.id,lane.session);
+    sessionTreats.set(lane.player.id,lane.progress.treats);
     store.record(lane.player.profileId,lane.session); store.flush();
   }
   function finishActive(partial = false) {
@@ -398,11 +456,16 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       const main = el('strong','multiplayer-result-value',rulesValue!.goal === 'timed' ? `${row.session.score.toFixed(2)} points` : `${seconds(row.session.activeMs)} seconds`);
       const detail = el('p','',`${row.session.correct}/${row.session.attempts} correct · ${accuracy(row.session)} accuracy · best streak ${row.session.bestStreak}`);
       const status = el('p','muted',row.session.qualified ? 'Qualified' : row.session.end === 'timeout' ? `Nice practice — try another round. ${row.session.correct}/${row.session.rules.goal === 'target' ? row.session.rules.target : 0} target · time out · unranked` : row.session.interrupted ? 'Interrupted · unranked' : row.session.end !== 'completed' ? 'Incomplete · unranked' : !row.session.attempts ? 'No attempts · unranked' : 'Nice run! Improve your accuracy to make finals. Unranked');
-      item.append(heading,main,detail,status); board.append(item);
+      const reward = resultReward();
+      reward.update(sessionTreats.get(row.player.id) ?? 0,!row.rank ? 'rest' : row.rank === 1 ? 'treat' : 'happy');
+      item.classList.toggle('multiplayer-result-winner',row.rank === 1);
+      if (row.rank === 1) status.textContent = 'Winner · Qualified';
+      item.append(heading,reward.node,main,detail,status); board.append(item);
     }
     for (const player of players.filter(p => !completed.has(p.id))) {
       const item = el('section','multiplayer-result-row');
-      item.append(el('h3','',named.get(player.id)!),el('p','muted','Not played · unranked'));
+      const reward = resultReward(); reward.update(0,'rest');
+      item.append(el('h3','',named.get(player.id)!),reward.node,el('p','muted','Not played · unranked'));
       board.append(item);
     }
   }
@@ -531,9 +594,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const surfaceResize = new ResizeObserver(resize); surfaceResize.observe(node);
   renderSetup();
   return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
-    closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
+    styleDialog.close(); closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
-    if (disposed) return; disposed = true; surfaceResize.disconnect(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
+    if (disposed) return; disposed = true; surfaceResize.disconnect(); styleDialog.close(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
     document.removeEventListener('keydown',keydown); document.removeEventListener('keyup',keyup);
     document.removeEventListener('visibilitychange',visibility); document.removeEventListener('fullscreenchange',fullscreenChanged);
     window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);

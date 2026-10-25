@@ -1,4 +1,4 @@
-import { openRange, rangeDialog } from './notes-setup-helpers.mjs';
+import { openRange, rangeDialog, configureMultiplayerNotes } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -24,17 +24,55 @@ async function answerLetter(panel) {
   return 'CDEFGAB'[(4*7+2+position)%7];
 }
 async function start(page,format='turns') {
+  await configureMultiplayerNotes(page);
 
   await page.getByRole('tab',{name:'Multi Player Mode',exact:true}).click();
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
-  await page.getByRole('tab',{name:'Play Style',exact:true}).click();
+  await button(page,'Start round').click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:format==='pairs'?'Side by Side':format==='turns'?'Pass and Play':'Head to Head'}).click();
-  await button(page,'Start round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
+  await button(page,'Continue to round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }
 async function run(page,url,label) {
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.clock.install();await page.setViewportSize({width:1280,height:900});
+  await open(page,url);await addPlayers(page,3);
+  const chooseAll = button(page,'Choose Notes for all players');
+  assert.equal(await button(page,'Copy to all players').isDisabled(),true);
+  assert.equal(await button(page,'Start round').count(),0);
+  await chooseAll.click();
+  assert.equal(await button(page,'Select Player 1').getAttribute('aria-pressed'),'true');
+  await button(rangeDialog(page),'Close range selection').click();
+  await button(page,'Select Player 2').click();
+  await chooseAll.click();
+  assert.equal(await button(page,'Select Player 1').getAttribute('aria-pressed'),'true');
+  await button(rangeDialog(page),'Custom').click();await button(rangeDialog(page),'Accept').click();
+  assert.equal(await chooseAll.isVisible(),true);
+  await chooseAll.click();
+  assert.equal(await button(page,'Select Player 2').getAttribute('aria-pressed'),'true');
+  await button(rangeDialog(page),'Copy from player').click();await button(rangeDialog(page),'Player 1').click();
+  await chooseAll.click();
+  assert.equal(await button(page,'Select Player 3').getAttribute('aria-pressed'),'true',await page.locator('.multiplayer-setup').innerText());
+  await button(rangeDialog(page),'Close range selection').click();
+  await button(page,'Remove Player 3').click();
+  assert.equal(await button(page,'Start round').isVisible(),true);
+  await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
+  assert.equal(await chooseAll.isVisible(),true);
+  await configureMultiplayerNotes(page);
+  assert.equal(await button(page,'Start round').isVisible(),true);
+  evidence.push(`${label}: notes gate skips configured players, survives cancellation and switching, accepts custom/copy choices, and updates on add/remove`);
+  await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
+  assert.equal(await button(page,'Copy to all players').isDisabled(),true);
+  await button(page,'Select Player 1').click();
+  const copiedSummary = await page.locator('.multiplayer-editor .preset-summary').textContent();
+  await button(page,'Copy to all players').click();
+  assert.equal(await button(page,'Start round').isVisible(),true);
+  for (let index=1;index<=4;index++) {
+    await button(page,`Select Player ${index}`).click();
+    assert.equal(await page.locator('.multiplayer-editor .preset-summary').textContent(),copiedSummary);
+  }
+  await start(page);await button(page,'End round').click();
+  evidence.push(`${label}: copy to all applies the selected custom range to configured and unconfigured players and permits starting`);
   for(let size=1;size<=8;size++) {
     await open(page,url); await addPlayers(page,size); await start(page);
     for(let turn=0;turn<size;turn++) {
@@ -44,6 +82,8 @@ async function run(page,url,label) {
     }
     assert.equal(await page.locator('.multiplayer-result-row').count(),size);
     assert.equal(await page.locator('.multiplayer-result-row').filter({hasText:'unranked'}).count(),size);
+    assert.equal(await page.locator('.multiplayer-result-row img[alt="Uno sleeping"]').count(),size);
+    assert.equal(await page.locator('.multiplayer-result-row .result-treats').filter({hasText:'0 treats earned this session'}).count(),size);
   }
   evidence.push(`${label}: all 1–8 turn rosters completed once in order`);
 
@@ -114,7 +154,7 @@ async function run(page,url,label) {
 
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Head to Head'}).click();
-  assert.equal(await button(page,'Start round').isDisabled(),false);
+  assert.equal(await button(page,'Choose Notes for all players').isDisabled(),false);
   if(await button(page,'Enter fullscreen').isVisible()) {
     await button(page,'Enter fullscreen').click();
     await button(page,'Exit fullscreen').waitFor({state:'visible'});
@@ -251,7 +291,7 @@ async function run(page,url,label) {
   await button(page,'End round').click();await button(page,'Edit setup').click();
 
   await button(page,'Goal').click();await page.locator('.multiplayer-view').getByLabel('Correct notes',{exact:true}).fill('1');assert.equal(await page.locator('.multiplayer-view').getByLabel('Timeout (seconds)').count(),0);
-  await button(page,'Start round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
+  await button(page,'Start round').click();await button(page,'Continue to round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   const first=page.locator('.multiplayer-panel').nth(0),second=page.locator('.multiplayer-panel').nth(1);
   const left='QWERTYU',right='ZXCVBNM',letters='ABCDEFG';
   await page.keyboard.press(`Key${left[letters.indexOf(await answerLetter(first))]}`);
@@ -263,10 +303,11 @@ async function run(page,url,label) {
   await page.keyboard.press(`Key${left[letters.indexOf(await answerLetter(page.locator('.multiplayer-panel')))]}`);
   assert.equal(await page.locator('.multiplayer-result-row').count(),3);
   assert.match(await page.locator('.multiplayer-result').innerText(),/#1/);
+  assert.ok(await page.locator('.multiplayer-result-winner img[alt="Uno sitting with a treat"]').count());
   evidence.push(`${label}: pairs, odd heat, lane-isolated keyboard/finish, held keys, focused text, ties, duplicate names, retry${name==='chromium' ? ', concurrent touch pointers' : ''}`);
 
   await button(page,'Edit setup').click();await button(page,'Timed').click();
-  await button(page,'Start round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
+  await button(page,'Start round').click();await button(page,'Continue to round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   assert.equal(await page.locator('.multiplayer-panel[data-phase="paused"]').count(),2);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});});
@@ -284,6 +325,31 @@ async function run(page,url,label) {
   await page.setViewportSize({width:768,height:900});await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-tablet-turn.png`,fullPage:true});
   await page.setViewportSize({width:1280,height:900});
   await button(page,'End round').click();assert.equal(await page.locator('.multiplayer-result-row').count(),3);
+  await open(page,url);
+  await openRange(page);
+  await button(rangeDialog(page),'Copy from player').click();
+  assert.match(await rangeDialog(page).innerText(),/Add another player/);
+  await button(rangeDialog(page),'Back to range options').click();
+  await button(rangeDialog(page),'Close range selection').click();
+  await addPlayers(page,3);
+  await openRange(page);
+  await button(rangeDialog(page),'Clef').click();await button(rangeDialog(page),'Bass').click();
+  await rangeDialog(page).locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(rangeDialog(page),'Keep this range').click();
+  await button(page,'Select Player 1').click();
+  const originalRange = await page.locator('.multiplayer-editor .preset-summary').textContent();
+  await openRange(page);await button(rangeDialog(page),'Copy from player').click();
+  assert.deepEqual(await rangeDialog(page).locator('[data-player-id]').allTextContents(),['Player 2Treble — Lines + Spaces','Player 3Bass — Lines + Spaces']);
+  await button(rangeDialog(page),'Close range selection').click();
+  assert.equal(await page.locator('.multiplayer-editor .preset-summary').textContent(),originalRange);
+  await openRange(page);await button(rangeDialog(page),'Copy from player').click();
+  await button(rangeDialog(page),'Player 3').click();
+  assert.equal(await rangeDialog(page).count(),0);
+  assert.match(await page.locator('.multiplayer-editor').innerText(),/Bass — Lines \+ Spaces/);
+  await button(page,'Select Player 2').click();
+  assert.equal(await page.locator('.multiplayer-editor .preset-summary').textContent(),originalRange);
+  await button(page,'Select Player 1').click();
+  assert.match(await page.locator('.multiplayer-editor').innerText(),/Bass — Lines \+ Spaces/);
+  evidence.push(`${label}: copy from player excludes self, handles solo rosters, cancels safely, and retains the copied range`);
   await open(page,url);await addPlayers(page,2);
   await button(page,'Select Player 2').click();
   await openRange(page);
@@ -309,11 +375,18 @@ async function run(page,url,label) {
 
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Side by Side'}).click();
-  assert.equal(await button(page,'Start round').isDisabled(),false);
-  assert.equal(await page.getByRole('button',{name:'Side by Side',exact:true}).getByText('Sit together',{exact:true}).isVisible(),true);
+  assert.equal(await button(page,'Choose Notes for all players').isDisabled(),false);
+  const styleButtons = page.getByRole('group',{name:'Play Style'}).getByRole('button');
+  for (const styleButton of await styleButtons.all()) {
+    const icon = styleButton.locator('img');
+    assert.equal(await icon.evaluate(img => img.complete && img.naturalWidth > 0),true);
+    const card = await styleButton.boundingBox(), art = await icon.boundingBox();
+    assert.ok(art.x >= card.x + card.width / 2 - 4);
+    assert.ok(art.x + art.width <= card.x + card.width);
+  }
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Pass and Play'}).click();
-  assert.equal(await button(page,'Start round').isDisabled(),false);
+  assert.equal(await button(page,'Choose Notes for all players').isDisabled(),false);
   await page.setViewportSize({width:1280,height:900});
   await button(page,'Options').click();
   await page.locator('.local-data > summary').click();

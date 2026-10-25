@@ -1,5 +1,17 @@
 import { presets, stringInstruments } from '../src/apps/tunotes/domain/presets.ts';
 export const rangeDialog = page => page.locator('.range-picker-dialog[open]');
+export async function configureMultiplayerNotes(page) {
+  const next = page.getByRole('button',{name:'Choose Notes for all players',exact:true});
+  for (let remaining = 8; remaining > 0 && await next.isVisible(); remaining--) {
+    const adaptive = (await page.locator('.multiplayer-setup .practice-setup-summary').textContent()).includes('Adapt Range on');
+    await next.click();
+    const dialog = rangeDialog(page);
+    await dialog.getByRole('button',{name:'Clef',exact:true}).click();
+    await dialog.getByRole('button',{name:'Treble',exact:true}).click();
+    await dialog.locator('[data-preset-id="treble-lines-and-spaces"]').click();
+    await dialog.getByRole('button',{name:adaptive ? 'Yes, let Uno help' : 'Keep this range',exact:true}).click();
+  }
+}
 export async function openRange(page) {
   if (await rangeDialog(page).isVisible()) return;
   await page.locator('.activity-setup-toolbar:visible').getByRole('button',{name:/^Choose Notes(?: — .+)?$/}).click();

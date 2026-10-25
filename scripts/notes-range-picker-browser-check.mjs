@@ -325,7 +325,7 @@ try {
   const intro = previewPage.locator('.note-preview:visible');
   assert.equal(await intro.locator('.key-accidental').count(),0,'practice uses accidentals on notes');
   for (let i=0;i<3;i++) await intro.getByRole('button',{name:'Next',exact:true}).click();
-  assert.equal(await intro.locator('.preview-note[data-label="B♭"]').count(),1,'Flute Starter still includes B-flat');
+  assert.equal(await intro.locator('.preview-note[data-label="B♭"]').count(),1,'Flute Big 5 still includes B-flat');
   assert.equal(await intro.locator('.note-accidental').count(),1,'B-flat is written on the note during practice');
   await previewPage.close();
   const modesPage = await browser.newPage();
@@ -351,7 +351,7 @@ try {
   assert.notEqual(await liveStaff.getAttribute('aria-label'),retryPitch,'Correct Only advances after correct answer');
   for (const mode of ['Challenge','Multi Player']) {
     await notesMode(modesPage,mode);
-    const notes = modesPage.getByRole('tab',{name:'Choose Notes',exact:true});
+    const notes = modesPage.locator('.activity-setup-toolbar:visible').getByRole('button',{name:/^Choose Notes(?: — .+)?$/});
     await notes.click();
     assert.equal(await modesPage.locator('.range-picker-dialog[open]').count(),1,`${mode}: Notes opens range chooser`);
     await modesPage.getByRole('button',{name:'Close range selection',exact:true}).click();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-import { notesMode,openCustom,rangeDialog } from './notes-setup-helpers.mjs';
+import { notesMode,openCustom,rangeDialog,configureMultiplayerNotes } from './notes-setup-helpers.mjs';
 const engine=process.env.TUNO_BROWSER || 'chromium';
 const browser=await ({chromium,firefox})[engine].launch(),host=await hostBuild();
 try {
@@ -9,6 +9,7 @@ try {
   const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(new URL('/notes/',host.url).href);
   for(const mode of ['Practice','Challenge','Multi Player']) {
    await notesMode(page,mode);
+   if (mode === 'Multi Player') await configureMultiplayerNotes(page);
    const action=page.getByRole('button',{name:mode==='Multi Player'?'Start round':`Start ${mode}`,exact:true});
    assert.equal(await action.isVisible(),true);
    const setup=page.locator('.activity-setup:visible');
@@ -65,6 +66,26 @@ try {
     await styleTab.click();
     assert.equal(await styles.getByRole('button',{name:'Pass and Play',exact:true}).getAttribute('aria-pressed'),'true');
     await modeTab.click();
+    await action.click();
+    const chooser=page.getByRole('dialog',{name:'Choose a play style'});
+    assert.equal(await chooser.isVisible(),true);
+    assert.equal(await page.locator('.multiplayer-round').isVisible(),false);
+    const selected=chooser.getByRole('button',{name:'Pass and Play',exact:true});
+    assert.equal(await selected.evaluate(n=>n===document.activeElement),true);
+    const bounds=await chooser.boundingBox();
+    assert.ok(bounds.x>=0 && bounds.y>=0 && bounds.x+bounds.width<=width+1 && bounds.y+bounds.height<=height+1,'chooser fits viewport');
+    await page.keyboard.press('Escape');
+    assert.equal(await chooser.isVisible(),false);
+    assert.equal(await action.evaluate(n=>n===document.activeElement),true);
+    await action.click();
+    await chooser.getByRole('button',{name:'Cancel',exact:true}).click();
+    assert.equal(await page.locator('.multiplayer-round').isVisible(),false);
+    await action.click();
+    await chooser.getByRole('button',{name:'Head to Head',exact:true}).click();
+    await chooser.getByRole('button',{name:'Continue to round',exact:true}).click();
+    assert.equal(await page.locator('.multiplayer-round--head-to-head').isVisible(),true);
+    await page.getByRole('button',{name:'End round',exact:true}).click();
+    await page.getByRole('button',{name:'Edit setup',exact:true}).click();
    }
    await openCustom(page);assert.equal(await rangeDialog(page).getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);await page.keyboard.press('Escape');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

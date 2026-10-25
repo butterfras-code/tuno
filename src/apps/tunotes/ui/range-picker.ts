@@ -34,9 +34,11 @@ function instrumentIcon(asset: string) {
   return icon;
 }
 
+export type CopyPlayers = () => readonly { id: string; name: string; preset: PresetSource }[];
+
 /** Guided visual range and exercise chooser. */
-export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource, showSignature: boolean, save: boolean) => void; saved: () => readonly PresetSource[]; showKeySignature: () => boolean }) {
-  let screen: 'home' | 'Clef' | 'Instrument' | 'Custom' | 'Presets' | 'Adaptive' = 'home';
+export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource, showSignature: boolean, save: boolean) => void; saved: () => readonly PresetSource[]; showKeySignature: () => boolean }, copyPlayers?: CopyPlayers) {
+  let screen: 'home' | 'Clef' | 'Instrument' | 'Custom' | 'Presets' | 'Adaptive' | 'Players' = 'home';
   let myPresets = false;
   let selectedClef: Clef = 'treble';
   let selectedInstrument: { id: string; name: string } | undefined;
@@ -154,12 +156,28 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   renderInstruments(); instrumentPanel.append(ensembles,instrumentChoices);
   const customEditor = customRange((source,signature,save) => { custom.apply(source,signature,save); dialog.close(); });
   const customPanel = el('div','range-picker-panel'); customPanel.append(customEditor.node,customEditor.contentPanel,customEditor.keyPanel,customEditor.clefPanel,customEditor.footer);
-  const panels = { home, Clef: clefPanel, Instrument: instrumentPanel, Custom: customPanel, Presets: presetPanel, Adaptive: adaptivePanel };
+  const playerPanel = el('div','range-picker-panel');
+  function renderPlayers() {
+    const players = copyPlayers?.() ?? [];
+    const options = el('div','range-picker-choices range-picker-presets');
+    for (const player of players) {
+      const tile = control('',() => {
+        custom.apply(structuredClone(player.preset),custom.showKeySignature(),false);
+        dialog.close();
+      });
+      tile.classList.add('range-picker-choice'); tile.dataset.playerId = player.id;
+      tile.setAttribute('aria-label',player.name);
+      tile.append(el('strong','',player.name),el('span','muted',player.preset.name));
+      options.append(tile);
+    }
+    playerPanel.replaceChildren(players.length ? options : el('p','muted','Add another player to copy their notes.'));
+  }
+  const panels = { home, Clef: clefPanel, Instrument: instrumentPanel, Custom: customPanel, Presets: presetPanel, Adaptive: adaptivePanel, Players: playerPanel };
   function show(nextScreen: keyof typeof panels, focus = true) {
     screen = nextScreen;
     dialog.dataset.screen = screen;
     for (const [name,panel] of Object.entries(panels)) panel.hidden = name !== screen;
-    heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:myPresets ? 'My Presets' : `${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?'}[screen];
+    heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:myPresets ? 'My Presets' : `${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?',Players:'Copy from player'}[screen];
     back.setAttribute('aria-label',screen === 'Adaptive' ? 'Back to presets' : screen === 'Presets' ? myPresets ? 'Back to range options' : selectedInstrument ? 'Back to instruments' : 'Back to clefs' : 'Back to range options');
     back.hidden = screen === 'home'; dialog.scrollTop = 0;
     if (dialog.open) position();
@@ -205,7 +223,14 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   savedPath.setAttribute('stroke-width','3'); savedPath.setAttribute('stroke-linejoin','round');
   savedIcon.append(savedPath); savedChoice.append(savedIcon,el('strong','','My Presets'));
   choices.append(savedChoice);
-  dialog.append(header,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel); show('home',false);
+  if (copyPlayers) {
+    const copyChoice = control('',() => { renderPlayers(); show('Players'); });
+    copyChoice.classList.add('range-picker-choice');
+    const icon = savedIcon.cloneNode(true) as SVGElement;
+    icon.querySelector('path')!.setAttribute('d','M24 22h30v34H24Z M40 22V8H10v34h14');
+    copyChoice.append(icon,el('strong','','Copy from player')); choices.append(copyChoice);
+  }
+  dialog.append(header,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel,playerPanel); show('home',false);
   function position() {
     const scale = dialog.getBoundingClientRect().width / dialog.offsetWidth || 1;
     if (window.matchMedia('(max-width: 600px)').matches) {
