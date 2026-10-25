@@ -1019,7 +1019,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .challenge-coming-soon { text-align: center; font-size: 12px; }
 
-.challenge-mode-card { min-width: 0; padding: 0 6px 8px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); }
-.practice-mode-choices .challenge-mode-card > .control { border: 0; background: transparent; padding-inline: 0; }
-.challenge-mode-card .setting { display: grid; gap: 4px; margin: 0; font-size: 12px; }
-.challenge-mode-card input { min-width: 0; text-align: center; }
+.challenge-mode-card { min-width: 0; padding: 0 6px 6px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); }
+.practice-mode-choices .challenge-mode-card > .control { min-height: 36px; border: 0; background: transparent; padding: 4px 0; }
+.challenge-mode-card .setting { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 4px; margin: 0; font-size: 12px; }
+.challenge-settings .challenge-mode-card input { width: 3.5ch; min-width: 0; min-height: 32px; padding: 2px 0; border: 0; border-bottom: 1px solid var(--color-ink); border-radius: 0; background: transparent; text-align: center; font-size: 16px; appearance: textfield; }
+.challenge-mode-card input::-webkit-inner-spin-button, .challenge-mode-card input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.challenge-settings .practice-mode-auto { align-content: start; }
+.challenge-settings .practice-mode-auto > .control { min-height: 36px; }
