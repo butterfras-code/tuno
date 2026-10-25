@@ -494,13 +494,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #notes-practice .answers { min-width: 0; grid-template-columns: repeat(7,minmax(0,1fr)); grid-template-rows: repeat(3,44px); gap: 4px 2px; }
   #notes-practice .answer { min-width: 0; min-height: 44px; padding: 8px 0; font-size: 15px; }
   #notes-practice .answer[data-repeat='true'] { display: none; }
-  #notes-practice .answer[data-letter='C'] { grid-column: 1 !important; }
-  #notes-practice .answer[data-letter='D'] { grid-column: 2 !important; }
-  #notes-practice .answer[data-letter='E'] { grid-column: 3 !important; }
-  #notes-practice .answer[data-letter='F'] { grid-column: 4 !important; }
-  #notes-practice .answer[data-letter='G'] { grid-column: 5 !important; }
-  #notes-practice .answer[data-letter='A'] { grid-column: 6 !important; }
-  #notes-practice .answer[data-letter='B'] { grid-column: 7 !important; }
+  #notes-practice .answer { grid-column: var(--answer-compact-column) !important; }
 }
 
 :is(#notes-practice,#notes-challenge,#notes-multi\ player) .activity-setup .adjust-range { min-height: 44px; padding: 8px 12px; font-size: 14px; }
@@ -778,13 +772,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--compact .answers { min-width: 0; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px 2px; }
 #home .play-stage--compact .answer { min-width: 0; padding: 8px 0; font-size: 15px; }
 #home .play-stage--compact .answer[data-repeat='true'] { display: none; }
-#home .play-stage--compact .answer[data-letter='C'] { grid-column: 1 !important; }
-#home .play-stage--compact .answer[data-letter='D'] { grid-column: 2 !important; }
-#home .play-stage--compact .answer[data-letter='E'] { grid-column: 3 !important; }
-#home .play-stage--compact .answer[data-letter='F'] { grid-column: 4 !important; }
-#home .play-stage--compact .answer[data-letter='G'] { grid-column: 5 !important; }
-#home .play-stage--compact .answer[data-letter='A'] { grid-column: 6 !important; }
-#home .play-stage--compact .answer[data-letter='B'] { grid-column: 7 !important; }
+#home .play-stage--compact .answer { grid-column: var(--answer-compact-column) !important; }
 #home .play-stage.multiplayer-round { display: flex; flex-direction: column; gap: 8px; }
 #home .play-stage .multiplayer-round-header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 0; }
 #home .play-stage .multiplayer-round-header h2 { font-size: 20px; margin: 0; }
