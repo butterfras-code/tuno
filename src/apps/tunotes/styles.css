@@ -54,6 +54,9 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 @keyframes answer-added { from { box-shadow: 0 0 0 5px var(--color-teal); } to { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .answer-added { animation: none; } }
 .feedback { min-height: 3em; }
+.answer-feedback { opacity: 0; pointer-events: none; fill: var(--color-teal); stroke: var(--color-surface); stroke-width: 4px; paint-order: stroke fill; stroke-linejoin: round; font: 700 28px/1.2 var(--font-heading); }
+.answer-feedback[data-correct='false'] { fill: var(--color-ink); }
+.answer-feedback-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .encouragement { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; margin: 0; width: max-content; max-width: calc(100vw - 32px); padding: 12px 20px; border-radius: var(--radius-control); background: var(--color-surface); box-shadow: 0 4px 20px #0002; color: var(--color-teal); pointer-events: none; }
 .pace-option { display: flex; gap: 10px; align-items: center; min-height: 48px; }
 .pace-option input { width: 24px; height: 24px; }

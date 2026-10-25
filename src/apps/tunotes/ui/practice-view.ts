@@ -22,6 +22,7 @@ import { segments } from './range-editor.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import { answerControls } from './answers.ts';
+import { answerFeedback } from './answer-feedback.ts';
 import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
@@ -137,6 +138,7 @@ export function practiceView() {
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const staff = el('div', 'staff-panel');
+  const answerNotice = answerFeedback();
   const feedback = el('p', 'feedback'); feedback.id = 'feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
   const feedbackText = el('span');
   const dismissGuidance = button('Don’t show this again', () => { setGuidance(false); render(); });
@@ -176,7 +178,7 @@ export function practiceView() {
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     setupUI.select('notes');
-    closePreview(); session?.finish(); session = undefined; resetInput();
+    closePreview(); answerNotice.clear(); session?.finish(); session = undefined; resetInput();
     presetsUI.companion.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
@@ -185,6 +187,7 @@ export function practiceView() {
     if (!session) return;
     if (resultRecorded) return;
     node.dataset.screen = 'results';
+    answerNotice.clear();
     resultRecorded = true; session.finish(); store.record(profileId, session); store.flush(); dataUI.refresh(); resetInput(); play.hidden = true; result.hidden = false;
     resultSummary.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Best streak ${session.bestStreak}`;
     const average = session.attempts ? `${(session.responseTotalMs / session.attempts / 1000).toFixed(1)} s` : '—';
@@ -234,6 +237,8 @@ export function practiceView() {
     if (renderedPrompt !== identity) {
       keyboardHint = ''; inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
     }
+    answerNotice.mount(staff.querySelector('svg')!);
+    if (paused || waiting) answerNotice.clear();
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;
     expansion.textContent = session.announcement;
@@ -241,12 +246,13 @@ export function practiceView() {
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
     dismissGuidance.hidden = paused || !keyboardHint;
-    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : session.continueAfter === 'correct' ? 'Not quite. Try again.' : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : keyboardHint;
+    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : keyboardHint;
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
     keyboardHint = '';
+    answerNotice.show(session.last!.correct ? 'Correct!' : session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, session.last!.correct);
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
@@ -273,7 +279,7 @@ export function practiceView() {
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
-    closePreview(); session?.finish(); session = undefined;
+    closePreview(); answerNotice.clear(); session?.finish(); session = undefined;
     const useAdaptive = useAdaptation;
     const context = store.profile()?.contexts.find(c => c.fingerprint === fingerprint(preset,useAdaptive,activity)) ?? (!profileId ? guestContexts.get(fingerprint(preset,useAdaptive,activity)) : undefined);
     const begin = (exposure: PreviewExposure) => {
@@ -305,7 +311,7 @@ export function practiceView() {
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
-  play.append(heading, counts, scene.node, staff, feedback, expansion, answers.node, encouragement, controls);
+  play.append(heading, counts, scene.node, staff, feedback, expansion, answers.node, encouragement, controls, answerNotice.node);
   const resultControls = el('div', 'control-row'); resultControls.append(button('Retry', start), button('Edit setup', showSetup), button('Home', showSetup));
   const resultDetails = el('details','practice-result-details');
   resultDetails.append(el('summary','','Session details'),resultTiming);
@@ -347,7 +353,7 @@ export function practiceView() {
     if (session.advance(session.token) || session instanceof Challenge) { if ((session as Practice).state === 'finished') finish(); else render(); }
   }, 25);
   const dispose = () => {
-    if (disposed) return; disposed = true; closePreview(); answers.reset(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
+    if (disposed) return; disposed = true; answerNotice.clear(); closePreview(); answers.reset(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
     document.removeEventListener('keydown', keydown); document.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('blur', resetInput);
   };
