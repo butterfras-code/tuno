@@ -163,7 +163,7 @@ export function presetSetup(store: NotesStore, idPrefix = '', copyPlayers?: Copy
     return true;
   }
   refresh();
-  return { node,picker,rangeTrigger: rangePickerUI.trigger,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {

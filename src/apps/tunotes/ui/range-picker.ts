@@ -39,6 +39,7 @@ export type CopyPlayers = () => readonly { id: string; name: string; preset: Pre
 /** Guided visual range and exercise chooser. */
 export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource, showSignature: boolean, save: boolean) => void; saved: () => readonly PresetSource[]; showKeySignature: () => boolean }, copyPlayers?: CopyPlayers) {
   let screen: 'home' | 'Clef' | 'Instrument' | 'Custom' | 'Presets' | 'Adaptive' | 'Players' = 'home';
+  let contextName: string | undefined;
   let myPresets = false;
   let selectedClef: Clef = 'treble';
   let selectedInstrument: { id: string; name: string } | undefined;
@@ -59,6 +60,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     window.addEventListener('resize',position);
   });
   trigger.setAttribute('aria-haspopup','dialog');
+  const stepHeading = el('h4','range-picker-step'); stepHeading.hidden = true;
   const header = el('div','picker-header');
   const back = control('←',() => show(screen === 'Adaptive' ? 'Presets' : screen === 'Presets' ? myPresets ? 'home' : selectedInstrument ? 'Instrument' : 'Clef' : 'home')); back.setAttribute('aria-label','Back to range options'); back.hidden = true;
   const close = control('×',() => dialog.close()); close.setAttribute('aria-label','Close range selection');
@@ -177,7 +179,9 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     screen = nextScreen;
     dialog.dataset.screen = screen;
     for (const [name,panel] of Object.entries(panels)) panel.hidden = name !== screen;
-    heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:myPresets ? 'My Presets' : `${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?',Players:'Copy from player'}[screen];
+    const stepTitle = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:myPresets ? 'My Presets' : `${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?',Players:'Copy from player'}[screen];
+    heading.textContent = contextName ? `Choose Notes for ${contextName}` : stepTitle;
+    stepHeading.textContent = stepTitle; stepHeading.hidden = !contextName || screen === 'home';
     back.setAttribute('aria-label',screen === 'Adaptive' ? 'Back to presets' : screen === 'Presets' ? myPresets ? 'Back to range options' : selectedInstrument ? 'Back to instruments' : 'Back to clefs' : 'Back to range options');
     back.hidden = screen === 'home'; dialog.scrollTop = 0;
     if (dialog.open) position();
@@ -230,7 +234,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     icon.querySelector('path')!.setAttribute('d','M24 22h30v34H24Z M40 22V8H10v34h14');
     copyChoice.append(icon,el('strong','','Copy from player')); choices.append(copyChoice);
   }
-  dialog.append(header,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel,playerPanel); show('home',false);
+  dialog.append(header,stepHeading,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel,playerPanel); show('home',false);
   function position() {
     const scale = dialog.getBoundingClientRect().width / dialog.offsetWidth || 1;
     if (window.matchMedia('(max-width: 600px)').matches) {
@@ -256,5 +260,5 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   });
   dialog.addEventListener('close',() => { customEditor.closePopovers(); window.removeEventListener('resize',position); trigger.focus(); });
   onUnmount(trigger,() => { window.removeEventListener('resize',position); dialog.close(); });
-  return { trigger,dialog };
+  return { trigger,dialog, forContext: (name: string) => { contextName = name; show(screen,false); } };
 }

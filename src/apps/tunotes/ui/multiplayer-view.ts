@@ -314,6 +314,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function renderSetup() {
     const current = players.find(p => p.id === selectedId) ?? players[0]!; selectedId = current.id;
     const playerName = current.name.trim() || `Player ${players.indexOf(current)+1}`;
+    presetUI.rangeContext(playerName);
     const chooserPlayer = el('span','multiplayer-notes-player',playerName); chooserPlayer.title = playerName;
     presetUI.rangeTrigger.replaceChildren(el('span','','Choose Notes'),chooserPlayer);
     presetUI.rangeTrigger.setAttribute('aria-label',`Choose Notes — ${playerName}`);

@@ -1155,3 +1155,5 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all { grid-column: 2; grid-row: 1; }
   .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-column: 4; grid-row: 1; }
 }
+
+.range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }

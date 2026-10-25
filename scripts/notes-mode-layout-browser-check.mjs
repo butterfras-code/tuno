@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-import { notesMode,openCustom,rangeDialog,configureMultiplayerNotes,openPlayers } from './notes-setup-helpers.mjs';
+import { notesMode,openCustom,rangeDialog,configureMultiplayerNotes,openPlayers,openRange,selectPlayer } from './notes-setup-helpers.mjs';
 const engine=process.env.TUNO_BROWSER || 'chromium';
 const browser=await ({chromium,firefox})[engine].launch(),host=await hostBuild();
 try {
@@ -87,7 +87,7 @@ try {
     await page.getByRole('button',{name:'End round',exact:true}).click();
     await page.getByRole('button',{name:'Edit setup',exact:true}).click();
    }
-   await openCustom(page);assert.equal(await rangeDialog(page).getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);await page.keyboard.press('Escape');
+   await openCustom(page);if(mode!=='Multi Player') assert.equal(await rangeDialog(page).getByRole('heading',{name:`Choose Notes for ${mode}`,exact:true}).isVisible(),true);assert.equal(await rangeDialog(page).getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);await page.keyboard.press('Escape');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   }
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByLabel('Player 2 name').fill('Cancelled');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
@@ -104,6 +104,14 @@ try {
   }
   await page.getByRole('button',{name:'Edit Player 2',exact:true}).click();await page.getByLabel('Player 2 name').fill('A'.repeat(40));await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
   assert.equal(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),`Choose Notes — ${'A'.repeat(40)}`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await openRange(page);
+  const playerTitle=rangeDialog(page).getByRole('heading',{name:`Choose Notes for ${'A'.repeat(40)}`,exact:true});
+  assert.equal(await playerTitle.isVisible(),true);
+  await rangeDialog(page).getByRole('button',{name:'Clef',exact:true}).click();assert.equal(await playerTitle.isVisible(),true);
+  await rangeDialog(page).getByRole('button',{name:'Treble',exact:true}).click();assert.equal(await playerTitle.isVisible(),true);
+  await page.keyboard.press('Escape');await selectPlayer(page,1);await openRange(page);
+  assert.equal(await rangeDialog(page).getByRole('heading',{name:'Choose Notes for Player 1',exact:true}).isVisible(),true);
+  await page.keyboard.press('Escape');await selectPlayer(page,2);
   await openPlayers(page);assert.equal(await page.getByRole('button',{name:'Choose player',exact:true}).getAttribute('aria-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-menu').isVisible(),false);await openPlayers(page);
   const direction=width>760?'up':'left';assert.equal(await page.getByRole('button',{name:`Move Player 2 ${direction}`,exact:true}).isVisible(),true);
   await page.getByRole('button',{name:'Remove Player 1',exact:true}).click();assert.equal(await page.locator('.multiplayer-player-tab').count(),1);assert.equal(await page.getByRole('button',{name:'Choose player',exact:true}).count(),0);

@@ -41,6 +41,7 @@ export function practiceView() {
   const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
+  presetsUI.rangeContext('Practice');
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
@@ -352,7 +353,7 @@ export function practiceView() {
   return { node, options, store, dispose, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
-    activity = next; node.dataset.activity = next; showSetup();
+    activity = next; node.dataset.activity = next; presetsUI.rangeContext(next === 'challenge' ? 'Challenge' : 'Practice'); showSetup();
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
