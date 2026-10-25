@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-import { notesMode,openCustom,rangeDialog,configureMultiplayerNotes } from './notes-setup-helpers.mjs';
+import { notesMode,openCustom,rangeDialog,configureMultiplayerNotes,openPlayers } from './notes-setup-helpers.mjs';
 const engine=process.env.TUNO_BROWSER || 'chromium';
 const browser=await ({chromium,firefox})[engine].launch(),host=await hostBuild();
 try {
@@ -92,10 +92,14 @@ try {
   }
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByLabel('Player 2 name').fill('Cancelled');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
+  const addBox=await page.getByRole('button',{name:'Add player',exact:true}).boundingBox();assert.equal(addBox.width,44);
+  const choose=await page.locator('#multiplayer-notes-tab').boundingBox(),copy=await page.getByRole('button',{name:'Copy to all players',exact:true}).boundingBox(),start=await page.getByRole('button',{name:'Start round',exact:true}).boundingBox();
+  assert.ok(Math.abs(choose.width-copy.width)<1&&Math.abs(choose.x-copy.x)<1);assert.ok(start.x>choose.x+choose.width&&Math.abs(start.y-choose.y)<1&&Math.abs(start.y+start.height-copy.y-copy.height)<1);assert.ok(choose.width>start.width*1.9&&choose.width<start.width*2.3);
   await page.getByRole('button',{name:'Edit Player 2',exact:true}).click();await page.getByLabel('Player 2 name').fill('A'.repeat(40));await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
   assert.equal(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),`Choose Notes — ${'A'.repeat(40)}`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await openPlayers(page);assert.equal(await page.getByRole('button',{name:'Choose player',exact:true}).getAttribute('aria-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-menu').isVisible(),false);await openPlayers(page);
   const direction=width>760?'up':'left';assert.equal(await page.getByRole('button',{name:`Move Player 2 ${direction}`,exact:true}).isVisible(),true);
-  await page.getByRole('button',{name:'Remove Player 1',exact:true}).click();assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
+  await page.getByRole('button',{name:'Remove Player 1',exact:true}).click();assert.equal(await page.locator('.multiplayer-player-tab').count(),1);assert.equal(await page.getByRole('button',{name:'Choose player',exact:true}).count(),0);
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log(`${engine}: shared mode setup, validation focus, modal editing and roster layouts passed.`);

@@ -47,8 +47,10 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const playersHeading = el('h3','multiplayer-players-heading');
   const roster = el('div','multiplayer-roster'); roster.setAttribute('role','group'); roster.setAttribute('aria-label','Players');
   const add = button('Add player',() => { if (players.length < 8 && commitEditor()) openPlayerEditor(newPlayer(players.length+1),true,add); });
-  add.classList.add('multiplayer-add');
-  rosterSection.append(playersHeading,roster);
+  add.classList.add('multiplayer-add'); add.textContent = '+'; add.setAttribute('aria-label','Add player');
+  const playerMenu = el('div','multiplayer-player-menu'); playerMenu.id = 'multiplayer-player-menu';
+  playerMenu.setAttribute('popover','auto'); playerMenu.setAttribute('role','dialog'); playerMenu.setAttribute('aria-label','Choose player');
+  rosterSection.append(playersHeading,roster,playerMenu);
   const editor = el('section','multiplayer-editor');
   const presetUI = presetSetup(store,'multi-',() => players.flatMap((player,index) => {
     if (player.id === selectedId) return [];
@@ -118,7 +120,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',() => startRound(true)); start.classList.add('control--primary');
-  start.setAttribute('aria-haspopup','dialog');
+  start.setAttribute('aria-haspopup','dialog'); start.classList.add('multiplayer-start');
   const styleDialog = el('dialog','key-picker-dialog multiplayer-style-dialog');
   styleDialog.setAttribute('aria-labelledby','multiplayer-style-title');
   const styleTitle = el('h2','','Choose a play style'); styleTitle.id = 'multiplayer-style-title';
@@ -145,7 +147,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
     setupError.textContent = ''; renderSetup();
   });
-  presetUI.rangeTrigger.after(copyToAll);
+  copyToAll.classList.add('multiplayer-copy-all'); presetUI.rangeTrigger.after(copyToAll);
   const setupUtilities = el('div','multiplayer-setup-utilities'); setupUtilities.append(setupFullscreen);
   editor.prepend(setupUtilities);
   setupUI.node.append(roundSetup,setupError); setupUI.action(start);
@@ -243,14 +245,16 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
-    start.textContent = players.some(player => !player.notesChosen) ? 'Choose Notes for all players' : 'Start round';
+    const remaining = players.filter(player => !player.notesChosen).length;
+    start.dataset.notesRemaining = String(remaining);
+    start.title = remaining ? `Choose notes for ${remaining} more ${remaining === 1 ? 'player' : 'players'} before starting.` : 'Start round';
     copyToAll.disabled = players.length < 2 || !players.find(player => player.id === selectedId)?.notesChosen;
     setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Pass and Play' : selectedFormat === 'pairs' ? 'Side by Side' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
   }
   rules.onChange(updateSetupSummary);
   function focusSelectedPlayer() { roster.querySelector<HTMLElement>('.multiplayer-player-tab[aria-pressed="true"]')?.focus(); }
   let playerDialog: HTMLDialogElement | undefined;
-  function closePlayerEditor() { playerDialog?.close(); }
+  function closePlayerEditor() { playerDialog?.close(); playerMenu.hidePopover(); }
   function openPlayerEditor(player: Player,adding: boolean,anchor: HTMLElement) {
     closePlayerEditor();
     const index = adding ? players.length : players.indexOf(player);
@@ -315,21 +319,25 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     presetUI.rangeTrigger.setAttribute('aria-label',`Choose Notes — ${playerName}`);
     playersHeading.textContent = `Players (${players.length})`;
     updateSetupSummary();
-    roster.replaceChildren();
+    playerMenu.hidePopover(); roster.replaceChildren(); playerMenu.replaceChildren();
     players.forEach((player,index) => {
       const slot = el('div','multiplayer-slot');
-      const tab = button(player.name.trim() || `Player ${index+1}`,() => { if (player.id === selectedId || !commitEditor()) return; selectedId = player.id; setupUI.select('notes'); renderSetup(); focusSelectedPlayer(); });
+      const tab = button(player.name.trim() || `Player ${index+1}`,() => { if (player.id === selectedId) { if (players.length > 1) playerMenu.togglePopover(); return; } if (!commitEditor()) return; selectedId = player.id; setupUI.select('notes'); renderSetup(); focusSelectedPlayer(); });
       tab.classList.add('multiplayer-player-tab'); tab.setAttribute('aria-label',`Select Player ${index+1}`);
       tab.setAttribute('aria-pressed',String(player.id === selectedId)); tab.setAttribute('aria-controls',editor.id);
       if (player.id === selectedId) {
         slot.classList.add('selected');
+        if (players.length > 1) { tab.setAttribute('aria-haspopup','dialog'); tab.setAttribute('aria-expanded','false'); tab.setAttribute('aria-controls',playerMenu.id); }
+        const order = el('div','multiplayer-player-order');
+        order.append(el('span','',`Move ${player.name}`));
         if (index > 0) {
-          const left = button(matchMedia('(min-width: 761px)').matches ? '↑' : '←',() => move(index,-1)); left.classList.add('multiplayer-move'); left.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'up' : 'left'}`); slot.append(left);
+          const left = button(matchMedia('(min-width: 761px)').matches ? '↑' : '←',() => move(index,-1)); left.classList.add('multiplayer-move'); left.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'up' : 'left'}`); order.append(left);
         }
         slot.append(tab);
         if (index < players.length-1) {
-          const right = button(matchMedia('(min-width: 761px)').matches ? '↓' : '→',() => move(index,1)); right.classList.add('multiplayer-move'); right.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'down' : 'right'}`); slot.append(right);
+          const right = button(matchMedia('(min-width: 761px)').matches ? '↓' : '→',() => move(index,1)); right.classList.add('multiplayer-move'); right.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'down' : 'right'}`); order.append(right);
         }
+        if (players.length > 1) playerMenu.append(order);
       } else slot.append(tab);
       const edit = button('',() => { if (commitEditor()) openPlayerEditor(player,false,edit); });
       edit.append(rosterIcon('M4 16v4h4L20 8l-4-4Z M14 6l4 4'));
@@ -343,12 +351,34 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       });
       remove.classList.add('multiplayer-delete'); remove.setAttribute('aria-label',`Remove Player ${index+1}`);
       remove.disabled = players.length === 1; remove.append(rosterIcon('M6 6l12 12 M18 6L6 18'));
-      slot.append(remove); roster.append(slot);
+      slot.append(remove);
+      if (player.id === selectedId) {
+        if (players.length > 1) {
+          const expand = button('⌄',() => {}); expand.classList.add('multiplayer-player-expand');
+          expand.setAttribute('aria-label','Choose player'); expand.setAttribute('popovertarget',playerMenu.id);
+          expand.setAttribute('aria-haspopup','dialog'); expand.setAttribute('aria-expanded','false');
+          slot.append(expand);
+        }
+        roster.append(slot);
+      } else playerMenu.append(slot);
     });
-    add.hidden = players.length >= 8; roster.append(add);
+    add.disabled = players.length >= 8; roster.append(add);
     presetUI.selectPreset(current.preset.id);
     refreshSetupInfo();
   }
+  playerMenu.addEventListener('beforetoggle',event => {
+    const open = (event as ToggleEvent).newState === 'open';
+    const expand = roster.querySelector<HTMLElement>('.multiplayer-player-expand');
+    expand?.setAttribute('aria-expanded',String(open));
+    roster.querySelector('.multiplayer-player-tab')?.setAttribute('aria-expanded',String(open));
+    if (!open) return;
+    const rect = roster.getBoundingClientRect();
+    const top = Math.min(rect.bottom+8,innerHeight-120);
+    playerMenu.style.width = `${Math.min(Math.max(rect.width,300),innerWidth-24)}px`;
+    playerMenu.style.left = `${Math.max(12,Math.min(rect.left,innerWidth-Math.min(Math.max(rect.width,300),innerWidth-24)-12))}px`;
+    playerMenu.style.top = `${Math.max(12,top)}px`;
+    playerMenu.style.maxHeight = `${innerHeight-Math.max(12,top)-12}px`;
+  });
   function move(index: number,delta: number) { if (!commitEditor()) return; const [player] = players.splice(index,1); players.splice(index+delta,0,player!); renderSetup(); focusSelectedPlayer(); }
   presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) { player.preset = chosen; updateSetupSummary(); } });
   presetUI.onRangeChoice(() => {
@@ -564,7 +594,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const keyup = (event: KeyboardEvent) => { gate.up(event.code); held.forEach(set => set.delete(event.code)); active.forEach(showModifier); };
   const visibility = () => { if (document.hidden) { active.forEach(l => l.session.pause()); resetInput(); store.flush(); renderRound(); } };
   const resize = () => {
-    roster.querySelectorAll<HTMLButtonElement>('.multiplayer-move').forEach(control => {
+    playerMenu.hidePopover();
+    playerMenu.querySelectorAll<HTMLButtonElement>('.multiplayer-move').forEach(control => {
       const vertical = matchMedia('(min-width: 761px)').matches;
       const previous = / (up|left)$/.test(control.getAttribute('aria-label') ?? '');
       control.textContent = vertical ? previous ? '↑' : '↓' : previous ? '←' : '→';

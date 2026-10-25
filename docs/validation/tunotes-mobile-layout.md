@@ -1,5 +1,7 @@
 # tuNotes mobile layout audit
 
+[Open the illustrated HTML report](tunotes-mobile-layout.html) for matching before/after screenshots, measured overflow, and multiplayer layout options.
+
 Audited the current tuNotes UI at 320×667, 360×800, 390×844, 600×800, 768×1024, and 844×390 CSS pixels. Browser emulation covers layout and pointer geometry; it does not replace checking an actual phone's keyboard, browser chrome, or simultaneous touches.
 
 ## Layout fixes

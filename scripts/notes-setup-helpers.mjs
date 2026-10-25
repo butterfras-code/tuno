@@ -1,8 +1,8 @@
 import { presets, stringInstruments } from '../src/apps/tunotes/domain/presets.ts';
 export const rangeDialog = page => page.locator('.range-picker-dialog[open]');
 export async function configureMultiplayerNotes(page) {
-  const next = page.getByRole('button',{name:'Choose Notes for all players',exact:true});
-  for (let remaining = 8; remaining > 0 && await next.isVisible(); remaining--) {
+  const next = page.getByRole('button',{name:'Start round',exact:true});
+  for (let remaining = 8; remaining > 0 && await next.isVisible() && Number(await next.getAttribute('data-notes-remaining')) > 0; remaining--) {
     const adaptive = (await page.locator('.multiplayer-setup .practice-setup-summary').textContent()).includes('Adapt Range on');
     await next.click();
     const dialog = rangeDialog(page);
@@ -103,4 +103,21 @@ export async function startPractice(page) {
 }
 export async function readyForAnswer(page) {
   await page.waitForFunction(() => document.querySelector('.practice-play:not([hidden]) .answer')?.getAttribute('aria-disabled') === 'false');
+}
+
+export async function openPlayers(page) {
+ const menu=page.locator('.multiplayer-player-menu');
+ if(!await menu.isVisible()) await page.getByRole('button',{name:'Choose player',exact:true}).click();
+}
+export async function selectPlayer(page,index) {
+ const target=page.getByRole('button',{name:`Select Player ${index}`,exact:true,includeHidden:true});
+ if(await target.getAttribute('aria-pressed')==='true') return;
+ if(!await target.isVisible()) await openPlayers(page);
+ await target.click();
+}
+
+export async function playerAction(page,name) {
+ const target=page.getByRole('button',{name,exact:true,includeHidden:true});
+ if(!await target.isVisible()) await openPlayers(page);
+ await target.click();
 }

@@ -1122,3 +1122,24 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #home.is-playing > .app-header { gap: 8px; }
   #home.is-playing .app-header .wordmark { font-size: 26px; }
 }
+
+/* A compact selected-player pill keeps Add player reachable at every size. */
+.multiplayer-roster { display: flex; align-items: stretch; gap: 8px; padding: 0; overflow: visible; }
+.multiplayer-roster > .multiplayer-slot { flex: 1; width: auto; min-width: 0; }
+.multiplayer-roster .multiplayer-player-tab { min-width: 0; max-width: none; }
+.multiplayer-roster .multiplayer-add { flex: 0 0 44px; width: 44px; padding: 0; justify-content: center; font-size: 26px; }
+.multiplayer-player-expand.control { flex: 0 0 44px; width: 44px; padding: 0; justify-content: center; font-size: 24px; }
+.multiplayer-player-menu { position: fixed; inset: auto; margin: 0; padding: 12px; overflow: auto; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #0002; }
+.multiplayer-player-menu .multiplayer-slot { display: flex; width: 100%; margin-top: 8px; }
+.multiplayer-player-menu .multiplayer-player-tab { min-width: 0; flex: 1; }
+.multiplayer-player-menu .multiplayer-edit,.multiplayer-player-menu .multiplayer-delete { flex: none; width: 44px; padding: 0; justify-content: center; }
+.multiplayer-player-menu .multiplayer-edit svg { width: 16px; height: 16px; }
+.multiplayer-player-menu .multiplayer-delete svg { width: 18px; height: 18px; }
+.multiplayer-player-order { display: flex; align-items: center; gap: 8px; }
+.multiplayer-player-order > span { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 14px; }
+.multiplayer-player-order .control { flex: none; width: 44px; padding: 0; justify-content: center; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.multiplayer-setup .practice-layout .practice-setup-tabs { display: contents; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab { grid-column: 1 / 3; grid-row: 1; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all { grid-column: 1 / 3; grid-row: 2; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-column: 3; grid-row: 1 / 3; }
