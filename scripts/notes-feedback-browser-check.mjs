@@ -121,6 +121,15 @@ try {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       viewBoxes.add(await page.locator('.staff').getAttribute('viewBox'));
       assertFixed(before, await bounds());
+      const overlay = await page.locator('.answer-feedback').evaluate(text => {
+        const root = text.closest('.answer-feedback-layer');
+        return {
+          topmost: root === root.parentElement.lastElementChild,
+          masked: !!root.querySelector('mask, [mask]'),
+          stroke: getComputedStyle(text).stroke,
+        };
+      });
+      assert.deepEqual(overlay, { topmost: true, masked: false, stroke: 'none' }, 'Changing notes cannot cut rectangular holes in feedback or paint a background outline');
       await page.waitForFunction(() => { const opacity = Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity); return opacity > 0 && opacity < 0.4; });
       assertFixed(before, await bounds());
       await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) === 0);

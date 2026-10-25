@@ -22,3 +22,7 @@ The following checks passed in Chromium and Firefox: notes-browser, stage2, inpu
 After merging current `dev` (`3da365c`, compact tonic answer alignment), `npm run check` and the key-layout, input, practice-layout, viewport, saved-presets and range-picker checks passed again in Chromium and Firefox.
 
 Desktop and phone Custom/chooser screenshots were inspected. This is local automated and visual validation, not physical-device acceptance or production release verification. No deployment was performed.
+
+## Mobile feedback follow-up (2026-10-25)
+
+Removed the rectangular notation mask and background-colored text outline. Fading feedback remains a transparent top layer when the next prompt changes pitch, while its initial placement still avoids notation. The moving-staff browser regression checks this layer after prompt transitions. `npm run check` passed (459 tests), feedback browser checks passed in Chromium and Firefox, and the 360-pixel mobile screenshot was inspected.

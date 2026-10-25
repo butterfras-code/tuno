@@ -54,7 +54,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 @keyframes answer-added { from { box-shadow: 0 0 0 5px var(--color-teal); } to { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .answer-added { animation: none; } }
 .feedback { min-height: 3em; }
-.answer-feedback { opacity: 0; pointer-events: none; fill: var(--color-teal); stroke: var(--color-surface); stroke-width: 4px; paint-order: stroke fill; stroke-linejoin: round; font: 700 28px/1.2 var(--font-heading); }
+.answer-feedback { opacity: 0; pointer-events: none; fill: var(--color-teal); stroke: none; font: 700 28px/1.2 var(--font-heading); }
 .answer-feedback[data-correct='false'] { fill: var(--color-ink); }
 .answer-feedback-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .pace-option { display: flex; gap: 10px; align-items: center; min-height: 48px; }
