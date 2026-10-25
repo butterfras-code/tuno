@@ -51,7 +51,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
   const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
-  const format = segments<Format>('Play Style',[['turns','Pass and Play'],['pairs','Side by Side'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); showPairAdvice(); });
+  const format = segments<Format>('Play Style',[['turns','Pass and Play'],['pairs','Side by Side'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); refreshSetupInfo(); });
   let selectedFormat: Format = 'pairs';
   format.node.className = 'practice-mode-choices';
   format.buttons.forEach(control => control.classList.add('range-content-button'));
@@ -60,12 +60,15 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     format.buttons.forEach(control => {
       const mark = el('span','range-content-mark',control.getAttribute('aria-pressed') === 'true' ? '✓' : '');
       mark.setAttribute('aria-hidden','true');
-      control.replaceChildren(el('span','',control.getAttribute('aria-label')!),mark);
+      const heading = el('span','multiplayer-style-heading'); heading.append(el('span','',control.getAttribute('aria-label')!),mark);
+      const hintText = { turns: 'Take turns', pairs: 'Sit together', 'head-to-head': 'Face each other' }[control.dataset.value as Format];
+      const hint = el('span','multiplayer-style-hint',hintText);
+      hint.id = `multiplayer-style-hint-${control.dataset.value}`; control.setAttribute('aria-describedby',hint.id);
+      control.replaceChildren(heading,hint);
     });
   }
   refreshFormat();
   const formatGroup = el('div','multiplayer-style-panel'); formatGroup.append(format.node);
-  const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
   let adaptive = store.profile()?.adaptive ?? false;
   const setAdaptation = (enabled: boolean) => { adaptive = enabled; updateSetupSummary(); };
@@ -73,18 +76,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const selector = el('section','visual-content-section multiplayer-mode-selector');
   const tabs = el('div','multiplayer-mode-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Multi Player settings');
   const modePanel = el('div'); modePanel.append(rules.node);
-  const stylePanel = el('div'); stylePanel.append(formatGroup,pairAdvice);
+  const stylePanel = el('div'); stylePanel.append(formatGroup);
   const setupPanels = [modePanel,stylePanel];
   rules.node.classList.remove('visual-content-section','practice-mode-section');
   rules.node.querySelector('h3')!.hidden = true;
   const tabButtons = ['Multi Player Mode','Play Style'].map((label,index) => {
     const tab = button(label,() => selectModeTab(index));
-    if (index === 1) {
-      tab.setAttribute('aria-label',label);
-      const hint = el('span','multiplayer-style-hint','Head to Head or Side by Side');
-      hint.id = 'multiplayer-style-hint'; tab.setAttribute('aria-describedby',hint.id);
-      tab.replaceChildren(el('span','',label),hint);
-    }
     tab.id = `multiplayer-mode-tab-${index}`; tab.setAttribute('role','tab');
     const panel = setupPanels[index]!; panel.id = `multiplayer-mode-panel-${index}`;
     panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
@@ -204,9 +201,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight,viewport?.clientHeight ?? Infinity);
     return canPair(visibleWidth,visibleHeight);
   }
-  function showPairAdvice() {
-    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may work better with Pass and Play. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'This screen may work better with Pass and Play.';
-    if (!fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
+  function refreshSetupInfo() {
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
@@ -312,7 +307,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     });
     add.hidden = players.length >= 8; roster.append(add);
     presetUI.selectPreset(current.preset.id);
-    showPairAdvice();
+    refreshSetupInfo();
   }
   function move(index: number,delta: number) { if (!commitEditor()) return; const [player] = players.splice(index,1); players.splice(index+delta,0,player!); renderSetup(); focusSelectedPlayer(); }
   presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) { player.preset = chosen; updateSetupSummary(); } });
@@ -512,7 +507,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       control.textContent = vertical ? previous ? '↑' : '↓' : previous ? '←' : '→';
       control.setAttribute('aria-label',(control.getAttribute('aria-label') ?? '').replace(/ (up|down|left|right)$/,` ${vertical ? previous ? 'up' : 'down' : previous ? 'left' : 'right'}`));
     });
-    showPairAdvice();
+    refreshSetupInfo();
     updateKeyHelp();
     if (!round.hidden) fitWarning.hidden = selectedFormat !== 'pairs' || pairFits();
   };

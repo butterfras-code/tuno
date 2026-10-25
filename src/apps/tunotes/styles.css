@@ -1040,7 +1040,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-mode-tabs .control[aria-selected="true"] { color: var(--color-ink); box-shadow: inset 0 -2px var(--color-ink); font-weight: 700; }
 .multiplayer-mode-selector .challenge-settings { margin: 0; padding: 0; }
 .multiplayer-mode-selector .range-content-button { border-radius: var(--radius-control); }
-.multiplayer-style-panel .range-content-button { height: 100%; }
+.multiplayer-style-panel .range-content-button { height: 100%; flex-direction: column; align-items: stretch; gap: 4px; }
+.multiplayer-style-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 
-.multiplayer-mode-tabs .control { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
 .multiplayer-style-hint { font-size: 11px; font-weight: 400; color: var(--color-muted); text-align: left; }

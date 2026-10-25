@@ -310,7 +310,7 @@ async function run(page,url,label) {
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Side by Side'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
-  assert.match(await page.locator('.multiplayer-round-setup').textContent(),/may work better with Pass and Play/);
+  assert.equal(await page.getByRole('button',{name:'Side by Side',exact:true}).getByText('Sit together',{exact:true}).isVisible(),true);
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Pass and Play'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
