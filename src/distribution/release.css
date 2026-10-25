@@ -6,6 +6,7 @@
 .install-control .install-dialog button.control { font: 700 16px/1.5 var(--font-heading, sans-serif); min-height: 44px; height: auto; padding: 10px 16px; border: 0; border-radius: 12px; background: var(--color-tint); color: var(--color-ink); box-shadow: none; text-decoration: none; cursor: pointer; }
 
 .install-control { display: inline-flex; flex-shrink: 0; }
+.install-control [hidden] { display: none !important; }
 .install-control > .install-link { display: inline-flex; align-items: center; justify-content: center; width: auto; min-height: 44px; padding: 8px 4px; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--color-ink, #342f2d); font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .install-control > .install-link:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .install-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
