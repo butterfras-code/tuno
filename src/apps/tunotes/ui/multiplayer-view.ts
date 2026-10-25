@@ -1,3 +1,4 @@
+import { answerFeedback } from './answer-feedback.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
 import { defaultPreset, fingerprint, clefForPitch, normalizePreset, presets } from '../domain/presets.ts';
@@ -24,7 +25,7 @@ interface Player extends PlayerEntry { preset: Preset; profileId?: string }
 interface Lane {
   player: Player; session: Challenge; progress: NotesProgress;
   node: HTMLElement; heading: HTMLElement; status: HTMLElement; stats: HTMLElement; announcement: HTMLElement;
-  staff: HTMLElement; feedback: HTMLElement; note: HTMLElement; intro: HTMLElement;
+  staff: HTMLElement; feedback: ReturnType<typeof answerFeedback>; note: HTMLElement; intro: HTMLElement;
   cue: HTMLElement; dog: ReturnType<typeof animatedUno>; answers: ReturnType<typeof answerControls>;
   keyHelp: HTMLElement; recorded: boolean; prompt: string; phase: string; inputSince: number; tenSeconds: boolean;
 }
@@ -280,7 +281,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
     const nextRules = rules.read(() => setupUI.select('settings')); if (!nextRules) return;
-    finishActive(true); active.forEach(l => l.dog.dispose()); active = [];
+    finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
     rulesValue = nextRules; completed = new Map(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
@@ -299,7 +300,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const heading = el('h3','',displayName); const status = el('p','multiplayer-status'); status.setAttribute('role','timer'); status.setAttribute('aria-live','off');
     const announcement = el('p','multiplayer-announcement'); announcement.setAttribute('role','status'); announcement.setAttribute('aria-live','polite');
     const stats = el('p','muted'); const staff = el('div','staff-panel');
-    const feedback = el('p','feedback'); feedback.setAttribute('role','status');
+    const feedback = answerFeedback();
     const note = el('div','multiplayer-note'); note.append(staff);
     const cue = el('strong','multiplayer-cue');
     const intro = el('div','multiplayer-intro');
@@ -309,11 +310,11 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const dog = animatedUno(); dog.pose('wag');
     const lane = { player, session, progress, node: panel, heading, status, stats, announcement, staff, feedback, note, intro, cue, dog, answers: undefined as unknown as ReturnType<typeof answerControls>, keyHelp: el('p','muted keyboard-help'), recorded: false, prompt: '', phase: '', inputSince: 0, tenSeconds: false };
     lane.answers = answerControls((answer,token) => submit(lane,answer,token),true);
-    panel.append(heading,status,stats,announcement,note,intro,dog.node,feedback,lane.answers.node,lane.keyHelp);
+    panel.append(heading,status,stats,announcement,note,intro,dog.node,lane.answers.node,lane.keyHelp,feedback.node);
     return lane;
   }
   function prepareHeat() {
-    active.forEach(l => l.dog.dispose());
+    active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
     active = heats[heatIndex]!.map(makeLane);
     updateKeyHelp();
     panels.replaceChildren(...active.map(l => { const seat = el('div','multiplayer-seat'); seat.append(l.node); return seat; }));
@@ -364,7 +365,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function showSetup() {
     leaveFullscreen();
     fitWarning.hidden = true;
-    finishActive(true); resetInput(); active.forEach(l => l.dog.dispose()); active = []; panels.replaceChildren();
+    finishActive(true); resetInput(); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = []; panels.replaceChildren();
     setup.hidden = false; round.hidden = true; result.hidden = true; renderSetup();
   }
   function renderRound() {
@@ -384,7 +385,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       lane.intro.hidden = phase === 'playing';
       lane.note.hidden = phase !== 'playing';
       lane.answers.node.hidden = phase !== 'playing'; lane.keyHelp.hidden = phase !== 'playing';
-      lane.feedback.hidden = phase !== 'playing';
+      if (phase !== 'playing') lane.feedback.clear();
       if (phase !== lane.phase) {
         lane.phase = phase; lane.inputSince = performance.now();
         lane.announcement.textContent = phase === 'playing' ? `${displayNames(players).get(lane.player.id)}: Go!` : phase === 'paused' ? 'Paused. Resume when ready.' : phase === 'finished' ? 'Finished.' : phase === 'ready' ? 'Ready when you are.' : '';
@@ -397,7 +398,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
         const identity = `${s.session}:${s.prompt}:${store.data.configuration.showKeySignature ?? false}`;
         if (lane.prompt !== identity) { lane.prompt = identity; lane.inputSince = performance.now(); lane.staff.replaceChildren(renderStaff(s.pitch,clefForPitch(s.preset,s.pitch),s.preset.key,s.preset.keyless,store.data.configuration.showKeySignature)); }
       }
-      lane.feedback.textContent = phase === 'playing' && s.state === 'feedback' ? s.last!.correct ? `Correct — ${spelling(s.pitch)}.` : `That note is ${spelling(s.pitch)}.` : '';
+      if (phase === 'playing') { lane.feedback.mount(lane.staff.querySelector('svg')!); }
       lane.answers.update(s.activePreset,s.token,phase !== 'playing' || s.state !== 'running');
       showModifier(lane);
       if (phase === 'finished') { lane.intro.querySelector('p')!.textContent = `${s.correct}/${s.attempts} correct · ${accuracy(s)} accuracy. Waiting for the other player.`; record(lane); }
@@ -408,6 +409,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
   }
   function submit(lane: Lane,answer: AnswerSpelling,token: PromptToken) {
+    const previousAnnouncement = lane.session.announcement;
     if (!active.includes(lane) || round.hidden || !lane.session.answer(token,answer)) return;
     const s = lane.session;
     store.observe(lane.player.profileId,s.preset,s.last!,s.adaptive,s.savedLearning);
@@ -416,6 +418,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       guestContexts.set(key,{ fingerprint:fingerprint(s.preset,s.adaptive,'challenge'), version:1, updated:Date.now(), notes:structuredClone(s.learning.notes) as Context['notes'], ...(s.adaptive ? {learning:s.savedLearning} : {}) });
     }
     const reward = lane.progress.update(s.correct,s.streak,s.attempts);
+    if (s.last!.correct) lane.feedback.celebrate(reward, s.announcement !== previousAnnouncement ? s.announcement : '');
+    else lane.feedback.show(`That note is ${spelling(s.pitch)}.`, false);
     lane.dog.pose(reward.treat ? 'catch' : reward.pose);
     lane.dog.look(reward.look,-8); if (reward.nod) lane.dog.nod();
     renderRound();
@@ -484,7 +488,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
     closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
-    if (disposed) return; disposed = true; surfaceResize.disconnect(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => l.dog.dispose());
+    if (disposed) return; disposed = true; surfaceResize.disconnect(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
     document.removeEventListener('keydown',keydown); document.removeEventListener('keyup',keyup);
     document.removeEventListener('visibilitychange',visibility); document.removeEventListener('fullscreenchange',fullscreenChanged);
     window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);
