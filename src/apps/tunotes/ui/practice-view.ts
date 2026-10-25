@@ -28,7 +28,7 @@ function button(text: string, action: () => void) {
 }
 export function practiceView() {
   let activity: 'practice' | 'challenge' = 'practice';
-  const rulesUI = challengeSetup();
+  const rulesUI = challengeSetup('Solo Challenge',true);
   const node = el('section', 'practice-view');
   node.dataset.activity = 'practice';
   node.dataset.screen = 'setup';
@@ -103,7 +103,7 @@ export function practiceView() {
   };
   const settings = el('section','practice-settings');
   const setupUI = activitySetup(presetsUI.node,settings,'activity',presetsUI.rangeTrigger);
-  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode);
+  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode,rulesUI.node);
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
     const preset = selected();
@@ -116,7 +116,6 @@ export function practiceView() {
     pace = savedPace(); refreshPacing(); refreshPreferences();
   },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
   options.append(dataUI.node);
-  settings.append(rulesUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
@@ -254,7 +253,7 @@ export function practiceView() {
   };
   const start = () => {
     const preset = selected(); if (!preset) return;
-    const rules = activity === 'challenge' ? rulesUI.read(() => setupUI.select('settings')) : undefined;
+    const rules = activity === 'challenge' ? rulesUI.read() : undefined;
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
@@ -340,8 +339,6 @@ export function practiceView() {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; showSetup();
-    setupUI.practiceLayout(next === 'practice');
-    setupUI.settingsLabel('Challenge settings');
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';

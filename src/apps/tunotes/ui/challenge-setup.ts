@@ -1,14 +1,33 @@
 import { el } from '../../../shared/ui/components.ts';
 import { segments } from './range-editor.ts';
 import { validateRules } from '../engine/challenge.ts';
-export function challengeSetup(title = 'Solo Challenge') {
-  const node = el('fieldset','challenge-settings'); node.hidden = true;
-  node.append(el('legend','',title));
+export function challengeSetup(title = 'Solo Challenge', inline = false) {
+  const node = inline ? el('section','challenge-settings visual-content-section practice-mode-section') : el('fieldset','challenge-settings'); node.hidden = true;
+  node.append(el(inline ? 'h3' : 'legend','',inline ? 'Challenge Mode' : title));
+  if (inline) node.setAttribute('aria-label','Challenge Mode');
   let goal: 'timed' | 'target' = 'timed';
   const timed = el('div','control-row challenge-main-fields'), target = el('div','control-row challenge-main-fields'); target.hidden = true;
-  const mode = segments<'timed' | 'target'>('Challenge goal',[['timed','Timed'],['target','Target']], value => {
+  const mode = segments<'timed' | 'target'>(inline ? 'Challenge Mode' : 'Challenge goal',[['timed','Timed'],['target',inline ? 'Goal' : 'Target']], value => {
     goal = value; mode.update([goal]); timed.hidden = goal !== 'timed'; target.hidden = goal !== 'target';
   }); mode.update([goal]);
+  if (inline) {
+    mode.node.className = 'practice-mode-choices';
+    const refreshMarks = () => mode.buttons.forEach(control => {
+      const mark = el('span','range-content-mark',control.getAttribute('aria-pressed') === 'true' ? '✓' : '');
+      mark.setAttribute('aria-hidden','true');
+      control.replaceChildren(el('span','',control.getAttribute('aria-label')!),mark);
+    });
+    mode.buttons.forEach(control => {
+      control.classList.add('range-content-button');
+      control.addEventListener('click',refreshMarks);
+    });
+    refreshMarks();
+    const future = el('div','practice-mode-auto');
+    const correct = el('button','control range-content-button','Correct Only');
+    correct.type = 'button'; correct.disabled = true; correct.title = 'Coming soon';
+    future.append(correct,el('span','muted challenge-coming-soon','Coming soon'));
+    mode.node.append(future);
+  }
   const numeric = (parent: HTMLElement, label: string, value: number, min: number, max: number) => {
     const wrapper = el('label','setting',label); const input = el('input'); input.type = 'number'; input.value = String(value); input.min = String(min); input.max = String(max); input.step = '1'; input.required = true;
     wrapper.append(input); parent.append(wrapper); return input;
@@ -17,7 +36,7 @@ export function challengeSetup(title = 'Solo Challenge') {
   const scoringLabel = el('label','setting','Scoring'); const scoring = el('select');
   for (const [value,text] of [['adjusted','Correct Notes × Accuracy'],['correct','Correct Notes']]) { const option = el('option','',text); option.value = value!; scoring.append(option); }
   scoringLabel.append(scoring);
-  const count = numeric(target,'Correct-note target',10,1,100), timeout = numeric(target,'Timeout (seconds)',120,15,600), floor = numeric(target,'Qualifying accuracy (%)',80,50,100);
+  const count = numeric(target,inline ? 'Correct notes' : 'Correct-note target',10,1,100), timeout = numeric(target,'Timeout (seconds)',120,15,600), floor = numeric(target,'Qualifying accuracy (%)',80,50,100);
   const advanced = el('details','challenge-advanced');
   const advancedSummary = el('summary','','Scoring and round details');
   const timedAdvanced = el('div','challenge-advanced-fields'), targetAdvanced = el('div','challenge-advanced-fields'); targetAdvanced.hidden = true;
@@ -36,7 +55,7 @@ export function challengeSetup(title = 'Solo Challenge') {
   node.addEventListener('input',() => changed()); node.addEventListener('change',() => changed());
   mode.buttons.forEach(control => control.addEventListener('click',() => changed()));
   return { node, onChange: (fn: () => void) => { changed = fn; },
-    summary: () => goal === 'timed' ? `Timed · ${seconds.value || '—'} seconds` : `Target · ${count.value || '—'} correct · ${timeout.value || '—'} seconds`,
+    summary: () => goal === 'timed' ? `Timed · ${seconds.value || '—'} seconds` : `${inline ? 'Goal' : 'Target'} · ${count.value || '—'} correct · ${timeout.value || '—'} seconds`,
     read(onInvalid?: () => void) {
     try {
       const rules = validateRules(goal === 'timed' ? { goal, seconds: seconds.valueAsNumber, scoring: scoring.value } : { goal, target: count.valueAsNumber, timeout: timeout.valueAsNumber, accuracyFloor: floor.valueAsNumber });

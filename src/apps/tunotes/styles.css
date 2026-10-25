@@ -1016,3 +1016,5 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .preset-name-dialog .control { margin: 4px; }
 .preset-name-dialog input { width: calc(100% - 8px); }
 .range-picker-choices:has(> .my-presets-choice:not([hidden])) { grid-template-columns: repeat(2,minmax(0,1fr)); }
+
+.challenge-coming-soon { text-align: center; font-size: 12px; }
