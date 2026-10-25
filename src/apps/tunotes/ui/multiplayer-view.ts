@@ -56,7 +56,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
   let adaptive = store.profile()?.adaptive ?? false;
-  const adapt = button('Adapt Range',() => { adaptive = !adaptive; adapt.setAttribute('aria-pressed',String(adaptive)); updateSetupSummary(); });
+  const setAdaptation = (enabled: boolean) => { adaptive = enabled; adapt.setAttribute('aria-pressed',String(adaptive)); updateSetupSummary(); };
+  const adapt = button('Adapt Range',() => setAdaptation(!adaptive));
+  presetUI.onAdaptiveChoice(setAdaptation);
   adapt.setAttribute('aria-pressed',String(adaptive));
   const adaptation = el('div','setting');
   adaptation.append(adapt,el('p','muted','Applies to all players. Each player’s notes expand independently as they improve.'));

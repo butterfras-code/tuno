@@ -111,6 +111,21 @@ The band director replaced the original Phase 3 formula with explicit written ra
 
 The catalog records these values in `src/apps/tunotes/domain/presets.ts`. It spells altered endpoints explicitly (for example, `Bb2` or `F#3`), independently of the exercise key. All named clarinet and horn levels use F major; the 2 octave alto saxophone level uses C major. Other keys remain as in the Starter catalog. A level may use `key: null` for no key signature and `accidentals: 'both'` for chromatic spellings. Level IDs remain unique within each instrument. Range authorization does not constitute engraving or physical-device acceptance.
 
+### String instrument presets (2026-10-24)
+
+Each string instrument has exactly four Starter presets, one beginning at each actual open string. Every Starter contains the first five ascending notes of that string's major scale. These replace all previous string octave presets.
+
+| Instrument | Clef | Open strings (written, low to high) | Starter ranges in the same order |
+| --- | --- | --- | --- |
+| Violin | Treble | G3, D4, A4, E5 | G3–D4; D4–A4; A4–E5; E5–B5 |
+| Viola | Alto | C3, G3, D4, A4 | C3–G3; G3–D4; D4–A4; A4–E5 |
+| Cello | Bass | C2, G2, D3, A3 | C2–G2; G2–D3; D3–A3; A3–E4 |
+| Double bass | Bass | E2, A2, D3, G3 | E2–B2; A2–E3; D3–A3; G3–D4 |
+
+Labels identify the string, such as **Starter: A**. The key matches that string's letter: C, G, D, A or E major. Violin, viola and cello sound as written. Double bass sounds one octave below written pitch: its actual open strings sound E1, A1, D2 and G2. In particular, cello's A-string Starter begins at written/sounding A3; bass's A-string Starter begins at written A2, sounding A1. The highest string's five-note series can require shifting; these are note-reading choices, not a claim that all four are equally easy to perform.
+
+Adaptive exercise bounds cover the four Starter ranges: violin G3–B5, viola C3–E5, cello C2–E4, and double bass written E2–D4. These are exercise bounds, not full playable instrument ranges. Band presets retain their existing ranges. The visual Orchestra filter lists these four instruments, and orders their Starter cards from lowest string to highest.
+
 ## 4. Answer entry and exercise engine
 
 ### In-phase Stage 2 update — fixed accidental controls (2026-09-27)
@@ -296,7 +311,11 @@ Mic mode is solo Practice initially. Acceptance stability, silence/re-articulati
 
 ## Preset picker and graphical configuration (September 2026)
 
-The preset control opens a compact, keyboard-accessible modal popover. Choose Clef or Instrument, then a specific clef/instrument, then an existing level. Back navigation retains context. Saved custom presets and Create custom remain directly accessible. Instrument levels consist of Starter plus the three explicitly approved Phase 3 range options below; do not invent additional ranges.
+The preset control opens a compact, keyboard-accessible modal popover. Choose Clef or Instrument, then a specific clef/instrument, then an existing level. Back navigation retains context. Saved custom presets and Create custom remain directly accessible. Band instrument levels consist of Starter plus the three explicitly approved Phase 3 range options. String instruments use the four open-string Starter choices in the [string preset catalog](#string-instrument-presets-2026-10-24). Do not invent additional ranges.
+
+The parallel **Select range** chooser offers Clef / Instrument / Custom, then illustrated preset cards. After choosing a preset, the same popover asks **Let Uno add new notes?** with **Uno adds notes when you’re ready and gives extra practice on notes you miss.** **Yes, let Uno help** applies the preset and enables the existing Adapt Range setting; **Keep this range** applies it with Adapt Range off. Back returns to the preset cards, and closing before either choice leaves the previous preset and adaptive setting unchanged. Adaptive preference uses the existing saved-profile or guest behavior; Multi Player uses its existing round-wide setting.
+
+The parallel Custom path now contains one Range section with both endpoint staves side by side, including on phones. Each clef is a button that cycles independently through Treble / Bass / Alto / Tenor without changing the written pitch. One unboxed accidental button sits to the left of each staff and cycles Flat / Natural / Sharp on tap, click, Enter or Space, skipping unsupported spellings. Unboxed chevrons hug the top and bottom of the staff or any notes extending beyond it, moving one staff position per tap. Dragging, tapping and keyboard editing share the original endpoint logic and clamp at the other endpoint. **Save**, below the Range section, applies the draft while retaining the current content, key, spelling and practice settings; closing discards it. Staff content appears as independent Lines and Spaces buttons in one row, each with a notehead preview and inclusion checkmark. Both are enabled by default; opening an existing configuration preserves its content choice. Turning both off disables Save with an explanation. Key and spelling options, practice-clef selection and saving named presets remain in the original editor. Its Range tab and Staff content heading have × migration markers while remaining usable.
 
 Custom configuration replaces setup inside the activity panel while editing. Range / Options / Clefs are keyboard-accessible tabs, with one visible section and a shared live summary. The action bar is outside the scrolling content.
 

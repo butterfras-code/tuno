@@ -79,12 +79,14 @@ export function practiceView() {
   adaptiveHelp.addEventListener('toggle',() => {
     const open = adaptiveHelp.matches(':popover-open'); help.setAttribute('aria-expanded',String(open)); if (!open) helpPinned = false;
   });
-  const adaptive = button('Adapt Range', () => {
-    useAdaptation = !useAdaptation;
+  const setAdaptation = (enabled: boolean) => {
+    useAdaptation = enabled;
     const p = store.profile();
     if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
     refreshPreferences(); refreshSettingsSummary();
-  }); adaptive.id = 'adaptive';
+  };
+  const adaptive = button('Adapt Range', () => setAdaptation(!useAdaptation)); adaptive.id = 'adaptive';
+  presetsUI.onAdaptiveChoice(setAdaptation);
   const previewToggle = button('Show Intro', () => {
     showIntro = !showIntro;
     const p = store.profile();

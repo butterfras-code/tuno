@@ -4,6 +4,7 @@ import type { Preset, PresetSource } from '../domain/presets.ts';
 import { pitchLabel, spelling } from '../domain/notation.ts';
 import { titleCase, presetPicker } from './preset-picker.ts';
 import { customConfigurator } from './custom-configurator.ts';
+import { rangePicker } from './range-picker.ts';
 import { renderStaff } from './staff.ts';
 import { MAX_BYTES, NotesStore, parseBackup } from '../persistence/store.ts';
 import type { Snapshot } from '../persistence/store.ts';
@@ -20,6 +21,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   let selectionError = '';
   let signaturePreview: boolean | undefined;
   let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
+  let adaptiveChoice = (_enabled: boolean) => {};
   const pickerUI = presetPicker(() => store.data.customPresets,id => {
     if (id === 'custom') openEditor(defaultPreset); else selectPreset(id);
   },idPrefix,true,'Preset',{
@@ -82,7 +84,12 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   frame.append(heading,editor.node,footer);
   const adjustRange = button('Adjust range',() => { if (currentSource) openEditor(current ?? currentSource); }); adjustRange.classList.add('adjust-range');
   const selectionActions = el('div','preset-selection-actions');
-  overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame);
+  const rangePickerUI = rangePicker(idPrefix,(id,enabled) => { selectPreset(id); adaptiveChoice(enabled); },{
+    current: () => currentSource ?? defaultPreset,
+    apply: source => { currentSource = source; current = normalizePreset(source); selectionError = ''; closeEditor(false); },
+  });
+  picker.after(rangePickerUI.trigger);
+  overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame,rangePickerUI.dialog);
 
   function describe(preset: Preset) {
     const low = preset.pool[0]!, high = preset.pool.at(-1)!;
@@ -146,11 +153,12 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
-      selectionActions.append(picker,adjustRange); pickerUI.node.prepend(selectionActions);
+      selectionActions.append(picker,rangePickerUI.trigger,adjustRange); pickerUI.node.prepend(selectionActions);
     } else {
-      pickerUI.node.append(picker); overview.append(adjustRange); selectionActions.remove();
+      pickerUI.node.append(picker,rangePickerUI.trigger); overview.append(adjustRange); selectionActions.remove();
     }
   }, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
+    onAdaptiveChoice: (fn: (enabled: boolean) => void) => { adaptiveChoice = fn; },
     selected: () => editing ? undefined : current, onChange: (fn: () => void) => { changed = fn; },
     saveForRoster: () => {
       if (editing || !currentSource) return undefined;

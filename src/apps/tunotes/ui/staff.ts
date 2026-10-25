@@ -1,4 +1,4 @@
-import { ledgerPositions, positionDescription, staffPosition, keyAccidental, keyPositions, spelling } from '../domain/notation.ts';
+import { ledgerPositions, positionDescription, staffPosition, keyAccidental, keyPositions, spelling, pitchLabel } from '../domain/notation.ts';
 import type { Clef, KeySignature, WrittenPitch } from '../domain/notation.ts';
 const ns = 'http://www.w3.org/2000/svg';
 export const staffY = (position: number) => 140 - position * 10;
@@ -37,6 +37,24 @@ export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, 
   if (pitch.accidental !== (signature ? keyAccidental(pitch.letter, key) : 0)) svg.append(accidentalGlyph(pitch.accidental, 192 + offset, geometry.noteY, 'note-accidental'));
   for (const ledger of geometry.ledgers) svg.append(svgNode('line', { class: 'ledger', x1: ledger.x1 + offset, x2: ledger.x2 + offset, y1: ledger.y, y2: ledger.y, stroke: 'currentColor', 'stroke-width': 2 }));
   svg.append(svgNode('path', { class: 'notehead', fill: 'currentColor', 'fill-rule': 'evenodd', d: 'M -17 0 a 17 10 0 1 0 34 0 a 17 10 0 1 0 -34 0 M -7 0 a 7 8 0 1 0 14 0 a 7 8 0 1 0 -14 0', transform: `translate(${230 + offset} ${geometry.noteY}) rotate(-15)` }));
+  return svg;
+}
+
+/** Two inclusive range endpoints on one staff, with aligned labels below. */
+export function renderRangeStaff(low: WrittenPitch, high: WrittenPitch, clef: Clef, key: KeySignature) {
+  const svg = renderStaff(low,clef,key);
+  svg.classList.replace('staff','range-preset-staff');
+  svg.setAttribute('aria-label',`${clef} clef, ${pitchLabel(low)} to ${pitchLabel(high)}`);
+  const ys = [staffGeometry(low,clef).noteY,staffGeometry(high,clef).noteY];
+  const top = Math.min(0,...ys.map(y => y-30)), bottom = Math.max(190,...ys.map(y => y+30));
+  svg.setAttribute('viewBox',`0 ${top} 360 ${bottom-top+45}`);
+  const upper = renderStaff(high,clef,key);
+  for (const [source,shift,pitch] of [[svg,-60,low],[upper,60,high]] as const) {
+    const note = svgNode('g',{transform:`translate(${shift} 0)`});
+    source.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(node => note.append(node));
+    const label = svgNode('text',{x:230,y:bottom+24,'text-anchor':'middle',fill:'currentColor',class:'range-preset-note-label'});
+    label.textContent = pitchLabel(pitch); note.append(label); svg.append(note);
+  }
   return svg;
 }
 

@@ -117,6 +117,65 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .picker-choices h4 { margin: 8px 0 0; }
 .picker-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .picker-categories .control { justify-content: center; }
+.range-picker-dialog { position: fixed; margin: 0; padding: 24px; width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; color: var(--color-ink); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: 0 12px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }
+.range-picker-dialog::backdrop { background: color-mix(in srgb, var(--color-ink) 18%, transparent); }
+.range-picker-dialog .picker-header h3 { font-size: 24px; }
+.range-picker-dialog .picker-header .control { min-width: 44px; min-height: 44px; font-size: 24px; }
+.range-picker-intro { margin: 8px 0 20px; }
+.range-picker-choices { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.range-picker-choice.control { display: flex; flex-direction: column; justify-content: center; gap: 12px; min-width: 0; min-height: 200px; padding: 20px 12px; white-space: normal; text-align: center; background: var(--color-canvas); border: 2px solid var(--color-line); }
+.range-picker-choice svg { width: 64px; height: 72px; color: var(--color-accent); }
+.range-picker-choice strong { font: 700 20px var(--font-heading); }
+.range-picker-choices .range-picker-choice.control:is(:hover,:focus-visible,[aria-pressed='true']) { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-accent); }
+.range-picker-choice:is(:hover,:focus-visible,[aria-pressed='true']) svg { color: inherit; }
+.range-picker-instrument-entry { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 200px; padding: 12px; background: var(--color-canvas); border: 2px solid var(--color-line); border-radius: var(--radius-control); cursor: pointer; }
+.range-picker-instrument-entry > strong { font: 700 20px var(--font-heading); }
+.range-picker-instrument-shortcuts { display: grid; grid-template-columns: repeat(2,56px); justify-content: center; gap: 0; width: 100%; }
+.range-picker-instrument-target.control { display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 72px; padding: 8px 2px; color: inherit; background: transparent; border: 0; box-shadow: none; }
+.range-picker-instrument-target[data-ensemble='Band']::after { content: ''; position: absolute; inset: -2px; border-radius: var(--radius-control); }
+.range-picker-instrument-target[data-ensemble='Band']:focus-visible { outline: none; }
+.range-picker-instrument-target[data-ensemble='Band']:focus-visible::after { outline: 3px solid var(--color-accent); outline-offset: 4px; }
+.range-picker-instrument-target[data-ensemble='Orchestra'] { position: relative; z-index: 1; }
+.range-picker-instrument-icon { display: block; width: 48px; height: 56px; background: var(--color-accent); mask-repeat: no-repeat; mask-position: center; mask-size: contain; }
+.range-picker-instrument-entry:is(:hover,:focus-within) { color: var(--color-surface); background: var(--color-accent); border-color: var(--color-accent); }
+.range-picker-instrument-entry:is(:hover,:focus-within) .range-picker-instrument-icon { background: currentColor; }
+.range-picker-choice:is(:hover,:focus-visible,[aria-pressed='true']) .range-picker-instrument-icon { background: currentColor; }
+.range-picker-panel { padding-top: 20px; }
+.range-picker-clefs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.range-picker-clefs .range-picker-choice { min-height: 160px; }
+.range-picker-clefs .range-picker-choice svg { width: 112px; height: 96px; }
+.range-picker-ensembles { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 16px; }
+.range-picker-instruments { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.range-picker-instruments .range-picker-choice.control { min-height: 112px; padding: 12px; gap: 8px; font-size: 16px; }
+.range-picker-instruments .range-picker-instrument-icon { width: 48px; height: 48px; flex-shrink: 0; }
+.range-picker-presets { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.range-picker-presets .range-picker-choice.control { min-height: 220px; padding: 16px 8px; gap: 8px; }
+.range-picker-presets .range-picker-choice strong { font-size: 17px; }
+.range-picker-presets .range-picker-choice svg { width: 100%; height: 150px; }
+.range-preset-note-label { font: 22px var(--font-body); }
+.range-picker-selected-preset { margin: 0 0 12px; font-weight: 700; }
+.range-picker-adaptive { grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 24px; }
+.range-picker-adaptive .range-picker-choice.control { min-height: 96px; padding: 16px; font-weight: 700; }
+@media (max-width: 600px) {
+  .range-picker-dialog { max-width: none; padding: max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); border: 0; border-radius: 0; }
+  .range-picker-choices { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .range-picker-choice.control { display: grid; grid-template-columns: 64px minmax(0,1fr); align-items: center; justify-items: start; min-height: 112px; padding: 16px; gap: 20px; text-align: left; }
+  .range-picker-choice svg { width: 56px; height: 64px; }
+  .range-picker-instrument-entry { display: grid; grid-template-columns: 128px minmax(0,1fr); gap: 12px; min-height: 112px; padding: 16px; }
+  .range-picker-instrument-target.control { min-height: 64px; padding: 4px 2px; }
+  .range-picker-instrument-icon { width: 44px; height: 48px; }
+  .range-picker-clefs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .range-picker-clefs .range-picker-choice.control { display: flex; min-height: 144px; gap: 8px; padding: 12px 8px; text-align: center; }
+  .range-picker-clefs .range-picker-choice svg { width: 96px; height: 80px; }
+  .range-picker-instruments { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .range-picker-instruments .range-picker-choice.control { display: flex; align-items: center; text-align: center; }
+  .range-picker-presets { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .range-picker-presets .range-picker-choice.control { display: flex; min-height: 190px; padding: 12px 6px; gap: 8px; text-align: center; }
+  .range-picker-presets .range-picker-choice strong { font-size: 15px; }
+  .range-picker-presets .range-picker-choice svg { width: 100%; height: 130px; }
+  .range-picker-adaptive { grid-template-columns: minmax(0,1fr); }
+  .range-picker-adaptive .range-picker-choice.control { display: flex; align-items: center; text-align: center; }
+}
 .custom-configurator { padding: 16px; }
 .custom-configurator h4 { font-size: 15px; margin: 16px 0 8px; }
 .range-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
@@ -837,3 +896,46 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 /* Keep live note-reading targets full size; information returns with setup/results. */
 #home.is-playing > .suite-footer { display: none; }
+
+/* Parallel Custom path: both endpoints remain visible at every screen size. */
+.visual-custom-range { display: grid; gap: 12px; padding: 12px; background: var(--color-canvas); border: 1px solid var(--color-line); border-radius: var(--radius-control); }
+.visual-range-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; color: var(--color-ink); background: var(--color-surface); border-radius: var(--radius-control); }
+.visual-range-header { display: flex; align-items: baseline; gap: 12px; }
+.visual-range-header p { margin: 0; font-size: 12px; line-height: 1.4; }
+.visual-custom-range > p { margin: 0; }
+.visual-custom-range > p:empty { display: none; }
+.visual-range-endpoint { padding: 8px; }
+.visual-range-endpoint .endpoint-identity { display: flex; align-items: baseline; width: 100%; gap: 4px; }
+.visual-range-endpoint h4, .visual-range-endpoint output { font: 14px/1.4 var(--font-body); }
+.visual-range-endpoint h4 { font-weight: 700; }
+.visual-range-endpoint .endpoint-header { margin-bottom: 4px; }
+.visual-range-row { display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 0; container-type: inline-size; }
+.visual-range-row .range-staff-stage { display: grid; grid-template-rows: 24px auto 24px; justify-items: center; min-width: 0; }
+.visual-range-notation { position: relative; display: flex; width: 100%; min-width: 0; }
+.visual-range-row > .range-accidental-cycle { width: 24px; min-height: 32px; padding: 0; justify-content: center; border: 0; background: transparent; box-shadow: none; font-size: min(28px,calc((100cqw - 24px) * .22)); line-height: 1; color: var(--color-ink); }
+.visual-range-row > .range-accidental-cycle:is(:hover,:focus-visible) { color: var(--color-accent); }
+.visual-range-row .range-staff { min-width: 0; min-height: 0; background: transparent; }
+.visual-range-row .endpoint-staff { height: auto; overflow: visible; }
+.visual-range-row .range-clef { width: 32%; min-width: 44px; }
+.visual-range-row .range-staff-stage > .control { width: 32px; min-height: 24px; height: 24px; padding: 0; margin-left: 63.5%; border: 0; background: transparent; box-shadow: none; font: 24px/1 var(--font-body); }
+.visual-range-actions { display: flex; justify-content: flex-end; }
+.range-picker-panel > .visual-range-actions { margin-top: 16px; }
+.visual-range-content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.visual-content-section { display: grid; gap: 8px; margin-top: 12px; padding: 12px; background: var(--color-canvas); border: 1px solid var(--color-line); border-radius: var(--radius-control); }
+.visual-content-section > p { margin: 0; font-size: 14px; }
+.visual-content-section > p:empty { display: none; }
+.range-content-button.control { gap: 8px; min-width: 0; min-height: 56px; padding: 8px; font-size: 18px; }
+.range-content-button svg { width: 48px; height: 48px; flex-shrink: 0; }
+.range-content-mark { margin-left: auto; min-width: 24px; color: var(--color-accent); font-size: 26px; }
+.visual-range-content .range-content-button.control:is(:hover,:focus-visible,[aria-pressed]) { color: var(--color-ink); background: var(--color-surface); border-color: var(--color-line); }
+@media (max-width: 600px) {
+  .visual-custom-range { gap: 8px; padding: 8px; }
+  .visual-content-section { padding: 8px; }
+  .visual-range-pair { gap: 8px; }
+  .visual-range-endpoint { padding: 4px; }
+  .visual-range-endpoint h4, .visual-range-endpoint output { font-size: 13px; }
+  .range-content-button.control { gap: 4px; padding: 4px; font-size: 16px; }
+  .range-content-button svg { width: 36px; height: 36px; }
+  .range-content-mark { min-width: 20px; font-size: 22px; }
+}
+.migrated-range-mark { margin-left: 8px; color: var(--color-accent); font-size: 20px; font-weight: 700; }
