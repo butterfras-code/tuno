@@ -16,9 +16,9 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   });
   const tabButtons = ['Range','Options','Clefs'].map((name,index) => {
     const tab = el('button','control',name); tab.type = 'button'; tab.id = `${idPrefix}custom-tab-${index}`; tab.setAttribute('role','tab'); tab.setAttribute('aria-controls',panels[index]!.id);
-    if (index === 0) {
+    if (index === 0 || index === 2) {
       const migrated = el('span','migrated-range-mark','×'); migrated.setAttribute('aria-hidden','true');
-      tab.append(migrated); tab.title = 'Range controls rebuilt in Select range → Custom';
+      tab.append(migrated); tab.title = `${name} controls rebuilt in Select range → Custom`;
     }
     tab.addEventListener('click',() => showTab(index));
     tab.addEventListener('keydown',event => {
@@ -109,9 +109,9 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   panels[0]!.append(endpointSwitch,range,help,ledger);
   const tile = (title: string, ...children: HTMLElement[]) => {
     const section = el('section','configurator-tile'), heading = el('h3','',title);
-    if (title === 'Staff content') {
+    if (title === 'Staff content' || title === 'Key signature' || title === 'Additional spellings') {
       const migrated = el('span','migrated-range-mark','×'); migrated.setAttribute('aria-hidden','true');
-      heading.append(migrated); heading.title = 'Staff content rebuilt in Select range → Custom';
+      heading.append(migrated); heading.title = `${title} rebuilt in Select range → Custom`;
     }
     section.append(heading,...children); return section;
   };

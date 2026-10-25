@@ -41,18 +41,19 @@ export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, 
 }
 
 /** Two inclusive range endpoints on one staff, with aligned labels below. */
-export function renderRangeStaff(low: WrittenPitch, high: WrittenPitch, clef: Clef, key: KeySignature) {
-  const svg = renderStaff(low,clef,key);
+export function renderRangeStaff(low: WrittenPitch, high: WrittenPitch, clef: Clef, key: KeySignature, keyless = false) {
+  const svg = renderStaff(low,clef,key,keyless,true);
+  const offset = keyless ? 0 : Math.abs(key.fifths)*19;
   svg.classList.replace('staff','range-preset-staff');
-  svg.setAttribute('aria-label',`${clef} clef, ${pitchLabel(low)} to ${pitchLabel(high)}`);
+  svg.setAttribute('aria-label',`${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major`}, ${pitchLabel(low)} to ${pitchLabel(high)}`);
   const ys = [staffGeometry(low,clef).noteY,staffGeometry(high,clef).noteY];
   const top = Math.min(0,...ys.map(y => y-30)), bottom = Math.max(190,...ys.map(y => y+30));
-  svg.setAttribute('viewBox',`0 ${top} 360 ${bottom-top+45}`);
-  const upper = renderStaff(high,clef,key);
+  svg.setAttribute('viewBox',`0 ${top} ${360+offset} ${bottom-top+45}`);
+  const upper = renderStaff(high,clef,key,keyless,true);
   for (const [source,shift,pitch] of [[svg,-60,low],[upper,60,high]] as const) {
     const note = svgNode('g',{transform:`translate(${shift} 0)`});
     source.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(node => note.append(node));
-    const label = svgNode('text',{x:230,y:bottom+24,'text-anchor':'middle',fill:'currentColor',class:'range-preset-note-label'});
+    const label = svgNode('text',{x:230+offset,y:bottom+24,'text-anchor':'middle',fill:'currentColor',class:'range-preset-note-label'});
     label.textContent = pitchLabel(pitch); note.append(label); svg.append(note);
   }
   return svg;

@@ -19,7 +19,6 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   const overview = el('div','preset-overview');
   let current: Preset | undefined, currentSource: PresetSource | undefined;
   let selectionError = '';
-  let signaturePreview: boolean | undefined;
   let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
   let adaptiveChoice = (_enabled: boolean) => {};
   const pickerUI = presetPicker(() => store.data.customPresets,id => {
@@ -27,16 +26,16 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   },idPrefix,true,'Preset',{
     begin: () => {
       const source = currentSource, selected = current, error = selectionError;
-      return () => { signaturePreview = undefined; currentSource = source; current = selected; selectionError = error; renderOverview(); };
+      return () => { currentSource = source; current = selected; selectionError = error; renderOverview(); };
     },
     select: id => selectPreset(id),
     range: () => preview,
     notation: {
       get: () => store.data.configuration.showKeySignature ?? false,
-      preview: value => { signaturePreview = value; renderOverview(); },
+      preview: () => {}, // Gameplay notation does not alter preset previews.
       apply: value => {
         store.update(data => { data.configuration.showKeySignature = value; });
-        signaturePreview = undefined; renderOverview();
+        renderOverview();
       },
     },
   });
@@ -83,10 +82,13 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   const footer = el('div','custom-editor-footer'); footer.append(summary,savePanel,message,actions);
   frame.append(heading,editor.node,footer);
   const adjustRange = button('Adjust range',() => { if (currentSource) openEditor(current ?? currentSource); }); adjustRange.classList.add('adjust-range');
-  const selectionActions = el('div','preset-selection-actions');
-  const rangePickerUI = rangePicker(idPrefix,(id,enabled) => { selectPreset(id); adaptiveChoice(enabled); },{
+  const rangePickerUI = rangePicker(idPrefix,(id,enabled,showKeySignature) => {
+    store.update(data => { data.configuration.showKeySignature = showKeySignature; });
+    selectPreset(id); adaptiveChoice(enabled);
+  },{
     current: () => currentSource ?? defaultPreset,
     apply: source => { currentSource = source; current = normalizePreset(source); selectionError = ''; closeEditor(false); },
+    showKeySignature: () => store.data.configuration.showKeySignature ?? false,
   });
   picker.after(rangePickerUI.trigger);
   overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame,rangePickerUI.dialog);
@@ -115,7 +117,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
       pickerUI.set(current.id,current.name); summary.textContent = describe(current);
       for (const [label,pitch] of [['Low note',current.pool[0]!],['High note',current.pool.at(-1)!]] as const) {
         const endpoint = el('div','range-endpoint');
-        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,signaturePreview ?? store.data.configuration.showKeySignature); staff.classList.replace('staff','endpoint-staff');
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,true); staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
       }
     }
@@ -149,13 +151,13 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     return true;
   }
   refresh();
-  return { node,picker,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,rangeTrigger: rangePickerUI.trigger,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
-      selectionActions.append(picker,rangePickerUI.trigger,adjustRange); pickerUI.node.prepend(selectionActions);
+      picker.remove(); rangePickerUI.trigger.remove(); adjustRange.remove();
     } else {
-      pickerUI.node.append(picker,rangePickerUI.trigger); overview.append(adjustRange); selectionActions.remove();
+      pickerUI.node.append(picker,rangePickerUI.trigger); overview.append(adjustRange);
     }
   }, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
     onAdaptiveChoice: (fn: (enabled: boolean) => void) => { adaptiveChoice = fn; },

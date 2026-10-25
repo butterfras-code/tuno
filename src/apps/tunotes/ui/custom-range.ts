@@ -1,16 +1,19 @@
 import { el } from '../../../shared/ui/components.ts';
-import { C_MAJOR, chromatic, diatonic, pitchLabel } from '../domain/notation.ts';
+import { C_MAJOR, chromatic, diatonic, pitchAt, pitchLabel, staffPosition } from '../domain/notation.ts';
 import type { Clef } from '../domain/notation.ts';
-import { clefs, defaultPreset, generatedPresetName, modifiersFor, normalizePreset } from '../domain/presets.ts';
+import { clefs, clefForPitch, defaultPreset, generatedPresetName, normalizePreset } from '../domain/presets.ts';
 import type { PresetSource } from '../domain/presets.ts';
-import { control } from './preset-picker.ts';
+import { control, titleCase } from './preset-picker.ts';
 import { rangeEditor } from './range-editor.ts';
+import { keySignatureControl } from './key-signature-control.ts';
+import { renderStaff } from './staff.ts';
 
 /** Graphical range draft; remaining custom settings stay in the existing editor. */
 export function customRange(apply: (source: PresetSource) => void) {
   const node = el('section','visual-custom-range'); node.setAttribute('aria-label','Range');
   let base: PresetSource = defaultPreset;
   let available: Clef[] = ['treble'];
+  let explicitClefs = false;
   let lines = true, spaces = true;
   const notice = el('p','muted'); notice.setAttribute('role','status');
   const validation = el('p','muted'); validation.setAttribute('role','status');
@@ -25,7 +28,7 @@ export function customRange(apply: (source: PresetSource) => void) {
   };
   const changeClef = (index: number, clef: Clef) => {
     endpoints[index]!.setClef(clef);
-    available = clefs.filter(c => (base.availableClefs ?? [base.clef]).includes(c) || endpoints.some(e => e.clef === c));
+    if (!explicitClefs) available = clefs.filter(c => endpoints.some(e => e.clef === c));
     refresh();
   };
   const endpoints = [
@@ -34,17 +37,22 @@ export function customRange(apply: (source: PresetSource) => void) {
   ] as const;
   function source(): PresetSource {
     if (!lines && !spaces) throw new Error('Turn on Lines or Spaces to include notes.');
+    if (!available.length) throw new Error('Select at least one clef for practice.');
     const draft: PresetSource = {id:'custom-current',name:'Custom',editorVersion:2,
-      content:lines && spaces ? 'lines-and-spaces' : lines ? 'lines' : 'spaces',key:base.key ?? C_MAJOR,accidentals:'key-only',
-      clef:available[0]!,availableClefs:[...available],modifiers:[...modifiersFor(base)],
+      content:lines && spaces ? 'lines-and-spaces' : lines ? 'lines' : 'spaces',key:keyControl.signature,accidentals:'key-only',
+      clef:available[0]!,availableClefs:[...available],modifiers:keyControl.modifiers,
       endpointClefs:endpoints.map(e => e.clef) as [Clef,Clef],
       range:endpoints.map(e => pitchLabel(e.pitch).replace('♯','#').replace('♭','b')) as [string,string]};
     return {...draft,name:generatedPresetName(draft)};
   }
   function refresh() {
+    clefButtons.forEach(({clef,button,mark}) => {
+      const active = available.includes(clef);
+      button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '+';
+    });
     contentButtons.forEach(({button,mark},i) => {
       const active = i === 0 ? lines : spaces;
-      button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '';
+      button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '+';
     });
     endpoints[0].setLimits(0,diatonic(endpoints[1].pitch));
     endpoints[1].setLimits(diatonic(endpoints[0].pitch),62);
@@ -52,7 +60,7 @@ export function customRange(apply: (source: PresetSource) => void) {
     catch (error) { use.disabled = true; validation.textContent = (error as Error).message; }
   }
   const use = control('Save',() => apply(source())); use.classList.add('control--primary');
-  const footer = el('div','visual-range-actions'); footer.append(use);
+  const footer = el('div','visual-range-actions'); footer.append(validation,use);
   const pair = el('div','visual-range-pair'); pair.append(...endpoints.map(e => e.node));
   const header = el('div','visual-range-header');
   header.append(el('p','muted','Tap clefs or accidentals to change them. Drag notes or use arrows to move them.'));
@@ -76,17 +84,43 @@ export function customRange(apply: (source: PresetSource) => void) {
     return {button,mark};
   });
   const contentPanel = el('section','visual-content-section');
-  contentPanel.append(el('p','muted','Select note positions to include'),content,validation);
+  contentPanel.append(el('p','muted','Select note positions to include'),content);
+  const keyControl = keySignatureControl(refresh,() => {
+    const middle = pitchAt(Math.floor((staffPosition(endpoints[0].pitch,'treble')+staffPosition(endpoints[1].pitch,'treble'))/2),'treble');
+    return clefForPitch({...base,clef:endpoints[0].clef,availableClefs:[...new Set(endpoints.map(e => e.clef))]},middle);
+  });
+  const clefPanel = el('section','visual-content-section practice-clef-section');
+  const clefOptions = el('div','visual-range-content practice-clef-options');
+  clefOptions.setAttribute('role','group'); clefOptions.setAttribute('aria-label','Practice clefs');
+  const clefButtons = clefs.map(clef => {
+    const button = control('',() => {
+      explicitClefs = true;
+      available = clefs.filter(c => c === clef ? !available.includes(c) : available.includes(c));
+      refresh();
+    });
+    button.classList.add('range-content-button','practice-clef-button'); button.setAttribute('aria-label',titleCase(clef));
+    const staff = renderStaff(pitchAt(4,clef),clef,C_MAJOR); staff.classList.replace('staff','practice-clef-staff');
+    staff.setAttribute('viewBox','16 20 128 160'); staff.setAttribute('aria-hidden','true');
+    staff.querySelectorAll('.notehead, .ledger, .note-accidental').forEach(n => n.remove());
+    staff.querySelectorAll('line').forEach(line => line.setAttribute('x2','136'));
+    const mark = el('span','range-content-mark'); mark.setAttribute('aria-hidden','true');
+    const label = el('span','practice-clef-label'); label.append(el('span','',titleCase(clef)),mark);
+    button.append(staff,label); clefOptions.append(button);
+    return {clef,button,mark};
+  });
+  clefPanel.append(el('h4','','Clefs'),clefOptions);
   node.append(header,pair,notice);
-  return {node,contentPanel,footer,load(p: PresetSource) {
-    base = p; available = [...p.availableClefs ?? [p.clef]];
+  return {node,contentPanel,keyPanel:keyControl.node,clefPanel,footer,closePopovers: () => keyControl.close(),load(p: PresetSource) {
+    base = p; explicitClefs = p.editorVersion === 2;
     lines = p.content !== 'spaces'; spaces = p.content !== 'lines';
+    keyControl.load(p);
     let bounds = p.range;
     if (p.editorVersion !== 2) {
       const pool = [...normalizePreset(p,{legacySpellings:true}).pool].sort((a,b) => diatonic(a)-diatonic(b) || a.accidental-b.accidental);
       bounds = [pitchLabel(pool[0]!),pitchLabel(pool.at(-1)!)];
     }
     endpoints.forEach((endpoint,i) => endpoint.set(bounds[i]!,p.endpointClefs?.[i] ?? p.clef));
+    available = explicitClefs ? [...p.availableClefs ?? [p.clef]] : clefs.filter(c => endpoints.some(e => e.clef === c));
     notice.textContent = ''; refresh();
   }};
 }

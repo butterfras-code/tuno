@@ -66,7 +66,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
-  const setupUI = activitySetup(editor,roundSetup,'multiplayer');
+  const setupUI = activitySetup(editor,roundSetup,'multiplayer',presetUI.rangeTrigger);
   setupUI.settingsLabel('Multi Player Settings');
   setupUI.node.append(setupError,setupFullscreen); setupUI.action(start);
   setup.append(rosterSection,setupUI.node);
@@ -164,8 +164,6 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
-    const player = players.find(p => p.id === selectedId) ?? players[0]!;
-    setupUI.notesLabel(`${player.name.trim() || `Player ${players.indexOf(player)+1}`}'s Notes`);
     setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Turns' : selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
   }
   rules.onChange(updateSetupSummary);

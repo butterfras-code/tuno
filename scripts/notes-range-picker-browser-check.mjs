@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { hostBuild } from './test-host.mjs';
+import { notesMode } from './notes-setup-helpers.mjs';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { keySignature } from '../src/apps/tunotes/domain/notation.ts';
 
@@ -8,18 +9,100 @@ const browser = await chromium.launch();
 const host = await hostBuild();
 const errors = [];
 try {
-  for (const [width,height] of [[320,667],[390,844],[1024,768]]) {
+  for (const [width,height] of [[320,667],[375,667],[390,844],[1024,768],[1366,600]]) {
     const page = await browser.newPage({viewport:{width,height},hasTouch:true});
     page.on('pageerror',error => errors.push(error.message));
     await page.goto(new URL('/notes/',host.url).href);
+    assert.equal(await page.getByRole('button',{name:/^(Choose preset…|Select range|Customize…)$/}).count(),0,'redundant setup buttons are removed');
+    if (width===375 || width===1366) await page.screenshot({path:`/tmp/tuno-notes-entry-${width}.png`});
+    assert.equal(await page.getByRole('tab',{name:'Practice settings',exact:true}).count(),0);
+    const actions = await page.locator('.activity-setup-toolbar').getByRole('button').evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length).map(n=>{const r=n.getBoundingClientRect();return {width:r.width,height:r.height,top:r.top};}));
+    assert.equal(actions.length,2); assert.equal(actions[0].width,actions[1].width); assert.equal(actions[0].height,actions[1].height); assert.equal(actions[0].top,actions[1].top);
+    const modes = page.getByRole('group',{name:'Practice Mode',exact:true});
+    assert.equal(await modes.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),true);
+    assert.deepEqual(await modes.locator('option').allTextContents(),['COMING SOON',...Array.from({length:10},(_,i)=>`${i+1} sec`)]);
+    await modes.getByRole('button',{name:'Correct Only',exact:true}).click();
+    assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.continueAfter),'correct');
+    await modes.getByRole('button',{name:'Normal',exact:true}).click();
     const summary = page.locator('#preset-summary');
     const original = await summary.textContent();
     const open = async () => {
-      await page.getByRole('button',{name:'Select range',exact:true}).click();
+      await page.getByRole('button',{name:'Choose Notes',exact:true}).click();
       await page.getByRole('button',{name:'Custom',exact:true}).click();
     };
+    const notesTab = page.getByRole('button',{name:'Choose Notes',exact:true});
+    await notesTab.click();
+    await page.keyboard.press('Escape');
+    assert.equal(await notesTab.evaluate(n=>document.activeElement===n),true,'closing returns focus to Notes');
     await open();
     const dialog = page.locator('.range-picker-dialog[open]');
+    if (width <= 600) {
+      const layout = await dialog.evaluate(d => ({scroll:d.scrollHeight,height:d.clientHeight,
+        saveBottom:d.querySelector('.visual-range-actions').getBoundingClientRect().bottom,
+        clefs:[...d.querySelectorAll('.practice-clef-button')].map(n=>({y:n.getBoundingClientRect().y,overflows:n.scrollWidth>n.clientWidth}))}));
+      assert.ok(layout.scroll<=layout.height,`${width}: mobile custom settings fit without scrolling`);
+      assert.ok(layout.saveBottom<=height-8,`${width}: Save remains on screen`);
+      assert.ok(layout.clefs.every(c=>Math.abs(c.y-layout.clefs[0].y)<1 && !c.overflows),'four mobile clefs share a compact row');
+    }
+    if (width >= 1000) {
+      const layout = await dialog.evaluate(d => ({top:d.getBoundingClientRect().top,scroll:d.scrollHeight,height:d.clientHeight,
+        saveBottom:d.querySelector('.visual-range-actions').getBoundingClientRect().bottom}));
+      assert.equal(layout.top,12,'desktop chooser sits near viewport top');
+      assert.ok(layout.scroll <= layout.height,'desktop custom settings fit without scrolling');
+      assert.ok(layout.saveBottom <= height-12,'Save is visible without scrolling');
+    }
+    const practiceClefs = dialog.getByRole('group',{name:'Practice clefs',exact:true});
+    const selectedClefs = () => practiceClefs.locator('[aria-pressed="true"]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')));
+    assert.deepEqual(await selectedClefs(),['Treble']);
+    assert.equal(await practiceClefs.locator('svg line').count(),20,'every clef preview includes a staff');
+    await dialog.getByRole('button',{name:'Lowest note clef: Treble. Change clef',exact:true}).click();
+    assert.deepEqual(await selectedClefs(),['Treble','Bass'],'initial practice clefs follow endpoint union');
+    await dialog.getByRole('button',{name:'Highest note clef: Treble. Change clef',exact:true}).click();
+    assert.deepEqual(await selectedClefs(),['Bass'],'union drops clefs no longer used by endpoints');
+    await practiceClefs.getByRole('button',{name:'Bass',exact:true}).click();
+    assert.equal(await dialog.getByRole('button',{name:'Save',exact:true}).isDisabled(),true,'empty clef selection disables Save');
+    assert.match(await dialog.textContent(),/Select at least one clef/);
+    await practiceClefs.getByRole('button',{name:'Alto',exact:true}).click();
+    await dialog.getByRole('button',{name:'Lowest note clef: Bass. Change clef',exact:true}).click();
+    await dialog.getByRole('button',{name:'Highest note clef: Bass. Change clef',exact:true}).click();
+    await dialog.getByRole('button',{name:'Highest note clef: Alto. Change clef',exact:true}).click();
+    assert.deepEqual(await selectedClefs(),['Alto'],'manual practice-clef choices survive endpoint changes');
+    await dialog.getByRole('button',{name:'Close range selection',exact:true}).click();
+    await open();
+    assert.deepEqual(await selectedClefs(),['Treble'],'cancel discards practice-clef draft');
+    const keyOptions = dialog.getByRole('group',{name:'Key signature',exact:true});
+    assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true','new custom range defaults to No Key');
+    await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
+    const keyPicker = page.getByRole('dialog',{name:'Choose a key',exact:true});
+    assert.equal(await keyPicker.locator('.key-picker-choice').count(),13);
+    assert.equal(await keyPicker.locator('[data-key="C"] .key-accidental').count(),0);
+    assert.equal(await keyPicker.locator('[data-key="E"] .key-accidental').count(),4);
+    assert.equal(await keyPicker.locator('[data-key="Bb"] .key-accidental').count(),2);
+    assert.equal(await keyPicker.locator('svg').first().getAttribute('data-clef'),'treble');
+    assert.equal(await keyPicker.getByRole('button',{name:'D/b',exact:true}).count(),1,'natural minor b retains its letter');
+    await keyPicker.getByRole('button',{name:'Close key selection',exact:true}).click();
+    assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true','closing picker preserves No Key');
+    await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
+    await keyPicker.getByRole('button',{name:'E/c♯',exact:true}).click();
+    assert.equal(await keyOptions.getByRole('button',{name:'Key',exact:true}).getAttribute('aria-pressed'),'true');
+    await keyOptions.getByRole('button',{name:'No Key',exact:true}).click();
+    const spellings = dialog.getByRole('group',{name:'Additional spellings',exact:true});
+    const spellingButtons = ['Sharp','Flat','Natural'].map(name => spellings.getByRole('button',{name,exact:true}));
+    const spellingBoxes = await Promise.all(spellingButtons.map(button => button.boundingBox()));
+    assert.ok(spellingBoxes.every(box => Math.abs(box.y-spellingBoxes[0].y)<1),'accidentals share a row');
+    assert.ok(spellingBoxes[0].y >= (await keyOptions.boundingBox()).y+(await keyOptions.boundingBox()).height,'accidentals sit below key choices');
+    for (const button of spellingButtons) assert.equal(await button.getAttribute('aria-pressed'),'false');
+    await spellingButtons[0].focus(); await page.keyboard.press('Space');
+    assert.equal(await spellingButtons[0].getAttribute('aria-pressed'),'true');
+    assert.equal(await spellingButtons[1].getAttribute('aria-pressed'),'false','accidental toggles are independent');
+    await spellingButtons[1].click(); await spellingButtons[2].click();
+    await keyOptions.getByRole('button',{name:'No Key',exact:true}).click();
+    for (const button of spellingButtons) {
+      assert.equal(await button.getAttribute('aria-pressed'),'true','key setting preserves added spellings');
+      await button.click();
+    }
     const content = dialog.getByRole('group',{name:'Staff content',exact:true});
     const lines = content.getByRole('button',{name:'Lines',exact:true});
     const spaces = content.getByRole('button',{name:'Spaces',exact:true});
@@ -108,12 +191,19 @@ try {
     await dialog.getByRole('button',{name:'Lowest note: move up',exact:true}).click();
     await dialog.getByRole('button',{name:'Save',exact:true}).click();
     assert.match(await summary.textContent(),/F4–F5/);
-    await page.getByRole('button',{name:'Customize…',exact:true}).click();
-    assert.match(await page.getByRole('slider',{name:'Lowest note',exact:true}).getAttribute('aria-valuetext'),/^F4/,'legacy editor receives applied draft');
-    await page.getByRole('button',{name:'Cancel',exact:true}).click();
-    await open(); await spaces.click();
+    await open();
+    assert.match(await low.getAttribute('aria-valuetext'),/^F4/,'configurator receives applied draft');
+    await spaces.click();
+    await practiceClefs.getByRole('button',{name:'Bass',exact:true}).click();
     await dialog.getByRole('button',{name:'Save',exact:true}).click();
     assert.match(await summary.textContent(),/ · Lines · /,'content selection applies to practice');
+    assert.match(await summary.textContent(),/Treble \/ Bass/,'practice clefs apply');
+    await open();
+    assert.deepEqual(await selectedClefs(),['Treble','Bass'],'saved practice clefs reload');
+    await dialog.getByRole('button',{name:'Close range selection',exact:true}).click();
+    await page.getByRole('button',{name:'Start Practice',exact:true}).click();
+    const clefsSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
+    assert.deepEqual(clefsSaved.availableClefs,['treble','bass']);
     await page.close();
   }
   // Editing only the range preserves the custom options that have not migrated.
@@ -124,11 +214,13 @@ try {
   const page = await browser.newPage();
   await page.addInitScript(value => localStorage.setItem('tunotes:data:v1',JSON.stringify(value)),data);
   await page.goto(new URL('/notes/',host.url).href);
-  await page.getByRole('button',{name:'Select range',exact:true}).click();
+  await page.getByRole('button',{name:'Choose Notes',exact:true}).click();
   await page.getByRole('button',{name:'Custom',exact:true}).click();
   const content = page.locator('.range-picker-dialog[open]').getByRole('group',{name:'Staff content',exact:true});
   assert.equal(await content.getByRole('button',{name:'Lines',exact:true}).getAttribute('aria-pressed'),'false','existing content loads');
   assert.equal(await content.getByRole('button',{name:'Spaces',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.equal(await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'Key',exact:true}).getAttribute('aria-pressed'),'true','saved key setting loads');
+  assert.equal(await page.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:'Flat',exact:true}).getAttribute('aria-pressed'),'true','saved accidental inclusion loads');
   await page.getByRole('button',{name:'Lowest note: move up',exact:true}).click();
   await page.getByRole('button',{name:'Save',exact:true}).click();
   assert.match(await page.locator('#preset-summary').textContent(),/G Major.*Spaces.*flats/);
@@ -137,6 +229,134 @@ try {
   assert.equal(persisted.content,'spaces'); assert.equal(persisted.key.fifths,1);
   assert.deepEqual(persisted.modifiers,['key','flat']); assert.deepEqual(persisted.range,['E4','G5']);
   await page.close();
+  const keyPage = await browser.newPage({viewport:{width:390,height:844}});
+  keyPage.on('pageerror',error => errors.push(error.message));
+  await keyPage.goto(new URL('/notes/',host.url).href);
+  const openCustom = async () => {
+    await keyPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+    await keyPage.getByRole('button',{name:'Custom',exact:true}).click();
+  };
+  await openCustom();
+  const range = keyPage.locator('.range-picker-dialog[open]');
+  for (const endpoint of ['Lowest','Highest']) await range.getByRole('button',{name:`${endpoint} note clef: Treble. Change clef`,exact:true}).click();
+  const keyOptions = range.getByRole('group',{name:'Key signature',exact:true});
+  await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
+  const keyPicker = keyPage.getByRole('dialog',{name:'Choose a key',exact:true});
+  assert.deepEqual(await keyPicker.locator('svg').evaluateAll(nodes=>[...new Set(nodes.map(n=>n.dataset.clef))]),['bass'],'key preview follows selected range clefs');
+  await keyPage.keyboard.press('Escape');
+  assert.equal(await range.isVisible(),true,'Escape closes only the key popover');
+  await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
+  await keyPicker.getByRole('button',{name:'B♭/g',exact:true}).click();
+  await range.getByRole('button',{name:'Save',exact:true}).click();
+  assert.match(await keyPage.locator('#preset-summary').textContent(),/B♭ Major/,'chosen key applies');
+  await openCustom();
+  assert.match(await keyOptions.textContent(),/B♭\/g/,'chosen key reloads');
+  await keyOptions.getByRole('button',{name:'No Key',exact:true}).click();
+  for (const name of ['Sharp','Flat','Natural']) await range.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name,exact:true}).click();
+  await keyOptions.getByRole('button',{name:'Key',exact:true}).click();
+  assert.equal(await keyPicker.getByRole('button',{name:'B♭/g',exact:true}).count(),1);
+  await keyPage.keyboard.press('Escape');
+  assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true');
+  await range.getByRole('button',{name:'Save',exact:true}).click();
+  assert.match(await keyPage.locator('#preset-summary').textContent(),/No key signature/);
+  await keyPage.getByRole('button',{name:'Start Practice',exact:true}).click();
+  const keySaved = await keyPage.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
+  assert.deepEqual([...keySaved.modifiers].sort(),['flat','natural','sharp'],'accidental inclusions persist without a key');
+  assert.equal(keySaved.key.fifths,-2,'No Key retains selected key for re-enabling');
+  await keyPage.close();
+  const previewPage = await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+  previewPage.on('pageerror',error => errors.push(error.message));
+  await previewPage.goto(new URL('/notes/',host.url).href);
+  await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+  await previewPage.getByRole('button',{name:'Band instruments',exact:true}).click();
+  await previewPage.getByRole('button',{name:'Flute',exact:true}).click();
+  const fluteCards = previewPage.locator('.range-picker-dialog[open] .range-picker-presets button');
+  assert.equal(await fluteCards.count(),4);
+  const notation = previewPage.getByRole('group',{name:'Accidentals',exact:true});
+  const eachNote = notation.getByRole('button',{name:'On each note',exact:true});
+  const signature = notation.getByRole('button',{name:'Key Signature',exact:true});
+  assert.equal(await eachNote.getAttribute('aria-pressed'),'true','accidentals on notes is the default');
+  assert.equal(await signature.locator('.preset-notation-mark').textContent(),'','inactive exclusive option has no plus');
+  assert.equal(await fluteCards.locator('.key-accidental').count(),4,'preset cards always show their assigned keys');
+  const originalPreviews = await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML));
+  assert.ok((await fluteCards.first().boundingBox()).height<180,'mobile preset cards are compact');
+  await signature.click();
+  assert.equal(await signature.getAttribute('aria-pressed'),'true');
+  assert.equal(await eachNote.getAttribute('aria-pressed'),'false');
+  assert.equal(await eachNote.locator('.preset-notation-mark').textContent(),'');
+  assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'gameplay notation leaves previews unchanged');
+  for (const card of await fluteCards.all()) {
+    assert.equal(await card.locator('.key-accidental').count(),1,'Flute preset shows its F-major signature');
+    assert.match(await card.locator('svg').getAttribute('aria-label'),/F major/);
+    const spacing = await card.locator('svg').evaluate(svg => {
+      const right=Math.max(...[...svg.querySelectorAll('.key-accidental')].map(n=>n.getBoundingClientRect().right));
+      const notes=[...svg.querySelectorAll('.notehead')].map(n=>n.getBoundingClientRect());
+      const labels=[...svg.querySelectorAll('.range-preset-note-label')].map(n=>n.getBoundingClientRect());
+      return {clear:notes[0].left>right,aligned:notes.every((n,i)=>Math.abs((n.left+n.width/2)-(labels[i].left+labels[i].width/2))<1)};
+    });
+    assert.ok(spacing.clear && spacing.aligned,'signature clears notes and endpoint labels stay aligned');
+  }
+  await fluteCards.first().click();
+  await previewPage.getByRole('button',{name:'Keep this range',exact:true}).click();
+  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'notation applies with chosen preset');
+  assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),2,'overview uses chosen notation');
+  const openFlute = async () => {
+    await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+    await previewPage.getByRole('button',{name:'Band instruments',exact:true}).click();
+    await previewPage.getByRole('button',{name:'Flute',exact:true}).click();
+  };
+  await openFlute();
+  assert.equal(await signature.getAttribute('aria-pressed'),'true','notation preference is remembered');
+  await eachNote.click();
+  assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'On each note preserves key information in every preview');
+  await previewPage.getByRole('button',{name:'Close range selection',exact:true}).click();
+  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'cancel preserves notation preference');
+  await openFlute(); await eachNote.click(); await fluteCards.first().click();
+  await previewPage.getByRole('button',{name:'Keep this range',exact:true}).click();
+  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),false);
+  assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),2,'selected preset overview always shows its key');
+  await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+  await previewPage.getByRole('button',{name:'Clef',exact:true}).click();
+  await previewPage.getByRole('button',{name:'Treble',exact:true}).click();
+  assert.equal(await notation.isVisible(),false,'selector hides when presets have no nonzero key signatures');
+  await previewPage.getByRole('button',{name:'Close range selection',exact:true}).click();
+  await previewPage.getByRole('button',{name:'Start Practice',exact:true}).click();
+  const intro = previewPage.locator('.note-preview:visible');
+  assert.equal(await intro.locator('.key-accidental').count(),0,'practice uses accidentals on notes');
+  for (let i=0;i<3;i++) await intro.getByRole('button',{name:'Next',exact:true}).click();
+  assert.equal(await intro.locator('.preview-note[data-label="B♭"]').count(),1,'Flute Starter still includes B-flat');
+  assert.equal(await intro.locator('.note-accidental').count(),1,'B-flat is written on the note during practice');
+  await previewPage.close();
+  const modesPage = await browser.newPage();
+  modesPage.on('pageerror',error=>errors.push(error.message));
+  await modesPage.goto(new URL('/notes/',host.url).href);
+  await notesMode(modesPage,'Options');
+  assert.equal(await modesPage.getByRole('button',{name:/^(Show Intro|Adapt Range)$/}).count(),0,'redundant intro and adaptation toggles are removed');
+  await notesMode(modesPage,'Practice');
+  await modesPage.getByRole('button',{name:'Correct Only',exact:true}).click();
+  await modesPage.reload();
+  assert.equal(await modesPage.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true','practice mode persists');
+  await modesPage.getByRole('button',{name:'Start Practice',exact:true}).click();
+  const introSkip = modesPage.locator('.note-preview:visible').getByRole('button',{name:'Skip',exact:true});
+  if (await introSkip.isVisible()) await introSkip.click();
+  const liveStaff = modesPage.locator('.practice-play .staff');
+  const retryPitch = await liveStaff.getAttribute('aria-label');
+  await modesPage.locator('.answer[data-letter="C"][data-accidental="1"]').first().click();
+  await modesPage.waitForTimeout(900);
+  assert.equal(await liveStaff.getAttribute('aria-label'),retryPitch,'Correct Only keeps the missed note');
+  const positions = ['first line','first space','second line','second space','third line','third space','fourth line','fourth space','fifth line'];
+  await modesPage.keyboard.press('efgabcdef'[positions.findIndex(value=>retryPitch.includes(value))]);
+  await modesPage.waitForTimeout(300);
+  assert.notEqual(await liveStaff.getAttribute('aria-label'),retryPitch,'Correct Only advances after correct answer');
+  for (const mode of ['Challenge','Multi Player']) {
+    await notesMode(modesPage,mode);
+    const notes = modesPage.getByRole('tab',{name:'Choose Notes',exact:true});
+    await notes.click();
+    assert.equal(await modesPage.locator('.range-picker-dialog[open]').count(),1,`${mode}: Notes opens range chooser`);
+    await modesPage.getByRole('button',{name:'Close range selection',exact:true}).click();
+    assert.equal(await notes.evaluate(n=>document.activeElement===n),true,`${mode}: focus returns to Notes`);
+  }
+  await modesPage.close();
   assert.deepEqual(errors,[]);
-  console.log('Visual custom range: clefs, accidentals, dragging, chevrons, keyboard, bounds, cancel/apply, legacy interoperability and mobile layout passed.');
+  console.log('Visual custom range: clefs, accidentals, dragging, chevrons, keyboard, bounds, cancel/apply, Notes entry in all modes and mobile layout passed.');
 } finally { await browser.close(); await host.close(); }

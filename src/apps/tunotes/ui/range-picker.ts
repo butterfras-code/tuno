@@ -34,17 +34,19 @@ function instrumentIcon(asset: string) {
   return icon;
 }
 
-/** Parallel visual chooser. Later steps will supply the exercise selection. */
-export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource) => void }) {
+/** Guided visual range and exercise chooser. */
+export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptive: boolean, showKeySignature: boolean) => void, custom: { current: () => PresetSource; apply: (source: PresetSource) => void; showKeySignature: () => boolean }) {
   let screen: 'home' | 'Clef' | 'Instrument' | 'Custom' | 'Presets' | 'Adaptive' = 'home';
   let selectedClef: Clef = 'treble';
   let selectedInstrument: { id: string; name: string } | undefined;
   let pendingPreset: string | undefined;
+  let showSignature = false;
   const dialog = el('dialog','range-picker-dialog');
   const heading = el('h3','','Select range'); heading.id = `${idPrefix}range-picker-title`; heading.tabIndex = -1;
   dialog.setAttribute('aria-labelledby',heading.id);
   const trigger = control('Select range',() => {
     pendingPreset = undefined;
+    showSignature = custom.showKeySignature();
     show('home',false);
     dialog.showModal(); position(); heading.focus();
     window.addEventListener('resize',position);
@@ -75,8 +77,23 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   clefPanel.append(clefChoices);
   const presetPanel = el('div','range-picker-panel');
   const presetChoices = el('div','range-picker-choices range-picker-presets');
+  const notation = el('section','preset-notation-setting'); notation.hidden = true;
+  const notationChoices = el('div','preset-notation-options'); notationChoices.setAttribute('role','group'); notationChoices.setAttribute('aria-label','Accidentals');
+  const notationButtons = ([[false,'On each note'],[true,'Key Signature']] as const).map(([value,label]) => {
+    const button = control('',() => { showSignature = value; updateNotation(); });
+    button.setAttribute('aria-label',label);
+    const mark = el('span','preset-notation-mark'); mark.setAttribute('aria-hidden','true');
+    button.append(el('span','',label),mark); notationChoices.append(button);
+    return {value,button,mark};
+  });
+  function updateNotation() {
+    notationButtons.forEach(({value,button,mark}) => {
+      const active = value === showSignature; button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '';
+    });
+  }
+  notation.append(el('h4','','Accidentals'),notationChoices);
   const emptyPresets = el('p','muted'); emptyPresets.hidden = true;
-  presetPanel.append(presetChoices,emptyPresets);
+  presetPanel.append(notation,presetChoices,emptyPresets);
   const adaptivePanel = el('div','range-picker-panel');
   const pendingName = el('p','range-picker-selected-preset');
   const adaptiveDescription = el('p','muted','Uno adds notes when you’re ready and gives extra practice on notes you miss.');
@@ -84,7 +101,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   for (const [enabled,label] of [[true,'Yes, let Uno help'],[false,'Keep this range']] as const) {
     const choice = control(label,() => {
       if (!pendingPreset) return;
-      selectPreset(pendingPreset,enabled); dialog.close();
+      selectPreset(pendingPreset,enabled,showSignature); dialog.close();
     });
     choice.classList.add('range-picker-choice'); adaptiveChoices.append(choice);
   }
@@ -92,6 +109,8 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   function renderPresets() {
     presetChoices.replaceChildren();
     const available = presets.filter(preset => selectedInstrument ? preset.instrument === selectedInstrument.id : !preset.instrument && preset.clef === selectedClef);
+    notation.hidden = !available.some(p => !p.keyless && p.key.fifths !== 0);
+    updateNotation();
     if (selectedInstrument && stringIds.has(selectedInstrument.id)) available.sort((a,b) => diatonic(a.pool[0]!)-diatonic(b.pool[0]!));
     emptyPresets.hidden = available.length > 0;
     emptyPresets.textContent = available.length ? '' : `Range presets for ${selectedInstrument!.name} are coming soon.`;
@@ -99,7 +118,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
       const low = preset.pool[0]!, high = preset.pool.at(-1)!;
       const tile = control('',() => { pendingPreset = preset.id; pendingName.textContent = preset.name; show('Adaptive'); });
       tile.classList.add('range-picker-choice'); tile.dataset.presetId = preset.id;
-      tile.append(el('strong','',preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key));
+      tile.append(el('strong','',preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key,preset.keyless));
       presetChoices.append(tile);
     }
   }
@@ -128,14 +147,16 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   }
   renderInstruments(); instrumentPanel.append(ensembles,instrumentChoices);
   const customEditor = customRange(source => { custom.apply(source); dialog.close(); });
-  const customPanel = el('div','range-picker-panel'); customPanel.append(customEditor.node,customEditor.contentPanel,customEditor.footer);
+  const customPanel = el('div','range-picker-panel'); customPanel.append(customEditor.node,customEditor.contentPanel,customEditor.keyPanel,customEditor.clefPanel,customEditor.footer);
   const panels = { home, Clef: clefPanel, Instrument: instrumentPanel, Custom: customPanel, Presets: presetPanel, Adaptive: adaptivePanel };
   function show(nextScreen: keyof typeof panels, focus = true) {
     screen = nextScreen;
+    dialog.dataset.screen = screen;
     for (const [name,panel] of Object.entries(panels)) panel.hidden = name !== screen;
     heading.textContent = {home:'Select range',Clef:'Choose a clef',Instrument:'Choose an instrument',Custom:'Custom range',Presets:`${selectedInstrument?.name ?? titleCase(selectedClef)} presets`,Adaptive:'Let Uno add new notes?'}[screen];
     back.setAttribute('aria-label',screen === 'Adaptive' ? 'Back to presets' : screen === 'Presets' ? selectedInstrument ? 'Back to instruments' : 'Back to clefs' : 'Back to range options');
     back.hidden = screen === 'home'; dialog.scrollTop = 0;
+    if (dialog.open) position();
     if (focus) heading.focus();
   }
   const paths = {
@@ -170,7 +191,6 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   }
   dialog.append(header,home,clefPanel,instrumentPanel,customPanel,presetPanel,adaptivePanel); show('home',false);
   function position() {
-    const anchor = trigger.getBoundingClientRect();
     const scale = dialog.getBoundingClientRect().width / dialog.offsetWidth || 1;
     if (window.matchMedia('(max-width: 600px)').matches) {
       dialog.style.width = `${innerWidth/scale}px`;
@@ -180,11 +200,12 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
       return;
     }
     dialog.style.height = '';
-    dialog.style.width = `${Math.min(640,(innerWidth-24)/scale)}px`;
-    const top = Math.max(12,Math.min(anchor.bottom+8,innerHeight-Math.min(520,innerHeight-24)-12));
+    const wideCustom = screen === 'Custom' && window.matchMedia('(min-width: 1000px)').matches;
+    dialog.style.width = `${Math.min(wideCustom ? 960 : 640,(innerWidth-24)/scale)}px`;
+    const top = 12;
     dialog.style.maxHeight = `${(innerHeight-top-12)/scale}px`;
     const rect = dialog.getBoundingClientRect();
-    dialog.style.left = `${Math.max(12,Math.min(anchor.left,innerWidth-rect.width-12))/scale}px`;
+    dialog.style.left = `${Math.max(12,(innerWidth-rect.width)/2)/scale}px`;
     dialog.style.top = `${top/scale}px`;
   }
   dialog.addEventListener('click',event => {
@@ -192,7 +213,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
     const rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
   });
-  dialog.addEventListener('close',() => { window.removeEventListener('resize',position); trigger.focus(); });
+  dialog.addEventListener('close',() => { customEditor.closePopovers(); window.removeEventListener('resize',position); trigger.focus(); });
   onUnmount(trigger,() => { window.removeEventListener('resize',position); dialog.close(); });
   return { trigger,dialog };
 }
