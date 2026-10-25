@@ -106,31 +106,31 @@ type InstrumentDefinition = {
 };
 export const stringInstruments = [
   { id: 'violin', name: 'Violin', clef: 'treble', transpose: 0, ranges: {
-    start: { name: 'Starter: D', range: ['D4','A4'], key: 'D' }, full: ['G3','B5'], levels: [
-      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
-      { id: 'starter-a', name: 'Starter: A', range: ['A4','E5'], key: 'A' },
-      { id: 'starter-e', name: 'Starter: E', range: ['E5','B5'], key: 'E' },
+    start: { name: 'Big 5: D', range: ['D4','A4'], key: 'D' }, full: ['G3','B5'], levels: [
+      { id: 'starter-g', name: 'Big 5: G', range: ['G3','D4'], key: 'G' },
+      { id: 'starter-a', name: 'Big 5: A', range: ['A4','E5'], key: 'A' },
+      { id: 'starter-e', name: 'Big 5: E', range: ['E5','B5'], key: 'E' },
     ],
   } },
   { id: 'viola', name: 'Viola', clef: 'alto', transpose: 0, ranges: {
-    start: { name: 'Starter: D', range: ['D4','A4'], key: 'D' }, full: ['C3','E5'], levels: [
-      { id: 'starter-c', name: 'Starter: C', range: ['C3','G3'], key: 'C' },
-      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
-      { id: 'starter-a', name: 'Starter: A', range: ['A4','E5'], key: 'A' },
+    start: { name: 'Big 5: D', range: ['D4','A4'], key: 'D' }, full: ['C3','E5'], levels: [
+      { id: 'starter-c', name: 'Big 5: C', range: ['C3','G3'], key: 'C' },
+      { id: 'starter-g', name: 'Big 5: G', range: ['G3','D4'], key: 'G' },
+      { id: 'starter-a', name: 'Big 5: A', range: ['A4','E5'], key: 'A' },
     ],
   } },
   { id: 'cello', name: 'Cello', clef: 'bass', transpose: 0, ranges: {
-    start: { name: 'Starter: D', range: ['D3','A3'], key: 'D' }, full: ['C2','E4'], levels: [
-      { id: 'starter-c', name: 'Starter: C', range: ['C2','G2'], key: 'C' },
-      { id: 'starter-g', name: 'Starter: G', range: ['G2','D3'], key: 'G' },
-      { id: 'starter-a', name: 'Starter: A', range: ['A3','E4'], key: 'A' },
+    start: { name: 'Big 5: D', range: ['D3','A3'], key: 'D' }, full: ['C2','E4'], levels: [
+      { id: 'starter-c', name: 'Big 5: C', range: ['C2','G2'], key: 'C' },
+      { id: 'starter-g', name: 'Big 5: G', range: ['G2','D3'], key: 'G' },
+      { id: 'starter-a', name: 'Big 5: A', range: ['A3','E4'], key: 'A' },
     ],
   } },
   { id: 'double-bass', name: 'Double bass', clef: 'bass', transpose: 12, ranges: {
-    start: { name: 'Starter: D', range: ['D3','A3'], key: 'D' }, full: ['E2','D4'], levels: [
-      { id: 'starter-e', name: 'Starter: E', range: ['E2','B2'], key: 'E' },
-      { id: 'starter-a', name: 'Starter: A', range: ['A2','E3'], key: 'A' },
-      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
+    start: { name: 'Big 5: D', range: ['D3','A3'], key: 'D' }, full: ['E2','D4'], levels: [
+      { id: 'starter-e', name: 'Big 5: E', range: ['E2','B2'], key: 'E' },
+      { id: 'starter-a', name: 'Big 5: A', range: ['A2','E3'], key: 'A' },
+      { id: 'starter-g', name: 'Big 5: G', range: ['G3','D4'], key: 'G' },
     ],
   } },
 ] as const satisfies readonly InstrumentDefinition[];
@@ -139,21 +139,24 @@ export const stringInstruments = [
 // Full is the adaptive limit, not an extra picker choice. IDs are unique per instrument.
 export const instruments = [
   { id: 'flute', name: 'Flute', clef: 'treble', transpose: 0, ranges: {
-    start: { range: ['F4','C5'], key: 'F' }, full: ['B3','C7'], levels: [
+    start: { name: 'Big 5: F', range: ['F4','C5'], key: 'F' }, full: ['B3','C7'], levels: [
+      { id: 'starter-bb', name: 'Big 5: B♭', range: ['Bb4','F5'], key: 'Bb' },
       { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['C4','F5'], key: 'F' },
       { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
     ],
   } },
   { id: 'oboe', name: 'Oboe', clef: 'treble', transpose: 0, ranges: {
-    start: { range: ['F4','C5'], key: 'F' }, full: ['Bb3','A6'], levels: [
+    start: { name: 'Big 5: F', range: ['F4','C5'], key: 'F' }, full: ['Bb3','A6'], levels: [
+      { id: 'starter-bb', name: 'Big 5: B♭', range: ['Bb4','F5'], key: 'Bb' },
       { id: 'one-octave', name: '1 octave', range: ['F4','F5'], key: 'F' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['Bb3','F5'], key: 'F' },
       { id: 'two-octaves', name: '2 octaves', range: ['C4','C6'], key: 'F' },
     ],
   } },
   { id: 'bassoon', name: 'Bassoon', clef: 'bass', transpose: 0, ranges: {
-    start: { range: ['F2','C3'], key: 'F' }, full: ['Bb1','Bb4'], levels: [
+    start: { name: 'Big 5: F', range: ['F2','C3'], key: 'F' }, full: ['Bb1','Bb4'], levels: [
+      { id: 'starter-bb', name: 'Big 5: B♭', range: ['Bb2','F3'], key: 'Bb' },
       { id: 'one-octave', name: '1 octave', range: ['F2','F3'], key: 'F' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F2','C4'], key: 'F' },
       { id: 'two-octaves', name: '2 octaves', range: ['F2','F4'], key: 'F' },
@@ -188,7 +191,8 @@ export const instruments = [
     ],
   } },
   { id: 'horn-f', name: 'F Horn', clef: 'treble', transpose: 7, ranges: {
-    start: { range: ['C4','G4'], key: 'C' }, full: ['C2','G5'], levels: [
+    start: { name: 'Big 5: C', range: ['C4','G4'], key: 'C' }, full: ['C2','G5'], levels: [
+      { id: 'starter-f', name: 'Big 5: F', range: ['F4','C5'], key: 'F' },
       { id: 'one-octave', name: '1 octave', range: ['F3','F4'], key: 'F' },
       { id: 'one-and-half-octaves', name: '1.5 octaves', range: ['F3','C5'], key: 'F' },
       { id: 'two-octaves', name: '2 octaves', range: ['F3','F5'], key: 'F' },
@@ -236,7 +240,7 @@ for (const i of instruments) {
     levelIds.add(level.id);
   }
 }
-export const instrumentPresets = instruments.map((i: InstrumentDefinition) => instrumentPreset(i,{ ...i.ranges.start, id: 'starter', name: i.ranges.start.name ?? 'Starter' }));
+export const instrumentPresets = instruments.map((i: InstrumentDefinition) => instrumentPreset(i,{ ...i.ranges.start, id: 'starter', name: i.ranges.start.name ?? 'Big 5' }));
 export const instrumentRangePresets = instruments.flatMap(i => (i.ranges.levels ?? []).map(level => instrumentPreset(i,level)));
 export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets, ...instrumentRangePresets]);
 if (new Set(presets.map(p => p.id)).size !== presets.length) throw new Error('Duplicate catalog preset IDs.');

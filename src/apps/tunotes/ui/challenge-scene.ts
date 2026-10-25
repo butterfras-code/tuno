@@ -1,3 +1,4 @@
+import { resultReward } from './result-reward.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { Challenge, describeRules } from '../engine/challenge.ts';
 import { clefForPitch } from '../domain/presets.ts';
@@ -36,10 +37,11 @@ export function challengeScene(actions: { ready: () => void; resume: () => void;
   };
   const correct = metric('Correct','challenge-correct'), accuracy = metric('Accuracy','challenge-accuracy'), streak = metric('Best streak','challenge-streak');
   const message = el('p','scoreboard-message');
+  const reward = resultReward();
   const controls = el('div','control-row'); controls.append(button('Play again',actions.retry,true),button('Change setup',actions.edit));
   const details = el('details','round-details');
   const detailList = el('dl'); details.append(el('summary','','Round details'),detailList);
-  board.append(title,value,metrics,message,controls,details);
+  board.append(title,reward.node,value,metrics,message,controls,details);
   node.append(backdrop,hud,notation,interlude,dogSlot,board,announcement);
   let round = -1, lastPhase = '';
   const phase = (s: Challenge) => s.state === 'finished' ? 'finished' : s.state === 'paused' ? 'paused' : s.phase;
@@ -69,8 +71,9 @@ export function challengeScene(actions: { ready: () => void; resume: () => void;
       lastPhase = state;
       treat.textContent = `${remaining} more for a treat`;
     },
-    finish(s: Challenge, name?: string) {
+    finish(s: Challenge, treats = 0, name?: string) {
       this.update(s,0);
+      reward.update(treats,s.qualified ? 'treat' : 'rest');
       title.textContent = s.end === 'timeout' ? 'Time’s up!' : s.end === 'partial' ? 'Round finished' : 'Challenge complete';
       const timed = s.rules.goal === 'timed';
       number.textContent = timed ? s.score.toFixed(2) : (Math.floor(s.activeMs)/1000).toFixed(2);

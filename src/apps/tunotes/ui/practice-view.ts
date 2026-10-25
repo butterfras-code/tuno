@@ -1,3 +1,4 @@
+import { resultReward } from './result-reward.ts';
 import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
@@ -28,7 +29,7 @@ function button(text: string, action: () => void) {
 }
 export function practiceView() {
   let activity: 'practice' | 'challenge' = 'practice';
-  const rulesUI = challengeSetup();
+  const rulesUI = challengeSetup('Challenge Mode',true);
   const node = el('section', 'practice-view');
   node.dataset.activity = 'practice';
   node.dataset.screen = 'setup';
@@ -40,6 +41,7 @@ export function practiceView() {
   const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
+  presetsUI.rangeContext('Practice');
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
@@ -103,7 +105,7 @@ export function practiceView() {
   };
   const settings = el('section','practice-settings');
   const setupUI = activitySetup(presetsUI.node,settings,'activity',presetsUI.rangeTrigger);
-  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode);
+  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode,rulesUI.node);
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
     const preset = selected();
@@ -116,7 +118,6 @@ export function practiceView() {
     pace = savedPace(); refreshPacing(); refreshPreferences();
   },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
   options.append(dataUI.node);
-  settings.append(rulesUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
@@ -144,8 +145,14 @@ export function practiceView() {
     ? arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0 : undefined);
   const result = el('section','practice-results'); result.hidden = true;
   const resultHeading = el('h2', '', 'Practice results'); resultHeading.tabIndex = -1;
-  const resultSummary = el('p'); resultSummary.id = 'result-summary';
+  const resultSummary = el('div','practice-result-metrics'); resultSummary.id = 'result-summary';
+  const resultScore = el('strong'); resultScore.id = 'practice-result-score';
+  const scoreValue = el('p','scoreboard-value'); scoreValue.append(resultScore,el('span','','points'));
+  const scoreLabel = el('p','practice-result-score-label','Score · Correct × Accuracy');
+  const resultStats = el('div','practice-result-stats'); resultStats.append(scoreLabel,scoreValue,resultSummary);
+  const resultOverview = el('div','practice-result-overview');
   const resultTiming = el('p');
+  const rewardSummary = resultReward();
   let resultRecorded = false;
   const scene = challengeScene({
     ready: () => { if (session instanceof Challenge) { session.ready(); resetInput(); render(); scene.focus(); } },
@@ -170,13 +177,19 @@ export function practiceView() {
     node.dataset.screen = 'results';
     answerNotice.clear();
     resultRecorded = true; session.finish(); store.record(profileId, session); store.flush(); dataUI.refresh(); resetInput(); play.hidden = true; result.hidden = false;
-    resultSummary.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Best streak ${session.bestStreak}`;
+    resultScore.textContent = (session.correct * (session.accuracy ?? 0)).toFixed(2);
+    resultSummary.replaceChildren(
+      el('p','',`${session.correct} correct / ${session.attempts} attempts`),
+      el('p','',`Accuracy ${accuracy(session)}`),
+      el('p','',`Best streak ${session.bestStreak}`),
+    );
     const average = session.attempts ? `${(session.responseTotalMs / session.attempts / 1000).toFixed(1)} s` : '—';
     resultTiming.textContent = `${(session.activeMs / 1000).toFixed(1)} s active practice · Average response ${average}. ${session.interrupted ? 'Pauses excluded. ' : ''}${session.attempts ? 'Every note is a step forward. Thanks for practicing!' : 'Ready whenever you are. Try a note next time.'}`;
     resultHeading.textContent = 'Practice results';
+    rewardSummary.update(progress.treats,session.attempts ? 'treat' : 'rest');
     if (session instanceof Challenge) {
       play.hidden = false; result.hidden = true;
-      scene.finish(session,profileId ? store.data.profiles.find(p => p.id === profileId)?.name : undefined);
+      scene.finish(session,progress.treats,profileId ? store.data.profiles.find(p => p.id === profileId)?.name : undefined);
       answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; controls.hidden = true;
     }
     coaching.textContent = recommendation(session.attempts,session.correct,session.learning.notes,session.misses);
@@ -254,7 +267,7 @@ export function practiceView() {
   };
   const start = () => {
     const preset = selected(); if (!preset) return;
-    const rules = activity === 'challenge' ? rulesUI.read(() => setupUI.select('settings')) : undefined;
+    const rules = activity === 'challenge' ? rulesUI.read() : undefined;
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
@@ -294,7 +307,8 @@ export function practiceView() {
   const resultControls = el('div', 'control-row'); resultControls.append(button('Retry', start), button('Edit setup', showSetup), button('Home', showSetup));
   const resultDetails = el('details','practice-result-details');
   resultDetails.append(el('summary','','Session details'),resultTiming);
-  result.append(resultHeading, resultSummary, coaching, resultControls, resultDetails);
+  resultOverview.append(resultStats,rewardSummary.node);
+  result.append(resultHeading, resultOverview, coaching, resultControls, resultDetails);
   stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
   presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
@@ -339,9 +353,7 @@ export function practiceView() {
   return { node, options, store, dispose, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
-    activity = next; node.dataset.activity = next; showSetup();
-    setupUI.practiceLayout(next === 'practice');
-    setupUI.settingsLabel('Challenge settings');
+    activity = next; node.dataset.activity = next; presetsUI.rangeContext(next === 'challenge' ? 'Challenge' : 'Practice'); showSetup();
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
