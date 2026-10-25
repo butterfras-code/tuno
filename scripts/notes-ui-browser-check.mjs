@@ -50,7 +50,9 @@ try {
       await notesMode(page,mode);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       if (mode === 'Practice') {
-        assert.ok((await page.locator('.preset-preview').boundingBox()).width <= 480);
+        const preview = await page.locator('.preset-preview').boundingBox();
+        const scene = await page.locator('.preset-preview-scene').boundingBox();
+        assert.ok(preview.width > 0 && preview.x >= scene.x - 1 && preview.x + preview.width <= scene.x + scene.width + 1, 'Range preview fits its responsive setup scene');
         const start=await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
         assert.ok(start.width >= 44 && start.height >= 44);
       }

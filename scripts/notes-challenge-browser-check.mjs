@@ -59,7 +59,7 @@ async function run(page,url,label) {
   await page.keyboard.press(await answer());assert.match(await page.locator('#practice-counts').textContent(),/1 correct \/ 1 attempts/);
   assert.match(await page.locator('#challenge-stats').textContent(),/1 correct/);await stableFrame();await save('playing');
   await page.clock.runFor(15000);
-  assert.equal(await page.locator('.scoreboard-value strong').textContent(),'1.00');
+  assert.equal(await page.locator('#challenge-result .scoreboard-value strong').textContent(),'1.00');
   assert.equal(await page.locator('#challenge-correct').textContent(),'1');assert.equal(await page.locator('#challenge-accuracy').textContent(),'100%');
   assert.equal(await page.locator('.round-details').evaluate(n=>n.open),false);
   assert.equal(await page.getByText('Qualified',{exact:true}).isVisible(),false);
@@ -68,11 +68,11 @@ async function run(page,url,label) {
   assert.match(await page.locator('#challenge-result .result-treats').textContent(),/^0 treats earned this session$/);
   await save('scoreboard');await stableFrame();
   await button(page,'Play again').click();assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
-  await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('.scoreboard-value strong').textContent(),'0.00');assert.match(await page.locator('.round-details').textContent(),/Unranked/);
+  await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('#challenge-result .scoreboard-value strong').textContent(),'0.00');assert.match(await page.locator('.round-details').textContent(),/Unranked/);
   assert.equal(await page.locator('#challenge-result .result-uno').getAttribute('alt'),'Uno sleeping');
   await button(page,'Change setup').click();await button(page,'Goal').click();await page.getByLabel('Correct notes',{exact:true}).fill('1');assert.equal(await page.getByLabel('Timeout (seconds)').count(),0);
   await button(page,'Start Challenge').click();await button(page,'Ready').click();await page.clock.runFor(3050);await page.keyboard.press(await answer());
-  assert.equal(await page.locator('.scoreboard-value span').textContent(),'seconds');assert.match(await page.locator('.round-details').textContent(),/Qualified/);
+  assert.equal(await page.locator('#challenge-result .scoreboard-value span').textContent(),'seconds');assert.match(await page.locator('.round-details').textContent(),/Qualified/);
   assert.equal(await page.locator('#challenge-correct').textContent(),'1');
   await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   // Visibility loss pauses with explicit Resume, and completion stays unranked.
@@ -98,7 +98,7 @@ async function run(page,url,label) {
   assert.equal(await page.evaluate(()=>window.treatCatches),8);
   await page.evaluate(()=>window.treatObserver.disconnect());
   await page.clock.fastForward(60000);
-  assert.equal(await page.locator('.scoreboard-value strong').textContent(),'60.02');
+  assert.equal(await page.locator('#challenge-result .scoreboard-value strong').textContent(),'60.02');
   assert.match(await page.locator('#challenge-result .result-treats').textContent(),/^8 treats earned this session$/);
   assert.equal(await page.locator('#challenge-correct').textContent(),'61');assert.equal(await page.locator('#challenge-accuracy').textContent(),'98%');
   for(const width of [360,768,1280]) {await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`dist/validation/notes-challenge-${name}-${label}-${width}.png`,fullPage:true});
