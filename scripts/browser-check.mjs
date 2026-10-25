@@ -286,9 +286,9 @@ try {
     assert.equal(await page.locator('.beat-grid').isVisible(), false);
     await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
     assert.equal(await page.locator('.beat:visible').count(), 4);
-    await page.getByRole('button', { name: 'View · Numbered', exact: true }).click();
+    await page.getByRole('button', { name: 'View: Numbered', exact: true }).click();
     assert.equal(await page.locator('.beat-grid').isVisible(), false);
-    await page.getByRole('button', { name: 'View · Uno', exact: true }).click();
+    await page.getByRole('button', { name: 'View: Uno', exact: true }).click();
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
