@@ -1,3 +1,4 @@
+import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
 import { Challenge } from '../engine/challenge.ts';
@@ -17,10 +18,10 @@ import { clefForPitch } from '../domain/presets.ts';
 import { spelling, pitchLabel } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
-import { segments } from './range-editor.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import { answerControls } from './answers.ts';
+import { answerFeedback } from './answer-feedback.ts';
 import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
@@ -37,69 +38,72 @@ export function practiceView() {
   const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
   const store = new NotesStore(storage);
-  const presetsUI = presetSetup(store); const picker = presetsUI.picker;
+  const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
-  let pace: ContinueAfter = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay');
-  const pacingControls: ReturnType<typeof segments<ContinueAfter>>[] = [];
-  const refreshPacing = () => { pacingControls.forEach(control => control.update([pace])); refreshSettingsSummary(); };
-  const pacingSetting = () => {
-    const pacing = segments<ContinueAfter>('Continue After', [['instant','Instant'],['delay','Delay'],['click','Click/Tap'],['correct','Correct']], value => {
+  const savedPace = () => store.data.configuration.continueAfter === 'correct' ? 'correct' as const : 'instant' as const;
+  let pace: ContinueAfter = savedPace();
+  const practiceMode = el('section','visual-content-section practice-mode-section');
+  practiceMode.setAttribute('aria-label','Practice Mode');
+  const modeChoices = el('div','practice-mode-choices'); modeChoices.setAttribute('role','group'); modeChoices.setAttribute('aria-label','Practice Mode');
+  const modeButtons = (['instant','correct'] as const).map(value => {
+    const label = value === 'instant' ? 'Normal' : 'Correct Only';
+    const mark = el('span','range-content-mark'); mark.setAttribute('aria-hidden','true');
+    const choice = button('',() => {
       pace = value; refreshPacing();
-      store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = pace === 'click'; });
+      store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = false; });
     });
-    pacingControls.push(pacing); pacing.update([pace]);
-    const field = el('div','setting pacing-setting'); field.append(el('span','setting-label','Continue After:'),pacing.node);
-    return field;
+    choice.classList.add('range-content-button'); choice.setAttribute('aria-label',label);
+    choice.append(el('span','',label),mark);
+    return {value,choice,mark};
+  });
+  const automatic = el('div','practice-mode-auto');
+  const autoChoice = button('Auto Every',() => {}); autoChoice.disabled = true; autoChoice.title = 'Coming soon'; autoChoice.classList.add('range-content-button');
+  const seconds = el('select','control'); seconds.setAttribute('aria-label','Auto Every seconds');
+  for (let value=0;value<=10;value++) {
+    const option = el('option','',value ? `${value} sec` : 'COMING SOON'); option.value = String(value); seconds.append(option);
+  }
+  automatic.append(autoChoice,seconds);
+  modeChoices.append(modeButtons[0]!.choice,automatic,modeButtons[1]!.choice);
+  practiceMode.append(el('h3','','Practice Mode'),modeChoices);
+  const refreshPacing = () => {
+    modeButtons.forEach(({value,choice,mark}) => { const active=pace===value; choice.setAttribute('aria-pressed',String(active)); mark.textContent=active ? '✓' : ''; });
   };
-  options.append(pacingSetting());
-  let guestAdaptive = false, guestPreview: boolean | undefined;
+  refreshPacing();
+  const guidanceKey = 'tunotes:keyboard-accidental-guidance';
+  let keyboardGuidance = true;
+  try { keyboardGuidance = storage?.getItem(guidanceKey) !== 'false'; } catch { /* Session-only preference. */ }
+  const guidanceLabel = el('label', 'setting');
+  const guidanceSetting = el('input'); guidanceSetting.type = 'checkbox'; guidanceSetting.checked = keyboardGuidance;
+  guidanceLabel.append(guidanceSetting, document.createTextNode(' Keyboard accidental guidance'));
+  const guidanceDescription = el('p', 'muted', 'Show a shortcut hint instead of scoring a matching letter entered without its required accidental. Saved on this device.');
+  const guidanceGroup = el('section', 'keyboard-guidance-settings'); guidanceGroup.append(guidanceLabel, guidanceDescription); options.append(guidanceGroup);
+  let keyboardHint = '';
+  const setGuidance = (enabled: boolean) => {
+    if (keyboardHint) answerNotice.clear();
+    keyboardGuidance = enabled; guidanceSetting.checked = enabled; keyboardHint = '';
+    try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
+  };
+  guidanceSetting.addEventListener('change', () => setGuidance(guidanceSetting.checked));
+  let guestAdaptive = false;
   const guestContexts = new Map<string, Context>();
   let useAdaptation = false, showIntro = false;
-  const adaptiveHelp = el('p','muted adaptive-help', 'We’ll practice notes you miss and add new ones when you’re ready.');
-  adaptiveHelp.id = 'adaptive-help'; adaptiveHelp.popover = 'auto'; adaptiveHelp.setAttribute('role','tooltip');
-  const adaptiveGroup = el('div','adaptive-control');
-  let helpPinned = false;
-  const hideHelp = () => { helpPinned = false; adaptiveHelp.hidePopover(); };
-  const showHelp = () => {
-    const rect = help.getBoundingClientRect();
-    adaptiveHelp.style.left = `${Math.max(8,Math.min(rect.left,innerWidth - 308))}px`;
-    adaptiveHelp.style.top = `${Math.max(8,Math.min(rect.bottom + 8,innerHeight - 120))}px`;
-    adaptiveHelp.showPopover();
-  };
-  const help = button('?', () => { if (helpPinned) hideHelp(); else { showHelp(); helpPinned = true; } });
-  help.classList.add('adaptive-help-trigger'); help.setAttribute('aria-label','About Adapt Range');
-  help.setAttribute('aria-controls','adaptive-help'); help.setAttribute('aria-expanded','false'); help.setAttribute('aria-describedby','adaptive-help');
-  help.addEventListener('pointerenter',event => { if (event.pointerType === 'mouse') showHelp(); });
-  help.addEventListener('focus',showHelp);
-  adaptiveGroup.addEventListener('pointerleave',() => { if (!helpPinned && document.activeElement !== help) hideHelp(); });
-  adaptiveGroup.addEventListener('focusout',() => { queueMicrotask(() => { if (!adaptiveGroup.contains(document.activeElement)) hideHelp(); }); });
-  adaptiveHelp.addEventListener('toggle',() => {
-    const open = adaptiveHelp.matches(':popover-open'); help.setAttribute('aria-expanded',String(open)); if (!open) helpPinned = false;
-  });
-  const adaptive = button('Adapt Range', () => {
-    useAdaptation = !useAdaptation;
+  const setAdaptation = (enabled: boolean) => {
+    useAdaptation = enabled;
     const p = store.profile();
     if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
     refreshPreferences(); refreshSettingsSummary();
-  }); adaptive.id = 'adaptive';
-  const previewToggle = button('Show Intro', () => {
-    showIntro = !showIntro;
-    const p = store.profile();
-    if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.preview = showIntro; }); else guestPreview = showIntro;
-    refreshPreferences(); refreshSettingsSummary();
-  }); previewToggle.id = 'meet-notes';
+  };
+  presetsUI.onAdaptiveChoice(setAdaptation);
   const refreshPreferences = () => {
     const p = store.profile(); useAdaptation = p ? p.adaptive ?? false : guestAdaptive;
-    showIntro = (p ? p.preview : guestPreview) ?? (selected() ? beginnerPreview(selected()!) : false);
-    adaptive.setAttribute('aria-pressed',String(useAdaptation)); previewToggle.setAttribute('aria-pressed',String(showIntro));
-    adaptiveGroup.classList.toggle('selected',useAdaptation);
+    showIntro = selected() ? beginnerPreview(selected()!) : false;
   };
   const settings = el('section','practice-settings');
-  const setupUI = activitySetup(presetsUI.node,settings);
-  const setup = setupUI.node;
+  const setupUI = activitySetup(presetsUI.node,settings,'activity',presetsUI.rangeTrigger);
+  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode);
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
     const preset = selected();
@@ -108,22 +112,22 @@ export function practiceView() {
   refreshPreferences(); refreshSettingsSummary();
   let shownPresetId = store.data.configuration.presetId;
   const dataUI = localData(store, () => {
-    showSetup(); guestContexts.clear(); guestAdaptive = false; guestPreview = undefined; presetsUI.refresh();
-    pace = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay'); refreshPacing(); refreshPreferences();
+    showSetup(); guestContexts.clear(); guestAdaptive = false; presetsUI.refresh();
+    pace = savedPace(); refreshPacing(); refreshPreferences();
   },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
   options.append(dataUI.node);
-  adaptiveGroup.append(adaptive,help,adaptiveHelp);
-  const toggles = el('div','control-row practice-toggles'); toggles.append(adaptiveGroup,previewToggle);
-  const practicePacing = pacingSetting();
-  settings.append(toggles, practicePacing);
   settings.append(rulesUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const staff = el('div', 'staff-panel');
+  const answerNotice = answerFeedback();
   const feedback = el('p', 'feedback'); feedback.id = 'feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
-  const encouragement = el('p', 'encouragement'); encouragement.setAttribute('role', 'status');
+  const feedbackText = el('span');
+  const dismissGuidance = button('Dismiss accidental reminders', () => { setGuidance(false); render(); });
+  dismissGuidance.classList.add('keyboard-guidance-dismiss'); dismissGuidance.hidden = true;
+  feedback.append(feedbackText, dismissGuidance);
   const answers = answerControls((answer, token) => submit(answer, token));
   const gate = new PressGate();
   const arrows = new Set<string>();
@@ -135,7 +139,6 @@ export function practiceView() {
   let renderedPrompt = '';
   let inputSince = 0;
   let treatUntil = 0;
-  let encouragementUntil = 0;
   let disposed = false;
   const showModifier = () => answers.modifier(session && !play.hidden && session.state !== 'paused' && session.state !== 'finished' && arrows.size === 1
     ? arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0 : undefined);
@@ -153,11 +156,10 @@ export function practiceView() {
   const treatProgress = el('p','treat-progress'); treatProgress.hidden = true;
   const dogHome = el('div','practice-companion'); dogHome.append(dog.node,treatProgress);
   const coaching = el('p'); coaching.id = 'recommendation';
-  const expansion = el('p'); expansion.id = 'expansion-announcement'; expansion.setAttribute('role','status');
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     setupUI.select('notes');
-    closePreview(); session?.finish(); session = undefined; resetInput();
+    closePreview(); answerNotice.clear(); session?.finish(); session = undefined; resetInput();
     presetsUI.companion.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
@@ -166,6 +168,7 @@ export function practiceView() {
     if (!session) return;
     if (resultRecorded) return;
     node.dataset.screen = 'results';
+    answerNotice.clear();
     resultRecorded = true; session.finish(); store.record(profileId, session); store.flush(); dataUI.refresh(); resetInput(); play.hidden = true; result.hidden = false;
     resultSummary.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Best streak ${session.bestStreak}`;
     const average = session.attempts ? `${(session.responseTotalMs / session.attempts / 1000).toFixed(1)} s` : '—';
@@ -174,7 +177,7 @@ export function practiceView() {
     if (session instanceof Challenge) {
       play.hidden = false; result.hidden = true;
       scene.finish(session,profileId ? store.data.profiles.find(p => p.id === profileId)?.name : undefined);
-      answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; expansion.hidden = true; controls.hidden = true;
+      answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; controls.hidden = true;
     }
     coaching.textContent = recommendation(session.attempts,session.correct,session.learning.notes,session.misses);
     if (performance.now() >= treatUntil) dog.pose(progress.treats ? 'happy' : 'rest'); dog.look(false); dog.tail(0, false);
@@ -197,7 +200,7 @@ export function practiceView() {
     scene.node.hidden = !isChallenge;
     counts.hidden = isChallenge; heading.hidden = isChallenge;
     answers.node.hidden = waiting || isChallenge && paused; keyboardHelp.hidden = answers.node.hidden;
-    feedback.hidden = isChallenge && (waiting || paused); expansion.hidden = isChallenge && (waiting || paused);
+    feedback.hidden = isChallenge && (waiting || paused);
     controls.hidden = false; pause.hidden = isChallenge && paused;
     if (session instanceof Challenge) {
       scene.update(session,progress.remaining,store.data.configuration.showKeySignature);
@@ -213,19 +216,23 @@ export function practiceView() {
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = `${session.session}:${session.prompt}:${store.data.configuration.showKeySignature ?? false}`;
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
+      keyboardHint = ''; inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
     }
+    answerNotice.mount(staff.querySelector('svg')!);
+    if (paused || waiting) answerNotice.clear();
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;
-    expansion.textContent = session.announcement;
     answers.update(session.activePreset, session.token, locked);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
-    feedback.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : session.continueAfter === 'correct' ? 'Not quite. Try again.' : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : '';
+    dismissGuidance.hidden = paused || !keyboardHint;
+    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
+    const previousAnnouncement = session?.announcement;
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
+    keyboardHint = '';
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
@@ -234,25 +241,24 @@ export function practiceView() {
       if (guestContexts.size > 128) guestContexts.delete(guestContexts.keys().next().value!);
     }
     const reward = progress.update(session.correct, session.streak, session.attempts);
+    if (session.last!.correct) answerNotice.celebrate(reward, session.announcement !== previousAnnouncement ? session.announcement : '');
+    else answerNotice.show(session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, false);
     dog.look(reward.look, -8);
     if (reward.treat || performance.now() >= treatUntil) dog.pose(reward.treat ? 'catch' : reward.pose);
     dog.tail(0, reward.pose === 'wag');
     if (reward.nod) dog.nod();
     treatProgress.textContent = `${progress.remaining} to a treat`;
     if (reward.treat) { dog.catch(session instanceof Challenge ? scene.treat : counts); treatUntil = performance.now() + 450; }
-    if (!session.last!.correct) { encouragement.textContent = ''; encouragementUntil = 0; }
-    else if (reward.text) { encouragement.textContent = reward.text; encouragementUntil = performance.now() + 2200; }
     if (session.continueAfter === 'instant') session.advance(session.token);
     if (session.state === 'finished') finish(); else render();
   };
   const start = () => {
-    hideHelp();
     const preset = selected(); if (!preset) return;
     const rules = activity === 'challenge' ? rulesUI.read(() => setupUI.select('settings')) : undefined;
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
-    closePreview(); session?.finish(); session = undefined;
+    closePreview(); answerNotice.clear(); session?.finish(); session = undefined;
     const useAdaptive = useAdaptation;
     const context = store.profile()?.contexts.find(c => c.fingerprint === fingerprint(preset,useAdaptive,activity)) ?? (!profileId ? guestContexts.get(fingerprint(preset,useAdaptive,activity)) : undefined);
     const begin = (exposure: PreviewExposure) => {
@@ -266,7 +272,7 @@ export function practiceView() {
       if (rules) { scene.notation.append(staff); scene.dogSlot.prepend(dog.node); }
       else { play.insertBefore(staff,feedback); dogHome.prepend(dog.node); }
       treatProgress.hidden = Boolean(rules); treatProgress.textContent = `${progress.remaining} to a treat`;
-      heading.textContent = `${rules ? `${store.profile()?.name ?? 'Player 1'} · ` : ''}${session.preset.name}`; encouragement.textContent = ''; dog.pose('rest'); dog.look(false); dog.tail(0, false);
+      heading.textContent = `${rules ? `${store.profile()?.name ?? 'Player 1'} · ` : ''}${session.preset.name}`; dog.pose('rest'); dog.look(false); dog.tail(0, false);
       node.dataset.screen = 'playing';
       setup.hidden = true; result.hidden = true; play.hidden = false; render(); if (rules) scene.focus(); else heading.focus();
     };
@@ -284,7 +290,7 @@ export function practiceView() {
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
-  play.append(heading, counts, scene.node, staff, feedback, expansion, answers.node, encouragement, controls);
+  play.append(heading, counts, scene.node, staff, feedback, answers.node, controls, answerNotice.node);
   const resultControls = el('div', 'control-row'); resultControls.append(button('Retry', start), button('Edit setup', showSetup), button('Home', showSetup));
   const resultDetails = el('details','practice-result-details');
   resultDetails.append(el('summary','','Session details'),resultTiming);
@@ -296,8 +302,17 @@ export function practiceView() {
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); if (fresh) arrows.add(event.key); showModifier(); return; }
     const letter = event.key.toUpperCase();
-    if (/^[A-G]$/.test(letter)) { event.preventDefault(); if (fresh && arrows.size < 2) answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0); }
-    else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
+    if (/^[A-G]$/.test(letter)) {
+      event.preventDefault();
+      if (!fresh || arrows.size >= 2) return;
+      const hint = keyboardGuidance && arrows.size === 0 && session.state === 'running' && (!(session instanceof Challenge) || session.phase === 'playing')
+        ? missingAccidentalHint(letter as Letter, session.pitch, session.preset, store.data.configuration.showKeySignature) : undefined;
+      if (hint) {
+        answers.reset(); keyboardHint = hint;
+        render();
+        answerNotice.show(hint, false, 2500);
+      } else answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0);
+    } else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
       event.preventDefault(); if (fresh) answers.focused(event.target as HTMLButtonElement);
     }
   };
@@ -310,14 +325,13 @@ export function practiceView() {
   const timer = setInterval(() => {
     const storageMessage = store.durable ? '' : store.message;
     if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
-    if (encouragementUntil && performance.now() >= encouragementUntil) { encouragement.textContent = ''; encouragementUntil = 0; }
     if (treatUntil && performance.now() >= treatUntil) { dog.pose(session?.state === 'finished' && progress.treats ? 'happy' : progress.pose); treatUntil = 0; }
     if (session?.state === 'finished') finish();
     if (!session || session.state === 'finished' || session.state === 'paused') return;
     if (session.advance(session.token) || session instanceof Challenge) { if ((session as Practice).state === 'finished') finish(); else render(); }
   }, 25);
   const dispose = () => {
-    if (disposed) return; disposed = true; closePreview(); answers.reset(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
+    if (disposed) return; disposed = true; answerNotice.clear(); closePreview(); answers.reset(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
     document.removeEventListener('keydown', keydown); document.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('blur', resetInput);
   };
@@ -326,13 +340,14 @@ export function practiceView() {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; showSetup();
-    setupUI.settingsLabel(next === 'practice' ? 'Practice settings' : 'Challenge settings');
+    setupUI.practiceLayout(next === 'practice');
+    setupUI.settingsLabel('Challenge settings');
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
-    rulesUI.node.hidden = next !== 'challenge'; practicePacing.hidden = next === 'challenge'; previewToggle.hidden = next === 'challenge';
+    rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
     refreshSettingsSummary();
   }, leave: () => {
-    hideHelp(); resetInput(); store.flush();
+    resetInput(); store.flush();
     if (introduction) showSetup();
     session?.pause(); if (session?.state === 'finished') finish(); else render();
   } };

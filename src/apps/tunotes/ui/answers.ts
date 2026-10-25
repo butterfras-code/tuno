@@ -1,6 +1,6 @@
 import { answerLayout, supportedAnswer } from '../domain/answer-layout.ts';
 import { el } from '../../../shared/ui/components.ts';
-import { keyAccidental, spelling } from '../domain/notation.ts';
+import { keyAccidental, letters, spelling } from '../domain/notation.ts';
 import type { Accidental, AnswerSpelling, Letter } from '../domain/notation.ts';
 import type { Preset } from '../domain/presets.ts';
 import type { PromptToken } from '../engine/practice.ts';
@@ -51,6 +51,8 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       const { letter, accidental } = value;
       const b = el('button', `control answer answer-${accidental === 1 ? 'sharp' : accidental === -1 ? 'flat' : 'natural'}`, spelling(value));
       b.style.gridColumn = `${target.column} / span 2`; b.style.gridRow = String(target.row);
+      // Compact layouts stack spellings by letter, starting at the same tonic.
+      b.style.setProperty('--answer-compact-column', String((letters.indexOf(letter) - letters.indexOf(next.key.tonic.letter) + letters.length) % letters.length + 1));
       b.dataset.repeat = String(target.repeat);
       b.type = 'button'; b.dataset.letter = letter; b.dataset.accidental = String(accidental);
       values.set(b, value); buttons.push(b); grid.append(b);

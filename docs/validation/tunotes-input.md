@@ -2,6 +2,14 @@
 
 Implemented locally in the existing branch/worktree on 2026-09-27. This updates Stage 2; no publication is implied. The implementation, including the later modifier glow and arrow keycaps, is recorded in local commit `73eba41`. The archived tuNotes build `7bb676f904fff2ea` and [release.json](tunotes-input/release.json) cover the offset-layout revision before those later visual additions; they are not evidence for the current working tree or the concurrent configurator refinement.
 
+## Contextual accidental guidance (2026-10-24)
+
+Guidance is enabled by default for the A–G keyboard shortcuts in Practice and Challenge. A matching bare letter for a flat or sharp shows “Use ↓ + B for B♭” or “Use ↑ + F for F♯” without submitting an answer. A matching bare letter also shows “Use → + B for B♮” when the staff explicitly displays a natural cancelling the key signature. Ordinary naturals, wrong letters, deliberate arrow modifiers, and exact spelling buttons keep their normal behavior. Hints repeat on every fresh matching press and leave the prompt, attempts, accuracy, rewards and adaptive observations unchanged.
+
+“Don’t show this again” dismisses the hint without submitting the intercepted input. Future bare letters submit literal naturals and follow the selected exercise pacing. The device preference is stored separately from student progress in `tunotes:keyboard-accidental-guidance`; Options → Keyboard accidental guidance re-enables it. If local storage is unavailable, the preference works for the current session.
+
+`notes-guidance-browser-check.mjs` checks flat, sharp and cancellation-natural fixtures with adaptive learning enabled, repeated hints without saved-data changes, immediate correct retries, literal scoring after opt-out, and preference persistence and re-enabling after reload. It runs in `test:browser` and both browsers in `verify`. The existing input suite explicitly disables guidance to keep testing literal spelling submission.
+
 ## Tap-only follow-up (2026-09-28)
 
 Answer controls now use direct taps/clicks with the offset layout and the hint “Tap a note to answer.” Leaving the pressed target cancels; releasing over another note cannot answer it. Keyboard input and prompt/cancellation protections remain. The earlier gesture behavior and archived checks below describe historical versions. Current browser checks verify mouse and emulated-touch drag cancellation followed by direct submission.

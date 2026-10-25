@@ -102,8 +102,38 @@ const ledgerPresets = clefs.flatMap(clef => ([1,2,4] as const).flatMap(count => 
 type InstrumentLevel = { readonly id: string; readonly name: string; readonly range: readonly [string, string]; readonly key: string | null; readonly accidentals?: Policy };
 type InstrumentDefinition = {
   readonly id: string; readonly name: string; readonly clef: Clef; readonly transpose: number;
-  readonly ranges: { readonly start: { readonly range: readonly [string, string]; readonly key: string | null; readonly accidentals?: Policy }; readonly full: readonly [string, string]; readonly levels?: readonly InstrumentLevel[] };
+  readonly ranges: { readonly start: { readonly name?: string; readonly range: readonly [string, string]; readonly key: string | null; readonly accidentals?: Policy }; readonly full: readonly [string, string]; readonly levels?: readonly InstrumentLevel[] };
 };
+export const stringInstruments = [
+  { id: 'violin', name: 'Violin', clef: 'treble', transpose: 0, ranges: {
+    start: { name: 'Starter: D', range: ['D4','A4'], key: 'D' }, full: ['G3','B5'], levels: [
+      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
+      { id: 'starter-a', name: 'Starter: A', range: ['A4','E5'], key: 'A' },
+      { id: 'starter-e', name: 'Starter: E', range: ['E5','B5'], key: 'E' },
+    ],
+  } },
+  { id: 'viola', name: 'Viola', clef: 'alto', transpose: 0, ranges: {
+    start: { name: 'Starter: D', range: ['D4','A4'], key: 'D' }, full: ['C3','E5'], levels: [
+      { id: 'starter-c', name: 'Starter: C', range: ['C3','G3'], key: 'C' },
+      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
+      { id: 'starter-a', name: 'Starter: A', range: ['A4','E5'], key: 'A' },
+    ],
+  } },
+  { id: 'cello', name: 'Cello', clef: 'bass', transpose: 0, ranges: {
+    start: { name: 'Starter: D', range: ['D3','A3'], key: 'D' }, full: ['C2','E4'], levels: [
+      { id: 'starter-c', name: 'Starter: C', range: ['C2','G2'], key: 'C' },
+      { id: 'starter-g', name: 'Starter: G', range: ['G2','D3'], key: 'G' },
+      { id: 'starter-a', name: 'Starter: A', range: ['A3','E4'], key: 'A' },
+    ],
+  } },
+  { id: 'double-bass', name: 'Double bass', clef: 'bass', transpose: 12, ranges: {
+    start: { name: 'Starter: D', range: ['D3','A3'], key: 'D' }, full: ['E2','D4'], levels: [
+      { id: 'starter-e', name: 'Starter: E', range: ['E2','B2'], key: 'E' },
+      { id: 'starter-a', name: 'Starter: A', range: ['A2','E3'], key: 'A' },
+      { id: 'starter-g', name: 'Starter: G', range: ['G3','D4'], key: 'G' },
+    ],
+  } },
+] as const satisfies readonly InstrumentDefinition[];
 // Ranges use exact written pitches (Bb2 and F#4 are valid endpoints). Set key to
 // null for no key signature, and accidentals to 'both' for chromatic practice.
 // Full is the adaptive limit, not an extra picker choice. IDs are unique per instrument.
@@ -185,6 +215,7 @@ export const instruments = [
       { id: 'two-octaves', name: '2 octaves', range: ['F1','F3'], key: 'Bb' },
     ],
   } },
+  ...stringInstruments,
 ] as const satisfies readonly InstrumentDefinition[];
 export const writtenToConcert = (pitch: WrittenPitch, concertToWritten: number) => chromatic(pitch) - concertToWritten;
 function instrumentPreset(i: InstrumentDefinition, level: InstrumentLevel): Preset {
@@ -205,7 +236,7 @@ for (const i of instruments) {
     levelIds.add(level.id);
   }
 }
-export const instrumentPresets = instruments.map(i => instrumentPreset(i,{ id: 'starter', name: 'Starter', ...i.ranges.start }));
+export const instrumentPresets = instruments.map((i: InstrumentDefinition) => instrumentPreset(i,{ ...i.ranges.start, id: 'starter', name: i.ranges.start.name ?? 'Starter' }));
 export const instrumentRangePresets = instruments.flatMap(i => (i.ranges.levels ?? []).map(level => instrumentPreset(i,level)));
 export const presets: readonly Preset[] = Object.freeze([...staffPresets, ...ledgerPresets, ...instrumentPresets, ...instrumentRangePresets]);
 if (new Set(presets.map(p => p.id)).size !== presets.length) throw new Error('Duplicate catalog preset IDs.');

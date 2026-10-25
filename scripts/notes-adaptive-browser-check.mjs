@@ -31,11 +31,10 @@ async function run(page,url,mode) {
   page.setDefaultTimeout(10000);
   page.on('pageerror',e=>errors.push(e.message)); await page.goto(url);
   await page.clock.install();
-  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);
-  assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),true);
+  assert.equal(await page.locator('#adaptive, #meet-notes').count(),0);
   await openData(page);
   await button(page,'Add profile').click(); await page.getByLabel('Profile name',{exact:true}).fill('Reader'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
-  await setToggle(page,'adaptive',true); await setPacing(page,'Click/Tap');
+  await choosePreset(page,'treble-lines-and-spaces',true); await setPacing(page,'Normal');
   await button(page,'Start Practice').click();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
   assert.equal(await button(page,'Start Practice').isDisabled(),true);
@@ -102,11 +101,11 @@ async function run(page,url,mode) {
   assert.match(await page.locator('#result-summary').textContent(),/1 attempts/);
   await button(page,'Edit setup').click();
   await page.emulateMedia({reducedMotion:'reduce'});
-  await choosePreset(page,'trombone-two-octaves'); await setToggle(page,'meet-notes',true);
+  await choosePreset(page,'trombone-starter',true);
   await button(page,'Start Practice').click();
-  const labels=await previewLabels(page); assert.equal(labels.length,15);
-  assert.equal(labels[0],'F'); assert.equal(labels.at(-1),'F');
-  assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 15');
+  const labels=await previewLabels(page); assert.equal(labels.length,5);
+  assert.equal(labels[0],'B♭'); assert.equal(labels.at(-1),'F');
+  assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 5');
   assert.equal(await page.locator('.preview-navigation').evaluate(n=>n.parentElement.className),'preview-staff-viewport');
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
   await button(page,'Replay').click();await button(page,'Start Practice').click();
@@ -114,51 +113,64 @@ async function run(page,url,mode) {
   assert.equal(await page.locator('.preview-note').count(),0);
   await page.keyboard.down('ArrowDown');await page.keyboard.press('b');await page.keyboard.up('ArrowDown');await button(page,'Finish').click();
   data=await readData(page);assert.deepEqual(data.profiles[0].results.at(-1).preview,{shown:true,skipped:false,completed:true});
-  await button(page,'Edit setup').click();await setToggle(page,'meet-notes',false);
-  await page.reload();assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),true);
-  await openData(page);await button(page,'Add profile').click();await page.getByLabel('Profile name',{exact:true}).fill('Second');await page.getByLabel('Profile name',{exact:true}).press('Enter');
-  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false);
-  await setToggle(page,'remember-progress',false);await setToggle(page,'meet-notes',true);await page.reload();
-  assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),false); // Guest choice was memory-only.
-  await setToggle(page,'adaptive',true); await setToggle(page,'meet-notes',false);
+  await button(page,'Edit setup').click();
+  await page.reload();assert.equal((await readData(page)).profiles[0].adaptive,true);
+  await openData(page);await button(page,'Add profile').click();
+  assert.notEqual((await readData(page)).profiles[1].adaptive,true);
+  await setToggle(page,'remember-progress',false);
+  await choosePreset(page,'treble-lines-and-spaces',true);
   await openData(page); page.once('dialog',dialog=>dialog.accept());
   await button(page,'Delete all tuNotes data').click();
-  assert.equal((await page.locator('#adaptive').getAttribute('aria-pressed') === 'true'),false);assert.equal((await page.locator('#meet-notes').getAttribute('aria-pressed') === 'true'),true);
+  assert.equal(await readData(page),null);
   results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, one centered note, right-side Uno, edge wrap, tail waiting until catch, altered labels/review, profile preferences and Guest memory passed`);
 }
 async function expansion(page) {
+  await page.setViewportSize({width:360,height:900});
   page.setDefaultTimeout(10000);
   const p=presets.find(p=>p.id==='keyboards-starter');
   const data=emptySnapshot();data.configuration={remember:true,profileId:'learner',presetId:p.id,selfPaced:true};
   const notes=Object.fromEntries(p.pool.map(pitch=>[pitchLabel(pitch),Array.from({length:5},()=>({pitch,answer:{letter:pitch.letter,accidental:pitch.accidental},correct:true,responseMs:500000,activity:'practice',preset:p.id}))]));
-  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
+  data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[{version:1,context:fingerprint(p,true),attempts:20,correct:20,first20:20,interrupted:false,at:1,activeMs:1000}],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
   await page.addInitScript(data=>localStorage.setItem('tunotes:data:v1',JSON.stringify(data)),data);await page.goto(new URL('/notes/', host.url).href);
-  await page.clock.install(); await button(page,'Start Practice').click();
+  await page.clock.install(); await button(page,'Start Practice').click();await button(page,'Skip').click();
   // Let font loading and the animation-frame play-surface resize settle before measuring.
   await page.evaluate(() => document.fonts.ready);
   await page.clock.runFor(100);
-  const before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
+  let before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
   const expected=async()=>{
     const label=await page.locator('.staff').getAttribute('aria-label');
     if(label.includes('below')) return label.includes('2 half')?'c':'d';
     const positions=['first line','first space','second line','second space','third line','third space','fourth line','fourth space','fifth line'];
     return 'efgabcdef'[positions.findIndex(v=>label.includes(v))];
   };
-  for(let i=0;i<20;i++) {await page.keyboard.press(await expected());if(i<19)await button(page,'Continue').click();}
-  assert.equal(await page.locator('#expansion-announcement').textContent(),'New Note! Uno added a lower B!');
+  for(let i=0;i<20;i++) {
+    await page.keyboard.press(await expected());
+    if(i===18) before=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
+    if(i<19)await page.clock.runFor(25);
+  }
+  assert.equal(await page.locator('.answer-feedback').textContent(),'A treat for Uno! New Note! Uno added a lower B!');
   assert.equal(await page.locator('.answer-added').count(),1);
   assert.equal(await page.locator('.answer-added').getAttribute('data-letter'),'B');
   const after=await page.locator('.answer').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
-  // The announcement may move the answer block vertically, but every target keeps its relative geometry.
+  assert.equal(await page.locator('#expansion-announcement, .encouragement').count(),0);
+  const placement=await page.locator('.staff').evaluate(svg=>{
+    const text=svg.querySelector('.answer-feedback').getBoundingClientRect(), frame=svg.getBoundingClientRect();
+    const notes=[...svg.querySelectorAll('.notehead,.note-accidental,.ledger')].map(note=>note.getBoundingClientRect());
+    return {overlaps:notes.some(note=>text.left<note.right && text.right>note.left && text.top<note.bottom && text.bottom>note.top),contained:text.left>=frame.left && text.right<=frame.right && text.top>=frame.top && text.bottom<=frame.bottom};
+  });
+  assert.equal(placement.contained,true); // Frozen feedback masks the following note rather than moving around it.
+  await page.waitForTimeout(200);
+  await page.screenshot({path:`dist/validation/notes-adaptive-${name}-floating-expansion.png`});
+  // Floating announcements preserve every answer target’s position.
   assert.equal(after.length,before.length);
   after.forEach((n,i)=> {
     assert.ok(Math.abs(n.x-before[i].x)<0.01,'Answer target keeps its horizontal position');
-    assert.ok(Math.abs((n.y-after[0].y)-(before[i].y-before[0].y))<0.01,'Answer target keeps its relative row position');
+    assert.ok(Math.abs(n.y-before[i].y)<0.01,'Answer target keeps its vertical position');
   });
-  await button(page,'Finish').click(); await button(page,'Edit setup').click();await setToggle(page,'meet-notes',true);
+  await button(page,'Finish').click(); await button(page,'Edit setup').click();
   await page.emulateMedia({reducedMotion:'reduce'});await button(page,'Start Practice').click();
   const restored=await previewLabels(page); assert.equal(restored.length,6);assert.equal(restored[0],'B');
-  await button(page,'Start Practice').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await setToggle(page,'adaptive',false);await button(page,'Start Practice').click();
+  await button(page,'Start Practice').click();await button(page,'Finish').click();await button(page,'Edit setup').click();await choosePreset(page,'keyboards-starter',false);await button(page,'Start Practice').click();
   assert.equal((await previewLabels(page)).length,5);
   results.push('Seeded mastered profile: 20-answer gate at arbitrarily slow recorded latencies, lower expansion announcement, in-place B activation, restored preview growth and adaptive-off original pool passed');
 }

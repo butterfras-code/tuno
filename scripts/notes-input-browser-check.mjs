@@ -1,5 +1,6 @@
+import { startPractice, readyForAnswer } from './notes-setup-helpers.mjs';
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
-import { choosePreset, setEndpoint, setModifiers, setKey, useRange } from './notes-setup-helpers.mjs';
+import { choosePreset, setEndpoint, setModifiers, setKey, useRange, saveCustom } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -14,10 +15,13 @@ const center = async locator => { await locator.scrollIntoViewIfNeeded(); const 
 const count = async (page, n) => assert.match(await page.locator('#practice-counts').textContent(), new RegExp(`/ ${n} attempts`));
 try {
   await mkdir('dist/validation', { recursive: true });
-  const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
+  const page = await browser.newPage();
+  // This suite exercises literal input; guidance behavior has its own browser check.
+  await page.addInitScript(() => localStorage.setItem('tunotes:keyboard-accidental-guidance', 'false'));
+  page.on('pageerror', e => errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href);
   await choosePreset(page,'flute-starter');
-  await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await setPacing(page,'Normal'); await startPractice(page);
   assert.equal(await page.locator('.answer').count(), 18);
   assert.equal(await page.locator('#answer-accidental').count(), 0);
   assert.equal(await button(page, 'B', -1).evaluate(b => b.classList.contains('answer-default')), true);
@@ -54,13 +58,13 @@ try {
   results.push('Held arrow highlights the matching row; unavailable keys have muted glow; release, conflicting arrows, blur and pause clear the highlight');
   await button(page, 'B').click(); await count(page,1);
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
-  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await readyForAnswer(page);
   await page.keyboard.press('b'); await count(page,2);
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct.*Streak 0/);
-  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await readyForAnswer(page);
   await page.keyboard.down('ArrowDown'); await page.keyboard.press('b'); await page.keyboard.up('ArrowDown'); await count(page,3);
   const positions = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; }));
-  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
+  await readyForAnswer(page);
   assert.deepEqual(await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.x+scrollX,r.y+scrollY,r.width,r.height]; })), positions);
   // Dragging between notes cancels; only a direct click submits.
   let from = await center(button(page, 'B')), to = await center(button(page, 'B', -1));
@@ -69,7 +73,7 @@ try {
   assert.equal(await page.locator('.answer-pending').count(), 0);
   await page.mouse.up(); await count(page,3);
   await button(page,'B',-1).click(); await count(page,4);
-  await page.getByRole('button', { name: 'Continue', exact: true }).first().click();
+  await readyForAnswer(page);
   from = await center(button(page,'B',-1));
   await page.mouse.move(from.x,from.y); await page.mouse.down(); await page.mouse.move(1,1); await page.mouse.up(); await count(page,4);
   await page.mouse.move(from.x,from.y); await page.mouse.down();
@@ -79,17 +83,17 @@ try {
   const starts=page.locator('.answer[data-letter="F"][data-accidental="0"]');
   assert.equal(await starts.count(),2);
   await starts.last().click(); await count(page,5);
-  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await readyForAnswer(page);
   await starts.first().click(); await count(page,6);
   results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse drag between notes cancels; outside release and pause cancel');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
   await choosePreset(page,'custom');
-  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await setKey(page,'C'); await setModifiers(page,['key','flat','natural','sharp']); await useRange(page);
+  await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await setKey(page,'C'); await setModifiers(page,['key','flat','natural','sharp']); await saveCustom(page,'Input range');
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
-  await setToggle(page,'meet-notes',false); await page.getByRole('button', { name: 'Start Practice', exact: true }).first().click();
+  await startPractice(page);
   const submitted=[];
   let n=0;
-  const next = () => page.getByRole('button',{name:'Continue',exact:true}).first().click();
+  const next = () => readyForAnswer(page);
   for (const [arrow,shift,accidental] of [['ArrowUp',false,1],['ArrowDown',false,-1],['ArrowRight',false,0],['ArrowRight',true,0]]) {
     await page.keyboard.down(arrow); if(shift) await page.keyboard.down('Shift');
     await page.keyboard.down('d'); await count(page,++n); submitted.push('D'+accidental);
@@ -136,12 +140,12 @@ try {
   results.push('Shared adapter submits exact spelling; enabling additional spellings animates in place; new session does not animate; reduced motion disables activation animation');
   if(name==='chromium') {
     const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}}); const touch=await context.newPage(); touch.on('pageerror',e=>errors.push(e.message));
-    await touch.goto(new URL('/notes/', host.url).href); await choosePreset(touch,'flute-starter'); await setPacing(touch,'Click/Tap'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await touch.goto(new URL('/notes/', host.url).href); await choosePreset(touch,'flute-starter'); await setPacing(touch,'Normal'); await startPractice(touch);
     await button(touch,'B',-1).tap(); await count(touch,1);
-    await touch.getByRole('button',{name:'Continue',exact:true}).first().tap();
+    await readyForAnswer(touch);
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
     await touch.getByRole('button',{name:'Finish',exact:true}).first().tap(); await touch.getByRole('button',{name:'Home',exact:true}).first().tap();
-    await setPacing(touch,'Delay'); await setToggle(touch,'meet-notes',false); await touch.getByRole('button',{name:'Start Practice',exact:true}).first().tap();
+    await setPacing(touch,'Normal'); await startPractice(touch);
     from=await center(button(touch,'B')); to=await center(button(touch,'B',-1));
     const cdp=await context.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x,y:from.y}]});
@@ -153,12 +157,12 @@ try {
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
     await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]}); await count(touch,1);
     await button(touch,'B',-1).tap(); await count(touch,2);
-    await context.close(); results.push('Chromium touch emulation: self-paced direct answer/Continue; drag between notes cancels; direct tap with automatic feedback, pointer cancellation, subsequent direct tap, no duplicate synthetic click');
+    await context.close(); results.push('Chromium touch emulation: Normal-mode direct answers and automatic advancement; drag between notes cancels; direct tap with automatic feedback, pointer cancellation, subsequent direct tap, no duplicate synthetic click');
   }
   for (const [preset,tonic,accidental] of [['keyboards-starter','C',0],['trombone-starter','B',-1],['alto-sax-starter','G',0]]) {
     const preview=await browser.newPage({viewport:{width:1000,height:950}});
     await preview.goto(new URL('/notes/', host.url).href); await choosePreset(preview,preset);
-    await setToggle(preview,'meet-notes',false); await preview.getByRole('button',{name:'Start Practice',exact:true}).click();
+    await startPractice(preview);
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
     const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();

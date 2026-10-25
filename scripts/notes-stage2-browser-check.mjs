@@ -1,5 +1,6 @@
+import { startPractice, readyForAnswer } from './notes-setup-helpers.mjs';
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
-import { choosePreset, setEndpoint, setModifiers, setKey, useRange, customTab, saveCustom } from './notes-setup-helpers.mjs';
+import { choosePreset, setEndpoint, setModifiers, setKey, useRange, openCustom, rangeDialog, saveCustom } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
@@ -20,29 +21,29 @@ try {
   await mkdir('dist/validation',{recursive:true});
   const context = await browser.newContext(); const page = await context.newPage(); page.on('pageerror',e => errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href); await page.evaluate(() => localStorage.setItem('tuno-preferences','preserve'));
-  await custom(page); assert.match(await page.locator('#preset-summary').textContent(),/F♯4/);
-  await useRange(page); await setPacing(page,'Click/Tap'); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
+  await custom(page);
+  await useRange(page); await setPacing(page,'Normal'); await startPractice(page);
   assert.equal(await page.locator('.key-accidental:visible').count(),0); assert.equal(await page.locator('.note-accidental:visible').count(),1);
   assert.ok(!(await page.locator('.staff').getAttribute('aria-label')).includes('F♯'));
   assert.equal(await page.locator('.answer').count(),18);
   assert.equal(await page.getByRole('button',{name:'F',exact:true}).first().getAttribute('aria-disabled'),'false');
   await page.keyboard.down('ArrowUp'); await page.keyboard.press('f'); await page.keyboard.up('ArrowUp'); assert.match(await page.locator('#practice-counts').textContent(),/1 correct \/ 1 attempts/);
-  await page.getByRole('button',{name:'Continue',exact:true}).first().click();
+  await readyForAnswer(page);
   await page.getByRole('button',{name:'F♯',exact:true}).first().focus(); await page.keyboard.press('Enter'); assert.match(await page.locator('#practice-counts').textContent(),/2 correct \/ 2 attempts/);
-  await page.getByRole('button',{name:'Continue',exact:true}).first().click();
+  await readyForAnswer(page);
   assert.equal(await page.getByRole('button',{name:'F♭',exact:true}).count(),0); assert.match(await page.locator('#practice-counts').textContent(),/2 attempts/);
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
-  await setKey(page,'F'); assert.match(await page.locator('#preset-summary').textContent(),/F4–F4/);
+  await setKey(page,'F');
   await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
-  assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isEnabled(),true);
-  await customTab(page,'Options'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Spaces',exact:true}).click();
-  assert.equal(await page.getByRole('button',{name:'Use range',exact:true}).isDisabled(),true); assert.match(await page.locator('#preset-summary').textContent(),/No notes match/);
-  await customTab(page,'Options'); await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Both',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Accept',exact:true}).isEnabled(),true);
+  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Lines',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Accept',exact:true}).isDisabled(),true); assert.match(await rangeDialog(page).locator('.visual-range-actions').textContent(),/empty pool/);
+  await page.getByRole('group',{name:'Staff content',exact:true}).getByRole('button',{name:'Lines',exact:true}).click();
   await saveCustom(page,'Middle C');
   results.push('Custom live spelling/key preview, empty-pool rejection, saved Custom, fixed spelling targets, answerable out-of-pool spellings, explicit sharp keyboard answer and focused Enter submission');
   await expandData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
-  await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click();
-  for(let i=0;i<20;i++) { await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<19) await page.getByRole('button',{name:'Continue',exact:true}).first().click(); }
+  await startPractice(page);
+  for(let i=0;i<20;i++) { await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<19) await readyForAnswer(page); }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   await page.reload(); await expandData(page); assert.match(await page.locator('#profile option:checked').textContent(),/<Student>/); assert.match(await page.locator('#profile-history').textContent(),/20 correct/);
@@ -54,7 +55,7 @@ try {
   await upload(page,backup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor();
   assert.match(await page.locator('#import-preview').textContent(),/1 profiles, 2 custom presets, 1 results/);
   await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
-  await setToggle(page,'remember-progress',false); await setToggle(page,'meet-notes',false); await page.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click(); await setToggle(page,'remember-progress',true);
+  await setToggle(page,'remember-progress',false); await startPractice(page); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click(); await setToggle(page,'remember-progress',true);
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
   results.push('Profile names render as text; progress/configuration survive reload into setup; export, previewed replacement, malformed/future-schema rejection, Guest isolation and tUno preferences preserved');
@@ -68,7 +69,7 @@ try {
   await file.goto(offlineUrl); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); assert.match(await file.locator('#profile-history').textContent(),/20 correct/);
   const offlineDownload = file.waitForEvent('download'); await file.getByRole('button',{name:'Export backup',exact:true}).first().click(); const offlineBackup = await readFile(await (await offlineDownload).path(),'utf8'); await upload(page,offlineBackup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete selected profile',exact:true}).first().click(); assert.equal(await page.locator('#profile option').count(),1);
-  page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.locator('#preset').getAttribute('value'),'treble-lines-and-spaces'); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
+  page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.evaluate(()=>localStorage.getItem('tunotes:data:v1')),null); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
   await offlineContext.close(); host.setAvailable(true);
   results.push('Online ↔ cached offline JSON backup round trip, confirmed profile/all-data deletion and 360/768/1280 setup layouts');
   for (const mode of ['denied','corrupt','quota']) {
@@ -79,7 +80,7 @@ try {
     },mode);
     const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(new URL('/notes/', host.url).href); await expandData(p);
     await p.getByRole('button',{name:'Add profile',exact:true}).first().click(); await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByLabel('Profile name',{exact:true}).press('Enter'); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
-    await setToggle(p,'meet-notes',false); await p.getByRole('button',{name:'Start Practice',exact:true}).first().click(); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
+    await startPractice(p); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();
   }
   results.push('Denied/corrupt/quota storage allows play and explicit memory-only import');

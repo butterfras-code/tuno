@@ -1,3 +1,4 @@
+import { openRange, rangeDialog } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -178,9 +179,9 @@ async function run(page,url,label) {
   assert.equal(await selected.getByRole('button').count(),4);
   assert.equal(await selected.getByRole('button').nth(1).textContent(),'Player 3');
   await button(page,'Select Player 2').click();
-  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),"Player 1's Notes");
+  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),'Choose Notes');
   await button(page,'Select Player 3').click();
-  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),"Player 3's Notes");
+  assert.equal(await page.locator('#multiplayer-notes-tab').textContent(),'Choose Notes');
   const remove=button(page,'Remove Player 3');
   assert.equal(await page.locator('.multiplayer-editor .multiplayer-player-controls').count(),0);
   assert.equal(await remove.locator('svg').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(143, 63, 72)');
@@ -282,14 +283,14 @@ async function run(page,url,label) {
   await button(page,'End round').click();assert.equal(await page.locator('.multiplayer-result-row').count(),3);
   await open(page,url);await addPlayers(page,2);
   await button(page,'Select Player 2').click();
-  await page.locator('#multi-preset').click();
-  const dialog=page.locator('.preset-dialog:visible');
-  await button(dialog,'Clef').click();await button(dialog,'Bass').click();await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(dialog,'Use preset').click();
+  await openRange(page);
+  const dialog=rangeDialog(page);
+  await button(dialog,'Clef').click();await button(dialog,'Bass').click();await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(dialog,'Keep this range').click();
   assert.equal(await page.locator('.multiplayer-editor').getByRole('button',{name:'Adapt Range',exact:true}).count(),0);
   await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
   await button(page,'Adapt Range').click();
   assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Adapt Range on/);
-  await page.getByRole('tab',{name:/Notes$/}).click();
+  await page.getByRole('tab',{name:'Choose Notes',exact:true}).focus();await page.keyboard.press('Home');
   assert.match(await page.locator('.multiplayer-editor').innerText(),/Bass — Lines \+ Spaces/);
   await button(page,'Select Player 1').click();
   await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).click();
@@ -325,7 +326,7 @@ async function run(page,url,label) {
   await button(page,'Challenge').click();
   assert.match(await page.locator('#notes-challenge .preset-name').textContent(),/Bass — Lines \+ Spaces/);
   await button(page,'Multi Player').click();
-  await page.getByRole('tab',{name:/Notes$/,exact:false}).click();
+  await page.getByRole('tab',{name:'Choose Notes',exact:true}).focus();await page.keyboard.press('Home');
   await button(page,'Edit Player 2').click();
   await page.getByLabel('Player 2 saved profile').selectOption({label:'Bass Player'});
   await button(page.getByRole('dialog'),'Save').click();

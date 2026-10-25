@@ -36,6 +36,24 @@ try {
         if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1)
           issues.push(`overlap: ${controls[i].getAttribute('aria-label') || controls[i].textContent} / ${controls[j].getAttribute('aria-label') || controls[j].textContent}`);
       }
+      const metronome = document.querySelector('#view-metronome');
+      if (metronome.checkVisibility()) {
+        const box = selector => metronome.querySelector(selector).getBoundingClientRect();
+        const center = rect => rect.left + rect.width / 2;
+        const hint = box('.tempo-pet-hint');
+        if (Math.abs(center(hint) - center(box('.pulse-friend .uno'))) > 1) issues.push('Uno and hint centers differ');
+        if (hint.bottom > box('.rhythm-controls').top) issues.push('Uno hint overlaps controls');
+        const hintLines = [...metronome.querySelectorAll('.tempo-pet-hint-line')].map(line => line.getBoundingClientRect());
+        if (hintLines.length !== 2 || hintLines[1].top < hintLines[0].bottom - 1) issues.push('Visualization hint needs its own line');
+        const marker = box('.tempo-drag-hint'), label = box('.tempo-drag-label');
+        if (Math.abs(center(marker) - center(label)) > 1 || Math.abs(marker.top + marker.height / 2 - label.top - label.height / 2) > 1) issues.push('Adjust label not centered on marker');
+        if (Math.abs(box('.tempo-drag-area').height - marker.height) > 1) issues.push('Tempo drag target height changed');
+        if (!getComputedStyle(metronome.querySelector('.tempo-input')).textDecorationLine.includes('underline')) issues.push('Tempo edit affordance missing');
+        const pills = ['.meter-field select', '.subdivision-field select', '.beat-mode'].map(selector => metronome.querySelector(selector));
+        const styles = pills.map(pill => getComputedStyle(pill));
+        if (styles.some(style => ['font', 'borderRadius', 'paddingInline', 'textAlign'].some(property => style[property] !== styles[0][property]))) issues.push('Setting pill styles differ');
+        if (pills.some(pill => !(pill instanceof HTMLSelectElement ? pill.selectedOptions[0].textContent : pill.textContent).includes(': '))) issues.push('Setting label format differs');
+      }
       return issues;
     });
     findings.push({ width, view, issues });
@@ -86,14 +104,14 @@ try {
     const tempo = page.getByLabel('Tempo (BPM)', { exact: true });
     await tempo.fill('240'); await tempo.press('Enter');
     await inspect(width, 'tempo-240');
-    await page.getByRole('button', { name: 'View · Uno', exact: true }).click();
+    await page.getByRole('button', { name: 'View: Uno', exact: true }).click();
     assert.equal(await page.locator('.beat:visible').count(), 1, 'Numbers also works for one free pulse');
     await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
     const accent = page.getByRole('button', { name: 'Accent beat 3', exact: true });
     await accent.click(); assert.equal(await accent.getAttribute('aria-pressed'), 'true');
     await accent.click(); assert.equal(await accent.getAttribute('aria-pressed'), 'false');
     const meter = page.getByLabel('Meter', { exact: true });
-    assert.deepEqual(await meter.locator('option').allTextContents(), ['1', '2', '3', '4', '5', '6', '7']);
+    assert.deepEqual(await meter.locator('option').allTextContents(), ['Meter: Free pulse', 'Meter: 6/8', 'Meter: 3/4', 'Meter: 4/4', 'Meter: 5/4', 'Meter: 6/4', 'Meter: 7/4']);
     await meter.selectOption('7/4');
     assert.equal(await page.locator('.beat:visible').count(), 7);
     await page.getByRole('button', { name: 'Accent beat 7', exact: true }).click();

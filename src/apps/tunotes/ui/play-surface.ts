@@ -53,7 +53,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     // The staff flexes above the reserved answer rows. Below these sizes the
     // entire surface still fits, with the multiplayer warning left actionable.
     const minWidth = head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
-    const minHeight = head ? portrait ? 1120 : 600 : short ? 300 : compact ? 540 : 560;
+    const minHeight = head ? portrait ? 1120 : 600 : short ? 300 : compact ? 540 : stage.classList.contains('challenge-active') ? 600 : 560;
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));

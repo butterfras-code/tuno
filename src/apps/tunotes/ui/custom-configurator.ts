@@ -16,6 +16,10 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   });
   const tabButtons = ['Range','Options','Clefs'].map((name,index) => {
     const tab = el('button','control',name); tab.type = 'button'; tab.id = `${idPrefix}custom-tab-${index}`; tab.setAttribute('role','tab'); tab.setAttribute('aria-controls',panels[index]!.id);
+    if (index === 0 || index === 2) {
+      const migrated = el('span','migrated-range-mark','×'); migrated.setAttribute('aria-hidden','true');
+      tab.append(migrated); tab.title = `${name} controls rebuilt in Select range → Custom`;
+    }
     tab.addEventListener('click',() => showTab(index));
     tab.addEventListener('keydown',event => {
       const next = event.key === 'ArrowRight' ? (index+1)%3 : event.key === 'ArrowLeft' ? (index+2)%3 : event.key === 'Home' ? 0 : event.key === 'End' ? 2 : undefined;
@@ -103,7 +107,14 @@ export function customConfigurator(changed: () => void, idPrefix = '') {
   const ledger = el('p','muted ledger-description');
   const help = el('details','range-instructions'); help.append(el('summary','','How to edit the range'),el('p','','Tap the staff or drag the note. Arrow keys move one position; Page Up/Down move an octave. Changing a clef also enables it for practice. Choose your final practice clefs in the Clefs tab.'));
   panels[0]!.append(endpointSwitch,range,help,ledger);
-  const tile = (title: string, ...children: HTMLElement[]) => { const section = el('section','configurator-tile'); section.append(el('h3','',title),...children); return section; };
+  const tile = (title: string, ...children: HTMLElement[]) => {
+    const section = el('section','configurator-tile'), heading = el('h3','',title);
+    if (title === 'Staff content' || title === 'Key signature' || title === 'Additional spellings') {
+      const migrated = el('span','migrated-range-mark','×'); migrated.setAttribute('aria-hidden','true');
+      heading.append(migrated); heading.title = `${title} rebuilt in Select range → Custom`;
+    }
+    section.append(heading,...children); return section;
+  };
   panels[1]!.classList.add('configurator-options');
   panels[1]!.append(tile('Staff content',contentSegments.node),tile('Key signature',keyGroup),tile('Additional spellings',modifierSegments.node,el('p','muted','Unmarked notes are always included. Add flats or sharps within your range; Natural adds cancellations of the key signature.')));
   availableSegments.node.classList.add('clef-tiles');

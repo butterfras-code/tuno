@@ -1,82 +1,94 @@
-import { presets } from '../src/apps/tunotes/domain/presets.ts';
-export async function choosePreset(page,id) {
+import { presets, stringInstruments } from '../src/apps/tunotes/domain/presets.ts';
+export const rangeDialog = page => page.locator('.range-picker-dialog[open]');
+export async function openRange(page) {
+  if (await rangeDialog(page).isVisible()) return;
+  await page.locator('.activity-setup-toolbar:visible').getByText('Choose Notes',{exact:true}).click();
+}
+export async function choosePreset(page,id,adaptive=false) {
   await notesMode(page,'Practice');
-  await page.getByRole('tab',{name:'Notes',exact:true}).click();
-  await page.locator('#preset').click();
-  const dialog = page.getByRole('dialog');
-  if (id === 'custom') { await dialog.getByRole('button',{name:'＋ Create custom',exact:true}).click(); return; }
+  await openRange(page);
+  const dialog = rangeDialog(page);
+  if (id === 'custom') { await dialog.getByRole('button',{name:'Custom',exact:true}).click(); return; }
   const preset = presets.find(p => p.id === id);
   if (!preset) throw new Error(`Unknown built-in preset ${id}`);
-  await dialog.getByRole('button',{name:preset.instrument ? 'Instrument' : 'Clef',exact:true}).click();
-  if (preset.instrument) await dialog.getByRole('button',{name:preset.name.split(' — ')[0],exact:true}).click();
-  else await dialog.getByRole('button',{name:preset.clef[0].toUpperCase()+preset.clef.slice(1),exact:true}).click();
+  if (preset.instrument) {
+    const ensemble = stringInstruments.some(i=>i.id===preset.instrument) ? 'Orchestra' : 'Band';
+    await dialog.getByRole('button',{name:`${ensemble} instruments`,exact:true}).click();
+    await dialog.getByRole('button',{name:preset.name.split(' — ')[0],exact:true}).click();
+  } else {
+    await dialog.getByRole('button',{name:'Clef',exact:true}).click();
+    await dialog.getByRole('button',{name:preset.clef[0].toUpperCase()+preset.clef.slice(1),exact:true}).click();
+  }
   await dialog.locator(`[data-preset-id="${id}"]`).click();
-  if (await dialog.getByRole('button',{name:'Use preset',exact:true}).isVisible()) await dialog.getByRole('button',{name:'Use preset',exact:true}).click();
+  await dialog.getByRole('button',{name:adaptive ? 'Yes, let Uno help' : 'Keep this range',exact:true}).click();
 }
-export async function customTab(page,name) {
-  const notes = page.getByRole('tab',{name:'Notes',exact:true});
-  if (await notes.isVisible()) await notes.click();
-  if (!await page.locator('.custom-editor:visible').count()) await page.getByRole('button',{name:/^(Adjust range|Customize…)$/}).click();
-  await page.getByRole('tab',{name,exact:true}).click();
-}
-export async function endpointTab(page,label) {
-  await customTab(page,'Range');
-  const selector = page.getByRole('button',{name:`Edit ${label.toLowerCase()}`,exact:true});
-  if (await selector.isVisible()) await selector.click();
+export async function openCustom(page) {
+  if (await rangeDialog(page).isVisible() && await rangeDialog(page).getAttribute('data-screen') === 'Custom') return;
+  await openRange(page);
+  await rangeDialog(page).getByRole('button',{name:'Custom',exact:true}).click();
 }
 export async function setKey(page,value) {
-  await customTab(page,'Options');
-  await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'On',exact:true}).click();
-  await page.getByLabel('Major key',{exact:true}).selectOption(value);
+  await openCustom(page);
+  await rangeDialog(page).getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'Key',exact:true}).click();
+  await page.locator(`.key-picker-dialog[open] [data-key="${value}"]`).click();
 }
-export async function useRange(page) { await page.getByRole('button',{name:'Use range',exact:true}).click(); }
+export async function useRange(page) { await rangeDialog(page).getByRole('button',{name:'Accept',exact:true}).click(); }
 export async function saveCustom(page,name) {
-  await page.getByRole('button',{name:'Save as preset…',exact:true}).click();
-  await page.getByLabel('Custom preset name',{exact:true}).fill(name);
-  await page.getByRole('button',{name:'Save preset',exact:true}).click();
+  await rangeDialog(page).getByRole('button',{name:'Save Preset',exact:true}).click();
+  const dialog = page.getByRole('dialog',{name:'Save Preset',exact:true});
+  await dialog.getByLabel('Preset name',{exact:true}).fill(name);
+  await dialog.getByRole('button',{name:'Save Preset',exact:true}).click();
 }
 export async function setEndpoint(page,label,pitch) {
-  await endpointTab(page,label);
+  await openCustom(page);
   const [,letter,accidental,octave] = /^([A-G])([b#]?)([0-8])$/.exec(pitch);
   const value = Number(octave)*7+'CDEFGAB'.indexOf(letter);
-  const slider = page.getByRole('slider',{name:label,exact:true});
+  const slider = rangeDialog(page).getByRole('slider',{name:label,exact:true});
   await slider.focus();
   for (let attempts=0; attempts<70; attempts++) {
     const delta = value-Number(await slider.getAttribute('aria-valuenow'));
     if (!delta) break;
     await page.keyboard.press(delta >= 7 ? 'PageUp' : delta <= -7 ? 'PageDown' : delta > 0 ? 'ArrowUp' : 'ArrowDown');
   }
-  if (Number(await slider.getAttribute('aria-valuenow')) !== value) throw new Error(`${label}: wanted ${value}, got ${await slider.getAttribute('aria-valuetext')}; focus=${await page.evaluate(() => document.activeElement.outerHTML)}`);
-  await page.getByRole('group',{name:`${label} accidental`,exact:true}).getByRole('button',{name:accidental === '#' ? 'Sharp' : accidental === 'b' ? 'Flat' : 'Natural',exact:true}).click();
+  if (Number(await slider.getAttribute('aria-valuenow')) !== value) throw new Error(`${label}: wanted ${value}, got ${await slider.getAttribute('aria-valuetext')}`);
+  const target = accidental === '#' ? 'Sharp' : accidental === 'b' ? 'Flat' : 'Natural';
+  const cycle = rangeDialog(page).getByRole('button',{name:new RegExp(`^${label} accidental:`)});
+  for (let i=0; i<3 && !(await cycle.getAttribute('aria-label')).includes(`: ${target}.`); i++) await cycle.click();
 }
 export async function setModifiers(page,values) {
-  await customTab(page,'Options');
-  await page.getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:values.includes('key') ? 'On' : 'Off',exact:true}).click();
-  for (const [id,label] of [['flat','♭ Flat'],['natural','♮ Natural'],['sharp','♯ Sharp']]) {
-    const button = page.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:label,exact:true});
+  await openCustom(page);
+  const dialog = rangeDialog(page);
+  const key = dialog.getByRole('group',{name:'Key signature',exact:true});
+  if (!values.includes('key')) await key.getByRole('button',{name:'No Key',exact:true}).click();
+  else if (await key.getByRole('button',{name:'Key',exact:true}).getAttribute('aria-pressed') !== 'true') await setKey(page,'C');
+  for (const [id,label] of [['flat','Flat'],['natural','Natural'],['sharp','Sharp']]) {
+    const button = dialog.getByRole('group',{name:'Additional spellings',exact:true}).getByRole('button',{name:label,exact:true});
     if ((await button.getAttribute('aria-pressed') === 'true') !== values.includes(id)) await button.click();
   }
 }
-export async function notesMode(page, name) {
-  await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name,exact:true}).click();
-}
+export async function notesMode(page, name) { await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name,exact:true}).click(); }
 export async function openData(page) {
   await notesMode(page,'Options');
   if (!await page.locator('.local-data').evaluate(n => n.open)) await page.locator('.local-data summary').click();
 }
-export async function setToggle(page, id, selected) {
-  if (id === 'remember-progress') await openData(page); else await notesMode(page,'Practice');
-  if (id !== 'remember-progress') await openPracticeSettings(page);
+export async function setToggle(page,id,selected) {
+  if (id !== 'remember-progress') throw new Error(`Removed toggle: ${id}`);
+  await openData(page);
   const control = page.locator(`#${id}`);
   if ((await control.getAttribute('aria-pressed') === 'true') !== selected) await control.click();
 }
 export async function setPacing(page, label) {
-  await notesMode(page,'Options');
-  await page.getByRole('group',{name:'Continue After',exact:true}).getByRole('button',{name:label,exact:true}).click();
   await notesMode(page,'Practice');
+  await page.getByRole('group',{name:'Practice Mode',exact:true}).getByRole('button',{name:label,exact:true}).click();
 }
-
-export async function openPracticeSettings(page) {
-  const tab = page.getByRole('tab',{name:'Practice settings',exact:true});
-  if (await tab.isVisible()) await tab.click();
+export async function startPractice(page) {
+  await notesMode(page,'Practice');
+  await page.getByRole('button',{name:'Start Practice',exact:true}).click();
+  if (await page.locator('.note-preview').isVisible()) {
+    const skip = page.getByRole('button',{name:'Skip',exact:true});
+    await (await skip.isVisible() ? skip : page.getByRole('button',{name:'Start Practice',exact:true})).click();
+  }
+}
+export async function readyForAnswer(page) {
+  await page.waitForFunction(() => document.querySelector('.practice-play:not([hidden]) .answer')?.getAttribute('aria-disabled') === 'false');
 }
