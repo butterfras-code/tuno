@@ -5,6 +5,7 @@ import { pitchLabel, spelling, chromatic, diatonic } from '../domain/notation.ts
 import { titleCase, presetPicker } from './preset-picker.ts';
 import { customConfigurator } from './custom-configurator.ts';
 import { rangePicker } from './range-picker.ts';
+import type { CopyPlayers } from './range-picker.ts';
 import { renderStaff } from './staff.ts';
 import { MAX_BYTES, NotesStore, parseBackup } from '../persistence/store.ts';
 import type { Snapshot } from '../persistence/store.ts';
@@ -14,13 +15,14 @@ function select(label: string, values: readonly (string | readonly [string,strin
   for (const value of values) { const [id,name] = typeof value === 'string' ? [value,value] : value; const option = el('option','',name); option.value = id; input.append(option); }
   input.value = initial; node.append(input); return { node,input };
 }
-export function presetSetup(store: NotesStore, idPrefix = '') {
+export function presetSetup(store: NotesStore, idPrefix = '', copyPlayers?: CopyPlayers) {
   const node = el('div','preset-setup');
   const overview = el('div','preset-overview');
   let current: Preset | undefined, currentSource: PresetSource | undefined;
   let selectionError = '';
   let changed = () => {}, editing = false, draft: Preset | undefined, returnFocus: HTMLElement | undefined;
   let adaptiveChoice = (_enabled: boolean) => {};
+  let rangeChoice = () => {};
   const pickerUI = presetPicker(() => store.data.customPresets,id => {
     if (id === 'custom') openEditor(defaultPreset); else selectPreset(id);
   },idPrefix,true,'Preset',{
@@ -74,7 +76,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
         source = {...source,id:`custom-${crypto.randomUUID()}`};
         store.update(data => { data.customPresets.push(source); data.configuration.presetId = source.id; });
       }
-      currentSource = source; current = normalizePreset(source); closeEditor();
+      currentSource = source; current = normalizePreset(source); closeEditor(); rangeChoice();
     } catch (error) { message.textContent = (error as Error).message; }
   }); apply.classList.add('control--primary');
   const cancel = button('Cancel',() => closeEditor());
@@ -84,7 +86,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
   const adjustRange = button('Adjust range',() => { if (currentSource) openEditor(current ?? currentSource); }); adjustRange.classList.add('adjust-range');
   const rangePickerUI = rangePicker(idPrefix,(id,enabled,showKeySignature) => {
     store.update(data => { data.configuration.showKeySignature = showKeySignature; });
-    selectPreset(id); adaptiveChoice(enabled);
+    selectPreset(id); adaptiveChoice(enabled); rangeChoice();
   },{
     current: () => currentSource ?? defaultPreset,
     saved: () => store.data.customPresets,
@@ -94,10 +96,10 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
         data.configuration.showKeySignature = showKeySignature;
         if (save) { data.customPresets.push(source); data.configuration.presetId = source.id; }
       });
-      currentSource = source; current = normalized; selectionError = ''; closeEditor(false);
+      currentSource = source; current = normalized; selectionError = ''; closeEditor(false); rangeChoice();
     },
     showKeySignature: () => store.data.configuration.showKeySignature ?? false,
-  });
+  },copyPlayers);
   picker.after(rangePickerUI.trigger);
   overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame,rangePickerUI.dialog);
 
@@ -161,7 +163,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     return true;
   }
   refresh();
-  return { node,picker,rangeTrigger: rangePickerUI.trigger,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
@@ -171,6 +173,7 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     }
   }, editCurrent: () => { if (currentSource) openEditor(current ?? currentSource); }, selectPreset,
     onAdaptiveChoice: (fn: (enabled: boolean) => void) => { adaptiveChoice = fn; },
+    onRangeChoice: (fn: () => void) => { rangeChoice = fn; },
     selected: () => editing ? undefined : current, onChange: (fn: () => void) => { changed = fn; },
     saveForRoster: () => {
       if (editing || !currentSource) return undefined;

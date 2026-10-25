@@ -1,4 +1,4 @@
-import { startPractice } from './notes-setup-helpers.mjs';
+import { startPractice, configureMultiplayerNotes } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
@@ -47,7 +47,7 @@ async function check(page,label) {
 try {
   // 2560×1440 is the CSS viewport of a fullscreen 4K display at 150% zoom.
   for (const [width,height] of [[3840,2160],[2560,1440],[1920,1080],[1184,1104],[1366,768],[1024,768],[960,600],[390,844],[844,390]]) {
-    for (const mode of ['Practice','Challenge','Turns','Split Screen','Head to Head']) {
+    for (const mode of ['Practice','Challenge','Pass and Play','Side by Side','Head to Head']) {
       const page = await browser.newPage({viewport:{width,height},hasTouch:engine==='chromium'});
       const errors=[]; page.on('pageerror',error=>errors.push(error.message));
       await page.clock.install(); await page.goto(new URL('/notes/',host.url).href);
@@ -60,9 +60,11 @@ try {
       } else {
         await button(page,'Multi Player').click();
         await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
-        await page.getByRole('tab',{name:'Multi Player Settings'}).click();await button(page,mode).click();
+        await configureMultiplayerNotes(page);
+        await page.getByRole('tab',{name:'Play Style',exact:true}).click();await button(page,mode).click();
         assert.equal(await button(page,'Start round').isDisabled(),false);
         await button(page,'Start round').click();
+        await button(page,'Continue to round').click();
       }
       const label=`${engine} ${width}×${height} ${mode}`;
       await check(page,`${label} ready`);
@@ -86,14 +88,14 @@ try {
         if (await button(page,'Resume').isVisible()) await button(page,'Resume').click();
         await check(page,`${label} exited fullscreen`);
       }
-      if (mode==='Split Screen') {
+      if (mode==='Side by Side') {
         await page.setViewportSize({width:760,height:600});await page.clock.runFor(100);
-        assert.equal(await button(page,'Pause').isVisible(),true,'Resize must not pause or disable Split Screen');
+        assert.equal(await button(page,'Pause').isVisible(),true,'Resize must not pause or disable Side by Side');
         assert.equal(await page.locator('.multiplayer-fit-warning').isVisible(),true);
-        const switchButton=await button(page,'Switch to Turns').boundingBox();
-        assert.ok(switchButton.height>=44,'Turns warning remains a usable touch target');
+        const switchButton=await button(page,'Switch to Pass and Play').boundingBox();
+        assert.ok(switchButton.height>=44,'Pass and Play warning remains a usable touch target');
         await check(page,`${label} resized`);
-        await button(page,'Switch to Turns').click();
+        await button(page,'Switch to Pass and Play').click();
         assert.equal(await lanes.count(),1);await check(page,`${label} switched to turns`);
       }
       assert.deepEqual(errors,[]);await page.close();

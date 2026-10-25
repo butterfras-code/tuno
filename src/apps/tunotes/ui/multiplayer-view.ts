@@ -1,3 +1,7 @@
+import { resultReward } from './result-reward.ts';
+import headToHeadIcon from '../../../assets/uno-head-to-head.svg';
+import sideBySideIcon from '../../../assets/uno-side-by-side.svg';
+import passAndPlayIcon from '../../../assets/uno-pass-and-play.svg';
 import { answerFeedback } from './answer-feedback.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
@@ -21,7 +25,7 @@ import { button, presetSetup } from './setup.ts';
 import { renderStaff } from './staff.ts';
 import { segments } from './range-editor.ts';
 
-interface Player extends PlayerEntry { preset: Preset; profileId?: string }
+interface Player extends PlayerEntry { preset: Preset; profileId?: string; notesChosen: boolean }
 interface Lane {
   player: Player; session: Challenge; progress: NotesProgress;
   node: HTMLElement; heading: HTMLElement; status: HTMLElement; stats: HTMLElement; announcement: HTMLElement;
@@ -43,33 +47,110 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const playersHeading = el('h3','multiplayer-players-heading');
   const roster = el('div','multiplayer-roster'); roster.setAttribute('role','group'); roster.setAttribute('aria-label','Players');
   const add = button('Add player',() => { if (players.length < 8 && commitEditor()) openPlayerEditor(newPlayer(players.length+1),true,add); });
-  add.classList.add('multiplayer-add');
-  rosterSection.append(playersHeading,roster);
+  add.classList.add('multiplayer-add'); add.textContent = '+'; add.setAttribute('aria-label','Add player');
+  const playerMenu = el('div','multiplayer-player-menu'); playerMenu.id = 'multiplayer-player-menu';
+  playerMenu.setAttribute('popover','auto'); playerMenu.setAttribute('role','dialog'); playerMenu.setAttribute('aria-label','Choose player');
+  rosterSection.append(playersHeading,roster,playerMenu);
   const editor = el('section','multiplayer-editor');
-  const presetUI = presetSetup(store,'multi-');
+  const presetUI = presetSetup(store,'multi-',() => players.flatMap((player,index) => {
+    if (player.id === selectedId) return [];
+    const { pool,version,...source } = player.preset;
+    return [{ id: player.id, name: player.name.trim() || `Player ${index+1}`, preset: source }];
+  }));
   presetUI.setupPresentation(true);
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
-  const rules = challengeSetup('Round rules'); rules.node.hidden = false;
-  const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
-  let selectedFormat: Format = 'pairs'; format.update([selectedFormat]);
-  const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
-  const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
+  const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
+  const format = segments<Format>('Play Style',[['turns','Pass and Play'],['pairs','Side by Side'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); refreshSetupInfo(); });
+  let selectedFormat: Format = 'pairs';
+  format.node.className = 'practice-mode-choices';
+  format.buttons.forEach(control => control.classList.add('range-content-button'));
+  function refreshFormat() {
+    format.update([selectedFormat]);
+    format.buttons.forEach(control => {
+      const mark = el('span','range-content-mark',control.getAttribute('aria-pressed') === 'true' ? '✓' : '');
+      mark.setAttribute('aria-hidden','true');
+      const heading = el('span','multiplayer-style-heading'); heading.append(el('span','',control.getAttribute('aria-label')!),mark);
+      const hintText = { turns: 'Take turns', pairs: 'Sit together', 'head-to-head': 'Face each other' }[control.dataset.value as Format];
+      const hint = el('span','multiplayer-style-hint',hintText);
+      hint.id = `multiplayer-style-hint-${control.dataset.value}`; control.setAttribute('aria-describedby',hint.id);
+      const illustration = el('img','multiplayer-style-icon');
+      illustration.src = { turns: passAndPlayIcon, pairs: sideBySideIcon, 'head-to-head': headToHeadIcon }[control.dataset.value as Format];
+      illustration.alt = '';
+      control.replaceChildren(heading,illustration,hint);
+    });
+  }
+  refreshFormat();
+  const formatGroup = el('div','multiplayer-style-panel'); formatGroup.append(format.node);
   const roundSetup = el('section','multiplayer-round-setup');
   let adaptive = store.profile()?.adaptive ?? false;
-  const setAdaptation = (enabled: boolean) => { adaptive = enabled; adapt.setAttribute('aria-pressed',String(adaptive)); updateSetupSummary(); };
-  const adapt = button('Adapt Range',() => setAdaptation(!adaptive));
+  const setAdaptation = (enabled: boolean) => { adaptive = enabled; updateSetupSummary(); };
   presetUI.onAdaptiveChoice(setAdaptation);
-  adapt.setAttribute('aria-pressed',String(adaptive));
-  const adaptation = el('div','setting');
-  adaptation.append(adapt,el('p','muted','Applies to all players. Each player’s notes expand independently as they improve.'));
-  roundSetup.append(formatGroup,pairAdvice,rules.node,adaptation);
+  const selector = el('section','visual-content-section multiplayer-mode-selector');
+  const tabs = el('div','multiplayer-mode-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Multi Player settings');
+  const modePanel = el('div'); modePanel.append(rules.node);
+  const stylePanel = el('div'); stylePanel.append(formatGroup);
+  const setupPanels = [modePanel,stylePanel];
+  rules.node.classList.remove('visual-content-section','practice-mode-section');
+  rules.node.querySelector('h3')!.hidden = true;
+  const tabButtons = ['Multi Player Mode','Play Style'].map((label,index) => {
+    const tab = button(label,() => selectModeTab(index));
+    tab.id = `multiplayer-mode-tab-${index}`; tab.setAttribute('role','tab');
+    const panel = setupPanels[index]!; panel.id = `multiplayer-mode-panel-${index}`;
+    panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
+    tab.setAttribute('aria-controls',panel.id);
+    tab.addEventListener('keydown',event => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1-index;
+      selectModeTab(next); tabButtons[next]!.focus();
+    });
+    tabs.append(tab); return tab;
+  });
+  function selectModeTab(index: number) {
+    setupPanels.forEach((panel,i) => {
+      panel.hidden = i !== index;
+      tabButtons[i]!.setAttribute('aria-selected',String(i === index));
+      tabButtons[i]!.tabIndex = i === index ? 0 : -1;
+    });
+  }
+  selectModeTab(0);
+  selector.append(tabs,...setupPanels);
+  roundSetup.append(selector);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
-  const start = button('Start round',startRound); start.classList.add('control--primary');
-  const setupUI = activitySetup(editor,roundSetup,'multiplayer',presetUI.rangeTrigger);
-  setupUI.settingsLabel('Multi Player Settings');
-  setupUI.node.append(setupError,setupFullscreen); setupUI.action(start);
+  const start = button('Start round',() => startRound(true)); start.classList.add('control--primary');
+  start.setAttribute('aria-haspopup','dialog'); start.classList.add('multiplayer-start');
+  const styleDialog = el('dialog','key-picker-dialog multiplayer-style-dialog');
+  styleDialog.setAttribute('aria-labelledby','multiplayer-style-title');
+  const styleTitle = el('h2','','Choose a play style'); styleTitle.id = 'multiplayer-style-title';
+  const styleDescription = el('p','muted','How will you play this round?');
+  const styleActions = el('div','control-row');
+  const continueRound = button('Continue to round',() => { styleDialog.close(); startRound(); });
+  continueRound.classList.add('control--primary');
+  styleActions.append(button('Cancel',() => styleDialog.close()),continueRound);
+  styleDialog.append(styleTitle,styleDescription,styleActions);
+  styleDialog.addEventListener('close',() => { stylePanel.append(formatGroup); });
+  styleDialog.addEventListener('click',event => {
+    const rect = styleDialog.getBoundingClientRect();
+    if (event.target === styleDialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) styleDialog.close();
+  });
+  const setupUI = activitySetup(editor,el('section'),'multiplayer',presetUI.rangeTrigger);
+  setupUI.practiceLayout(true);
+  const copyToAll = button('Copy to all players',() => {
+    if (!commitEditor()) return;
+    const current = players.find(player => player.id === selectedId);
+    if (!current?.notesChosen) return;
+    for (const player of players) {
+      player.preset = normalizePreset(structuredClone(current.preset));
+      player.notesChosen = true;
+    }
+    setupError.textContent = ''; renderSetup();
+  });
+  copyToAll.classList.add('multiplayer-copy-all'); presetUI.rangeTrigger.after(copyToAll);
+  const setupUtilities = el('div','multiplayer-setup-utilities'); setupUtilities.append(setupFullscreen);
+  editor.prepend(setupUtilities);
+  setupUI.node.append(roundSetup,setupError); setupUI.action(start);
   setup.append(rosterSection,setupUI.node);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
@@ -89,9 +170,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const fullscreenHelp = el('p','muted multiplayer-fullscreen-help'); fullscreenHelp.setAttribute('role','status');
   roundActions.append(ready,pause,fullscreen,end);
   const fitWarning = el('div','multiplayer-fit-warning'); fitWarning.hidden = true;
-  const fitWarningText = el('p','','This screen may work better with Turns. Switching starts a new round.');
+  const fitWarningText = el('p','','This screen may work better with Pass and Play. Switching starts a new round.');
   fitWarning.setAttribute('role','status');
-  const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); startRound(); });
+  const restart = button('Switch to Pass and Play',() => { finishActive(true); selectedFormat = 'turns'; refreshFormat(); startRound(); });
   fitWarning.append(fitWarningText,restart);
   const panels = el('div','multiplayer-panels');
   roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
@@ -102,9 +183,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const resultSummary = el('p','muted');
   const board = el('div','multiplayer-board');
   const resultActions = el('div','control-row');
-  resultActions.append(button('Retry',startRound),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
+  resultActions.append(button('Retry',() => startRound()),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
   result.append(resultTitle,resultSummary,board,resultActions);
-  node.append(setup,fitWarning,round,result);
+  node.append(setup,fitWarning,round,result,styleDialog);
 
   let players: Player[] = [newPlayer(1)];
   let selectedId = players[0]!.id;
@@ -113,6 +194,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   let heatIndex = 0;
   let active: Lane[] = [];
   let completed = new Map<string,Challenge>();
+  const sessionTreats = new Map<string,number>();
   const guestContexts = new Map<string,Context>();
   const gate = new PressGate();
   const held = [new Set<string>(),new Set<string>()];
@@ -150,7 +232,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
 
   function newPlayer(number: number): Player {
     const profile = number === 1 ? store.profile() : undefined;
-    return { id: crypto.randomUUID(), name: profile?.name ?? `Player ${number}`, preset: profile ? profilePreset(profile.defaultPresetId) : defaultPreset, profileId: profile?.id };
+    return { id: crypto.randomUUID(), name: profile?.name ?? `Player ${number}`, preset: profile ? profilePreset(profile.defaultPresetId) : defaultPreset, profileId: profile?.id, notesChosen: false };
   }
   function profilePreset(id: string): Preset { return presets.find(p => p.id === id) ?? normalizePreset(store.data.customPresets.find(p => p.id === id)!); }
   function pairFits() {
@@ -159,18 +241,20 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const visibleHeight = Math.min(window.innerHeight,window.visualViewport?.height ?? window.innerHeight,viewport?.clientHeight ?? Infinity);
     return canPair(visibleWidth,visibleHeight);
   }
-  function showPairAdvice() {
-    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may work better with Turns. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'This screen may work better with Turns.';
-    if (!fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
+  function refreshSetupInfo() {
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
-    setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Turns' : selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
+    const remaining = players.filter(player => !player.notesChosen).length;
+    start.dataset.notesRemaining = String(remaining);
+    start.title = remaining ? `Choose notes for ${remaining} more ${remaining === 1 ? 'player' : 'players'} before starting.` : 'Start round';
+    copyToAll.disabled = players.length < 2 || !players.find(player => player.id === selectedId)?.notesChosen;
+    setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Pass and Play' : selectedFormat === 'pairs' ? 'Side by Side' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
   }
   rules.onChange(updateSetupSummary);
   function focusSelectedPlayer() { roster.querySelector<HTMLElement>('.multiplayer-player-tab[aria-pressed="true"]')?.focus(); }
   let playerDialog: HTMLDialogElement | undefined;
-  function closePlayerEditor() { playerDialog?.close(); }
+  function closePlayerEditor() { playerDialog?.close(); playerMenu.hidePopover(); }
   function openPlayerEditor(player: Player,adding: boolean,anchor: HTMLElement) {
     closePlayerEditor();
     const index = adding ? players.length : players.indexOf(player);
@@ -229,23 +313,32 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   function renderSetup() {
     const current = players.find(p => p.id === selectedId) ?? players[0]!; selectedId = current.id;
+    const playerName = current.name.trim() || `Player ${players.indexOf(current)+1}`;
+    presetUI.rangeContext(playerName);
+    const chooserPlayer = el('span','multiplayer-notes-player',playerName); chooserPlayer.title = playerName;
+    presetUI.rangeTrigger.replaceChildren(el('span','','Choose Notes'),chooserPlayer);
+    presetUI.rangeTrigger.setAttribute('aria-label',`Choose Notes — ${playerName}`);
     playersHeading.textContent = `Players (${players.length})`;
     updateSetupSummary();
-    roster.replaceChildren();
+    playerMenu.hidePopover(); roster.replaceChildren(); playerMenu.replaceChildren();
     players.forEach((player,index) => {
       const slot = el('div','multiplayer-slot');
-      const tab = button(player.name.trim() || `Player ${index+1}`,() => { if (player.id === selectedId || !commitEditor()) return; selectedId = player.id; setupUI.select('notes'); renderSetup(); focusSelectedPlayer(); });
+      const tab = button(player.name.trim() || `Player ${index+1}`,() => { if (player.id === selectedId) { if (players.length > 1) playerMenu.togglePopover(); return; } if (!commitEditor()) return; selectedId = player.id; setupUI.select('notes'); renderSetup(); focusSelectedPlayer(); });
       tab.classList.add('multiplayer-player-tab'); tab.setAttribute('aria-label',`Select Player ${index+1}`);
       tab.setAttribute('aria-pressed',String(player.id === selectedId)); tab.setAttribute('aria-controls',editor.id);
       if (player.id === selectedId) {
         slot.classList.add('selected');
+        if (players.length > 1) { tab.setAttribute('aria-haspopup','dialog'); tab.setAttribute('aria-expanded','false'); tab.setAttribute('aria-controls',playerMenu.id); }
+        const order = el('div','multiplayer-player-order');
+        order.append(el('span','',`Move ${player.name}`));
         if (index > 0) {
-          const left = button(matchMedia('(min-width: 761px)').matches ? '↑' : '←',() => move(index,-1)); left.classList.add('multiplayer-move'); left.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'up' : 'left'}`); slot.append(left);
+          const left = button(matchMedia('(min-width: 761px)').matches ? '↑' : '←',() => move(index,-1)); left.classList.add('multiplayer-move'); left.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'up' : 'left'}`); order.append(left);
         }
         slot.append(tab);
         if (index < players.length-1) {
-          const right = button(matchMedia('(min-width: 761px)').matches ? '↓' : '→',() => move(index,1)); right.classList.add('multiplayer-move'); right.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'down' : 'right'}`); slot.append(right);
+          const right = button(matchMedia('(min-width: 761px)').matches ? '↓' : '→',() => move(index,1)); right.classList.add('multiplayer-move'); right.setAttribute('aria-label',`Move Player ${index+1} ${matchMedia('(min-width: 761px)').matches ? 'down' : 'right'}`); order.append(right);
         }
+        if (players.length > 1) playerMenu.append(order);
       } else slot.append(tab);
       const edit = button('',() => { if (commitEditor()) openPlayerEditor(player,false,edit); });
       edit.append(rosterIcon('M4 16v4h4L20 8l-4-4Z M14 6l4 4'));
@@ -259,30 +352,69 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       });
       remove.classList.add('multiplayer-delete'); remove.setAttribute('aria-label',`Remove Player ${index+1}`);
       remove.disabled = players.length === 1; remove.append(rosterIcon('M6 6l12 12 M18 6L6 18'));
-      slot.append(remove); roster.append(slot);
+      slot.append(remove);
+      if (player.id === selectedId) {
+        if (players.length > 1) {
+          const expand = button('⌄',() => {}); expand.classList.add('multiplayer-player-expand');
+          expand.setAttribute('aria-label','Choose player'); expand.setAttribute('popovertarget',playerMenu.id);
+          expand.setAttribute('aria-haspopup','dialog'); expand.setAttribute('aria-expanded','false');
+          slot.append(expand);
+        }
+        roster.append(slot);
+      } else playerMenu.append(slot);
     });
-    add.hidden = players.length >= 8; roster.append(add);
+    add.disabled = players.length >= 8; roster.append(add);
     presetUI.selectPreset(current.preset.id);
-    showPairAdvice();
+    refreshSetupInfo();
   }
+  playerMenu.addEventListener('beforetoggle',event => {
+    const open = (event as ToggleEvent).newState === 'open';
+    const expand = roster.querySelector<HTMLElement>('.multiplayer-player-expand');
+    expand?.setAttribute('aria-expanded',String(open));
+    roster.querySelector('.multiplayer-player-tab')?.setAttribute('aria-expanded',String(open));
+    if (!open) return;
+    const rect = roster.getBoundingClientRect();
+    const top = Math.min(rect.bottom+8,innerHeight-120);
+    playerMenu.style.width = `${Math.min(Math.max(rect.width,300),innerWidth-24)}px`;
+    playerMenu.style.left = `${Math.max(12,Math.min(rect.left,innerWidth-Math.min(Math.max(rect.width,300),innerWidth-24)-12))}px`;
+    playerMenu.style.top = `${Math.max(12,top)}px`;
+    playerMenu.style.maxHeight = `${innerHeight-Math.max(12,top)-12}px`;
+  });
   function move(index: number,delta: number) { if (!commitEditor()) return; const [player] = players.splice(index,1); players.splice(index+delta,0,player!); renderSetup(); focusSelectedPlayer(); }
   presetUI.onChange(() => { const player = players.find(p => p.id === selectedId); const chosen = presetUI.selected(); if (player && chosen) { player.preset = chosen; updateSetupSummary(); } });
+  presetUI.onRangeChoice(() => {
+    const player = players.find(p => p.id === selectedId);
+    if (player) player.notesChosen = true;
+    updateSetupSummary();
+  });
   function commitEditor() {
     if (!presetUI.selected()) return false;
     if (!presets.some(p => p.id === presetUI.selected()!.id)) return Boolean(presetUI.saveForRoster());
     return true;
   }
 
-  function startRound() {
+  function startRound(chooseStyle = false) {
     setupError.textContent = '';
     if (!commitEditor()) { setupError.textContent = 'Fix the selected preset before starting.'; return; }
+    const unconfigured = players.find(player => !player.notesChosen);
+    if (unconfigured) {
+      selectedId = unconfigured.id; setupUI.select('notes'); renderSetup();
+      presetUI.rangeTrigger.click();
+      return;
+    }
     const names = players.map(p => p.name.trim());
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
-    const nextRules = rules.read(() => setupUI.select('settings')); if (!nextRules) return;
+    const nextRules = rules.read(() => selectModeTab(0)); if (!nextRules) return;
+    if (chooseStyle) {
+      styleActions.before(formatGroup);
+      styleDialog.showModal();
+      format.buttons.find(control => control.dataset.value === selectedFormat)?.focus();
+      return;
+    }
     finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
-    rulesValue = nextRules; completed = new Map(); heatIndex = 0;
+    rulesValue = nextRules; completed = new Map(); sessionTreats.clear(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
     round.classList.toggle('multiplayer-round--head-to-head',selectedFormat === 'head-to-head');
@@ -327,6 +459,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   function record(lane: Lane) {
     if (lane.recorded || lane.session.state !== 'finished') return;
     lane.recorded = true; completed.set(lane.player.id,lane.session);
+    sessionTreats.set(lane.player.id,lane.progress.treats);
     store.record(lane.player.profileId,lane.session); store.flush();
   }
   function finishActive(partial = false) {
@@ -354,15 +487,21 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       const main = el('strong','multiplayer-result-value',rulesValue!.goal === 'timed' ? `${row.session.score.toFixed(2)} points` : `${seconds(row.session.activeMs)} seconds`);
       const detail = el('p','',`${row.session.correct}/${row.session.attempts} correct · ${accuracy(row.session)} accuracy · best streak ${row.session.bestStreak}`);
       const status = el('p','muted',row.session.qualified ? 'Qualified' : row.session.end === 'timeout' ? `Nice practice — try another round. ${row.session.correct}/${row.session.rules.goal === 'target' ? row.session.rules.target : 0} target · time out · unranked` : row.session.interrupted ? 'Interrupted · unranked' : row.session.end !== 'completed' ? 'Incomplete · unranked' : !row.session.attempts ? 'No attempts · unranked' : 'Nice run! Improve your accuracy to make finals. Unranked');
-      item.append(heading,main,detail,status); board.append(item);
+      const reward = resultReward();
+      reward.update(sessionTreats.get(row.player.id) ?? 0,!row.rank ? 'rest' : row.rank === 1 ? 'treat' : 'happy');
+      item.classList.toggle('multiplayer-result-winner',row.rank === 1);
+      if (row.rank === 1) status.textContent = 'Winner · Qualified';
+      item.append(heading,reward.node,main,detail,status); board.append(item);
     }
     for (const player of players.filter(p => !completed.has(p.id))) {
       const item = el('section','multiplayer-result-row');
-      item.append(el('h3','',named.get(player.id)!),el('p','muted','Not played · unranked'));
+      const reward = resultReward(); reward.update(0,'rest');
+      item.append(el('h3','',named.get(player.id)!),reward.node,el('p','muted','Not played · unranked'));
       board.append(item);
     }
   }
   function showSetup() {
+    selectModeTab(0);
     leaveFullscreen();
     fitWarning.hidden = true;
     finishActive(true); resetInput(); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = []; panels.replaceChildren();
@@ -456,13 +595,14 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const keyup = (event: KeyboardEvent) => { gate.up(event.code); held.forEach(set => set.delete(event.code)); active.forEach(showModifier); };
   const visibility = () => { if (document.hidden) { active.forEach(l => l.session.pause()); resetInput(); store.flush(); renderRound(); } };
   const resize = () => {
-    roster.querySelectorAll<HTMLButtonElement>('.multiplayer-move').forEach(control => {
+    playerMenu.hidePopover();
+    playerMenu.querySelectorAll<HTMLButtonElement>('.multiplayer-move').forEach(control => {
       const vertical = matchMedia('(min-width: 761px)').matches;
       const previous = / (up|left)$/.test(control.getAttribute('aria-label') ?? '');
       control.textContent = vertical ? previous ? '↑' : '↓' : previous ? '←' : '→';
       control.setAttribute('aria-label',(control.getAttribute('aria-label') ?? '').replace(/ (up|down|left|right)$/,` ${vertical ? previous ? 'up' : 'down' : previous ? 'left' : 'right'}`));
     });
-    showPairAdvice();
+    refreshSetupInfo();
     updateKeyHelp();
     if (!round.hidden) fitWarning.hidden = selectedFormat !== 'pairs' || pairFits();
   };
@@ -486,9 +626,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const surfaceResize = new ResizeObserver(resize); surfaceResize.observe(node);
   renderSetup();
   return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
-    closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
+    styleDialog.close(); closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
-    if (disposed) return; disposed = true; surfaceResize.disconnect(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
+    if (disposed) return; disposed = true; surfaceResize.disconnect(); styleDialog.close(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });
     document.removeEventListener('keydown',keydown); document.removeEventListener('keyup',keyup);
     document.removeEventListener('visibilitychange',visibility); document.removeEventListener('fullscreenchange',fullscreenChanged);
     window.removeEventListener('blur',resetInput); window.removeEventListener('resize',resize);

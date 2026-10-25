@@ -90,8 +90,19 @@ async function loop(page, mode) {
   assert.equal(seen.size, 9);
   await page.waitForFunction(() => document.querySelector('.uno').dataset.pose === 'happy');
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
-  assert.match(await page.locator('#result-summary').textContent(), /11 correct \/ 12 attempts · Accuracy 92% · Best streak 10/);
+  assert.deepEqual(await page.locator('#result-summary p').allTextContents(), ['11 correct / 12 attempts','Accuracy 92%','Best streak 10']);
   assert.equal(await page.locator('h2:focus').textContent(), 'Practice results');
+  assert.equal(await page.locator('#practice-result-score').textContent(), '10.08');
+  for (const width of [360,768,1280]) {
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    await page.screenshot({path:`dist/validation/notes-results-${name}-${width}.png`,fullPage:true});
+  }
+  const statsBox = await page.locator('.practice-result-stats').boundingBox();
+  const rewardBox = await page.locator('.practice-results .result-reward').boundingBox();
+  assert.ok(statsBox.x + statsBox.width <= rewardBox.x,'Stats sit to the left of Uno on desktop');
+  assert.match(await page.locator('.practice-results .result-treats').textContent(), /^1 treat earned this session$/);
+  assert.equal(await page.locator('.practice-results .result-uno').getAttribute('alt'), 'Uno sitting with a treat');
   await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
   await lostKeyup(page);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
