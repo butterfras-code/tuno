@@ -43,3 +43,16 @@ test('unavailable spellings are excluded from prompts rather than respelled', ()
   assert.equal(validateSnapshot(data).customPresets[0]!.key!.fifths,-7);
   assert.throws(()=>normalizePreset(source),/unavailable/);
  });
+
+test('bare-letter guidance distinguishes required accidentals from ordinary naturals', async () => {
+  const { missingAccidentalHint } = await import('../src/apps/tunotes/domain/keyboard-guidance.ts');
+  const { parsePitch } = await import('../src/apps/tunotes/domain/notation.ts');
+  const flatKey = { ...defaultPreset, key: keySignature('F') };
+  assert.equal(missingAccidentalHint('B', parsePitch('Bb4'), flatKey), 'Use ↓ + B for B♭');
+  assert.equal(missingAccidentalHint('F', parsePitch('F#4'), defaultPreset), 'Use ↑ + F for F♯');
+  assert.equal(missingAccidentalHint('B', parsePitch('B4'), flatKey, true), 'Use → + B for B♮');
+  assert.equal(missingAccidentalHint('B', parsePitch('B4'), flatKey), undefined);
+  assert.equal(missingAccidentalHint('B', parsePitch('B4'), { ...flatKey, keyless: true }, true), undefined);
+  assert.equal(missingAccidentalHint('B', parsePitch('B4'), defaultPreset, true), undefined);
+  assert.equal(missingAccidentalHint('A', parsePitch('Bb4'), flatKey), undefined);
+});

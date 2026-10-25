@@ -1,3 +1,4 @@
+import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
 import { Challenge } from '../engine/challenge.ts';
@@ -55,6 +56,20 @@ export function practiceView() {
     return field;
   };
   options.append(pacingSetting());
+  const guidanceKey = 'tunotes:keyboard-accidental-guidance';
+  let keyboardGuidance = true;
+  try { keyboardGuidance = storage?.getItem(guidanceKey) !== 'false'; } catch { /* Session-only preference. */ }
+  const guidanceLabel = el('label', 'setting');
+  const guidanceSetting = el('input'); guidanceSetting.type = 'checkbox'; guidanceSetting.checked = keyboardGuidance;
+  guidanceLabel.append(guidanceSetting, document.createTextNode(' Keyboard accidental guidance'));
+  const guidanceDescription = el('p', 'muted', 'Show a shortcut hint instead of scoring a matching letter entered without its required accidental. Saved on this device.');
+  const guidanceGroup = el('section', 'keyboard-guidance-settings'); guidanceGroup.append(guidanceLabel, guidanceDescription); options.append(guidanceGroup);
+  let keyboardHint = '';
+  const setGuidance = (enabled: boolean) => {
+    keyboardGuidance = enabled; guidanceSetting.checked = enabled; keyboardHint = '';
+    try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
+  };
+  guidanceSetting.addEventListener('change', () => setGuidance(guidanceSetting.checked));
   let guestAdaptive = false, guestPreview: boolean | undefined;
   const guestContexts = new Map<string, Context>();
   let useAdaptation = false, showIntro = false;
@@ -123,6 +138,10 @@ export function practiceView() {
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const staff = el('div', 'staff-panel');
   const feedback = el('p', 'feedback'); feedback.id = 'feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
+  const feedbackText = el('span');
+  const dismissGuidance = button('Don’t show this again', () => { setGuidance(false); render(); });
+  dismissGuidance.classList.add('keyboard-guidance-dismiss'); dismissGuidance.hidden = true;
+  feedback.append(feedbackText, dismissGuidance);
   const encouragement = el('p', 'encouragement'); encouragement.setAttribute('role', 'status');
   const answers = answerControls((answer, token) => submit(answer, token));
   const gate = new PressGate();
@@ -213,7 +232,7 @@ export function practiceView() {
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = `${session.session}:${session.prompt}:${store.data.configuration.showKeySignature ?? false}`;
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
+      keyboardHint = ''; inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
     }
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;
@@ -221,11 +240,13 @@ export function practiceView() {
     answers.update(session.activePreset, session.token, locked);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
-    feedback.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : session.continueAfter === 'correct' ? 'Not quite. Try again.' : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : '';
+    dismissGuidance.hidden = paused || !keyboardHint;
+    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : session.state === 'feedback' ? session.last!.correct ? `Correct — ${spelling(session.pitch)}. Nicely read!` : session.continueAfter === 'correct' ? 'Not quite. Try again.' : `That note is ${spelling(session.pitch)}. You’ll get another chance to practice it.` : keyboardHint;
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
+    keyboardHint = '';
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
@@ -296,8 +317,17 @@ export function practiceView() {
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); if (fresh) arrows.add(event.key); showModifier(); return; }
     const letter = event.key.toUpperCase();
-    if (/^[A-G]$/.test(letter)) { event.preventDefault(); if (fresh && arrows.size < 2) answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0); }
-    else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
+    if (/^[A-G]$/.test(letter)) {
+      event.preventDefault();
+      if (!fresh || arrows.size >= 2) return;
+      const hint = keyboardGuidance && arrows.size === 0 && session.state === 'running' && (!(session instanceof Challenge) || session.phase === 'playing')
+        ? missingAccidentalHint(letter as Letter, session.pitch, session.preset, store.data.configuration.showKeySignature) : undefined;
+      if (hint) {
+        answers.reset(); keyboardHint = hint;
+        // Refresh the instructional feedback on every fresh matching press.
+        feedbackText.textContent = ''; render();
+      } else answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0);
+    } else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
       event.preventDefault(); if (fresh) answers.focused(event.target as HTMLButtonElement);
     }
   };
