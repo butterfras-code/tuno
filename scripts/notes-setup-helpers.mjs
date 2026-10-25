@@ -43,6 +43,8 @@ export async function setKey(page,value) {
   await openCustom(page);
   await rangeDialog(page).getByRole('group',{name:'Key signature',exact:true}).getByRole('button',{name:'Key',exact:true}).click();
   await page.locator(`.key-picker-dialog[open] [data-key="${value}"]`).click();
+  // The dialog's queued close event restores focus to Key. Let it finish before editing a range.
+  await rangeDialog(page).locator('[aria-label="Key"][aria-expanded="false"]').waitFor();
 }
 export async function useRange(page) { await rangeDialog(page).getByRole('button',{name:'Accept',exact:true}).click(); }
 export async function saveCustom(page,name) {
