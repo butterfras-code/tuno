@@ -60,6 +60,7 @@ try {
     assert.ok(await page.locator('.answer-feedback').evaluate(text => text.getAnimations()[0].currentTime >= 1000));
     if (pace === 'click') await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await answer();
+    assert.match(await page.locator('#practice-counts').textContent(), /2 correct \/ 2 attempts/);
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
     assert.notEqual(await page.locator('.answer-feedback').textContent(), firstPhrase, 'Positive phrases do not repeat consecutively');
     const second = await placement();
@@ -90,6 +91,43 @@ try {
       assert.equal((await placement()).contained, true);
       await page.screenshot({ path: `dist/validation/notes-feedback-${name}-treat.png` });
     }
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+  // A visible message must not follow the next pitch or its new staff scale.
+  {
+    const data = emptySnapshot();
+    const preset = { id: 'moving-staff', name: 'Moving staff fixture', clef: 'treble', range: ['C4', 'C6'], content: 'lines-and-spaces', key: keySignature('C'), accidentals: 'key-only', exactRange: true };
+    data.customPresets.push(preset);
+    data.profiles.push({ id: 'student', name: 'Student', defaultPresetId: preset.id, preview: false, contexts: [], results: [] });
+    Object.assign(data.configuration, { presetId: preset.id, profileId: 'student', continueAfter: 'click' });
+    const context = await browser.newContext({ viewport: { width: 360, height: 900 } });
+    const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(data => { localStorage.setItem('tunotes:data:v1', JSON.stringify(data)); Math.random = () => 0.5; }, data);
+    await page.goto(new URL('/notes/', host.url).href);
+    await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
+    const viewBoxes = new Set();
+    const bounds = () => page.locator('.answer-feedback').boundingBox();
+    const assertFixed = (before, after) => {
+      for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(before[key] - after[key]) < 0.5, `Feedback ${key} stays fixed through the fade: ${before[key]} vs ${after[key]}`);
+    };
+    for (let index = 0; index < 4; index++) {
+      const transform = await page.locator('.staff .notehead').getAttribute('transform');
+      const y = Number(/translate\([^ ]+ ([^)]+)\)/.exec(transform)[1]);
+      const letter = 'CDEFGAB'[(30 + (140 - y) / 10 + 70) % 7].toLowerCase();
+      await page.keyboard.press(letter);
+      await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
+      const before = await bounds();
+      viewBoxes.add(await page.locator('.staff').getAttribute('viewBox'));
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      viewBoxes.add(await page.locator('.staff').getAttribute('viewBox'));
+      assertFixed(before, await bounds());
+      await page.waitForFunction(() => { const opacity = Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity); return opacity > 0 && opacity < 0.4; });
+      assertFixed(before, await bounds());
+      await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) === 0);
+    }
+    assert.ok(viewBoxes.size > 1, 'Regression covers changing staff viewBoxes');
     assert.deepEqual(errors, []);
     await context.close();
   }

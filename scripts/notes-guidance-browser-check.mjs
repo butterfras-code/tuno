@@ -29,7 +29,7 @@ try {
     await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
     assert.deepEqual(errors, []);
     const staff = page.locator('.practice-play .staff');
-    const notation = () => staff.evaluate(svg => { const copy = svg.cloneNode(true); copy.querySelector('.answer-feedback').remove(); return copy.outerHTML; });
+    const notation = () => staff.evaluate(svg => { const copy = svg.cloneNode(true); copy.querySelector('.answer-feedback-layer').remove(); return copy.outerHTML; });
     const initialStaff = await notation();
     assert.equal(await page.locator('#feedback > .keyboard-guidance-dismiss').count(), 1);
     const staffBounds = await staff.boundingBox();
