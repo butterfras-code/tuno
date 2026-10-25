@@ -35,6 +35,24 @@ try {
     assert.equal(await modes.getByRole('button',{name:'Timed',exact:true}).getAttribute('aria-pressed'),'false');
     await modes.getByRole('button',{name:'Timed',exact:true}).click();
    }
+   if(mode==='Multi Player') {
+    const modeTab=page.getByRole('tab',{name:'Multi Player Mode',exact:true});
+    const styleTab=page.getByRole('tab',{name:'Play Style',exact:true});
+    await modeTab.focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await styleTab.getAttribute('aria-selected'),'true');
+    const styles=page.getByRole('group',{name:'Play Style',exact:true});
+    await styles.getByRole('button',{name:'Turns',exact:true}).click();
+    await styleTab.focus();await page.keyboard.press('Home');
+    assert.equal(await modeTab.getAttribute('aria-selected'),'true');
+    await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('14');
+    await styleTab.click();await action.click();
+    assert.equal(await modeTab.getAttribute('aria-selected'),'true');
+    assert.equal(await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).evaluate(n=>n===document.activeElement),true);
+    await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('60');
+    await styleTab.click();
+    assert.equal(await styles.getByRole('button',{name:'Turns',exact:true}).getAttribute('aria-pressed'),'true');
+    await modeTab.click();
+   }
    await openCustom(page);assert.equal(await rangeDialog(page).getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);await page.keyboard.press('Escape');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   }

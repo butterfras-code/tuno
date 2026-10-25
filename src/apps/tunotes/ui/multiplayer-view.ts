@@ -51,9 +51,20 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
   const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
-  const format = segments<Format>('Play format',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; format.update([value]); showPairAdvice(); });
-  let selectedFormat: Format = 'pairs'; format.update([selectedFormat]);
-  const formatGroup = el('div','setting'); formatGroup.append(el('span','setting-label','Play format'),format.node);
+  const format = segments<Format>('Play Style',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); showPairAdvice(); });
+  let selectedFormat: Format = 'pairs';
+  format.node.className = 'practice-mode-choices';
+  format.buttons.forEach(control => control.classList.add('range-content-button'));
+  function refreshFormat() {
+    format.update([selectedFormat]);
+    format.buttons.forEach(control => {
+      const mark = el('span','range-content-mark',control.getAttribute('aria-pressed') === 'true' ? '✓' : '');
+      mark.setAttribute('aria-hidden','true');
+      control.replaceChildren(el('span','',control.getAttribute('aria-label')!),mark);
+    });
+  }
+  refreshFormat();
+  const formatGroup = el('div','multiplayer-style-panel'); formatGroup.append(format.node);
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
   let adaptive = store.profile()?.adaptive ?? false;
@@ -63,7 +74,37 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   adapt.setAttribute('aria-pressed',String(adaptive));
   const adaptation = el('div','setting');
   adaptation.append(adapt,el('p','muted','Applies to all players. Each player’s notes expand independently as they improve.'));
-  roundSetup.append(rules.node,formatGroup,pairAdvice,adaptation);
+  const selector = el('section','visual-content-section multiplayer-mode-selector');
+  const tabs = el('div','multiplayer-mode-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Multi Player settings');
+  const modePanel = el('div'); modePanel.append(rules.node);
+  const stylePanel = el('div'); stylePanel.append(formatGroup,pairAdvice);
+  const setupPanels = [modePanel,stylePanel];
+  rules.node.classList.remove('visual-content-section','practice-mode-section');
+  rules.node.querySelector('h3')!.hidden = true;
+  const tabButtons = ['Multi Player Mode','Play Style'].map((label,index) => {
+    const tab = button(label,() => selectModeTab(index));
+    tab.id = `multiplayer-mode-tab-${index}`; tab.setAttribute('role','tab');
+    const panel = setupPanels[index]!; panel.id = `multiplayer-mode-panel-${index}`;
+    panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
+    tab.setAttribute('aria-controls',panel.id);
+    tab.addEventListener('keydown',event => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1-index;
+      selectModeTab(next); tabButtons[next]!.focus();
+    });
+    tabs.append(tab); return tab;
+  });
+  function selectModeTab(index: number) {
+    setupPanels.forEach((panel,i) => {
+      panel.hidden = i !== index;
+      tabButtons[i]!.setAttribute('aria-selected',String(i === index));
+      tabButtons[i]!.tabIndex = i === index ? 0 : -1;
+    });
+  }
+  selectModeTab(0);
+  selector.append(tabs,...setupPanels);
+  roundSetup.append(selector,adaptation);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
@@ -91,7 +132,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const fitWarning = el('div','multiplayer-fit-warning'); fitWarning.hidden = true;
   const fitWarningText = el('p','','This screen may work better with Turns. Switching starts a new round.');
   fitWarning.setAttribute('role','status');
-  const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; format.update(['turns']); startRound(); });
+  const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; refreshFormat(); startRound(); });
   fitWarning.append(fitWarningText,restart);
   const panels = el('div','multiplayer-panels');
   roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
@@ -280,7 +321,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
-    const nextRules = rules.read(); if (!nextRules) return;
+    const nextRules = rules.read(() => selectModeTab(0)); if (!nextRules) return;
     finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
     rulesValue = nextRules; completed = new Map(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
@@ -363,6 +404,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
   }
   function showSetup() {
+    selectModeTab(0);
     leaveFullscreen();
     fitWarning.hidden = true;
     finishActive(true); resetInput(); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = []; panels.replaceChildren();
