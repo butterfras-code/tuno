@@ -1,7 +1,7 @@
 import { el } from '../../../shared/ui/components.ts';
 import { clefForPitch, modifiersFor, generatedPresetName, defaultPreset, normalizePreset, presets } from '../domain/presets.ts';
 import type { Preset, PresetSource } from '../domain/presets.ts';
-import { pitchLabel, spelling } from '../domain/notation.ts';
+import { pitchLabel, spelling, chromatic, diatonic } from '../domain/notation.ts';
 import { titleCase, presetPicker } from './preset-picker.ts';
 import { customConfigurator } from './custom-configurator.ts';
 import { rangePicker } from './range-picker.ts';
@@ -87,14 +87,23 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     selectPreset(id); adaptiveChoice(enabled);
   },{
     current: () => currentSource ?? defaultPreset,
-    apply: source => { currentSource = source; current = normalizePreset(source); selectionError = ''; closeEditor(false); },
+    saved: () => store.data.customPresets,
+    apply: (source,showKeySignature,save) => {
+      const normalized = normalizePreset(source);
+      store.update(data => {
+        data.configuration.showKeySignature = showKeySignature;
+        if (save) { data.customPresets.push(source); data.configuration.presetId = source.id; }
+      });
+      currentSource = source; current = normalized; selectionError = ''; closeEditor(false);
+    },
     showKeySignature: () => store.data.configuration.showKeySignature ?? false,
   });
   picker.after(rangePickerUI.trigger);
   overview.append(pickerUI.node,previewScene,summary,adjustRange); node.append(overview,frame,rangePickerUI.dialog);
 
   function describe(preset: Preset) {
-    const low = preset.pool[0]!, high = preset.pool.at(-1)!;
+    const ordered = [...preset.pool].sort((a,b) => diatonic(a)-diatonic(b) || chromatic(a)-chromatic(b));
+    const low = ordered[0]!, high = ordered.at(-1)!;
     const modifiers = modifiersFor(preset);
     const additions = modifiers.filter(m => m !== 'key').map(m => ({flat:'flats',natural:'naturals',sharp:'sharps'}[m])).join(', ');
     const clefs = (preset.availableClefs ?? [preset.clef]).map(titleCase).join(' / ');
@@ -115,7 +124,8 @@ export function presetSetup(store: NotesStore, idPrefix = '') {
     if (!current) summary.textContent = selectionError;
     if (current) {
       pickerUI.set(current.id,current.name); summary.textContent = describe(current);
-      for (const [label,pitch] of [['Low note',current.pool[0]!],['High note',current.pool.at(-1)!]] as const) {
+      const ordered = [...current.pool].sort((a,b) => diatonic(a)-diatonic(b) || chromatic(a)-chromatic(b));
+      for (const [label,pitch] of [['Low note',ordered[0]!],['High note',ordered.at(-1)!]] as const) {
         const endpoint = el('div','range-endpoint');
         const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,true); staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);

@@ -15,7 +15,7 @@ const keyLabel = (value: string) => value[0]!+value.slice(1).replaceAll('#','♯
 const label = (major: string, minor: string) => `${keyLabel(major)}/${keyLabel(minor)}`;
 
 export function keySignatureControl(changed: () => void, inferredClef: () => Clef) {
-  let enabled = false, selected = 'C';
+  let enabled = false, selected = 'C', showSignature = false;
   let additions: Exclude<Modifier,'key'>[] = [];
   const node = el('section','visual-content-section key-signature-section');
   const options = el('div','visual-range-content'); options.setAttribute('role','group'); options.setAttribute('aria-label','Key signature');
@@ -74,7 +74,23 @@ export function keySignatureControl(changed: () => void, inferredClef: () => Cle
     button.append(glyph,el('span','accidental-option-label',text),mark); accidentalOptions.append(button);
     return {value,button,mark};
   });
+  const notation = el('section','preset-notation-setting custom-notation-setting');
+  const notationChoices = el('div','preset-notation-options');
+  notationChoices.setAttribute('role','group'); notationChoices.setAttribute('aria-label','Accidentals');
+  const notationButtons = ([[false,'On each note'],[true,'Key Signature']] as const).map(([value,label]) => {
+    const button = control('',() => { showSignature = value; update(); });
+    button.setAttribute('aria-label',label);
+    const mark = el('span','preset-notation-mark'); mark.setAttribute('aria-hidden','true');
+    button.append(el('span','',label),mark); notationChoices.append(button);
+    return {value,button,mark};
+  });
+  notation.append(el('h4','','Accidentals'),notationChoices);
   function update() {
+    notation.hidden = !enabled;
+    notationButtons.forEach(({value,button,mark}) => {
+      const active = showSignature === value;
+      button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '';
+    });
     [noKey,key].forEach((button,i) => {
       const active = i === 0 ? !enabled : enabled;
       button.setAttribute('aria-pressed',String(active)); marks[i]!.textContent = active ? '✓' : '+';
@@ -87,13 +103,14 @@ export function keySignatureControl(changed: () => void, inferredClef: () => Cle
       button.setAttribute('aria-pressed',String(active)); mark.textContent = active ? '✓' : '+';
     });
   }
-  node.append(el('h4','','Key & Accidentals'),options,accidentalOptions,picker); update();
-  return {node,get enabled() { return enabled; },get signature() { return keySignature(selected); },
+  node.append(el('h4','','Key & Accidentals'),options,accidentalOptions,notation,picker); update();
+  return {node,get enabled() { return enabled; },get showSignature() { return showSignature; },get signature() { return keySignature(selected); },
     get modifiers(): readonly Modifier[] { return [...(enabled ? ['key' as const] : []),...additions]; },
     close() { picker.close(); },
-    load(source: PresetSource) {
+    load(source: PresetSource, displaySignature = false) {
+      showSignature = displaySignature;
       selected = keyName(source.key ?? keySignature('C'));
-      enabled = source.editorVersion === 2 && modifiersFor(source).includes('key');
+      enabled = modifiersFor(source).includes('key');
       additions = modifiersFor(source).filter((m): m is Exclude<Modifier,'key'> => m !== 'key');
       update();
     },

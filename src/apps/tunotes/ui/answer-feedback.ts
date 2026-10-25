@@ -35,27 +35,8 @@ export function answerFeedback() {
   layer.append(text);
   const root = document.createElementNS(text.namespaceURI, 'g');
   root.classList.add('answer-feedback-layer');
-  const protectedLayer = document.createElementNS(text.namespaceURI, 'g');
-  const mask = document.createElementNS(text.namespaceURI, 'mask');
-  mask.id = `notes-feedback-${crypto.randomUUID()}`;
-  mask.setAttribute('maskUnits', 'userSpaceOnUse');
-  protectedLayer.setAttribute('mask', `url(#${mask.id})`);
-  protectedLayer.append(layer); root.append(mask, protectedLayer);
-  const protectNote = (staff: SVGSVGElement) => {
-    const view = staff.viewBox.baseVal;
-    for (const [key, value] of Object.entries({ x: view.x, y: view.y, width: view.width, height: view.height })) mask.setAttribute(key, String(value));
-    const rect = (x: number, y: number, width: number, height: number, fill: string) => {
-      const node = document.createElementNS(text.namespaceURI, 'rect');
-      for (const [key, value] of Object.entries({ x, y, width, height, fill })) node.setAttribute(key, String(value));
-      return node;
-    };
-    // A new pitch may cross the frozen message: clear ink around the notation
-    // instead of moving the message while it is fading.
-    mask.replaceChildren(rect(view.x, view.y, view.width, view.height, 'white'), ...[...staff.querySelectorAll<SVGGraphicsElement>('.notehead, .note-accidental, .ledger')].map(note => {
-      const bounds = boundsOf(note);
-      return rect(bounds.left - 5, bounds.top - 5, bounds.right - bounds.left + 10, bounds.bottom - bounds.top + 10, 'black');
-    }));
-  };
+  // Keep fading feedback above new prompts without rectangular cutouts.
+  root.append(layer);
   let animation: Animation | undefined;
   let staff: SVGSVGElement | undefined;
   let anchor: DOMMatrix | undefined;
@@ -145,7 +126,7 @@ export function answerFeedback() {
     mount(next: SVGSVGElement) {
       staff = next;
       if (root.parentNode !== staff) {
-        staff.append(root); protectNote(staff);
+        staff.append(root);
         if (anchor) { restorePosition(); resize.disconnect(); resize.observe(staff); }
         else place(staff);
       }

@@ -1,3 +1,4 @@
+import { startPractice } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
@@ -8,7 +9,7 @@ try {
   const page = await browser.newPage(); page.setDefaultTimeout(10000);
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto(new URL('/notes/', host.url).href);
-  await setToggle(page,'meet-notes',false);
+
   const action = name => page.getByRole('button',{name,exact:true});
   const stats = () => page.locator('#practice-counts').textContent();
   const pitch = () => page.locator('.staff').getAttribute('aria-label');
@@ -17,7 +18,7 @@ try {
     const positions = ['first line','first space','second line','second space','third line','third space','fourth line','fourth space','fifth line'];
     await page.keyboard.press('efgabcdef'[positions.findIndex(value=>label.includes(value))]);
   };
-  await action('Start Practice').click();
+  await startPractice(page);
   for (let i=0;i<5;i++) { await correct(); await page.waitForTimeout(300); }
   assert.match(await stats(),/5 correct \/ 5 attempts.*Streak 5 \(best 5\)/);
   assert.match(await page.locator('.answer-feedback').textContent(),/5 in a row/);
@@ -33,9 +34,9 @@ try {
   await page.locator('.answer[data-letter="F"][data-accidental="1"]').evaluate(b=>b.click());
   assert.match(await stats(),/5 correct \/ 8 attempts/); await page.waitForTimeout(850);
   await action('Finish').click(); await action('Edit setup').click();
-  await setPacing(page,'Correct'); await page.reload(); await notesMode(page,'Options');
-  assert.equal(await action('Correct').getAttribute('aria-pressed'),'true'); await notesMode(page,'Practice');
-  await setToggle(page,'meet-notes',false); await action('Start Practice').click();
+  await setPacing(page,'Correct Only'); await page.reload(); await notesMode(page,'Practice');
+  assert.equal(await action('Correct Only').getAttribute('aria-pressed'),'true'); await notesMode(page,'Practice');
+  await startPractice(page);
   const retry = await pitch();
   await page.locator('.answer[data-letter="C"][data-accidental="1"]').first().click();
   assert.match(await stats(),/0 correct \/ 1 attempts.*Streak 0/);
