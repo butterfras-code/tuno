@@ -67,7 +67,7 @@ async function run(page,url,label) {
   await save('scoreboard');await stableFrame();
   await button(page,'Play again').click();assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
   await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('.scoreboard-value strong').textContent(),'0.00');assert.match(await page.locator('.round-details').textContent(),/Unranked/);
-  await button(page,'Change setup').click();await button(page,'Goal').click();await page.getByLabel('Correct notes',{exact:true}).fill('1');await page.getByLabel('Timeout (seconds)').fill('15');
+  await button(page,'Change setup').click();await button(page,'Goal').click();await page.getByLabel('Correct notes',{exact:true}).fill('1');assert.equal(await page.getByLabel('Timeout (seconds)').count(),0);
   await button(page,'Start Challenge').click();await button(page,'Ready').click();await page.clock.runFor(3050);await page.keyboard.press(await answer());
   assert.equal(await page.locator('.scoreboard-value span').textContent(),'seconds');assert.match(await page.locator('.round-details').textContent(),/Qualified/);
   assert.equal(await page.locator('#challenge-correct').textContent(),'1');
@@ -77,7 +77,7 @@ async function run(page,url,label) {
   assert.match(await page.locator('#challenge-status').textContent(),/Paused/);assert.equal(await page.locator('.challenge-scene').isVisible(),true);await save('paused');await page.clock.runFor(20000);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});});
   await button(page,'Resume').click();await page.keyboard.press(await answer());assert.match(await page.locator('#challenge-result').textContent(),/pause[\s\S]*Unranked.*Interrupted/);
-  await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(18050);assert.match(await page.locator('#challenge-result').textContent(),/Nice practice.*0 of 1[\s\S]*Unranked/);
+  await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('#challenge-result').isVisible(),false);await page.clock.fastForward(105000);assert.match(await page.locator('#challenge-result').textContent(),/Nice practice.*0 of 1[\s\S]*Unranked/);
   await button(page,'Play again').click();await button(page,'Ready').click();await page.clock.runFor(3050);await button(page,'Finish').click();assert.match(await page.locator('#challenge-result').textContent(),/ended this round early[\s\S]*Unranked/);
   await button(page,'Change setup').click();await button(page,'Timed').click();await page.getByLabel('Duration (seconds)').fill('60');
   await button(page,'Start Challenge').click();await button(page,'Ready').click();await page.clock.runFor(3050);

@@ -20,7 +20,10 @@ try {
     assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).isDisabled(),true);
     assert.equal(await modes.getByText('Coming soon',{exact:true}).isVisible(),true);
     assert.equal(await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).count(),0);
-    await modes.getByRole('button',{name:'Goal',exact:true}).click();
+    assert.equal(await modes.locator('.challenge-mode-card').filter({has:page.getByRole('button',{name:'Timed',exact:true})}).getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).count(),1);
+    assert.equal(await modes.locator('.challenge-mode-card').filter({has:page.getByRole('button',{name:'Goal',exact:true})}).getByRole('spinbutton',{name:'Correct notes',exact:true}).count(),1);
+    assert.equal(await page.getByLabel('Timeout (seconds)').count(),0);
+    await modes.getByRole('spinbutton',{name:'Correct notes',exact:true}).fill('12');
     assert.equal(await page.getByRole('spinbutton',{name:'Correct notes',exact:true}).isVisible(),true);
     assert.equal(await modes.getByRole('button',{name:'Goal',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await modes.getByRole('button',{name:'Timed',exact:true}).getAttribute('aria-pressed'),'false');

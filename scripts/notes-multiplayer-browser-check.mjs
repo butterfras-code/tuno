@@ -247,7 +247,7 @@ async function run(page,url,label) {
   assert.match(await page.locator('.multiplayer-panel').first().locator('.muted').first().textContent(),/0 attempts/);
   await button(page,'End round').click();await button(page,'Edit setup').click();
 
-  await button(page,'Goal').click();await page.locator('.multiplayer-view').getByLabel('Correct notes',{exact:true}).fill('1');await page.locator('.multiplayer-view').getByLabel('Timeout (seconds)').fill('15');
+  await button(page,'Goal').click();await page.locator('.multiplayer-view').getByLabel('Correct notes',{exact:true}).fill('1');assert.equal(await page.locator('.multiplayer-view').getByLabel('Timeout (seconds)').count(),0);
   await button(page,'Start round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   const first=page.locator('.multiplayer-panel').nth(0),second=page.locator('.multiplayer-panel').nth(1);
   const left='QWERTYU',right='ZXCVBNM',letters='ABCDEFG';
