@@ -51,7 +51,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const setupDog = animatedUno(); setupDog.pose('rest'); presetUI.companion.append(setupDog.node);
   editor.append(presetUI.node);
   const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
-  const format = segments<Format>('Play Style',[['turns','Turns'],['pairs','Split Screen'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); showPairAdvice(); });
+  const format = segments<Format>('Play Style',[['turns','Pass and Play'],['pairs','Side by Side'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); showPairAdvice(); });
   let selectedFormat: Format = 'pairs';
   format.node.className = 'practice-mode-choices';
   format.buttons.forEach(control => control.classList.add('range-content-button'));
@@ -79,6 +79,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   rules.node.querySelector('h3')!.hidden = true;
   const tabButtons = ['Multi Player Mode','Play Style'].map((label,index) => {
     const tab = button(label,() => selectModeTab(index));
+    if (index === 1) {
+      tab.setAttribute('aria-label',label);
+      const hint = el('span','multiplayer-style-hint','Head to Head or Side by Side');
+      hint.id = 'multiplayer-style-hint'; tab.setAttribute('aria-describedby',hint.id);
+      tab.replaceChildren(el('span','',label),hint);
+    }
     tab.id = `multiplayer-mode-tab-${index}`; tab.setAttribute('role','tab');
     const panel = setupPanels[index]!; panel.id = `multiplayer-mode-panel-${index}`;
     panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
@@ -128,9 +134,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const fullscreenHelp = el('p','muted multiplayer-fullscreen-help'); fullscreenHelp.setAttribute('role','status');
   roundActions.append(ready,pause,fullscreen,end);
   const fitWarning = el('div','multiplayer-fit-warning'); fitWarning.hidden = true;
-  const fitWarningText = el('p','','This screen may work better with Turns. Switching starts a new round.');
+  const fitWarningText = el('p','','This screen may work better with Pass and Play. Switching starts a new round.');
   fitWarning.setAttribute('role','status');
-  const restart = button('Switch to Turns',() => { finishActive(true); selectedFormat = 'turns'; refreshFormat(); startRound(); });
+  const restart = button('Switch to Pass and Play',() => { finishActive(true); selectedFormat = 'turns'; refreshFormat(); startRound(); });
   fitWarning.append(fitWarningText,restart);
   const panels = el('div','multiplayer-panels');
   roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
@@ -199,12 +205,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     return canPair(visibleWidth,visibleHeight);
   }
   function showPairAdvice() {
-    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may work better with Turns. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'This screen may work better with Turns.';
+    pairAdvice.textContent = selectedFormat === 'turns' ? 'Players take one turn each in roster order.' : selectedFormat === 'head-to-head' ? 'Lay the screen flat. Players face opposite short edges in either screen orientation. Small screens may work better with Pass and Play. Larger groups play in heats.' : pairFits() ? 'Two players play side by side. Larger groups play in heats; an odd player takes a solo turn.' : 'This screen may work better with Pass and Play.';
     if (!fullscreenSupported() && !matchMedia('(display-mode: standalone)').matches) pairAdvice.textContent += ' For a view without browser bars, open tuNotes from your Home Screen.';
     updateFullscreen(); updateSetupSummary();
   }
   function updateSetupSummary() {
-    setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Turns' : selectedFormat === 'pairs' ? 'Split Screen' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
+    setupUI.summary(`${players.length} ${players.length === 1 ? 'player' : 'players'} · ${selectedFormat === 'turns' ? 'Pass and Play' : selectedFormat === 'pairs' ? 'Side by Side' : 'Head to Head'} · ${rules.summary()}${adaptive ? ' · Adapt Range on' : ''}`);
   }
   rules.onChange(updateSetupSummary);
   function focusSelectedPlayer() { roster.querySelector<HTMLElement>('.multiplayer-player-tab[aria-pressed="true"]')?.focus(); }

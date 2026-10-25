@@ -28,7 +28,7 @@ async function start(page,format='turns') {
   await page.getByRole('tab',{name:'Multi Player Mode',exact:true}).click();
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
-  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:format==='pairs'?'Split Screen':format==='turns'?'Turns':'Head to Head'}).click();
+  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:format==='pairs'?'Side by Side':format==='turns'?'Pass and Play':'Head to Head'}).click();
   await button(page,'Start round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }
@@ -277,7 +277,7 @@ async function run(page,url,label) {
   assert.equal(await button(page,'Pause').isVisible(),true);
   assert.equal(await page.locator('.multiplayer-panel[data-phase="paused"]').count(),0);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-recovery.png`,fullPage:true});
-  await button(page,'Switch to Turns').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
+  await button(page,'Switch to Pass and Play').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
   await page.setViewportSize({width:360,height:800});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-turn.png`,fullPage:true});
@@ -308,11 +308,11 @@ async function run(page,url,label) {
   await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:760,height:900});
 
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
-  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Split Screen'}).click();
+  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Side by Side'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
-  assert.match(await page.locator('.multiplayer-round-setup').textContent(),/may work better with Turns/);
+  assert.match(await page.locator('.multiplayer-round-setup').textContent(),/may work better with Pass and Play/);
   await page.getByRole('tab',{name:'Play Style',exact:true}).click();
-  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Turns'}).click();
+  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Pass and Play'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   await page.setViewportSize({width:1280,height:900});
   await button(page,'Options').click();

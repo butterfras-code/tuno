@@ -54,7 +54,7 @@ try {
     await modeTab.focus();await page.keyboard.press('ArrowRight');
     assert.equal(await styleTab.getAttribute('aria-selected'),'true');
     const styles=page.getByRole('group',{name:'Play Style',exact:true});
-    await styles.getByRole('button',{name:'Turns',exact:true}).click();
+    await styles.getByRole('button',{name:'Pass and Play',exact:true}).click();
     await styleTab.focus();await page.keyboard.press('Home');
     assert.equal(await modeTab.getAttribute('aria-selected'),'true');
     await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('14');
@@ -63,7 +63,7 @@ try {
     assert.equal(await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).evaluate(n=>n===document.activeElement),true);
     await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('60');
     await styleTab.click();
-    assert.equal(await styles.getByRole('button',{name:'Turns',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await styles.getByRole('button',{name:'Pass and Play',exact:true}).getAttribute('aria-pressed'),'true');
     await modeTab.click();
    }
    await openCustom(page);assert.equal(await rangeDialog(page).getByRole('slider',{name:'Lowest note',exact:true}).isVisible(),true);await page.keyboard.press('Escape');
