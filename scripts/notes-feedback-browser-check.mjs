@@ -11,7 +11,7 @@ const browser = await ({ chromium, firefox })[name].launch();
 const host = await hostBuild();
 const errors = [];
 try {
-  for (const [width, pace, reducedMotion, pitch] of [[360, 'instant', 'no-preference', 'B4'], [1280, 'delay', 'no-preference', 'E5'], [768, 'click', 'reduce', 'C6'], [360, 'correct', 'no-preference', 'C4'], [1280, 'instant', 'no-preference', 'F#4']]) {
+  for (const [width, pace, reducedMotion, pitch] of [[360, 'instant', 'no-preference', 'B4'], [1280, 'instant', 'no-preference', 'E5'], [768, 'correct', 'reduce', 'C6'], [360, 'correct', 'no-preference', 'C4'], [1280, 'instant', 'no-preference', 'F#4']]) {
     const data = emptySnapshot();
     const preset = { id: 'feedback-fixture', name: 'Feedback fixture', clef: 'treble', range: [pitch, pitch], content: 'lines-and-spaces', key: keySignature(pitch.includes('#') ? 'G' : 'C'), accidentals: 'key-only', exactRange: true };
     data.customPresets.push(preset);
@@ -58,7 +58,6 @@ try {
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) === 0);
     // Advancing the prompt must not cut off the one-second animation.
     assert.ok(await page.locator('.answer-feedback').evaluate(text => text.getAnimations()[0].currentTime >= 1000));
-    if (pace === 'click') await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await answer();
     assert.match(await page.locator('#practice-counts').textContent(), /2 correct \/ 2 attempts/);
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
@@ -70,19 +69,18 @@ try {
     else assert.equal(second.angle, 0, 'Reduced motion keeps the text level');
     assert.match(await page.locator('#practice-counts').textContent(), /2 correct \/ 2 attempts/);
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) === 0);
-    if (pace === 'click') await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.keyboard.press('a');
     assert.equal(await page.locator('.answer-feedback').textContent(), pace === 'correct' ? 'Try again' : `That note is ${pitch.replace(/[0-9]/g, '').replace('#', '♯')}.`);
     assert.equal((await placement()).overlaps, false, 'Longer corrections also clear the note');
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     assert.equal(await page.locator('.answer-feedback').textContent(), '');
-    if (pace === 'click') {
+    if (reducedMotion === 'reduce') {
       await page.getByRole('button', { name: 'Resume', exact: true }).click();
-      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('.practice-play .answer').getAttribute('aria-disabled') !== 'true');
       for (let correct = 3; correct <= 10; correct++) {
         await answer();
         if (correct === 7) assert.match(await page.locator('.answer-feedback').textContent(), /5 in a row/);
-        if (correct < 10) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+        if (correct < 10) await page.waitForFunction(() => document.querySelector('.practice-play .answer').getAttribute('aria-disabled') !== 'true');
       }
       assert.equal(await page.locator('.answer-feedback').textContent(), 'A treat for Uno!');
       assert.equal(await page.locator('.encouragement, #expansion-announcement').count(), 0);
@@ -100,7 +98,7 @@ try {
     const preset = { id: 'moving-staff', name: 'Moving staff fixture', clef: 'treble', range: ['C4', 'C6'], content: 'lines-and-spaces', key: keySignature('C'), accidentals: 'key-only', exactRange: true };
     data.customPresets.push(preset);
     data.profiles.push({ id: 'student', name: 'Student', defaultPresetId: preset.id, preview: false, contexts: [], results: [] });
-    Object.assign(data.configuration, { presetId: preset.id, profileId: 'student', continueAfter: 'click' });
+    Object.assign(data.configuration, { presetId: preset.id, profileId: 'student', continueAfter: 'correct' });
     const context = await browser.newContext({ viewport: { width: 360, height: 900 } });
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(data => { localStorage.setItem('tunotes:data:v1', JSON.stringify(data)); Math.random = () => 0.5; }, data);
@@ -119,7 +117,7 @@ try {
       await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
       const before = await bounds();
       viewBoxes.add(await page.locator('.staff').getAttribute('viewBox'));
-      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await page.waitForFunction(previous => document.querySelector('.staff .notehead').getAttribute('transform') !== previous, transform);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       viewBoxes.add(await page.locator('.staff').getAttribute('viewBox'));
       assertFixed(before, await bounds());

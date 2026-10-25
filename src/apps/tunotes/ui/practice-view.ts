@@ -18,7 +18,6 @@ import { clefForPitch } from '../domain/presets.ts';
 import { spelling, pitchLabel } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
-import { segments } from './range-editor.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import { answerControls } from './answers.ts';
@@ -39,24 +38,40 @@ export function practiceView() {
   const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
   const store = new NotesStore(storage);
-  const presetsUI = presetSetup(store); const picker = presetsUI.picker;
+  const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
   const selected = presetsUI.selected;
   const options = el('section', 'notes-options'); options.hidden = true;
   options.append(el('h2', '', 'Options'));
-  let pace: ContinueAfter = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay');
-  const pacingControls: ReturnType<typeof segments<ContinueAfter>>[] = [];
-  const refreshPacing = () => { pacingControls.forEach(control => control.update([pace])); refreshSettingsSummary(); };
-  const pacingSetting = () => {
-    const pacing = segments<ContinueAfter>('Continue After', [['instant','Instant'],['delay','Delay'],['click','Click/Tap'],['correct','Correct']], value => {
+  const savedPace = () => store.data.configuration.continueAfter === 'correct' ? 'correct' as const : 'instant' as const;
+  let pace: ContinueAfter = savedPace();
+  const practiceMode = el('section','visual-content-section practice-mode-section');
+  practiceMode.setAttribute('aria-label','Practice Mode');
+  const modeChoices = el('div','practice-mode-choices'); modeChoices.setAttribute('role','group'); modeChoices.setAttribute('aria-label','Practice Mode');
+  const modeButtons = (['instant','correct'] as const).map(value => {
+    const label = value === 'instant' ? 'Normal' : 'Correct Only';
+    const mark = el('span','range-content-mark'); mark.setAttribute('aria-hidden','true');
+    const choice = button('',() => {
       pace = value; refreshPacing();
-      store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = pace === 'click'; });
+      store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = false; });
     });
-    pacingControls.push(pacing); pacing.update([pace]);
-    const field = el('div','setting pacing-setting'); field.append(el('span','setting-label','Continue After:'),pacing.node);
-    return field;
+    choice.classList.add('range-content-button'); choice.setAttribute('aria-label',label);
+    choice.append(el('span','',label),mark);
+    return {value,choice,mark};
+  });
+  const automatic = el('div','practice-mode-auto');
+  const autoChoice = button('Auto Every',() => {}); autoChoice.disabled = true; autoChoice.title = 'Coming soon'; autoChoice.classList.add('range-content-button');
+  const seconds = el('select','control'); seconds.setAttribute('aria-label','Auto Every seconds');
+  for (let value=0;value<=10;value++) {
+    const option = el('option','',value ? `${value} sec` : 'COMING SOON'); option.value = String(value); seconds.append(option);
+  }
+  automatic.append(autoChoice,seconds);
+  modeChoices.append(modeButtons[0]!.choice,automatic,modeButtons[1]!.choice);
+  practiceMode.append(el('h3','','Practice Mode'),modeChoices);
+  const refreshPacing = () => {
+    modeButtons.forEach(({value,choice,mark}) => { const active=pace===value; choice.setAttribute('aria-pressed',String(active)); mark.textContent=active ? '✓' : ''; });
   };
-  options.append(pacingSetting());
+  refreshPacing();
   const guidanceKey = 'tunotes:keyboard-accidental-guidance';
   let keyboardGuidance = true;
   try { keyboardGuidance = storage?.getItem(guidanceKey) !== 'false'; } catch { /* Session-only preference. */ }
@@ -72,51 +87,23 @@ export function practiceView() {
     try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
   };
   guidanceSetting.addEventListener('change', () => setGuidance(guidanceSetting.checked));
-  let guestAdaptive = false, guestPreview: boolean | undefined;
+  let guestAdaptive = false;
   const guestContexts = new Map<string, Context>();
   let useAdaptation = false, showIntro = false;
-  const adaptiveHelp = el('p','muted adaptive-help', 'We’ll practice notes you miss and add new ones when you’re ready.');
-  adaptiveHelp.id = 'adaptive-help'; adaptiveHelp.popover = 'auto'; adaptiveHelp.setAttribute('role','tooltip');
-  const adaptiveGroup = el('div','adaptive-control');
-  let helpPinned = false;
-  const hideHelp = () => { helpPinned = false; adaptiveHelp.hidePopover(); };
-  const showHelp = () => {
-    const rect = help.getBoundingClientRect();
-    adaptiveHelp.style.left = `${Math.max(8,Math.min(rect.left,innerWidth - 308))}px`;
-    adaptiveHelp.style.top = `${Math.max(8,Math.min(rect.bottom + 8,innerHeight - 120))}px`;
-    adaptiveHelp.showPopover();
-  };
-  const help = button('?', () => { if (helpPinned) hideHelp(); else { showHelp(); helpPinned = true; } });
-  help.classList.add('adaptive-help-trigger'); help.setAttribute('aria-label','About Adapt Range');
-  help.setAttribute('aria-controls','adaptive-help'); help.setAttribute('aria-expanded','false'); help.setAttribute('aria-describedby','adaptive-help');
-  help.addEventListener('pointerenter',event => { if (event.pointerType === 'mouse') showHelp(); });
-  help.addEventListener('focus',showHelp);
-  adaptiveGroup.addEventListener('pointerleave',() => { if (!helpPinned && document.activeElement !== help) hideHelp(); });
-  adaptiveGroup.addEventListener('focusout',() => { queueMicrotask(() => { if (!adaptiveGroup.contains(document.activeElement)) hideHelp(); }); });
-  adaptiveHelp.addEventListener('toggle',() => {
-    const open = adaptiveHelp.matches(':popover-open'); help.setAttribute('aria-expanded',String(open)); if (!open) helpPinned = false;
-  });
-  const adaptive = button('Adapt Range', () => {
-    useAdaptation = !useAdaptation;
+  const setAdaptation = (enabled: boolean) => {
+    useAdaptation = enabled;
     const p = store.profile();
     if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
     refreshPreferences(); refreshSettingsSummary();
-  }); adaptive.id = 'adaptive';
-  const previewToggle = button('Show Intro', () => {
-    showIntro = !showIntro;
-    const p = store.profile();
-    if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.preview = showIntro; }); else guestPreview = showIntro;
-    refreshPreferences(); refreshSettingsSummary();
-  }); previewToggle.id = 'meet-notes';
+  };
+  presetsUI.onAdaptiveChoice(setAdaptation);
   const refreshPreferences = () => {
     const p = store.profile(); useAdaptation = p ? p.adaptive ?? false : guestAdaptive;
-    showIntro = (p ? p.preview : guestPreview) ?? (selected() ? beginnerPreview(selected()!) : false);
-    adaptive.setAttribute('aria-pressed',String(useAdaptation)); previewToggle.setAttribute('aria-pressed',String(showIntro));
-    adaptiveGroup.classList.toggle('selected',useAdaptation);
+    showIntro = selected() ? beginnerPreview(selected()!) : false;
   };
   const settings = el('section','practice-settings');
-  const setupUI = activitySetup(presetsUI.node,settings);
-  const setup = setupUI.node;
+  const setupUI = activitySetup(presetsUI.node,settings,'activity',presetsUI.rangeTrigger);
+  const setup = setupUI.node; setupUI.practiceLayout(true); setup.append(practiceMode);
   function refreshSettingsSummary() {
     const pacingLabel = { instant: 'Instant', delay: 'Delay', click: 'Click/Tap', correct: 'Until correct' }[pace];
     const preset = selected();
@@ -125,14 +112,10 @@ export function practiceView() {
   refreshPreferences(); refreshSettingsSummary();
   let shownPresetId = store.data.configuration.presetId;
   const dataUI = localData(store, () => {
-    showSetup(); guestContexts.clear(); guestAdaptive = false; guestPreview = undefined; presetsUI.refresh();
-    pace = store.data.configuration.continueAfter ?? (store.data.configuration.selfPaced ? 'click' : 'delay'); refreshPacing(); refreshPreferences();
+    showSetup(); guestContexts.clear(); guestAdaptive = false; presetsUI.refresh();
+    pace = savedPace(); refreshPacing(); refreshPreferences();
   },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
   options.append(dataUI.node);
-  adaptiveGroup.append(adaptive,help,adaptiveHelp);
-  const toggles = el('div','control-row practice-toggles'); toggles.append(adaptiveGroup,previewToggle);
-  const practicePacing = pacingSetting();
-  settings.append(toggles, practicePacing);
   settings.append(rulesUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
@@ -270,7 +253,6 @@ export function practiceView() {
     if (session.state === 'finished') finish(); else render();
   };
   const start = () => {
-    hideHelp();
     const preset = selected(); if (!preset) return;
     const rules = activity === 'challenge' ? rulesUI.read(() => setupUI.select('settings')) : undefined;
     if (activity === 'challenge' && !rules) return;
@@ -358,13 +340,14 @@ export function practiceView() {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; showSetup();
-    setupUI.settingsLabel(next === 'practice' ? 'Practice settings' : 'Challenge settings');
+    setupUI.practiceLayout(next === 'practice');
+    setupUI.settingsLabel('Challenge settings');
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
-    rulesUI.node.hidden = next !== 'challenge'; practicePacing.hidden = next === 'challenge'; previewToggle.hidden = next === 'challenge';
+    rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
     startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
     refreshSettingsSummary();
   }, leave: () => {
-    hideHelp(); resetInput(); store.flush();
+    resetInput(); store.flush();
     if (introduction) showSetup();
     session?.pause(); if (session?.state === 'finished') finish(); else render();
   } };
