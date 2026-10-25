@@ -1087,3 +1087,38 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-result-value { font-size: 26px; }
 .multiplayer-result-winner { border: 2px solid var(--color-accent); padding: 15px; }
 #notes-multi\ player .multiplayer-board { max-height: none; overflow: visible; }
+
+/* Keep chooser content inside its tile, including user-named presets/players. */
+.range-picker-choice > :is(strong,span), .range-picker-selected-preset { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.picker-header h3 { min-width: 0; overflow-wrap: anywhere; }
+.picker-header > .control { flex-shrink: 0; }
+.notes-options :is(.display-settings,.keyboard-guidance-settings) > .setting { flex-direction: row; align-items: center; min-height: 44px; gap: 10px; }
+.notes-options :is(.display-settings,.keyboard-guidance-settings) input { flex: none; width: 24px; height: 24px; margin: 0; }
+@media (max-width: 600px) {
+  /* Saved presets introduce two columns: stack the icons above their labels. */
+  .range-picker-choices:has(> .my-presets-choice:not([hidden])) > .range-picker-choice.control,
+  .range-picker-choices:has(> .my-presets-choice:not([hidden])) > .range-picker-instrument-entry {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; text-align: center;
+  }
+  .range-picker-choices:has(> .my-presets-choice:not([hidden])) > :is(.range-picker-choice.control,.range-picker-instrument-entry) > strong { font-size: 18px; }
+  .range-picker-instrument-entry { grid-template-columns: 112px minmax(0,1fr); }
+  .range-picker-instrument-entry > strong { min-width: 0; overflow-wrap: anywhere; }
+}
+@media (max-width: 400px) {
+  /* Give the native select enough room for its label and disclosure arrow. */
+  .practice-mode-section:not(.challenge-settings) .practice-mode-choices { grid-template-columns: minmax(0,1fr) minmax(108px,1.4fr) minmax(0,1fr); }
+  .practice-mode-section:not(.challenge-settings) .practice-mode-choices > .range-content-button { flex-direction: column; justify-content: center; text-align: center; }
+  .practice-mode-section:not(.challenge-settings) .practice-mode-choices > .range-content-button .range-content-mark { margin-left: 0; }
+  .practice-mode-auto select { padding-inline: 4px; font-size: 11px; }
+  .profile-card-footer { flex-wrap: wrap; }
+}
+.preset-picker { min-width: 0; grid-template-columns: minmax(0,1fr); }
+.preset-picker > .control { min-width: 0; overflow-wrap: anywhere; }
+/* A user-named range must not consume the notation/answer space during play. */
+#home .play-stage .practice-play > h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-choices { grid-template-columns: minmax(0,1fr); }
+.picker-choices > .control { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  #home.is-playing > .app-header { gap: 8px; }
+  #home.is-playing .app-header .wordmark { font-size: 26px; }
+}

@@ -272,13 +272,13 @@ try {
   await previewPage.getByRole('button',{name:'Band instruments',exact:true}).click();
   await previewPage.getByRole('button',{name:'Flute',exact:true}).click();
   const fluteCards = previewPage.locator('.range-picker-dialog[open] .range-picker-presets button');
-  assert.equal(await fluteCards.count(),4);
+  assert.equal(await fluteCards.count(),5);
   const notation = previewPage.getByRole('group',{name:'Accidentals',exact:true});
   const eachNote = notation.getByRole('button',{name:'On each note',exact:true});
   const signature = notation.getByRole('button',{name:'Key Signature',exact:true});
   assert.equal(await eachNote.getAttribute('aria-pressed'),'true','accidentals on notes is the default');
   assert.equal(await signature.locator('.preset-notation-mark').textContent(),'','inactive exclusive option has no plus');
-  assert.equal(await fluteCards.locator('.key-accidental').count(),4,'preset cards always show their assigned keys');
+  assert.equal(await fluteCards.locator('.key-accidental').count(),6,'preset cards always show their assigned keys');
   const originalPreviews = await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML));
   assert.ok((await fluteCards.first().boundingBox()).height<180,'mobile preset cards are compact');
   await signature.click();
@@ -287,8 +287,9 @@ try {
   assert.equal(await eachNote.locator('.preset-notation-mark').textContent(),'');
   assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'gameplay notation leaves previews unchanged');
   for (const card of await fluteCards.all()) {
-    assert.equal(await card.locator('.key-accidental').count(),1,'Flute preset shows its F-major signature');
-    assert.match(await card.locator('svg').getAttribute('aria-label'),/F major/);
+    const isBb = (await card.getAttribute('data-preset-id')) === 'flute-starter-bb';
+    assert.equal(await card.locator('.key-accidental').count(),isBb ? 2 : 1,'Flute presets show their assigned key signatures');
+    assert.match(await card.locator('svg').getAttribute('aria-label'),isBb ? /B♭ major/ : /F major/);
     const spacing = await card.locator('svg').evaluate(svg => {
       const right=Math.max(...[...svg.querySelectorAll('.key-accidental')].map(n=>n.getBoundingClientRect().right));
       const notes=[...svg.querySelectorAll('.notehead')].map(n=>n.getBoundingClientRect());
