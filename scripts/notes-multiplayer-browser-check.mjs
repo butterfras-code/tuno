@@ -288,20 +288,19 @@ async function run(page,url,label) {
   await button(page,'Select Player 2').click();
   await openRange(page);
   const dialog=rangeDialog(page);
-  await button(dialog,'Clef').click();await button(dialog,'Bass').click();await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(dialog,'Keep this range').click();
-  assert.equal(await page.locator('.multiplayer-editor').getByRole('button',{name:'Adapt Range',exact:true}).count(),0);
+  await button(dialog,'Clef').click();await button(dialog,'Bass').click();await dialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();await button(dialog,'Yes, let Uno help').click();
+  assert.equal(await page.locator('.multiplayer-view').getByRole('button',{name:'Adapt Range',exact:true}).count(),0);
 
-  await button(page,'Adapt Range').click();
   assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Adapt Range on/);
   assert.match(await page.locator('.multiplayer-editor').innerText(),/Bass — Lines \+ Spaces/);
   await button(page,'Select Player 1').click();
 
-  assert.equal(await button(page,'Adapt Range').getAttribute('aria-pressed'),'true');
+  assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Adapt Range on/);
   await button(page,'Add player').click();
   await button(page.getByRole('dialog'),'Save').click();
   assert.equal(await page.locator('.multiplayer-player-tab').count(),3);
 
-  assert.equal(await button(page,'Adapt Range').getAttribute('aria-pressed'),'true');
+  assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Adapt Range on/);
   await start(page,'pairs');await button(page,'Ready').click();await page.clock.runFor(3050);
   assert.match(await page.locator('.multiplayer-panel').nth(0).locator('.staff-panel .staff').getAttribute('aria-label'),/treble/i);
   assert.match(await page.locator('.multiplayer-panel').nth(1).locator('.staff-panel .staff').getAttribute('aria-label'),/bass/i);

@@ -68,12 +68,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const pairAdvice = el('p','muted'); pairAdvice.setAttribute('role','status');
   const roundSetup = el('section','multiplayer-round-setup');
   let adaptive = store.profile()?.adaptive ?? false;
-  const setAdaptation = (enabled: boolean) => { adaptive = enabled; adapt.setAttribute('aria-pressed',String(adaptive)); updateSetupSummary(); };
-  const adapt = button('Adapt Range',() => setAdaptation(!adaptive));
+  const setAdaptation = (enabled: boolean) => { adaptive = enabled; updateSetupSummary(); };
   presetUI.onAdaptiveChoice(setAdaptation);
-  adapt.setAttribute('aria-pressed',String(adaptive));
-  const adaptation = el('div','setting');
-  adaptation.append(adapt,el('p','muted','Applies to all players. Each player’s notes expand independently as they improve.'));
   const selector = el('section','visual-content-section multiplayer-mode-selector');
   const tabs = el('div','multiplayer-mode-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Multi Player settings');
   const modePanel = el('div'); modePanel.append(rules.node);
@@ -104,7 +100,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   selectModeTab(0);
   selector.append(tabs,...setupPanels);
-  roundSetup.append(selector,adaptation);
+  roundSetup.append(selector);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',startRound); start.classList.add('control--primary');
