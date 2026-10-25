@@ -1,3 +1,4 @@
+import { positivePhrases } from '../src/apps/tunotes/ui/answer-feedback.ts';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
@@ -32,8 +33,8 @@ try {
     };
     await answer();
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
-    assert.equal(await page.locator('.answer-feedback').textContent(), 'Correct!');
-    assert.equal(await page.locator('.answer-feedback-announcement').textContent(), 'Correct!');
+    assert.ok(positivePhrases.includes(await page.locator('.answer-feedback').textContent()));
+    assert.equal(await page.locator('.answer-feedback-announcement').textContent(), await page.locator('.answer-feedback').textContent());
     assert.equal(await page.locator('#feedback > span').textContent(), '');
     assert.deepEqual(await staff.boundingBox(), before.staff);
     assert.deepEqual(await answers.boundingBox(), before.answers);
@@ -46,6 +47,7 @@ try {
       return { overlaps, contained: bounds.left >= frame.left && bounds.right <= frame.right && bounds.top >= frame.top && bounds.bottom <= frame.bottom,
         x: Number(text.getAttribute('x')), y: Number(text.getAttribute('y')), angle: Number(/rotate\(([^ ]+)/.exec(text.getAttribute('transform'))[1]), opacity: Number(getComputedStyle(text).opacity), center: svg.viewBox.baseVal.width / 2 };
     });
+    const firstPhrase = await page.locator('.answer-feedback').textContent();
     const first = await placement();
     assert.equal(first.overlaps, false, 'Feedback clears the note, accidental and ledger lines');
     assert.equal(first.contained, true, 'Feedback fits inside the staff viewport');
@@ -59,6 +61,7 @@ try {
     if (pace === 'click') await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await answer();
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
+    assert.notEqual(await page.locator('.answer-feedback').textContent(), firstPhrase, 'Positive phrases do not repeat consecutively');
     const second = await placement();
     assert.equal(second.overlaps, false);
     assert.notEqual(second.x, first.x, 'Placement varies on each answer');
@@ -72,6 +75,21 @@ try {
     assert.equal((await placement()).overlaps, false, 'Longer corrections also clear the note');
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     assert.equal(await page.locator('.answer-feedback').textContent(), '');
+    if (pace === 'click') {
+      await page.getByRole('button', { name: 'Resume', exact: true }).click();
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      for (let correct = 3; correct <= 10; correct++) {
+        await answer();
+        if (correct === 7) assert.match(await page.locator('.answer-feedback').textContent(), /5 in a row/);
+        if (correct < 10) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      }
+      assert.equal(await page.locator('.answer-feedback').textContent(), 'A treat for Uno!');
+      assert.equal(await page.locator('.encouragement, #expansion-announcement').count(), 0);
+      await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
+      assert.equal((await placement()).overlaps, false);
+      assert.equal((await placement()).contained, true);
+      await page.screenshot({ path: `dist/validation/notes-feedback-${name}-treat.png` });
+    }
     assert.deepEqual(errors, []);
     await context.close();
   }

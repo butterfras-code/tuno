@@ -409,15 +409,17 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
   }
   function submit(lane: Lane,answer: AnswerSpelling,token: PromptToken) {
+    const previousAnnouncement = lane.session.announcement;
     if (!active.includes(lane) || round.hidden || !lane.session.answer(token,answer)) return;
     const s = lane.session;
-    lane.feedback.show(s.last!.correct ? 'Correct!' : `That note is ${spelling(s.pitch)}.`, s.last!.correct);
     store.observe(lane.player.profileId,s.preset,s.last!,s.adaptive,s.savedLearning);
     if (!lane.player.profileId) {
       const key = `${lane.player.id}:${fingerprint(s.preset,s.adaptive,'challenge')}`;
       guestContexts.set(key,{ fingerprint:fingerprint(s.preset,s.adaptive,'challenge'), version:1, updated:Date.now(), notes:structuredClone(s.learning.notes) as Context['notes'], ...(s.adaptive ? {learning:s.savedLearning} : {}) });
     }
     const reward = lane.progress.update(s.correct,s.streak,s.attempts);
+    if (s.last!.correct) lane.feedback.celebrate(reward, s.announcement !== previousAnnouncement ? s.announcement : '');
+    else lane.feedback.show(`That note is ${spelling(s.pitch)}.`, false);
     lane.dog.pose(reward.treat ? 'catch' : reward.pose);
     lane.dog.look(reward.look,-8); if (reward.nod) lane.dog.nod();
     renderRound();

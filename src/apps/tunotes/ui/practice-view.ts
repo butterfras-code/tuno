@@ -145,7 +145,6 @@ export function practiceView() {
   const dismissGuidance = button('Dismiss accidental reminders', () => { setGuidance(false); render(); });
   dismissGuidance.classList.add('keyboard-guidance-dismiss'); dismissGuidance.hidden = true;
   feedback.append(feedbackText, dismissGuidance);
-  const encouragement = el('p', 'encouragement'); encouragement.setAttribute('role', 'status');
   const answers = answerControls((answer, token) => submit(answer, token));
   const gate = new PressGate();
   const arrows = new Set<string>();
@@ -157,7 +156,6 @@ export function practiceView() {
   let renderedPrompt = '';
   let inputSince = 0;
   let treatUntil = 0;
-  let encouragementUntil = 0;
   let disposed = false;
   const showModifier = () => answers.modifier(session && !play.hidden && session.state !== 'paused' && session.state !== 'finished' && arrows.size === 1
     ? arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0 : undefined);
@@ -175,7 +173,6 @@ export function practiceView() {
   const treatProgress = el('p','treat-progress'); treatProgress.hidden = true;
   const dogHome = el('div','practice-companion'); dogHome.append(dog.node,treatProgress);
   const coaching = el('p'); coaching.id = 'recommendation';
-  const expansion = el('p'); expansion.id = 'expansion-announcement'; expansion.setAttribute('role','status');
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     setupUI.select('notes');
@@ -197,7 +194,7 @@ export function practiceView() {
     if (session instanceof Challenge) {
       play.hidden = false; result.hidden = true;
       scene.finish(session,profileId ? store.data.profiles.find(p => p.id === profileId)?.name : undefined);
-      answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; expansion.hidden = true; controls.hidden = true;
+      answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; controls.hidden = true;
     }
     coaching.textContent = recommendation(session.attempts,session.correct,session.learning.notes,session.misses);
     if (performance.now() >= treatUntil) dog.pose(progress.treats ? 'happy' : 'rest'); dog.look(false); dog.tail(0, false);
@@ -220,7 +217,7 @@ export function practiceView() {
     scene.node.hidden = !isChallenge;
     counts.hidden = isChallenge; heading.hidden = isChallenge;
     answers.node.hidden = waiting || isChallenge && paused; keyboardHelp.hidden = answers.node.hidden;
-    feedback.hidden = isChallenge && (waiting || paused); expansion.hidden = isChallenge && (waiting || paused);
+    feedback.hidden = isChallenge && (waiting || paused);
     controls.hidden = false; pause.hidden = isChallenge && paused;
     if (session instanceof Challenge) {
       scene.update(session,progress.remaining,store.data.configuration.showKeySignature);
@@ -242,7 +239,6 @@ export function practiceView() {
     if (paused || waiting) answerNotice.clear();
     staff.hidden = !isChallenge && paused;
     const locked = session.state !== 'running' || waiting;
-    expansion.textContent = session.announcement;
     answers.update(session.activePreset, session.token, locked);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
@@ -251,9 +247,9 @@ export function practiceView() {
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
+    const previousAnnouncement = session?.announcement;
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
     keyboardHint = '';
-    answerNotice.show(session.last!.correct ? 'Correct!' : session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, session.last!.correct);
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
@@ -262,14 +258,14 @@ export function practiceView() {
       if (guestContexts.size > 128) guestContexts.delete(guestContexts.keys().next().value!);
     }
     const reward = progress.update(session.correct, session.streak, session.attempts);
+    if (session.last!.correct) answerNotice.celebrate(reward, session.announcement !== previousAnnouncement ? session.announcement : '');
+    else answerNotice.show(session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, false);
     dog.look(reward.look, -8);
     if (reward.treat || performance.now() >= treatUntil) dog.pose(reward.treat ? 'catch' : reward.pose);
     dog.tail(0, reward.pose === 'wag');
     if (reward.nod) dog.nod();
     treatProgress.textContent = `${progress.remaining} to a treat`;
     if (reward.treat) { dog.catch(session instanceof Challenge ? scene.treat : counts); treatUntil = performance.now() + 450; }
-    if (!session.last!.correct) { encouragement.textContent = ''; encouragementUntil = 0; }
-    else if (reward.text) { encouragement.textContent = reward.text; encouragementUntil = performance.now() + 2200; }
     if (session.continueAfter === 'instant') session.advance(session.token);
     if (session.state === 'finished') finish(); else render();
   };
@@ -294,7 +290,7 @@ export function practiceView() {
       if (rules) { scene.notation.append(staff); scene.dogSlot.prepend(dog.node); }
       else { play.insertBefore(staff,feedback); dogHome.prepend(dog.node); }
       treatProgress.hidden = Boolean(rules); treatProgress.textContent = `${progress.remaining} to a treat`;
-      heading.textContent = `${rules ? `${store.profile()?.name ?? 'Player 1'} · ` : ''}${session.preset.name}`; encouragement.textContent = ''; dog.pose('rest'); dog.look(false); dog.tail(0, false);
+      heading.textContent = `${rules ? `${store.profile()?.name ?? 'Player 1'} · ` : ''}${session.preset.name}`; dog.pose('rest'); dog.look(false); dog.tail(0, false);
       node.dataset.screen = 'playing';
       setup.hidden = true; result.hidden = true; play.hidden = false; render(); if (rules) scene.focus(); else heading.focus();
     };
@@ -312,7 +308,7 @@ export function practiceView() {
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
-  play.append(heading, counts, scene.node, staff, feedback, expansion, answers.node, encouragement, controls, answerNotice.node);
+  play.append(heading, counts, scene.node, staff, feedback, answers.node, controls, answerNotice.node);
   const resultControls = el('div', 'control-row'); resultControls.append(button('Retry', start), button('Edit setup', showSetup), button('Home', showSetup));
   const resultDetails = el('details','practice-result-details');
   resultDetails.append(el('summary','','Session details'),resultTiming);
@@ -347,7 +343,6 @@ export function practiceView() {
   const timer = setInterval(() => {
     const storageMessage = store.durable ? '' : store.message;
     if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
-    if (encouragementUntil && performance.now() >= encouragementUntil) { encouragement.textContent = ''; encouragementUntil = 0; }
     if (treatUntil && performance.now() >= treatUntil) { dog.pose(session?.state === 'finished' && progress.treats ? 'happy' : progress.pose); treatUntil = 0; }
     if (session?.state === 'finished') finish();
     if (!session || session.state === 'finished' || session.state === 'paused') return;

@@ -1,3 +1,4 @@
+import { positivePhrases } from '../src/apps/tunotes/ui/answer-feedback.ts';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
@@ -66,7 +67,7 @@ try {
     // A deliberate modifier immediately submits a correct answer, even for a natural.
     await page.keyboard.down(arrow); await page.keyboard.press(letter); await page.keyboard.up(arrow);
     assert.match(await page.locator('#practice-counts').textContent(), /1 correct \/ 1 attempts/);
-    assert.equal(await page.locator('.answer-feedback').textContent(), 'Correct!');
+    assert.ok(positivePhrases.includes(await page.locator('.answer-feedback').textContent()));
     assert.equal(await page.getByRole('button', { name: 'Dismiss accidental reminders' }).isVisible(), false);
     await page.keyboard.press(letter);
     await page.getByRole('button', { name: 'Dismiss accidental reminders' }).click();
