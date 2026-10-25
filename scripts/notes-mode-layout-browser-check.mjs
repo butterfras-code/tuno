@@ -92,9 +92,16 @@ try {
   }
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByLabel('Player 2 name').fill('Cancelled');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-tab').count(),1);
   await page.getByRole('button',{name:'Add player',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
-  const addBox=await page.getByRole('button',{name:'Add player',exact:true}).boundingBox();assert.equal(addBox.width,44);
+  const addBox=await page.getByRole('button',{name:'Add player',exact:true}).boundingBox();assert.ok(Math.abs(addBox.width-44)<0.1,'Add player keeps a fixed 44px width');
   const choose=await page.locator('#multiplayer-notes-tab').boundingBox(),copy=await page.getByRole('button',{name:'Copy to all players',exact:true}).boundingBox(),start=await page.getByRole('button',{name:'Start round',exact:true}).boundingBox();
-  assert.ok(Math.abs(choose.width-copy.width)<1&&Math.abs(choose.x-copy.x)<1);assert.ok(start.x>choose.x+choose.width&&Math.abs(start.y-choose.y)<1&&Math.abs(start.y+start.height-copy.y-copy.height)<1);assert.ok(choose.width>start.width*1.9&&choose.width<start.width*2.3);
+  if(width<=760) {
+   assert.ok(Math.abs(choose.width-copy.width)<1&&Math.abs(choose.x-copy.x)<1);assert.ok(start.x>choose.x+choose.width&&Math.abs(start.y-choose.y)<1&&Math.abs(start.y+start.height-copy.y-copy.height)<1);assert.ok(choose.width>start.width*1.9&&choose.width<start.width*2.3);
+  } else {
+   assert.ok(Math.abs(choose.y-copy.y)<1&&Math.abs(choose.y-start.y)<1,'desktop actions share one row');
+   assert.ok(choose.width<=180.1&&start.width<=180.1&&start.height<80,'desktop primary actions stay compact');
+   const setupBox=await page.locator('.multiplayer-setup').boundingBox(),editorBox=await page.locator('.multiplayer-setup > .activity-setup').boundingBox();
+   assert.ok(Math.abs(editorBox.x-setupBox.x)<1&&Math.abs(editorBox.width-setupBox.width)<1,'desktop setup uses the full width without a roster sidebar');
+  }
   await page.getByRole('button',{name:'Edit Player 2',exact:true}).click();await page.getByLabel('Player 2 name').fill('A'.repeat(40));await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();
   assert.equal(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),`Choose Notes — ${'A'.repeat(40)}`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await openPlayers(page);assert.equal(await page.getByRole('button',{name:'Choose player',exact:true}).getAttribute('aria-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('.multiplayer-player-menu').isVisible(),false);await openPlayers(page);

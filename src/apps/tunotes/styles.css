@@ -1143,3 +1143,15 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab { grid-column: 1 / 3; grid-row: 1; }
 .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all { grid-column: 1 / 3; grid-row: 2; }
 .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-column: 3; grid-row: 1 / 3; }
+
+/* The compact thirds arrangement is for phones; desktop shares the other modes' full-width setup. */
+@media (min-width: 761px) {
+  #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .multiplayer-roster-section { display: flex; align-items: center; gap: 16px; overflow: visible; }
+  .multiplayer-roster-section .multiplayer-players-heading { margin: 0; flex: none; }
+  .multiplayer-roster-section .multiplayer-roster { flex: 1; max-width: 360px; }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: minmax(0,180px) minmax(0,220px) minmax(0,1fr) minmax(0,180px); }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab { grid-column: 1; grid-row: 1; }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all { grid-column: 2; grid-row: 1; }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-column: 4; grid-row: 1; }
+}
