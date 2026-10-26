@@ -148,7 +148,7 @@ async function countingPlanScenarios(w = window) {
   assert(counts().length === 0, 'All-rest exercise permits zero inputs');
   assert(!unit('restMarked') && !unit('durationIndicated'), 'Empty exercise has no stale unit controls');
   click('Check'); assert(q('.counting-confirmation').textContent.includes('All applicable'), 'Zero-input Check excludes inapplicable dimensions');
-  click('Check Again'); click('Erase All'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
+  click('Counts'); click('Check Again'); click('Counts'); click('Erase All'); assert(counts().length === 0, 'Zero-input Retry and Clear are safe');
   await fixture('half'); activate(0); assert(!unit('restMarked'), 'Rest omission suppresses rest control on sounded units too');
   defaults(); await fixture('six-dotted-half');
   assert(counts().length === 2 && q('g[data-value="half"][data-dots="1"]'), 'Dotted-half engraving and two count inputs');
