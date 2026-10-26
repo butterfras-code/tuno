@@ -1,4 +1,6 @@
 import { el } from '../../shared/ui/components.ts';
+import { derivePassage } from '../../music/measure.ts';
+import { toNumber } from '../../music/fraction.ts';
 import type { RhythmMeasure } from '../../music/measure.ts';
 import { renderMeasure, responsiveNotation } from './shared/notation.ts';
 
@@ -18,6 +20,8 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
   let enabled = false, frame = 0, restore = false, resized = false;
   let presentation: 'writing' | 'performance' = 'writing';
   const savedScroll = { writing: 0, performance: 0 };
+  let followFrame = 0;
+  let followPoints: { time: number; x: number }[] | null = null;
   let drag: { pointer: number; offset: number } | null = null;
   const maximum = () => Math.max(0, scroll.scrollWidth - scroll.clientWidth);
   function sync() {
@@ -38,6 +42,7 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
   // Bounded miniature glyphs stay visible even when the main score is very wide.
   function render() {
     frame = 0;
+    followPoints = null;
     if (!enabled || !scroll.clientWidth) return;
     if (restore) { move(savedScroll[presentation]); restore = false; }
     if (resized) {
@@ -123,8 +128,58 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
     if (rect.left < bounds.left + 8) move(scroll.scrollLeft + rect.left - bounds.left - 8);
     else if (rect.right > boundary) move(scroll.scrollLeft + rect.right - boundary);
   }
+  function stopFollowing() { cancelAnimationFrame(followFrame); followFrame = 0; }
+  function startFollowing(clock: () => number, duration: number) {
+    stopFollowing();
+    restore = false;
+    savedScroll.performance = 0;
+    move(0);
+    // Measure durations come from written music, including rests and ties.
+    // Normalize to the captured duration so meter-specific tempo uses the transport.
+    const score = derivePassage(measures());
+    const length = toNumber(score.length);
+    // Rebuild screen geometry after resize/engraving changes, never from tap input.
+    function points() {
+      if (followPoints) return followPoints;
+      const origin = scroll.getBoundingClientRect().left + scroll.clientLeft - scroll.scrollLeft;
+      const notation = [...strip.querySelectorAll<SVGSVGElement>('.notation')];
+      const anchors: { time: number; x: number }[] = [];
+      let offset = 0;
+      score.measures.forEach((measure, index) => {
+        const svg = notation[index];
+        if (!svg) return;
+        const bounds = svg.getBoundingClientRect();
+        const x = bounds.left - origin;
+        anchors.push({ time: offset / length * duration, x });
+        offset += toNumber(measure.length);
+        // Follow a whole measure at a steady pace. Event-by-event following
+        // squeezes the barline gap into the final short note and visibly lunges.
+        // Extend the same pace through the last bar; move() clamps at the end.
+        if (index === score.measures.length - 1) anchors.push({ time: duration, x: x + bounds.width });
+      });
+      return followPoints = anchors;
+    }
+    function follow() {
+      if (!enabled || presentation !== 'performance') { stopFollowing(); return; }
+      const time = clock();
+      if (time < 0) move(0);
+      else if (maximum() > 1) {
+        const anchors = points();
+        const next = anchors.findIndex(point => point.time > time);
+        const left = anchors[next < 0 ? anchors.length - 1 : Math.max(0, next - 1)];
+        const right = anchors[next] ?? left;
+        if (left && right) {
+          const fraction = right.time > left.time ? Math.max(0, Math.min(1, (time - left.time) / (right.time - left.time))) : 0;
+          move(left.x + (right.x - left.x) * fraction - scroll.clientWidth / 3);
+        }
+      }
+      followFrame = requestAnimationFrame(follow);
+    }
+    followPoints = null;
+    followFrame = requestAnimationFrame(follow);
+  }
   return {
-    reveal,
+    reveal, startFollowing, stopFollowing,
     reset() { savedScroll.writing = savedScroll.performance = 0; scroll.scrollLeft = 0; schedule(); },
     setEnabled(value: boolean, mode: 'writing' | 'performance' = 'writing') {
       if (enabled === value && presentation === mode) return;
@@ -135,6 +190,6 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
       overview.hidden = !value;
       schedule();
     },
-    destroy() { cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect(); scroll.removeEventListener('scroll', sync); overview.remove(); },
+    destroy() { stopFollowing(); cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect(); scroll.removeEventListener('scroll', sync); overview.remove(); },
   };
 }

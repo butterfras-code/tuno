@@ -130,7 +130,9 @@ countsButton.setAttribute('aria-controls', countPalette.id);
 const paletteEmpty = el('p', 'palette-empty', 'Select a count box above to enter counts or toggle Rest and Connect for its group.'); countPalette.append(paletteEmpty);
 const performanceSetup = el('div', 'performance-setup');
 
-const performance = createPerformance({ treatBag: feedbackSnapshot,
+const performance = createPerformance({
+  follow: (clock, duration) => clock ? workspace.startFollowing(clock, duration) : workspace.stopFollowing(),
+  treatBag: feedbackSnapshot,
   countingFeedback: () => ({ plan: activity.countingPlan, answer: activity.countingAnswer, checked: activity.checkedCountingAnswer, result: activity.countingResult, mode: preferences.mode, navigate: focusProblem }), exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
     performing = active; picker.disabled = next.disabled = customButton.disabled = active;
@@ -140,7 +142,7 @@ const performance = createPerformance({ treatBag: feedbackSnapshot,
     if (active) { editors.forEach(e => e.suspend()); }
     updateResponseView();
     if (active) {
-      // Settle the entire score/pad into view once, before count-in. No playback scrolling.
+      // Settle the entire score/pad into view once, before count-in. Horizontal playback following stays inside the score.
       passage.scrollIntoView({ block: 'start', behavior: 'instant' });
     }
   },

@@ -16,7 +16,7 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
+export function createPerformance(options: { follow: (clock: (() => number) | null, duration: number) => void; treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
   const treatBag = new TreatBagState();
   const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted, options.countingFeedback?.());
@@ -139,7 +139,10 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
       if (audio.state !== 'running') throw new Error('Audio could not start');
       result = null; review.replaceChildren(); download.hidden = true;
       options.decorate(null);
-      transport = new Transport(audio, capture, tick, finish); pad.focus({ preventScroll: true }); tick(transport.time());
+      transport = new Transport(audio, capture, tick, finish);
+      const playing = transport;
+      options.follow(() => playing.time(), capture.plan.duration);
+      pad.focus({ preventScroll: true }); tick(transport.time());
     } catch {
       if (token !== generation) return;
       finish(capture.interrupt('Audio could not start. Check browser audio permissions and retry.', -capture.plan.countIn));
@@ -147,6 +150,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   }
   function offset(value: number | null) { return value === null ? 'no release observed' : Math.abs(value) < .0005 ? 'on time (0 ms)' : `${Math.round(Math.abs(value) * 1000)} ms ${value < 0 ? 'early' : 'late'}`; }
   function finish(record: AttemptRecord) {
+    options.follow(null, 0);
     const correction = record.timingOffset ?? timing.consider(record);
     if (correction) record = { ...record, timingOffset: correction };
     clearCountIn(); pulse.hidden = true;
@@ -233,7 +237,7 @@ export function createPerformance(options: { treatBag: HTMLElement; countingFeed
   let pointer: number | null = null;
   pad.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    e.preventDefault(); pad.focus();
+    e.preventDefault(); pad.focus({ preventScroll: true });
     if (!transport) {
       if (!starting) { startingPointer = e.pointerId; pad.setPointerCapture(e.pointerId); void begin(); }
       return;

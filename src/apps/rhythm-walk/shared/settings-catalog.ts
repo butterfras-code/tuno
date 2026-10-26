@@ -112,7 +112,7 @@ export const settingsGroups: readonly SettingsGroup[] = [
     id: 'guidance', title: 'Guidance, review & appearance', source: '2, 4, 7, 15',
     description: 'Live guidance and review afterward are independent. Quiet performance is the default direction.',
     settings: [
-      undecided('performance-guidance', 'Guided cursor / highlight', 'The score already stays stationary during performance. A guided cursor or highlight remains planned.'),
+      undecided('performance-guidance', 'Guided cursor / highlight', 'The score follows the audio clock during performance. A guided cursor or highlight remains planned.'),
       { id: 'live-feedback', label: 'Live correctness feedback', kind: 'check', checked: false },
       { id: 'guided-review', label: 'Optional guided review', kind: 'check', hint: 'Completed attempts already show attack, release and rest evidence on the score and in review. A preference to control this review remains planned.' },
       { id: 'focused-replay', label: 'Offer focused measure replay', kind: 'check', checked: true, hint: 'Retry same exercise already repeats the whole passage. Focused measure replay remains planned and would be optional.' },
