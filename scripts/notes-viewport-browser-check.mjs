@@ -85,6 +85,9 @@ try {
         await check(page,`${label} fullscreen`);
         await button(page,'Exit fullscreen').click();
         await page.waitForFunction(()=>!document.fullscreenElement);
+        // Firefox can clear fullscreenElement before dispatching fullscreenchange.
+        // Wait for the handler to update the control and pause the active round.
+        await button(page,'Enter fullscreen').waitFor();
         if (await button(page,'Resume').isVisible()) await button(page,'Resume').click();
         await check(page,`${label} exited fullscreen`);
       }
