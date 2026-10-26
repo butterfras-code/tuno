@@ -1,0 +1,14 @@
+.rhythm-app .activity-surface .rhythm-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin: 0 0 16px; gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
+.rhythm-app .activity-surface .rhythm-nav .control { display: flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; padding: 6px 4px; border-radius: 11px; background: transparent; color: var(--color-ink); border-color: transparent; }
+.rhythm-app .activity-surface .rhythm-nav a.control[aria-current='page'] { display: flex; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; border-color: transparent; }
+.rhythm-app .activity-surface .rhythm-nav .practice-help-trigger { width: auto; flex: initial; margin: 0; }
+
+.rhythm-app .shared-interaction { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 6px; border-radius: var(--radius-card); background: var(--color-surface); }
+.rhythm-app .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
+.rhythm-app .interaction-selector .control { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 32px; padding: 4px; border-radius: 11px; border-color: transparent; background: transparent; color: var(--color-ink); }
+.rhythm-app .interaction-selector .control[aria-pressed='true'] { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; }
+.rhythm-app .interaction-selector.has-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.response-options { display: grid; gap: 16px; }
+.response-options .field { min-width: 0; margin: 0; }
+.response-options select { width: 100%; min-height: 44px; }
+.response-options input[type='checkbox'] { width: 22px; height: 22px; }

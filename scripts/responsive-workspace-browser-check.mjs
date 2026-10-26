@@ -34,7 +34,8 @@ try {
       q('.custom-exercise-dialog').close(); await settle();
       const header = rect('.app-header');
       check(all('.app-header > *').filter(visible).every(el => { const r = el.getBoundingClientRect(); return r.top >= header.top && r.bottom <= header.bottom; }), 'Header controls remain within the shared header');
-      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').length===2, 'Counts and Perform are the only response selector');
+      const mobileOptions = matchMedia('(max-width: 760px)').matches;
+      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').filter(visible).length === (mobileOptions ? 3 : 2), 'Response selector adds Options only on mobile');
       const level = rect('.level-configuration'), bag = rect('.feedback-snapshot');
       check(Math.abs(level.top - bag.top) < 1 && level.right <= bag.left, 'Level and feedback share a horizontal row');
       panel('Perform');
@@ -48,9 +49,19 @@ try {
       check(ratings.length === 4 && ratings.every(el => !visible(el)), 'Unscored dimensions stay compact until review');
       check(ratings.every(el => el.dataset.bones === '' && el.textContent.includes('Not yet scored')), 'Unscored state never implies zero bones');
       check(q('.feedback-snapshot').dataset.scored === 'false', 'Feedback is quiet before scoring');
-      check(q('.performance-setup').querySelectorAll('input[type=checkbox]').length===2, 'Perform contains metronome and written-count controls');
+      const optionControls = q(mobileOptions ? '.response-options' : '.performance-setup');
+      check(optionControls.querySelectorAll('input[type=checkbox]').length===2, 'Metronome and written-count controls use the current layout');
+      if (mobileOptions) {
+        check(!q('.performance-setup [data-setting="how-to-play"]') && !q('.performance-setup input[type=checkbox]'), 'Mobile Perform contains input rather than configuration');
+        const source = q('.passage-strip');
+        panel('Options');
+        check(visible(optionControls) && !visible(q('.tap-response')) && !visible(q('.count-palette-host')), 'Options replaces the input surface');
+        check(q('.passage-strip') === source, 'Options preserves the exercise');
+        check(visible(optionControls.querySelector('[data-setting="how-to-play"]')), 'How to play is available in mobile Options');
+        panel('Perform');
+      }
       check(!q('.counting-rating') && q('.passage').classList.contains('counts-hidden'), 'Perform shows performance feedback and hides written counts by default');
-      const showCounts = all('.performance-setup label').find(label=>label.textContent.includes('Show written counts')).querySelector('input');
+      const showCounts = [...optionControls.querySelectorAll('label')].find(label=>label.textContent.includes('Show written counts')).querySelector('input');
       showCounts.checked=true; showCounts.dispatchEvent(new Event('change'));
       check(!q('.passage').classList.contains('counts-hidden') && all('.answer-area').every(area=>area.inert), 'Perform can show read-only written counts');
       showCounts.checked=false; showCounts.dispatchEvent(new Event('change'));
@@ -85,6 +96,37 @@ try {
       return { width: innerWidth, assertions: checks.length, checks };
     });
     report.layouts.push(layouts);
+    if (width <= 760) {
+      const response = page.getByRole('group', { name: 'Choose response' });
+      const options = response.getByRole('button', { name: 'Options', exact: true });
+      const howToPlay = page.getByRole('combobox', { name: 'How to play', exact: true });
+      const metronome = page.getByRole('checkbox', { name: 'Metronome during exercise', exact: true });
+      const writtenCounts = page.getByRole('checkbox', { name: 'Show written counts during performance', exact: true });
+      await options.click();
+      await howToPlay.selectOption('hold'); await metronome.uncheck(); await writtenCounts.check();
+      await page.setViewportSize({ width: 1024, height: 844 });
+      await options.waitFor({ state: 'hidden' });
+      await response.getByRole('button', { name: 'Perform', exact: true }).click();
+      assert.ok(await howToPlay.isVisible(), 'Desktop keeps configuration beside performance');
+      assert.equal(await howToPlay.inputValue(), 'hold');
+      assert.equal(await metronome.isChecked(), false);
+      assert.equal(await writtenCounts.isChecked(), true);
+      await page.setViewportSize({ width, height: 844 });
+      await options.click();
+      assert.equal(await howToPlay.inputValue(), 'hold', 'Resizing preserves the selected play style');
+      assert.equal(await metronome.isChecked(), false);
+      assert.equal(await writtenCounts.isChecked(), true);
+      await howToPlay.selectOption('tap'); await metronome.check(); await writtenCounts.uncheck();
+      if (width === 390) {
+        await response.getByRole('button', { name: 'Perform', exact: true }).click();
+        await page.getByRole('button', { name: 'Performance pad', exact: true }).click();
+        await page.locator('.tap-response.active').waitFor();
+        await options.click();
+        assert.equal(await page.locator('.tap-response.active').count(), 0, 'Opening Options safely interrupts performance');
+        assert.ok(await howToPlay.isEnabled(), 'Configuration unlocks after interruption');
+      }
+      await response.getByRole('button', { name: 'Counts', exact: true }).click();
+    }
     for (const height of [568, 420, 844]) {
       await page.setViewportSize({ width, height });
       await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(100);

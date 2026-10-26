@@ -2,6 +2,7 @@ import './mobile-tools.css';
 import { TOOLS } from '../practice/state.ts';
 import type { Focus } from '../practice/state.ts';
 import { button, el } from './components.ts';
+import { toolLabel } from './tool-label.ts';
 
 /** Reuse each live control panel so changing tabs never restarts audio. */
 export function createMobileTools(tools: HTMLElement) {
@@ -12,10 +13,11 @@ export function createMobileTools(tools: HTMLElement) {
   tabs.setAttribute('aria-label', 'Practice tool controls');
   const mobile = window.matchMedia('(max-width: 650px)');
   const controls = TOOLS.map((tool, index) => {
-    const tab = button(tool.id === 'tuner' ? 'Tune' : tool.id === 'tone' ? 'Tone' : 'Tempo', () => {
+    const tab = button('', () => {
       selectedTool = tool.id;
       update();
     });
+    toolLabel(tab, tool.id);
     tab.id = `tool-tab-${tool.id}`;
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-controls', `tool-panel-${tool.id}`);

@@ -65,7 +65,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     const selectTool = async name => {
       await page.getByRole('navigation', { name: 'tUno tools' }).getByRole('link', { name, exact: true }).click();
-      if (width <= 650) await page.getByRole('tab', { name: { Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' }[name], exact: true }).click();
+      if (width <= 650) await page.getByRole('tab', { name: { Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'UnoMet' }[name], exact: true }).click();
     };
     for (const [name, view] of [['Tuner', 'tune'], ['Reference tone', 'tone'], ['Metronome', 'tempo']]) {
       await selectTool(name);
@@ -147,7 +147,7 @@ try {
         const selectedBefore = await page.getByRole('tab', { selected: true }).textContent();
         await nav.getByRole('link', { name, exact: true }).click();
         assert.equal(await page.getByRole('tab', { selected: true }).textContent(), selectedBefore, 'Main navigation preserves quick panel');
-        for (const quick of ['Tune', 'Tone', 'Tempo']) {
+        for (const quick of ['Tune', 'Tone', 'UnoMet']) {
           await page.getByRole('tab', { name: quick, exact: true }).click();
           assert.equal(await page.locator(`#view-${view}`).isVisible(), true, 'Quick tabs preserve main view');
           assert.equal(await nav.getByRole('link', { name, exact: true }).getAttribute('aria-current'), 'page');
@@ -155,7 +155,7 @@ try {
           await inspect(width, `${view}-quick-${quick.toLowerCase()}`);
         }
       }
-      await page.getByRole('tab', { name: 'Tempo', exact: true }).focus();
+      await page.getByRole('tab', { name: 'UnoMet', exact: true }).focus();
       await page.keyboard.press('Home');
       assert.equal(await page.getByRole('tab', { name: 'Tune', exact: true }).getAttribute('aria-selected'), 'true');
       await page.keyboard.press('ArrowRight');
@@ -166,7 +166,7 @@ try {
       await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
       await nav.getByRole('link', { name: 'Tuner', exact: true }).click();
       assert.equal(await page.getByRole('tab', { name: 'Tone', exact: true }).getAttribute('aria-selected'), 'true');
-      await page.getByRole('tab', { name: 'Tempo', exact: true }).click();
+      await page.getByRole('tab', { name: 'UnoMet', exact: true }).click();
       await page.getByRole('tab', { name: 'Tone', exact: true }).click();
       await page.locator('.tool-card').nth(1).getByRole('button', { name: 'Stop tone', exact: true }).click();
       assert.equal(await page.locator('#view-tuner').isVisible(), true);

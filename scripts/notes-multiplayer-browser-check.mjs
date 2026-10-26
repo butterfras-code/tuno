@@ -26,7 +26,6 @@ async function answerLetter(panel) {
 async function start(page,format='turns') {
   await configureMultiplayerNotes(page);
 
-  await page.getByRole('tab',{name:'Multi Player Mode',exact:true}).click();
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
   await button(page,'Start round').click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:format==='pairs'?'Side by Side':format==='turns'?'Pass and Play':'Head to Head'}).click();
@@ -38,7 +37,7 @@ async function run(page,url,label) {
   await page.clock.install();await page.setViewportSize({width:1280,height:900});
   await open(page,url);await addPlayers(page,3);
   const chooseAll = button(page,'Start round');
-  assert.equal(await button(page,'Copy to all players').isDisabled(),true);
+  assert.equal(await button(page,'Copy to all').isDisabled(),true);
   assert.equal(await button(page,'Start round').getAttribute('data-notes-remaining'),'3');
   await chooseAll.click();
   assert.equal(await button(page,'Select Player 1').getAttribute('aria-pressed'),'true');
@@ -62,10 +61,10 @@ async function run(page,url,label) {
   assert.equal(await button(page,'Start round').isVisible(),true);
   evidence.push(`${label}: notes gate skips configured players, survives cancellation and switching, accepts custom/copy choices, and updates on add/remove`);
   await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
-  assert.equal(await button(page,'Copy to all players').isDisabled(),true);
+  assert.equal(await button(page,'Copy to all').isDisabled(),true);
   await selectPlayer(page,1);
   const copiedSummary = await page.locator('.multiplayer-editor .preset-summary').textContent();
-  await button(page,'Copy to all players').click();
+  await button(page,'Copy to all').click();
   assert.equal(await button(page,'Start round').isVisible(),true);
   for (let index=1;index<=4;index++) {
     await selectPlayer(page,index);
@@ -152,8 +151,6 @@ async function run(page,url,label) {
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,3);await page.setViewportSize({width:960,height:550});
 
-  await page.getByRole('tab',{name:'Play Style',exact:true}).click();
-  await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Head to Head'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   if(await button(page,'Enter fullscreen').isVisible()) {
     await button(page,'Enter fullscreen').click();
@@ -373,7 +370,8 @@ async function run(page,url,label) {
   await button(page,'End round').click();
   await open(page,url);await addPlayers(page,2);await page.setViewportSize({width:760,height:900});
 
-  await page.getByRole('tab',{name:'Play Style',exact:true}).click();
+  await configureMultiplayerNotes(page);
+  await button(page,'Start round').click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Side by Side'}).click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   const styleButtons = page.getByRole('group',{name:'Play Style'}).getByRole('button');
@@ -384,8 +382,8 @@ async function run(page,url,label) {
     assert.ok(art.x >= card.x + card.width / 2 - 4);
     assert.ok(art.x + art.width <= card.x + card.width);
   }
-  await page.getByRole('tab',{name:'Play Style',exact:true}).click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:'Pass and Play'}).click();
+  await button(page,'Cancel').click();
   assert.equal(await button(page,'Start round').isDisabled(),false);
   await page.setViewportSize({width:1280,height:900});
   await button(page,'Options').click();

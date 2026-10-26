@@ -4,6 +4,7 @@ import tapHeadAsset from '../assets/uno-tap-head.svg';
 import micAsset from '../assets/mic.svg';
 import playAsset from '../assets/play.svg';
 import stopAsset from '../assets/stop.svg';
+import { createAreaNavigation } from '../shared/ui/area-navigation.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
 import { noteName } from '../music/pitch.ts';
@@ -17,6 +18,7 @@ import { createMetronome } from './views/metronome.ts';
 import { tempoInput } from './tempo.ts';
 import { createMobileTools } from './mobile-tools.ts';
 import { createAppFooter } from '../shared/ui/app-footer.ts';
+import { toolLabel } from './tool-label.ts';
 
 /** Mount once. Views observe the same store and retain DOM/focus across updates. */
 export function mountApp(root: HTMLElement, store: PracticeStore) {
@@ -25,6 +27,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
   const settings = createSettings(store);
   const header = createAppHeader('tUno', 'Practice with a friend.');
+  header.append(createAreaNavigation('tuno'));
   const navigation = el('nav', 'focus-navigation');
   navigation.setAttribute('aria-label', 'tUno tools');
   const links = TOOLS.map((tool) => {
@@ -35,23 +38,18 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       event.preventDefault();
       store.dispatch({ type: 'focus', value: tool.id });
     });
-    responsiveLabel(control, tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune', tool.id === 'tone' ? 'Tone' : tool.id === 'metronome' ? 'Tempo' : 'Tune');
+    toolLabel(control, tool.id);
     control.setAttribute('aria-label', tool.label);
     control.setAttribute('aria-controls', `view-${tool.id}`);
     navigation.append(control);
     return control;
   });
-  const tinker = button('Settings', settings.open);
-  responsiveLabel(tinker, 'Settings', 'Settings');
-  tinker.setAttribute('aria-label', 'Settings');
-  tinker.classList.add('tinker-control');
-  navigation.append(tinker);
-  header.append(navigation);
-
   const main = el('main', 'practice-surface');
   main.id = 'practice';
   main.tabIndex = -1;
-  main.append(createTuner(store, audio), createTone(store, audio), createMetronome(store, audio));
+  const panelHeader = el('div', 'practice-navigation');
+  panelHeader.append(navigation);
+  main.append(panelHeader, createTuner(store, audio), createTone(store, audio), createMetronome(store, audio));
   const tools = el('aside', 'tool-strip');
   tools.setAttribute('aria-label', 'Practice tools');
   const popups: HTMLElement[] = [];
@@ -82,7 +80,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       : tool.id === 'tone'
         ? button('Play tone', audio.toggleTone)
         : button('Start metronome', audio.toggleMetronome);
-    responsiveLabel(title, tool.id === 'tone' ? 'TONE' : tool.id === 'metronome' ? 'TEMPO' : 'TUNE', tool.id === 'tone' ? 'TONE' : tool.id === 'metronome' ? 'TEMPO' : 'TUNE');
+    toolLabel(title, tool.id, true);
     const compact = el('div', 'compact-tools');
     const compactControl = (label: string, control: HTMLElement) => {
       const column = el('div', 'compact-tool');
@@ -140,7 +138,6 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
     iconLabel(summaries[1]!.action, state.tonePlaying ? 'Stop tone' : 'Play tone', state.tonePlaying ? stopAsset : playAsset);
     summaries[0]!.status.textContent = state.micStatus !== 'idle' ? micStatusText(state.micStatus) : state.manualHz === null ? '—' : `Sample · ${pitchText(state).note}`;
     responsiveLabel(summaries[1]!.status, `${noteName(state.toneNote)} · ${state.sustain ? 'Sustain' : 'Selected'}`, noteName(state.toneNote));
-    responsiveLabel(summaries[2]!.title, 'TEMPO', 'TEMPO');
     iconLabel(summaries[2]!.action, state.metronomePlaying ? 'Stop metronome' : 'Start metronome', state.metronomePlaying ? stopAsset : playAsset);
     responsiveLabel(summaries[2]!.tempoStatus, ` BPM · ${state.metronomePlaying ? 'Playing' : 'Stopped'}`, ' BPM');
     notePicker.update(state.toneNote % 12);

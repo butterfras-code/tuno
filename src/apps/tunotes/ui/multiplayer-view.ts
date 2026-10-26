@@ -44,13 +44,12 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const node = el('section','multiplayer-view'); node.setAttribute('aria-label','Multi Player'); node.hidden = true;
   const setup = el('section','multiplayer-setup');
   const rosterSection = el('section','multiplayer-roster-section');
-  const playersHeading = el('h3','multiplayer-players-heading');
   const roster = el('div','multiplayer-roster'); roster.setAttribute('role','group'); roster.setAttribute('aria-label','Players');
   const add = button('Add player',() => { if (players.length < 8 && commitEditor()) openPlayerEditor(newPlayer(players.length+1),true,add); });
   add.classList.add('multiplayer-add'); add.textContent = '+'; add.setAttribute('aria-label','Add player');
   const playerMenu = el('div','multiplayer-player-menu'); playerMenu.id = 'multiplayer-player-menu';
   playerMenu.setAttribute('popover','auto'); playerMenu.setAttribute('role','dialog'); playerMenu.setAttribute('aria-label','Choose player');
-  rosterSection.append(playersHeading,roster,playerMenu);
+  rosterSection.append(roster);
   const editor = el('section','multiplayer-editor');
   const presetUI = presetSetup(store,'multi-',() => players.flatMap((player,index) => {
     if (player.id === selectedId) return [];
@@ -86,37 +85,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   let adaptive = store.profile()?.adaptive ?? false;
   const setAdaptation = (enabled: boolean) => { adaptive = enabled; updateSetupSummary(); };
   presetUI.onAdaptiveChoice(setAdaptation);
-  const selector = el('section','visual-content-section multiplayer-mode-selector');
-  const tabs = el('div','multiplayer-mode-tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Multi Player settings');
-  const modePanel = el('div'); modePanel.append(rules.node);
-  const stylePanel = el('div'); stylePanel.append(formatGroup);
-  const setupPanels = [modePanel,stylePanel];
-  rules.node.classList.remove('visual-content-section','practice-mode-section');
-  rules.node.querySelector('h3')!.hidden = true;
-  const tabButtons = ['Multi Player Mode','Play Style'].map((label,index) => {
-    const tab = button(label,() => selectModeTab(index));
-    tab.id = `multiplayer-mode-tab-${index}`; tab.setAttribute('role','tab');
-    const panel = setupPanels[index]!; panel.id = `multiplayer-mode-panel-${index}`;
-    panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',tab.id);
-    tab.setAttribute('aria-controls',panel.id);
-    tab.addEventListener('keydown',event => {
-      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
-      event.preventDefault();
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1-index;
-      selectModeTab(next); tabButtons[next]!.focus();
-    });
-    tabs.append(tab); return tab;
-  });
-  function selectModeTab(index: number) {
-    setupPanels.forEach((panel,i) => {
-      panel.hidden = i !== index;
-      tabButtons[i]!.setAttribute('aria-selected',String(i === index));
-      tabButtons[i]!.tabIndex = i === index ? 0 : -1;
-    });
-  }
-  selectModeTab(0);
-  selector.append(tabs,...setupPanels);
-  roundSetup.append(selector);
+  roundSetup.append(rules.node);
   const setupError = el('p','feedback'); setupError.setAttribute('role','alert');
   const setupFullscreen = button('Enter fullscreen',toggleFullscreen); setupFullscreen.classList.add('multiplayer-setup-fullscreen');
   const start = button('Start round',() => startRound(true)); start.classList.add('control--primary');
@@ -129,15 +98,14 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const continueRound = button('Continue to round',() => { styleDialog.close(); startRound(); });
   continueRound.classList.add('control--primary');
   styleActions.append(button('Cancel',() => styleDialog.close()),continueRound);
-  styleDialog.append(styleTitle,styleDescription,styleActions);
-  styleDialog.addEventListener('close',() => { stylePanel.append(formatGroup); });
+  styleDialog.append(styleTitle,styleDescription,formatGroup,styleActions);
   styleDialog.addEventListener('click',event => {
     const rect = styleDialog.getBoundingClientRect();
     if (event.target === styleDialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) styleDialog.close();
   });
   const setupUI = activitySetup(editor,el('section'),'multiplayer',presetUI.rangeTrigger);
   setupUI.practiceLayout(true);
-  const copyToAll = button('Copy to all players',() => {
+  const copyToAll = button('Copy to all',() => {
     if (!commitEditor()) return;
     const current = players.find(player => player.id === selectedId);
     if (!current?.notesChosen) return;
@@ -150,8 +118,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   copyToAll.classList.add('multiplayer-copy-all'); presetUI.rangeTrigger.after(copyToAll);
   const setupUtilities = el('div','multiplayer-setup-utilities'); setupUtilities.append(setupFullscreen);
   editor.prepend(setupUtilities);
-  setupUI.node.append(roundSetup,setupError); setupUI.action(start);
-  setup.append(rosterSection,setupUI.node);
+  setupUI.node.append(roundSetup,setupError); setupUI.action(rosterSection); setupUI.action(start);
+  setup.append(setupUI.node);
 
   const round = el('section','multiplayer-round'); round.hidden = true;
   const roundHeader = el('div','multiplayer-round-header');
@@ -185,7 +153,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   const resultActions = el('div','control-row');
   resultActions.append(button('Retry',() => startRound()),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
   result.append(resultTitle,resultSummary,board,resultActions);
-  node.append(setup,fitWarning,round,result,styleDialog);
+  node.append(setup,fitWarning,round,result,styleDialog,playerMenu);
 
   let players: Player[] = [newPlayer(1)];
   let selectedId = players[0]!.id;
@@ -315,10 +283,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const current = players.find(p => p.id === selectedId) ?? players[0]!; selectedId = current.id;
     const playerName = current.name.trim() || `Player ${players.indexOf(current)+1}`;
     presetUI.rangeContext(playerName);
-    const chooserPlayer = el('span','multiplayer-notes-player',playerName); chooserPlayer.title = playerName;
-    presetUI.rangeTrigger.replaceChildren(el('span','','Choose Notes'),chooserPlayer);
+    presetUI.rangeTrigger.replaceChildren(el('span','','Choose Notes'));
     presetUI.rangeTrigger.setAttribute('aria-label',`Choose Notes — ${playerName}`);
-    playersHeading.textContent = `Players (${players.length})`;
     updateSetupSummary();
     playerMenu.hidePopover(); roster.replaceChildren(); playerMenu.replaceChildren();
     players.forEach((player,index) => {
@@ -406,9 +372,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     if (names.some(n => !n)) { setupUI.select('notes'); setupError.textContent = 'Give each player a name.'; return; }
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
-    const nextRules = rules.read(() => selectModeTab(0)); if (!nextRules) return;
+    const nextRules = rules.read(); if (!nextRules) return;
     if (chooseStyle) {
-      styleActions.before(formatGroup);
       styleDialog.showModal();
       format.buttons.find(control => control.dataset.value === selectedFormat)?.focus();
       return;
@@ -501,7 +466,6 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     }
   }
   function showSetup() {
-    selectModeTab(0);
     leaveFullscreen();
     fitWarning.hidden = true;
     finishActive(true); resetInput(); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = []; panels.replaceChildren();

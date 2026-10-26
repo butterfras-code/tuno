@@ -1,6 +1,10 @@
 import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
+import { createAreaNavigation } from '../../shared/ui/area-navigation.ts';
 import './styles.css';
+import './workspace.css';
+import './mode-selectors.css';
+import './multiplayer-toolbar.css';
 import { el } from '../../shared/ui/components.ts';
 import { practiceView } from './ui/practice-view.ts';
 import { multiplayerView } from './ui/multiplayer-view.ts';
@@ -14,6 +18,9 @@ export function mountNotes(root: HTMLElement) {
   home.id = 'home';
   home.tabIndex = -1;
   const header = createAppHeader('tuNotes', 'Read Notes with a friend.');
+  header.append(createAreaNavigation('tunotes'));
+  const workspace = el('div', 'notes-workspace');
+  const workspaceHeader = el('div', 'notes-workspace-header');
   const practice = practiceView();
   const practicePanel = el('section'); practicePanel.append(practice.node);
   const challenge = el('section','notes-challenge'); challenge.hidden = true;
@@ -42,7 +49,7 @@ export function mountNotes(root: HTMLElement) {
     });
     navigation.append(control); return control;
   });
-  header.append(navigation);
+  workspaceHeader.append(navigation);
   const fullscreen = el('button','control notes-fullscreen','Enter fullscreen'); fullscreen.type = 'button';
   fullscreen.hidden = true;
   const fullscreenStatus = el('p','fullscreen-status'); fullscreenStatus.setAttribute('role','status');
@@ -55,12 +62,13 @@ export function mountNotes(root: HTMLElement) {
   });
   const updateFullscreen = () => { fullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen'; };
   document.addEventListener('fullscreenchange',updateFullscreen);
-  header.append(fullscreen,fullscreenStatus);
+  workspaceHeader.append(fullscreen,fullscreenStatus);
   const offline = el('p');
   offline.id = 'offline-status';
   prepareOffline(offline, tunotes);
   const footer = createAppFooter({ app: tunotes, status: offline });
-  home.append(header, ...views, footer);
+  workspace.append(workspaceHeader, ...views);
+  home.append(header, workspace, footer);
   root.append(home);
   const stopFitting = playSurface(home,practice.options);
   const dispose = () => { stopFitting(); document.removeEventListener('fullscreenchange',updateFullscreen); practice.dispose(); multiplayer?.dispose(); };

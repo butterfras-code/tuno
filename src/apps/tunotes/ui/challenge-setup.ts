@@ -2,7 +2,7 @@ import { el } from '../../../shared/ui/components.ts';
 import { segments } from './range-editor.ts';
 import { validateRules } from '../engine/challenge.ts';
 export function challengeSetup(title = 'Solo Challenge', inline = false) {
-  const node = inline ? el('section','challenge-settings visual-content-section practice-mode-section') : el('fieldset','challenge-settings'); node.hidden = true;
+  const node = inline ? el('section','challenge-settings visual-content-section practice-mode-section mode-pill-selector') : el('fieldset','challenge-settings'); node.hidden = true;
   node.append(el(inline ? 'h3' : 'legend','',title));
   if (inline) node.setAttribute('aria-label',title);
   let goal: 'timed' | 'target' = 'timed';
@@ -12,20 +12,13 @@ export function challengeSetup(title = 'Solo Challenge', inline = false) {
   }); mode.update([goal]);
   if (inline) {
     mode.node.className = 'practice-mode-choices';
-    const refreshMarks = () => mode.buttons.forEach(control => {
-      const mark = el('span','range-content-mark',control.getAttribute('aria-pressed') === 'true' ? '✓' : '');
-      mark.setAttribute('aria-hidden','true');
-      control.replaceChildren(el('span','',control.getAttribute('aria-label')!),mark);
-    });
     mode.buttons.forEach(control => {
       control.classList.add('range-content-button');
-      control.addEventListener('click',refreshMarks);
     });
-    refreshMarks();
     const future = el('div','practice-mode-auto');
     const correct = el('button','control range-content-button','Correct Only');
     correct.type = 'button'; correct.disabled = true; correct.title = 'Coming soon';
-    future.append(correct,el('span','muted challenge-coming-soon','Coming soon'));
+    future.append(correct);
     mode.node.append(future);
   }
   const numeric = (parent: HTMLElement, label: string, value: number, min: number, max: number) => {

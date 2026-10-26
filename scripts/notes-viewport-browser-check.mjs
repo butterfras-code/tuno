@@ -61,9 +61,9 @@ try {
         await button(page,'Multi Player').click();
         await button(page,'Add player').click();await button(page.getByRole('dialog'),'Save').click();
         await configureMultiplayerNotes(page);
-        await page.getByRole('tab',{name:'Play Style',exact:true}).click();await button(page,mode).click();
         assert.equal(await button(page,'Start round').isDisabled(),false);
         await button(page,'Start round').click();
+        await button(page.getByRole('dialog',{name:'Choose a play style'}),mode).click();
         await button(page,'Continue to round').click();
       }
       const label=`${engine} ${width}×${height} ${mode}`;

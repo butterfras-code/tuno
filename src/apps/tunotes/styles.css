@@ -328,7 +328,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .multiplayer-view { margin-top: 24px; }
 .multiplayer-setup { max-width: 900px; }
-.multiplayer-players-heading { margin: 24px 0 8px; }
 .multiplayer-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .multiplayer-slot { display: inline-flex; align-items: center; padding-inline: 6px; min-width: 0; border-radius: var(--radius-control); background: var(--color-tint); }
 .multiplayer-roster .multiplayer-slot:not(.selected) > .control { background: transparent; border-radius: 0; }
@@ -655,7 +654,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-multi\ player .multiplayer-view { margin: 0; min-height: 100%; }
 #notes-multi\ player .multiplayer-setup { display: grid; grid-template-columns: 260px minmax(0,1fr); align-items: start; gap: 12px 20px; max-width: none; }
 .multiplayer-roster-section { min-width: 0; min-height: 0; overflow-y: auto; }
-.multiplayer-players-heading, .multiplayer-round-setup h3 { margin: 0 0 10px; font-size: 18px; }
+.multiplayer-round-setup h3 { margin: 0 0 10px; font-size: 18px; }
 .multiplayer-roster { display: grid; align-content: start; padding-right: 4px; }
 .multiplayer-slot { width: 100%; }
 .multiplayer-player-tab { flex: 1; max-width: none; text-align: left; }
@@ -743,7 +742,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home.is-playing { width: 100%; max-width: none; height: 100dvh; min-height: 0; padding: 12px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left)); display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; }
 #home.is-playing > .app-header { margin: 0; gap: 8px 20px; }
 #home.is-playing > footer { margin: 0; }
-#home.is-playing > .play-viewport { position: relative; height: auto; min-height: 0; padding: 0; overflow: hidden; scrollbar-gutter: auto; border-radius: 20px; }
+#home.is-playing .notes-workspace > .play-viewport { position: relative; height: auto; min-height: 0; padding: 0; overflow: hidden; scrollbar-gutter: auto; border-radius: 20px; }
 #home .play-stage { position: absolute; inset: 0 auto auto 0; min-height: 0; margin: 0; padding: 12px; transform-origin: top left; overflow: visible; background: var(--color-surface); }
 #home .play-stage.practice-view { display: grid; grid-template-columns: minmax(0,1fr) 140px; gap: 16px; align-items: stretch; }
 #home .play-stage.challenge-active, #home .play-stage.previewing { grid-template-columns: minmax(0,1fr); }
@@ -1148,7 +1147,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 @media (min-width: 761px) {
   #notes-multi\ player .multiplayer-setup { grid-template-columns: minmax(0,1fr); gap: 16px; }
   .multiplayer-roster-section { display: flex; align-items: center; gap: 16px; overflow: visible; }
-  .multiplayer-roster-section .multiplayer-players-heading { margin: 0; flex: none; }
   .multiplayer-roster-section .multiplayer-roster { flex: 1; max-width: 360px; }
   .multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: minmax(0,180px) minmax(0,220px) minmax(0,1fr) minmax(0,180px); }
   .multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab { grid-column: 1; grid-row: 1; }

@@ -46,7 +46,7 @@ for(const [width,height] of [[320,667],[360,800],[390,844],[600,800],[768,1024],
  await notesMode(page,'Challenge');await check('challenge');await b(page,'Start Challenge').click();await check('challenge-ready');await b(page,'Ready').click();await page.waitForTimeout(3200);await b(page,'Finish').click();await check('challenge-results');
  await notesMode(page,'Practice');await startPractice(page);await check('practice-playing');await b(page,'Finish').click();await check('practice-results');
  await notesMode(page,'Multi Player');await check('multiplayer');await b(page,'Add player').click();await page.getByRole('dialog').getByRole('textbox').fill('W'.repeat(40));await check('player-editor');await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();await check('multiplayer-two');
- await page.getByRole('tab',{name:'Play Style',exact:true}).click();await check('styles');await configureMultiplayerNotes(page);await b(page,'Start round').click();await check('style-dialog');await b(page,'Cancel').click();
+ await configureMultiplayerNotes(page);await b(page,'Start round').click();await check('style-dialog');await b(page,'Cancel').click();
  await openRange(page);await check('chooser-players');await b(rangeDialog(page),'Copy from player').click();await check('copy-player');await b(page,'Close range selection').click();
  await b(page,'Start round').click();await b(page,'Continue to round').click();await b(page,'End round').click();await check('multiplayer-results');
  await openData(page);await check('options-data');await b(page,'Add profile').click();await page.getByLabel('Profile name',{exact:true}).fill('Mobile reader');await check('profile');

@@ -1,6 +1,7 @@
 import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
+import { createAreaNavigation } from '../../shared/ui/area-navigation.ts';
 import { countingProblems, countingScore } from './counting-feedback.ts';
 import type { CountId } from '../../music/counting/plan.ts';
 import type { RhythmScore } from '../../music/score.ts';
@@ -9,6 +10,7 @@ import '../../tokens.css';
 import '../../shared/ui/fonts.css';
 import '../count-writing/styles.css';
 import './styles.css';
+import './workspace.css';
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { Activity, presets as practiceFixtures, preferenceKey, fixtureAccess } from './activity.ts';
 import { createPerformance } from './performance.ts';
@@ -47,6 +49,7 @@ let currentMeasures: readonly RhythmMeasure[] = [];
 const app = document.querySelector<HTMLElement>('#app')!;
 const main = el('main', 'rhythm-app'); main.id = 'editor';
 const header = createAppHeader('Uno234', 'Practice rhythm with a friend.');
+header.append(createAreaNavigation('rhythm'));
 const offlineStatus = el('p', 'small'); offlineStatus.id = 'offline-status';
 prepareOffline(offlineStatus, { id: 'rhythm', name: 'Uno234' }, { worker: '/rhythm/sw.js', scope: '/rhythm/' });
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
@@ -93,7 +96,7 @@ passage.append(passageScroll);
 const workspace = createWritingWorkspace(passage, passageScroll, passageStrip, () => currentMeasures);
 const help = el('div', 'practice-help-popover'); help.id = 'practice-help'; help.popover = 'auto';
 help.setAttribute('role', 'dialog'); help.setAttribute('aria-label', 'Practice help');
-const helpButton = button('?', () => {
+const helpButton = button('Help', () => {
   const bounds = helpButton.getBoundingClientRect();
   help.style.left = `${Math.max(8, Math.min(bounds.right - 340, innerWidth - 348))}px`;
   const top = Math.min(bounds.bottom + 8, Math.max(8, innerHeight - 360));
@@ -117,18 +120,34 @@ showCounts.addEventListener('change', () => { preferences.showCounts = showCount
 const showCountsField = field('Show written counts during performance', showCounts);
 let performing = false;
 let responsePanel: 'counts' | 'perform' = preferences.mode === 'tap' ? 'perform' : 'counts';
+let responseOptionsOpen = false;
+const mobileInput = window.matchMedia('(max-width: 760px)');
 // Legacy Both preferences open Counts; the selected panel now owns the response context.
 activity.setMode(responsePanel === 'perform' ? 'tap' : 'write');
 const interaction = el('section', 'shared-interaction'); interaction.setAttribute('aria-label', 'Exercise interaction');
 const panelSelector = el('div', 'interaction-selector'); panelSelector.setAttribute('role', 'group'); panelSelector.setAttribute('aria-label', 'Choose response');
 const countsButton = button('Counts', () => selectResponsePanel('counts'));
 const performButton = button('Perform', () => selectResponsePanel('perform'));
-panelSelector.append(countsButton, performButton);
+const optionsButton = button('Options', () => {
+  responseOptionsOpen = true;
+  performance.cancel('Response options opened');
+  editors.forEach(editor => editor.suspend());
+  updateResponseView();
+  optionsButton.focus({ preventScroll: true });
+});
+// Keep pad blur from moving the panel between pointer down and click.
+optionsButton.addEventListener('pointerdown', event => { if (event.button === 0) event.preventDefault(); });
+optionsButton.hidden = !mobileInput.matches;
+panelSelector.append(countsButton, performButton, optionsButton);
 const interactionBody = el('div', 'interaction-body');
 const countPalette = el('section', 'count-palette-host'); countPalette.id = 'count-palette'; countPalette.setAttribute('aria-label', 'Counting input palette');
 countsButton.setAttribute('aria-controls', countPalette.id);
 const paletteEmpty = el('p', 'palette-empty', 'Select a count box above to enter counts or toggle Rest and Connect for its group.'); countPalette.append(paletteEmpty);
 const performanceSetup = el('div', 'performance-setup');
+const responseOptions = el('section', 'response-options');
+responseOptions.id = 'response-options'; responseOptions.hidden = true;
+responseOptions.setAttribute('aria-label', 'Input options');
+optionsButton.setAttribute('aria-controls', responseOptions.id);
 
 const performance = createPerformance({
   follow: (clock, duration) => clock ? workspace.startFollowing(clock, duration) : workspace.stopFollowing(),
@@ -201,10 +220,19 @@ const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 
 writeResponse.append(summary);
 help.append(performance.help);
-performanceSetup.append(performance.tempoField, performance.playField, performance.metronomeField, showCountsField);
+performanceSetup.append(performance.tempoField);
+function placeResponseOptions() {
+  const container = mobileInput.matches ? responseOptions : performanceSetup;
+  container.append(performance.playField, performance.metronomeField, showCountsField);
+  optionsButton.hidden = !mobileInput.matches;
+  panelSelector.classList.toggle('has-options', mobileInput.matches);
+  if (!mobileInput.matches) responseOptionsOpen = false;
+}
+placeResponseOptions();
+mobileInput.addEventListener('change', () => { placeResponseOptions(); updateResponseView(); });
 performance.section.prepend(performanceSetup);
 performance.section.id = 'performance-panel'; performButton.setAttribute('aria-controls', performance.section.id);
-interactionBody.append(countPalette, actions, performance.section); interaction.append(panelSelector, interactionBody);
+interactionBody.append(countPalette, actions, performance.section, responseOptions); interaction.append(panelSelector, interactionBody);
 help.append(banner);
 const playArea = el('div', 'practice-workspace');
 playArea.append(passage, interaction);
@@ -236,9 +264,8 @@ if (testing.enabled) {
 practiceView.append(exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
-const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink);
-header.append(helpButton, nav);
-activitySurface.append(pageTitle, practiceView, settings.page);
+const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink, helpButton);
+activitySurface.append(nav, pageTitle, practiceView, settings.page);
 const footer = createAppFooter({ app: { id: 'rhythm', name: 'Uno234' }, status: offlineStatus });
 main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
@@ -267,7 +294,7 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
         editors.forEach((other, otherIndex) => { other.card.classList.toggle('active-count-measure', otherIndex === index); if (otherIndex !== index) other.suspend(); });
         selectResponsePanel('counts');
       },
-      hidden: () => Boolean(practiceView.hidden) || responsePanel === 'perform' || performing,
+      hidden: () => Boolean(practiceView.hidden) || responsePanel === 'perform' || performing || responseOptionsOpen,
       reveal: target => workspace.reveal(target),
       change: answer => { if (practiceView.dataset.phase === 'review') practiceView.dataset.phase = 'input'; activity.countingAnswer = answer; refreshCounting(); },
       check: evaluateAnswer,
@@ -313,7 +340,7 @@ function showPage(focus = true) {
   practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
   (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
   pageTitle.textContent = isSettings ? 'Settings' : 'Practice';
-  pageTitle.classList.toggle('sr-only', !isSettings); helpButton.hidden = isSettings;
+  pageTitle.classList.toggle('sr-only', !isSettings);
   document.title = `${pageTitle.textContent} — Uno234`;
   updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
   if (!isSettings && responsePanel === 'counts') {
@@ -324,12 +351,13 @@ function showPage(focus = true) {
 }
 window.addEventListener('hashchange', () => { if (['', '#settings', '#practice'].includes(location.hash)) showPage(); });
 document.addEventListener('keydown', event => {
-  if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || responsePanel === 'perform' || performing) return;
+  if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || responsePanel === 'perform' || performing || responseOptionsOpen) return;
   if ((event.target as Element).closest('button, a, input, select, textarea, [role="button"], [contenteditable], .count-popover')) return;
   event.preventDefault(); evaluateAnswer();
 });
 
 function selectResponsePanel(panel: 'counts' | 'perform') {
+  responseOptionsOpen = false;
   if (panel !== responsePanel) {
     performance.cancel('Response panel changed');
     editors.forEach(editor => editor.suspend());
@@ -343,25 +371,27 @@ function selectResponsePanel(panel: 'counts' | 'perform') {
 function updateResponseView() {
   performance.refreshFeedback();
   const writing = responsePanel === 'counts';
-  writeResponse.hidden = !writing || performing;
+  writeResponse.hidden = !writing || performing || responseOptionsOpen;
   const showPerformance = responsePanel === 'perform';
-  performance.section.hidden = !showPerformance;
-  countPalette.hidden = showPerformance;
+  performance.section.hidden = !showPerformance || responseOptionsOpen;
+  countPalette.hidden = showPerformance || responseOptionsOpen;
+  responseOptions.hidden = !responseOptionsOpen;
   erase.disabled = !editors.some(editor => editor.card.classList.contains('active-count-measure')) || !activity.countingPlan.counts.length;
-  playArea.classList.toggle('editing-counts', !showPerformance && !performing);
-  actions.hidden = showPerformance || performing;
-  workspace.setEnabled(true, writing && !performing ? 'writing' : 'performance');
-  countsButton.setAttribute('aria-pressed', String(!showPerformance)); performButton.setAttribute('aria-pressed', String(showPerformance));
+  playArea.classList.toggle('editing-counts', !showPerformance && !performing && !responseOptionsOpen);
+  actions.hidden = showPerformance || performing || responseOptionsOpen;
+  workspace.setEnabled(true, writing && !performing && !responseOptionsOpen ? 'writing' : 'performance');
+  countsButton.setAttribute('aria-pressed', String(!showPerformance && !responseOptionsOpen)); performButton.setAttribute('aria-pressed', String(showPerformance && !responseOptionsOpen));
+  optionsButton.setAttribute('aria-pressed', String(responseOptionsOpen));
   banner.hidden = responsePanel === 'perform';
   const hideCounts = !writing && !preferences.showCounts;
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', !writing || performing);
   passageStrip.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
-    glyph.setAttribute('role', writing && !performing && glyph.dataset.entryLabel ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing && glyph.dataset.entryLabel ? '0' : '-1');
-    if (writing && !performing && glyph.dataset.entryLabel) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.removeAttribute('aria-haspopup'); glyph.setAttribute('aria-controls', countPalette.id); }
+    glyph.setAttribute('role', writing && !performing && !responseOptionsOpen && glyph.dataset.entryLabel ? 'button' : 'group'); glyph.setAttribute('tabindex', writing && !performing && !responseOptionsOpen && glyph.dataset.entryLabel ? '0' : '-1');
+    if (writing && !performing && !responseOptionsOpen && glyph.dataset.entryLabel) { glyph.setAttribute('aria-label', glyph.dataset.entryLabel!); glyph.removeAttribute('aria-haspopup'); glyph.setAttribute('aria-controls', countPalette.id); }
     else { glyph.setAttribute('aria-label', glyph.dataset.musicLabel ?? `${glyph.dataset.kind} ${Number(glyph.dataset.event) + 1}`); glyph.removeAttribute('aria-haspopup'); }
   });
-  passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing; });
+  passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing || responseOptionsOpen; });
   editors.forEach(editor => editor.refresh());
   decoratePerformance(showPerformance && !performing ? performance.record() : null);
   tieNotation?.refresh();

@@ -1,0 +1,16 @@
+.multiplayer-setup .practice-layout .activity-setup-toolbar .control { padding: 2px 8px; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-roster-section { display: block; grid-column: 1 / -1; grid-row: 1; min-width: 0; overflow: visible; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab { grid-row: 2; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all { grid-row: 3; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-row: 2 / 4; }
+.multiplayer-setup .activity-setup-toolbar .multiplayer-roster { width: 100%; max-width: none; }
+.multiplayer-setup .activity-setup-toolbar .multiplayer-roster .control { width: auto; min-height: 44px; padding: 0 6px; }
+.multiplayer-setup .activity-setup-toolbar .multiplayer-roster .multiplayer-player-tab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 8px; }
+.multiplayer-setup .activity-setup-toolbar .multiplayer-roster :is(.multiplayer-add,.multiplayer-edit,.multiplayer-delete,.multiplayer-player-expand) { flex: 0 0 44px; width: 44px; padding: 0; }
+@media (min-width: 761px) {
+  .multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: minmax(110px,140px) minmax(90px,110px) minmax(240px,1fr) minmax(100px,140px); }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-roster-section { grid-column: 3; grid-row: 1; }
+  .multiplayer-setup .practice-layout .activity-setup-toolbar #multiplayer-notes-tab,
+  .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-copy-all,
+  .multiplayer-setup .practice-layout .activity-setup-toolbar .multiplayer-start { grid-row: 1; }
+}

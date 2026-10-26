@@ -1,0 +1,21 @@
+.notes-workspace { min-width: 0; background: var(--color-surface); border-radius: 28px; }
+.notes-workspace-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 20px 0; }
+.notes-workspace-header .focus-navigation { display: grid; flex: 1; min-width: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
+.notes-workspace-header .focus-navigation .control { min-width: 0; min-height: 44px; justify-content: center; padding: 6px 4px; border-radius: 11px; background: transparent; }
+.notes-workspace-header .focus-navigation .control[aria-pressed='true'] { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; }
+.notes-workspace > section { border-radius: 0 0 28px 28px; }
+.notes-workspace > .notes-options { max-width: none; padding: 20px; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar { row-gap: 4px; }
+.multiplayer-setup .practice-layout .activity-setup-toolbar .control { min-height: 36px; padding-block: 4px; }
+.multiplayer-setup #multiplayer-notes-tab { gap: 0; }
+.multiplayer-setup .multiplayer-notes-player { line-height: 1.1; }
+#home.is-playing > .notes-workspace { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+#home.is-playing .notes-workspace-header { padding: 8px 12px; }
+#home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) > .notes-workspace { grid-template-rows: minmax(0, 1fr); }
+#home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) .notes-workspace-header { display: none; }
+@media (max-width: 700px) {
+  .notes-workspace-header { padding: 12px 16px 0; }
+  .notes-workspace-header .focus-navigation .control { font-size: 13px; }
+  #home.is-playing .notes-workspace-header { padding: 4px; gap: 4px; }
+  #home.is-playing .notes-workspace-header:has(.notes-fullscreen:not([hidden])) .focus-navigation .control { font-size: 11px; }
+}

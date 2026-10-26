@@ -12,7 +12,7 @@ try {
         const page = await context.newPage();
         await page.goto(host.url);
         await page.getByRole('navigation', { name: 'tUno tools' }).getByRole('link', { name: 'Metronome', exact: true }).click();
-        if (mobile) await page.getByRole('tab', { name: 'Tempo', exact: true }).click();
+        if (mobile) await page.getByRole('tab', { name: 'UnoMet', exact: true }).click();
         await page.getByLabel('Meter', { exact: true }).selectOption('4/4');
         const main = page.getByLabel('Tempo (BPM)', { exact: true });
         const quick = page.getByLabel('Quick tempo (BPM)', { exact: true });
