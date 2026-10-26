@@ -295,8 +295,10 @@ try {
       await page.setViewportSize({ width, height: 844 });
       for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {
         await selectTool(focus);
-        const bounds = await page.locator('.practice-surface').boundingBox();
-        assert.ok(bounds.height <= 485, `${mode}: ${focus} mobile surface must fit the design at ${width}px`);
+        const bounds = await page.locator('.practice-view:visible').boundingBox();
+        assert.ok(bounds.height <= 485, `${mode}: ${focus} mobile practice view must fit the design at ${width}px`);
+        const navigation = await page.locator('.practice-navigation').boundingBox();
+        assert.ok(navigation.height <= 64, `${mode}: integrated navigation must stay compact at ${width}px`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       }
       await selectTool('Reference tone');
