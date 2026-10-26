@@ -38,6 +38,12 @@ try {
       const level = rect('.level-configuration'), bag = rect('.feedback-snapshot');
       check(Math.abs(level.top - bag.top) < 1 && level.right <= bag.left, 'Level and feedback share a horizontal row');
       panel('Perform');
+      await settle();
+      const performBars = all('.passage-strip .plan-measure').map(el => el.getBoundingClientRect());
+      check(performBars.length === 4 && performBars.every(bar => Math.abs(bar.top - performBars[0].top) < 1), 'Four performance measures stay on one row');
+      check(rect('.tap-response').top + 44 <= innerHeight, 'Performance pad exposes a usable target below the score at the initial scroll position');
+      const performScroll = q('.passage-scroll');
+      check(q('.rhythm-overview').hidden === (performScroll.scrollWidth <= performScroll.clientWidth + 1), 'Performance overview appears when the score overflows');
       const ratings = all('.treat-ratings > li');
       check(ratings.length === 4 && ratings.every(el => !visible(el)), 'Unscored dimensions stay compact until review');
       check(ratings.every(el => el.dataset.bones === '' && el.textContent.includes('Not yet scored')), 'Unscored state never implies zero bones');

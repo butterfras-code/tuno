@@ -40,7 +40,11 @@ async function writingWorkspaceScenarios(w = window) {
   scroll.scrollLeft = 123; await settle();
   assert(Number(overview.getAttribute('aria-valuenow')) === 123, 'Manual scroll synchronizes accessible overview value');
   all('button').find(b => b.textContent === 'Perform').click(); await settle();
-  assert(overview.hidden && !q('.passage').classList.contains('writing-workspace'), 'Performance retains its existing layout');
+  assert(!q('.passage').classList.contains('writing-workspace') && q('.passage').classList.contains('performance-workspace'), 'Performance uses the continuous score without editable count targets');
+  const bars = all('.passage-strip .plan-measure').map(bar => bar.getBoundingClientRect());
+  assert(bars.every(bar => Math.abs(bar.top - bars[0].top) < 1), 'Performance keeps four measures on one row above the input');
+  assert(overview.hidden === (scroll.scrollWidth <= scroll.clientWidth + 1), 'Performance overview follows actual score overflow');
+  if (!overview.hidden) { key(overview, 'End'); assert(scroll.scrollLeft > 0, 'Performance overview navigates the score'); }
   all('button').find(b => b.textContent === 'Counts').click(); await settle();
   assert(Math.abs(scroll.scrollLeft - 123) < 1 && targets[0].textContent === '1', 'Returning to writing retains viewport and answer');
   targets[0].click(); key(d.activeElement, 'Delete'); assert(targets[0].textContent === '·', 'Deletion after returning to writing works');

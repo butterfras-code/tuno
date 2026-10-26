@@ -105,7 +105,7 @@ helpButton.setAttribute('aria-expanded', 'false');
 help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
 help.append(el('h2', '', 'Practice help'),
   el('p', '', 'Choose Counts to write counts or Perform to tap the same score. Switching panels keeps both responses. New exercise starts a new score and clears both responses.'),
-  el('p', '', 'In Write Counts, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Connect when appropriate.'),
+  el('p', '', 'In Counts or Perform, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Connect when appropriate.'),
   el('p', '', 'Select any count in a group. Rest (R) and Connect (C) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
   el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
@@ -348,7 +348,7 @@ function updateResponseView() {
   erase.disabled = !editors.some(editor => editor.card.classList.contains('active-count-measure')) || !activity.countingPlan.counts.length;
   playArea.classList.toggle('editing-counts', !showPerformance && !performing);
   actions.hidden = showPerformance || performing;
-  workspace.setEnabled(writing && !showPerformance && !performing);
+  workspace.setEnabled(true, writing && !performing ? 'writing' : 'performance');
   countsButton.setAttribute('aria-pressed', String(!showPerformance)); performButton.setAttribute('aria-pressed', String(showPerformance));
   banner.hidden = responsePanel === 'perform';
   const hideCounts = !writing && !preferences.showCounts;

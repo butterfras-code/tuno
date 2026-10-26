@@ -15,7 +15,9 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
   svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
   const viewport = el('span', 'rhythm-overview-window'); viewport.setAttribute('aria-hidden', 'true');
   overview.append(svg, viewport); passage.prepend(overview);
-  let enabled = false, frame = 0, savedScroll = 0, restore = false, resized = false;
+  let enabled = false, frame = 0, restore = false, resized = false;
+  let presentation: 'writing' | 'performance' = 'writing';
+  const savedScroll = { writing: 0, performance: 0 };
   let drag: { pointer: number; offset: number } | null = null;
   const maximum = () => Math.max(0, scroll.scrollWidth - scroll.clientWidth);
   function sync() {
@@ -37,7 +39,7 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
   function render() {
     frame = 0;
     if (!enabled || !scroll.clientWidth) return;
-    if (restore) { move(savedScroll); restore = false; }
+    if (restore) { move(savedScroll[presentation]); restore = false; }
     if (resized) {
       const focused = document.activeElement;
       if (focused instanceof HTMLElement && strip.contains(focused) && focused.hasAttribute('data-count-id')) reveal(focused);
@@ -123,12 +125,13 @@ export function createWritingWorkspace(passage: HTMLElement, scroll: HTMLElement
   }
   return {
     reveal,
-    reset() { savedScroll = 0; scroll.scrollLeft = 0; schedule(); },
-    setEnabled(value: boolean) {
-      if (enabled === value) return;
-      if (enabled) savedScroll = scroll.scrollLeft;
-      enabled = value; restore = value;
-      passage.classList.toggle('writing-workspace', value);
+    reset() { savedScroll.writing = savedScroll.performance = 0; scroll.scrollLeft = 0; schedule(); },
+    setEnabled(value: boolean, mode: 'writing' | 'performance' = 'writing') {
+      if (enabled === value && presentation === mode) return;
+      if (enabled) savedScroll[presentation] = scroll.scrollLeft;
+      enabled = value; presentation = mode; restore = value;
+      passage.classList.toggle('writing-workspace', value && mode === 'writing');
+      passage.classList.toggle('performance-workspace', value && mode === 'performance');
       overview.hidden = !value;
       schedule();
     },

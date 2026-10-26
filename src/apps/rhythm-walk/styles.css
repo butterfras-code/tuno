@@ -364,13 +364,17 @@ main.rhythm-app {
 .rhythm-app :is(.plan-token-palette, .plan-unit-controls, .count-erase-actions) button.control:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #c7b596; }
 .rhythm-app :is(.plan-token-palette, .plan-unit-controls, .count-erase-actions) button.control:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
 
-/* Write Counts uses readable targets and one continuous musical surface.
-   Performance retains its existing fitting/wrapping contract in this slice. */
+/* Keep both response panels on one musical row, with an overview on overflow.
+   Writing reserves full-sized targets; performance can use closer spacing. */
 .rhythm-app .passage.writing-workspace .passage-strip,
-.rhythm-app .passage.writing-workspace .passage-strip.wrapped {
-  grid-template-columns: repeat(var(--measure-count, 1), minmax(var(--passage-measure-width, 280px), 1fr));
-  width: max(100%, calc(var(--measure-count, 1) * var(--passage-measure-width, 280px)));
+.rhythm-app .passage.writing-workspace .passage-strip.wrapped,
+.rhythm-app .passage.performance-workspace .passage-strip,
+.rhythm-app .passage.performance-workspace .passage-strip.wrapped {
+  --workspace-measure-width: var(--passage-measure-width, 280px);
+  grid-template-columns: repeat(var(--measure-count, 1), minmax(var(--workspace-measure-width), 1fr));
+  width: max(100%, calc(var(--measure-count, 1) * var(--workspace-measure-width)));
 }
+.rhythm-app .passage.performance-workspace.counts-hidden .passage-strip { --workspace-measure-width: max(280px, calc(var(--passage-measure-width, 280px) * .6)); }
 .rhythm-app .writing-workspace .plan-measure {
   --count-target-width: 44px !important;
   --count-font-size: 22px !important;
