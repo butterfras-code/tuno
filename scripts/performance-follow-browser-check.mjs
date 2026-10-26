@@ -66,7 +66,8 @@ try {
     const end = await page.locator('.passage-scroll').evaluate(el => el.scrollLeft);
     await page.waitForTimeout(150);
     assert.equal(await page.locator('.passage-scroll').evaluate(el => el.scrollLeft), end, 'Completion stops following');
-    await page.getByRole('button', { name: 'Try again', exact: true }).click();
+    await page.getByRole('button', { name: 'Perform', exact: true }).click();
+    await page.getByRole('button', { name: 'Performance pad', exact: true }).click();
     await page.waitForTimeout(200);
     assert.equal(await page.locator('.passage-scroll').evaluate(el => el.scrollLeft), 0, 'Retry resets scrolling');
     await page.waitForTimeout(1800);

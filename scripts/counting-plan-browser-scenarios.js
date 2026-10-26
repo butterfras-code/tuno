@@ -100,7 +100,7 @@ async function countingPlanScenarios(w = window) {
   for (const panel of ['Perform','Counts']) all('button').find(b => b.textContent === panel).click();
   assert(q('.counting-totals').textContent === feedback && counts().map(c => c.textContent).join('|') === before, 'Mode changes retain writing and results');
   click('Check Again'); assert(counts().map(c => c.textContent).join('|') === before && q('.counting-totals').textContent === feedback, 'Reassessment retains evidence and confirmed results');
-  click('New exercise');
+  click('Next Exercise');
   assert(counts().every(c => c.textContent === '·'), 'New exercise starts blank');
   assert(q('.answer-area').dataset.appearance === 'lowered', 'New exercise applies pending appearance');
   defaults(); setting('vocabulary','syllables'); await fixture('half'); activate(0); key('t'); key('a');
