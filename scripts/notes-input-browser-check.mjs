@@ -86,7 +86,7 @@ try {
   await readyForAnswer(page);
   await starts.first().click(); await count(page,6);
   results.push('Tonic-to-tonic targets with half-key offsets; F-major B-flat default; out-of-pool natural counts as a miss; positions stable across prompts; mouse drag between notes cancels; outside release and pause cancel');
-  await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Home', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Finish', exact: true }).first().click(); await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await choosePreset(page,'custom');
   await setEndpoint(page,'Lowest note','Db4'); await setEndpoint(page,'Highest note','G4'); await setKey(page,'C'); await setModifiers(page,['key','flat','natural','sharp']); await saveCustom(page,'Input range');
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('Input fixture'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
@@ -144,7 +144,7 @@ try {
     await button(touch,'B',-1).tap(); await count(touch,1);
     await readyForAnswer(touch);
     await touch.waitForFunction(() => document.querySelector('.answer[data-letter="B"][data-accidental="-1"]').getAttribute('aria-disabled') === 'false',null,{timeout:3000});
-    await touch.getByRole('button',{name:'Finish',exact:true}).first().tap(); await touch.getByRole('button',{name:'Home',exact:true}).first().tap();
+    await touch.getByRole('button',{name:'Finish',exact:true}).first().tap(); await touch.getByRole('button',{name:'Edit setup',exact:true}).first().tap();
     await setPacing(touch,'Normal'); await startPractice(touch);
     from=await center(button(touch,'B')); to=await center(button(touch,'B',-1));
     const cdp=await context.newCDPSession(touch);

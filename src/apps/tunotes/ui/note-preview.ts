@@ -28,7 +28,6 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   const previous = button('Previous',()=>showNote(noteIndex-1,true));
   const next = button('Next',()=>showNote(noteIndex+1,true));
   const navigation = el('div','control-row preview-navigation'); navigation.append(previous,next); navigation.hidden = true;
-  viewport.append(navigation);
   function showNote(index: number, labeled = false) {
     noteIndex = Math.max(0,Math.min(total-1,index));
     const pitch = pitches[noteIndex]!;
@@ -42,9 +41,11 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   const dispose = () => { if (disposed) return; disposed = true; cancel(); media.removeEventListener('change',replay); dog.dispose(); };
   const enter = (skipped: boolean) => { if (disposed) return; const exposure = { shown: true, skipped, completed }; dispose(); begin(exposure); };
   const start = button('Start Practice',() => enter(false));
+  start.classList.add('control--primary');
   const again = button('Replay',() => replay());
   const skip = button('Skip',() => enter(true));
-  const controls = el('div','control-row'); controls.append(start,again,skip);
+  const actions = el('div','control-row preview-actions'); actions.append(navigation,again,skip);
+  const controls = el('div','activity-setup-toolbar preview-toolbar'); controls.append(actions,start);
   const caught = () => {
     if (disposed) return;
     toy.hidden = true; dog.pose('happy'); node.classList.remove('preview-introducing');
@@ -102,7 +103,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
     bounce();
   }
   again.hidden = true;
-  node.append(heading,status,controls,scene);
+  node.append(controls,heading,status,scene);
   media.addEventListener('change',replay);
   return { node, dispose, start: () => { heading.focus(); replay(); } };
 }

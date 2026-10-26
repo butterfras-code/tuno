@@ -17,18 +17,42 @@ try {
     const check = async (state) => {
       await page.screenshot({path:`dist/validation/practice-${engine}-${width}-${state}.png`,fullPage:true});
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true,`${width} ${state}: horizontal page overflow`);
-      assert.equal(await page.locator('.suite-footer').isVisible(), !['intro','playing','paused'].includes(state), `${width} ${state}: footer visibility`);
-      // Setup and results scroll naturally to the shared suite information;
-      // live practice must still fit without page scrolling.
-      if (height >= 768 && ['intro','playing','paused'].includes(state)) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
+      const compactResults = state === 'results' && (width <= 760 || width <= 900 && height <= 500);
+      assert.equal(await page.locator('.suite-footer').isVisible(), !['playing','paused'].includes(state) && !compactResults, `${width} ${state}: footer visibility`);
+      // Setup and introduction scroll naturally to the shared suite information;
+      // live practice and compact results fit without page scrolling.
+      if (height >= 768 && ['playing','paused'].includes(state)) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
     };
     await check('setup');
+    const setupStart = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
     await page.waitForSelector('.note-preview');
+    const introStart = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
+    for (const coordinate of ['x','y','width','height']) {
+      assert.ok(Math.abs(introStart[coordinate] - setupStart[coordinate]) < 1,`${width}: intro Start Practice keeps setup ${coordinate}`);
+    }
+    const reviewButtons = await page.locator('.preview-actions button:visible').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().toJSON()));
+    assert.equal(reviewButtons.length,3);
+    for (const bounds of reviewButtons) {
+      assert.ok(Math.abs(bounds.y - introStart.y) < 1 && bounds.right <= introStart.x,`${width}: review controls align to the left of Start Practice`);
+    }
+    assert.equal(await page.locator('#home').evaluate(node => node.classList.contains('is-playing')),false,`${width}: intro keeps the regular page layout`);
+    const introBounds = await page.locator('.note-preview').boundingBox();
+    const activityBounds = await page.locator('#notes-practice').boundingBox();
+    assert.ok(introBounds.x >= activityBounds.x && introBounds.y >= activityBounds.y
+      && introBounds.x + introBounds.width <= activityBounds.x + activityBounds.width + 1
+      && introBounds.y + introBounds.height <= activityBounds.y + activityBounds.height + 1,`${width}: intro fits the activity panel`);
     await check('intro');
     await startPractice(page);
     await check('playing');
     const staff = await page.locator('.staff-panel').boundingBox();
+    if (width < 700) {
+      const notation = await page.locator('.staff-panel > .staff').boundingBox();
+      const companion = await page.locator('.practice-companion').boundingBox();
+      assert.ok(companion.y + companion.height <= notation.y + 1,`${width}: Uno sits above the notation`);
+      assert.ok(Math.abs(notation.width - staff.width) < 1,`${width}: notation uses the full play width`);
+      assert.ok(Math.abs(notation.y + notation.height - staff.y - staff.height) < 1,`${width}: notation sits at the bottom of the staff area`);
+    }
     const finish = await page.getByRole('button',{name:'Finish',exact:true}).boundingBox();
     if (height >= 768) {
       const panel = await page.locator('#notes-practice').boundingBox();

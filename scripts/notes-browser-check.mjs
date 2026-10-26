@@ -129,7 +129,7 @@ async function loop(page, mode) {
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Home', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
   const chooser=page.getByRole('button',{name:'Choose Notes',exact:true});
   await page.keyboard.press('Tab');await chooser.focus();assert.notEqual(await chooser.evaluate(node=>getComputedStyle(node).outlineStyle),'none');

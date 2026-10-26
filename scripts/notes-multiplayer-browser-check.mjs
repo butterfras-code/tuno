@@ -236,7 +236,7 @@ async function run(page,url,label) {
   assert.equal(await page.locator('.multiplayer-panel').count(),2);
   await button(page,'Ready').click();await page.clock.runFor(3050);
   const panels=page.locator('.multiplayer-panel');
-  await page.keyboard.press('KeyQ');
+  await page.keyboard.down('KeyQ');
   assert.match(await panels.nth(0).locator('.muted').first().textContent(),/1 attempts/);
   assert.match(await panels.nth(1).locator('.muted').first().textContent(),/0 attempts/);
   await page.keyboard.down('KeyQ');await page.clock.runFor(900);await page.keyboard.press('KeyQ');await page.keyboard.up('KeyQ');
