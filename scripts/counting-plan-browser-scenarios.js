@@ -42,6 +42,23 @@ async function countingPlanScenarios(w = window) {
     assert(!q('.rhythm-overview').hidden === (q('.passage-scroll').scrollWidth > q('.passage-scroll').clientWidth + 1), id + ': overview appears only for overflow');
   }
   defaults(); await fixture('half');
+  activate(0); key('1'); activate(2); key('3');
+  const identity = q('.passage').dataset.exerciseId;
+  click('Perform'); click('Counts');
+  assert(d.activeElement === counts()[1], 'Counts selects the first empty box, skipping entered counts');
+  assert(q('.plan-token-palette button') && !q('.count-palette-host').hidden, 'Counts immediately exposes entry buttons');
+  assert(q('.passage').dataset.exerciseId === identity && counts()[0].textContent === '1' && counts()[2].textContent === '3', 'Selecting Counts preserves the exercise and entered counts');
+  activate(3); click('Counts');
+  assert(d.activeElement === counts()[1], 'Clicking the current Counts panel also selects its first empty box');
+  for (let i = 0; i < counts().length; i++) { activate(i); key('1'); }
+  click('Perform'); click('Counts');
+  assert(d.activeElement === counts()[0] && q('.plan-token-palette button'), 'Completed entry keeps the palette available with the first count selected');
+  for (const [vocabulary, offbeat, expected] of [['numbers','&','e & a'], ['numbers','+','e + a'], ['syllables','+','ta te']]) {
+    setting('vocabulary', vocabulary); setting('offbeat', offbeat); await fixture('four-sixteenths');
+    click('Perform'); click('Counts');
+    assert(all('.plan-token-palette button').slice(4).map(b => b.textContent).join(' ') === expected, 'Sixteenth entry order: ' + expected);
+  }
+  defaults(); await fixture('half');
   activate(0); key('1'); activate(1); key('2'); activate(0);
   const clearCount = all('button').find(b => b.textContent === 'Erase');
   assert(clearCount.parentElement === all('button').find(b => b.textContent === 'Erase All').parentElement && clearCount.closest('.write-actions'), 'Erase and Erase All share the action row');

@@ -16,7 +16,7 @@ import { planPassage } from './timing.ts';
 import type { Plan } from './timing.ts';
 import { Transport } from './transport.ts';
 
-export function createPerformance(options: { follow: (clock: (() => number) | null, duration: number) => void; treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
+export function createPerformance(options: { completed?: () => void; follow: (clock: (() => number) | null, duration: number) => void; treatBag: HTMLElement; countingFeedback?: () => CountingFeedbackContext; exercise: () => Exercise; preferences: Preferences; changed: () => void; busy: (active: boolean) => void; decorate: (record: AttemptRecord | null) => void; next: () => void; nextIssue: () => string | null }) {
   const main = el('section', 'tap-response'); main.setAttribute('aria-label', 'Tap Rhythms');
   const treatBag = new TreatBagState();
   const renderFeedback = (interrupted = false) => renderTreatBag(options.treatBag, treatBag, interrupted, options.countingFeedback?.());
@@ -203,6 +203,7 @@ export function createPerformance(options: { follow: (clock: (() => number) | nu
       raw.extra.forEach(i => rawList.append(el('li', '', `Unmatched raw attack at ${raw.holds[i]!.down.toFixed(3)} s.`)));
       details.append(rawList); evidence.append(details);
     }
+    options.completed?.();
     if (record.events.some(e => e.region === 'count-in' && e.action === 'down' && e.accepted)) evidence.append(el('p', '', 'Count-in presses were retained separately. A hold across the start creates no exercise attack; release it before pressing again.'));
   }
   // Starting is a separate gesture: its release must never enter the capture.

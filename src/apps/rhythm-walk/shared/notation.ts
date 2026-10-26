@@ -70,8 +70,11 @@ export function renderRhythmPattern(events: readonly RhythmEvent[]) {
   events.forEach((event, index) => {
     const x = 22 + index * 44;
     svg.append(writtenSymbol(event, x));
-    if (index < events.length - 1) svg.append(node('line', { x1: x + 10, x2: x + 54, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7 }));
-    if (event.type === '16th') {
+    const short = (event: RhythmEvent | undefined) => event?.kind === 'note' && ['eighth', '16th'].includes(event.type);
+    const nextShort = short(events[index + 1]), previousShort = short(events[index - 1]);
+    if (short(event) && !nextShort && !previousShort) appendFlags(svg, event, x);
+    if (short(event) && nextShort) svg.append(node('line', { x1: x + 10, x2: x + 54, y1: 42, y2: 42, stroke: 'currentColor', 'stroke-width': 7 }));
+    if (event.type === '16th' && (nextShort || previousShort)) {
       const next = events[index + 1]?.type === '16th', previous = events[index - 1]?.type === '16th';
       if (next || !previous) svg.append(node('line', { x1: x + 10, x2: x + 10 + (next ? 44 : index === events.length - 1 ? -16 : 16), y1: 54, y2: 54, stroke: 'currentColor', 'stroke-width': 6 }));
     }

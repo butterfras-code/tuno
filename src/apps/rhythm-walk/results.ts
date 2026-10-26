@@ -64,10 +64,10 @@ const rewardDimensions = [
 export function renderTreatBag(host: HTMLElement, state: TreatBagState, interrupted = false, counting?: CountingFeedbackContext) {
   host.dataset.scored = String(counting && counting.mode !== 'tap' ? Boolean(counting.result) : Boolean(state.completed));
   const wasOpen = host.querySelector<HTMLDetailsElement>('.treat-details')?.open ?? false;
-  const heading = el('h2', '', 'Treat Bag: Earn Treats for Uno'); heading.id = 'feedback-snapshot-title';
+  const heading = el('h2', '', 'Feedback'); heading.id = 'feedback-snapshot-title';
   const list = el('ul', 'treat-ratings');
   const details = el('details', 'treat-details'); details.open = wasOpen;
-  details.append(el('summary', '', 'Feedback'));
+  details.append(el('summary', '', 'Details'));
   host.replaceChildren(heading, list, details);
   if (counting && counting.mode !== 'tap') {
     const score = counting.result ? countingScore(counting.result) : null;
@@ -85,7 +85,7 @@ export function renderTreatBag(host: HTMLElement, state: TreatBagState, interrup
     if (score?.bones != null) for (let i = 0; i < 5; i++) bones.append(boneIcon(i < score.bones));
     bones.setAttribute('aria-label', score?.bones == null ? 'Not rated' : `${score.bones} out of 5 bones`);
     item.append(compact, bones); list.append(item);
-    const status = el('p', 'counting-confirmation', !score ? 'Check your counts when ready.' : edited ? 'Last checked score · Edits awaiting Check Again.' : score.correct === score.total ? 'All applicable answers are correct. Well done!' : 'Select a marked position, make corrections, then Check Again.');
+    const status = el('p', 'counting-confirmation', !score ? 'Check your counts when ready.' : edited ? 'Last checked score · Edits awaiting Check Again.' : score.correct === score.total ? 'All applicable answers are correct. Well done!' : 'Choose Counts or a feedback link to make corrections, then Check Again.');
     host.insertBefore(status, details);
     for (const problem of problems) {
       const id = problem.item.countIds[0];

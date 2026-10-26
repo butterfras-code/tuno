@@ -46,7 +46,8 @@ async function writingWorkspaceScenarios(w = window) {
   assert(overview.hidden === (scroll.scrollWidth <= scroll.clientWidth + 1), 'Performance overview follows actual score overflow');
   if (!overview.hidden) { key(overview, 'End'); assert(scroll.scrollLeft > 0, 'Performance overview navigates the score'); }
   all('button').find(b => b.textContent === 'Counts').click(); await settle();
-  assert(Math.abs(scroll.scrollLeft - 123) < 1 && targets[0].textContent === '1', 'Returning to writing retains viewport and answer');
+  const firstEmpty = targets[1].getBoundingClientRect(), writingBounds = scroll.getBoundingClientRect();
+  assert(d.activeElement === targets[1] && firstEmpty.left >= writingBounds.left && firstEmpty.right <= writingBounds.right && targets[0].textContent === '1', 'Returning to writing reveals the first empty count and retains answers');
   targets[0].click(); key(d.activeElement, 'Delete'); assert(targets[0].textContent === '·', 'Deletion after returning to writing works');
   const action = all('.write-actions button').find(b => b.textContent === 'Check');
   assert(!scroll.contains(action) && q('.interaction-body').contains(action), 'Check remains outside scrolling music');

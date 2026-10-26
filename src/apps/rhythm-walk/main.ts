@@ -2,7 +2,6 @@ import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { createAreaNavigation } from '../../shared/ui/area-navigation.ts';
-import { countingProblems, countingScore } from './counting-feedback.ts';
 import type { CountId } from '../../music/counting/plan.ts';
 import type { RhythmScore } from '../../music/score.ts';
 // Copyright (C) 2026 tUno contributors. SPDX-License-Identifier: GPL-3.0-only
@@ -66,25 +65,16 @@ const picker = select([{ value: '', label: 'Choose a testing fixture…' }, ...p
 picker.value = fixtureId; picker.dataset.preset = '';
 const customDialog = el('dialog', 'custom-exercise-dialog'); customDialog.id = 'custom-exercise';
 customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
-const customTitle = el('h2', '', 'Customize next exercise'); customTitle.id = 'custom-exercise-title';
-const customButton = button('Customize…', () => { editors.forEach(editor => editor.suspend()); customDialog.showModal(); });
-customButton.setAttribute('aria-haspopup', 'dialog'); customButton.setAttribute('aria-controls', customDialog.id);
-const customClose = button('Done', () => customDialog.close());
-customDialog.addEventListener('close', () => editors.forEach(editor => editor.resume()));
-const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, customClose);
+const customTitle = el('h2', '', 'Choose rhythms'); customTitle.id = 'custom-exercise-title';
+const openRhythmPicker = () => { editors.forEach(editor => editor.suspend()); settings.beginPresetSelection(); customClose.disabled = !settings.validGeneration(); customDialog.showModal(); };
+const customClose = button('Use preset', () => { if (!settings.validGeneration()) return; settings.finishPresetSelection(true); customDialog.close(); });
+customClose.classList.add('control--primary');
+const cancelPreset = button('Cancel', () => { settings.finishPresetSelection(false); customDialog.close(); });
+const dismissPreset = button('×', () => { settings.finishPresetSelection(false); customDialog.close(); }); dismissPreset.setAttribute('aria-label', 'Cancel rhythm selection');
+customDialog.addEventListener('cancel', () => settings.finishPresetSelection(false));
+customDialog.addEventListener('close', () => { if (customDialog.open) return; settings.finishPresetSelection(false); editors.forEach(editor => editor.resume()); });
+const customHeader = el('div', 'custom-exercise-header'); customHeader.append(customTitle, dismissPreset);
 customDialog.append(customHeader);
-customButton.classList.add('level-customize');
-customButton.setAttribute('aria-label', 'Customize next exercise');
-customButton.title = 'Customize next exercise';
-const customLabel = el('span', 'customize-label', 'Customize…');
-const customIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-customIcon.setAttribute('viewBox', '0 0 24 24'); customIcon.setAttribute('aria-hidden', 'true');
-customIcon.classList.add('customize-icon');
-const pencil = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-pencil.setAttribute('d', 'M15 5l4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15z');
-pencil.setAttribute('fill', 'none'); pencil.setAttribute('stroke', 'currentColor');
-pencil.setAttribute('stroke-width', '1.8'); pencil.setAttribute('stroke-linejoin', 'round');
-customIcon.append(pencil); customButton.replaceChildren(customLabel, customIcon);
 const feedbackSnapshot = el('section', 'feedback-snapshot'); feedbackSnapshot.setAttribute('aria-labelledby', 'feedback-snapshot-title');
 
 const activitySurface = el('section', 'card activity-surface'); activitySurface.setAttribute('aria-label', 'Uno234 activity');
@@ -107,7 +97,7 @@ helpButton.popoverTargetElement = help; helpButton.setAttribute('aria-controls',
 helpButton.setAttribute('aria-expanded', 'false');
 help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
 help.append(el('h2', '', 'Practice help'),
-  el('p', '', 'Choose Counts to write counts or Perform to tap the same score. Switching panels keeps both responses. New exercise starts a new score and clears both responses.'),
+  el('p', '', 'Choose Counts to write counts, Perform to tap the same score, or Feedback to review your results. Switching panels keeps both responses. New exercise starts a new score and clears both responses.'),
   el('p', '', 'In Counts or Perform, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Connect when appropriate.'),
   el('p', '', 'Select any count in a group. Rest (R) and Connect (C) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
@@ -121,14 +111,18 @@ const showCountsField = field('Show written counts during performance', showCoun
 let performing = false;
 let responsePanel: 'counts' | 'perform' = preferences.mode === 'tap' ? 'perform' : 'counts';
 let responseOptionsOpen = false;
+let feedbackOpen = false;
 const mobileInput = window.matchMedia('(max-width: 760px)');
 // Legacy Both preferences open Counts; the selected panel now owns the response context.
 activity.setMode(responsePanel === 'perform' ? 'tap' : 'write');
 const interaction = el('section', 'shared-interaction'); interaction.setAttribute('aria-label', 'Exercise interaction');
 const panelSelector = el('div', 'interaction-selector'); panelSelector.setAttribute('role', 'group'); panelSelector.setAttribute('aria-label', 'Choose response');
-const countsButton = button('Counts', () => selectResponsePanel('counts'));
+const countsButton = button('Counts', () => { selectResponsePanel('counts'); focusCounts(); });
+// Keep pad blur from moving the selector before the click can select Counts.
+countsButton.addEventListener('pointerdown', event => { if (event.button === 0) event.preventDefault(); });
 const performButton = button('Perform', () => selectResponsePanel('perform'));
 const optionsButton = button('Options', () => {
+  feedbackOpen = false;
   responseOptionsOpen = true;
   performance.cancel('Response options opened');
   editors.forEach(editor => editor.suspend());
@@ -138,7 +132,11 @@ const optionsButton = button('Options', () => {
 // Keep pad blur from moving the panel between pointer down and click.
 optionsButton.addEventListener('pointerdown', event => { if (event.button === 0) event.preventDefault(); });
 optionsButton.hidden = !mobileInput.matches;
-panelSelector.append(countsButton, performButton, optionsButton);
+const feedbackButton = button('Feedback', () => showFeedback());
+feedbackButton.addEventListener('pointerdown', event => { if (event.button === 0) event.preventDefault(); });
+feedbackSnapshot.id = 'feedback-panel'; feedbackSnapshot.tabIndex = -1;
+feedbackButton.setAttribute('aria-controls', feedbackSnapshot.id);
+panelSelector.append(countsButton, performButton, feedbackButton, optionsButton);
 const interactionBody = el('div', 'interaction-body');
 const countPalette = el('section', 'count-palette-host'); countPalette.id = 'count-palette'; countPalette.setAttribute('aria-label', 'Counting input palette');
 countsButton.setAttribute('aria-controls', countPalette.id);
@@ -154,7 +152,7 @@ const performance = createPerformance({
   treatBag: feedbackSnapshot,
   countingFeedback: () => ({ plan: activity.countingPlan, answer: activity.countingAnswer, checked: activity.checkedCountingAnswer, result: activity.countingResult, mode: preferences.mode, navigate: focusProblem }), exercise: () => activity.exercise, preferences, changed: persist,
   busy: active => {
-    performing = active; picker.disabled = next.disabled = customButton.disabled = active;
+    performing = active; picker.disabled = next.disabled = active;
     settings.setLocked(active);
     settings.sync(preferences.counting);
     if (!active) next.disabled = Boolean(generationIssue(generation));
@@ -168,8 +166,13 @@ const performance = createPerformance({
   decorate: decoratePerformance,
   next: () => newExercise(),
   nextIssue: () => generationIssue(generation),
+  completed: () => showFeedback(),
 });
-function focusCounts() { const first = activity.countingPlan.counts[0]; if (first) editors[first.measure]?.focusPosition(first.id); }
+function focusCounts() {
+  const counts = activity.countingPlan.counts;
+  const first = counts.find(count => !activity.countingAnswer.counts[count.id]) ?? counts[0];
+  if (first) editors[first.measure]?.focusPosition(first.id);
+}
 function focusProblem(id: CountId) {
   const details = feedbackSnapshot.querySelector<HTMLDetailsElement>('.treat-details');
   if (details) details.open = false;
@@ -184,21 +187,14 @@ function evaluateAnswer() {
   activity.countingResult = evaluateCountingAnswer(activity.countingPlan, activity.countingAnswer);
   activity.checkedCountingAnswer = activity.countingAnswer;
   refreshCounting();
-  const problems = countingProblems(activity.countingPlan, activity.countingResult, activity.checkedCountingAnswer, activity.countingAnswer);
-  const first = activity.countingPlan.counts.find(c => problems.some(p => p.item.countIds.includes(c.id)));
-  if (first) focusProblem(first.id);
-  else if (!completionNext.hidden && !completionNext.disabled) completionNext.focus();
+  showFeedback();
 }
 function refreshCounting() {
   editors.forEach(editor => editor.refresh());
   check.textContent = activity.countingResult ? 'Check Again' : 'Check';
-  const score = activity.countingResult ? countingScore(activity.countingResult) : null;
-  completionNext.disabled = Boolean(generationIssue(generation));
-  completionNext.hidden = !score || score.correct !== score.total || activity.checkedCountingAnswer !== activity.countingAnswer;
   performance.refreshFeedback();
 }
 const check = button('Check', evaluateAnswer, true);
-const completionNext = button('Next Exercise', () => newExercise()); completionNext.hidden = true;
 function newExercise(returnToPractice = false) {
   migratedCounting = false;
   const issue = generationIssue(generation);
@@ -211,11 +207,11 @@ function newExercise(returnToPractice = false) {
   practiceView.dataset.phase = 'input';
   if (returnToPractice) location.hash = '#practice';
 }
-const next = button('New exercise', () => newExercise(Boolean(practiceView.hidden)));
+const next = button('Next Exercise', () => newExercise(Boolean(practiceView.hidden)), true);
 const erase = button('Erase', () => editors.find(editor => editor.card.classList.contains('active-count-measure'))?.erase());
 const reset = button('Erase All', () => { activity.countingAnswer = initializeAnswer(activity.countingPlan); refreshCounting(); focusCounts(); });
 const eraseActions = el('div', 'count-erase-actions'); eraseActions.append(erase, reset);
-actions.append(check, completionNext, eraseActions);
+actions.append(check, eraseActions);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 
 writeResponse.append(summary);
@@ -232,7 +228,7 @@ placeResponseOptions();
 mobileInput.addEventListener('change', () => { placeResponseOptions(); updateResponseView(); });
 performance.section.prepend(performanceSetup);
 performance.section.id = 'performance-panel'; performButton.setAttribute('aria-controls', performance.section.id);
-interactionBody.append(countPalette, actions, performance.section, responseOptions); interaction.append(panelSelector, interactionBody);
+interactionBody.append(countPalette, actions, performance.section, feedbackSnapshot, responseOptions); interaction.append(panelSelector, interactionBody);
 help.append(banner);
 const playArea = el('div', 'practice-workspace');
 playArea.append(passage, interaction);
@@ -247,14 +243,17 @@ const settings = createSettingsPage({
   counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
   generation: value => {
     generation = value; persist();
-    const issue = generationIssue(generation); next.disabled = completionNext.disabled = Boolean(issue); performance.syncResults();
+    const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
     updateExerciseSummary();
   },
 });
-customDialog.append(settings.exerciseControls, settings.levelDetails);
-settings.levelField.append(customButton, sharedActions);
+const presetFooter = el('div', 'rhythm-preset-footer'); presetFooter.append(cancelPreset, customClose);
+customDialog.append(settings.presetChooser, presetFooter);
+for (const event of ['change', 'click']) customDialog.addEventListener(event, () => { customClose.disabled = !settings.validGeneration(); });
+settings.presetTrigger.addEventListener('click', openRhythmPicker);
+settings.levelField.append(sharedActions);
 const exerciseRow = el('div', 'exercise-overview-row');
-exerciseRow.append(settings.levelField, feedbackSnapshot);
+exerciseRow.append(settings.levelField);
 practiceView.prepend(exerciseRow);
 if (testing.enabled) {
   const fixtures = el('details', 'testing-fixtures');
@@ -276,6 +275,7 @@ function chooseFixture(id: string) {
 function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
   performance.cancel('Exercise changed');
   if (replace) { activity.preferences.preset = fixtureId; activity.replace(score); }
+  feedbackOpen = false;
   performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
@@ -294,7 +294,7 @@ function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
         editors.forEach((other, otherIndex) => { other.card.classList.toggle('active-count-measure', otherIndex === index); if (otherIndex !== index) other.suspend(); });
         selectResponsePanel('counts');
       },
-      hidden: () => Boolean(practiceView.hidden) || responsePanel === 'perform' || performing || responseOptionsOpen,
+      hidden: () => Boolean(practiceView.hidden) || responsePanel === 'perform' || performing || responseOptionsOpen || feedbackOpen,
       reveal: target => workspace.reveal(target),
       change: answer => { if (practiceView.dataset.phase === 'review') practiceView.dataset.phase = 'input'; activity.countingAnswer = answer; refreshCounting(); },
       check: evaluateAnswer,
@@ -351,12 +351,20 @@ function showPage(focus = true) {
 }
 window.addEventListener('hashchange', () => { if (['', '#settings', '#practice'].includes(location.hash)) showPage(); });
 document.addEventListener('keydown', event => {
-  if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || responsePanel === 'perform' || performing || responseOptionsOpen) return;
+  if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || responsePanel === 'perform' || performing || responseOptionsOpen || feedbackOpen) return;
   if ((event.target as Element).closest('button, a, input, select, textarea, [role="button"], [contenteditable], .count-popover')) return;
   event.preventDefault(); evaluateAnswer();
 });
 
+function showFeedback() {
+  performance.cancel('Feedback opened');
+  editors.forEach(editor => editor.suspend());
+  responseOptionsOpen = false; feedbackOpen = true;
+  updateResponseView();
+  feedbackSnapshot.focus({ preventScroll: true });
+}
 function selectResponsePanel(panel: 'counts' | 'perform') {
+  feedbackOpen = false;
   responseOptionsOpen = false;
   if (panel !== responsePanel) {
     performance.cancel('Response panel changed');
@@ -370,20 +378,22 @@ function selectResponsePanel(panel: 'counts' | 'perform') {
 }
 function updateResponseView() {
   performance.refreshFeedback();
-  const writing = responsePanel === 'counts';
+  const writing = responsePanel === 'counts' && !feedbackOpen;
   writeResponse.hidden = !writing || performing || responseOptionsOpen;
-  const showPerformance = responsePanel === 'perform';
+  const showPerformance = responsePanel === 'perform' && !feedbackOpen;
   performance.section.hidden = !showPerformance || responseOptionsOpen;
-  countPalette.hidden = showPerformance || responseOptionsOpen;
+  countPalette.hidden = !writing || responseOptionsOpen;
+  feedbackSnapshot.hidden = !feedbackOpen || responseOptionsOpen;
   responseOptions.hidden = !responseOptionsOpen;
   erase.disabled = !editors.some(editor => editor.card.classList.contains('active-count-measure')) || !activity.countingPlan.counts.length;
-  playArea.classList.toggle('editing-counts', !showPerformance && !performing && !responseOptionsOpen);
-  actions.hidden = showPerformance || performing || responseOptionsOpen;
+  playArea.classList.toggle('editing-counts', writing && !performing && !responseOptionsOpen);
+  actions.hidden = !writing || performing || responseOptionsOpen;
   workspace.setEnabled(true, writing && !performing && !responseOptionsOpen ? 'writing' : 'performance');
-  countsButton.setAttribute('aria-pressed', String(!showPerformance && !responseOptionsOpen)); performButton.setAttribute('aria-pressed', String(showPerformance && !responseOptionsOpen));
+  countsButton.setAttribute('aria-pressed', String(writing && !responseOptionsOpen)); performButton.setAttribute('aria-pressed', String(showPerformance && !responseOptionsOpen));
   optionsButton.setAttribute('aria-pressed', String(responseOptionsOpen));
+  feedbackButton.setAttribute('aria-pressed', String(feedbackOpen && !responseOptionsOpen));
   banner.hidden = responsePanel === 'perform';
-  const hideCounts = !writing && !preferences.showCounts;
+  const hideCounts = responsePanel === 'perform' && !preferences.showCounts;
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', !writing || performing);
   passageStrip.querySelectorAll<SVGGElement>('g[data-event]').forEach(glyph => {
@@ -393,7 +403,7 @@ function updateResponseView() {
   });
   passageStrip.querySelectorAll<HTMLElement>('.answer-area').forEach(area => { area.hidden = hideCounts; area.inert = performing || !writing || responseOptionsOpen; });
   editors.forEach(editor => editor.refresh());
-  decoratePerformance(showPerformance && !performing ? performance.record() : null);
+  decoratePerformance(responsePanel === 'perform' && !performing ? performance.record() : null);
   tieNotation?.refresh();
 }
 function decoratePerformance(record: AttemptRecord | null) {

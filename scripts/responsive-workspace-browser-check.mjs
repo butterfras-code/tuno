@@ -27,7 +27,8 @@ try {
       const rect = selector => q(selector).getBoundingClientRect();
       const visible = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
       check(!q('.shared-controls') && !all('#practice-view summary').some(el => el.textContent === 'Exercise settings'), 'Practice omits the extra Exercise settings disclosure');
-      all('button').find(b => b.getAttribute('aria-label') === 'Customize next exercise').click();
+      q('.rhythm-preset-trigger').click();
+      q('#rhythm-preset-tab-2').click();
       check(q('.custom-exercise-dialog').open && q('.custom-exercise-dialog [data-level-details]') && q('.custom-exercise-dialog .testing-fixtures'), 'Customize retains level requirements and opt-in testing fixtures');
       q('[data-level-details]').open = true; await settle();
       check(visible(q('[data-level-details] p')) && q('.custom-exercise-dialog').scrollWidth <= q('.custom-exercise-dialog').clientWidth, 'Requirements remain readable without dialog overflow');
@@ -35,9 +36,13 @@ try {
       const header = rect('.app-header');
       check(all('.app-header > *').filter(visible).every(el => { const r = el.getBoundingClientRect(); return r.top >= header.top && r.bottom <= header.bottom; }), 'Header controls remain within the shared header');
       const mobileOptions = matchMedia('(max-width: 760px)').matches;
-      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').filter(visible).length === (mobileOptions ? 3 : 2), 'Response selector adds Options only on mobile');
-      const level = rect('.level-configuration'), bag = rect('.feedback-snapshot');
-      check(Math.abs(level.top - bag.top) < 1 && level.right <= bag.left, 'Level and feedback share a horizontal row');
+      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').filter(visible).length === (mobileOptions ? 4 : 3), 'Response selector adds Options only on mobile');
+      check(all('.interaction-selector button').filter(visible).every(button => button.scrollWidth <= button.clientWidth), 'Response pill labels fit without overlap');
+      const level = rect('.rhythm-preset-trigger'), next = rect('.setup-actions button');
+      check(Math.abs(level.bottom - next.bottom) < 1 && level.right <= next.left, 'Choose rhythms and Next Exercise share one row');
+      check(!q('.exercise-overview-row .feedback-snapshot') && !visible(q('.feedback-snapshot')), 'Feedback starts hidden in the input area');
+      panel('Feedback');
+      check(visible(q('.feedback-snapshot')) && !visible(q('.count-palette-host')) && !visible(q('.write-actions')), 'Feedback replaces the input surface');
       panel('Perform');
       await settle();
       const performBars = all('.passage-strip .plan-measure').map(el => el.getBoundingClientRect());
@@ -87,11 +92,15 @@ try {
       const answer = all('[data-count-id]').map(el => el.textContent).join('|'), identity = q('.passage').dataset.exerciseId;
       for (const name of ['Perform', 'Counts']) panel(name);
       check(answer === all('[data-count-id]').map(el => el.textContent).join('|') && q('.passage').dataset.exerciseId === identity, 'Modes retain written answers and exercise');
-      choose('[data-setting="teaching-preset"]', 'uno-2');
+      q('.rhythm-preset-trigger').click();
+      q('#rhythm-preset-tab-0').click();
+      q('[data-preset-id="uno-2"] .rhythm-preset-select').click();
+      all('#custom-exercise button').find(b => b.textContent === 'Use preset').click();
+      await settle();
       check(answer === all('[data-count-id]').map(el => el.textContent).join('|') && q('.passage').dataset.exerciseId === identity && q('.exercise-summary').textContent.includes('Pending settings'), 'Level applies to next exercise without replacing responses');
       all('.write-actions button').find(b => b.textContent === 'Check').click();
       q('.treat-details').open = true; await settle();
-      check(visible(q('.treat-details .counting-problem-link, .treat-details p')) && rect('.exercise-overview-row').bottom <= rect('.passage').top, 'Expanded feedback remains in flow above the score');
+      check(visible(q('.treat-details .counting-problem-link, .treat-details p')) && q('.feedback-snapshot').contains(document.activeElement) && rect('.feedback-snapshot').top >= rect('.passage').bottom, 'Check opens feedback below the score');
       q('.treat-details').open = false;
       return { width: innerWidth, assertions: checks.length, checks };
     });
@@ -141,7 +150,7 @@ try {
     }
     await page.evaluate(() => scrollTo(0, 0));
     await page.exposeFunction('__assessmentSnapshot', async () => {
-      await page.getByRole('button', {name:'Perform',exact:true}).click();
+      assert.equal(await page.getByRole('button', {name:'Feedback',exact:true}).getAttribute('aria-pressed'), 'true', 'Completed performance opens Feedback');
       await page.locator('.treat-details').evaluate(el => { el.open = true; });
       await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(100);
       assert.equal(await page.locator('.treat-ratings > li:not(.counting-rating)').count(), 4);

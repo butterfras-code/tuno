@@ -424,14 +424,11 @@ main.rhythm-app {
 .rhythm-app .app-header { flex-wrap: nowrap; }
 .rhythm-app .app-header .brand { flex: 1; min-width: 0; }
 .rhythm-app .app-header .rhythm-nav { flex: none; margin-left: 0; }
-.exercise-overview-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 3fr); gap: 24px; align-items: start; margin-bottom: 12px; }
+.exercise-overview-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; margin-bottom: 12px; }
 .exercise-overview-row .level-configuration { min-width: 0; }
 .exercise-overview-row .field { margin: 0; }
 .exercise-overview-row select { width: 100%; min-width: 0; max-width: 100%; }
 .exercise-overview-row #pending-level { margin: 4px 0 0; font-size: 11px; }
-.exercise-overview-row .feedback-snapshot { min-width: 0; padding: 12px 16px 0; }
-.exercise-overview-row .treat-ratings { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 10px 0 0; gap: 12px; }
-.exercise-overview-row .treat-ratings li { display: flex; flex-direction: column; align-items: start; justify-content: start; gap: 6px; min-width: 0; }
 .treat-label-short, .bone-count { display: none; }
 .treat-details > summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; font-size: 13px; font-weight: 700; }
 .treat-details[open] { padding-bottom: 12px; }
@@ -445,21 +442,14 @@ main.rhythm-app {
 .rhythm-app .plan-unit-controls button.control { padding: 8px; font-size: 13px; }
 .rhythm-app .write-actions { margin-top: 6px; }
 .rhythm-app .write-actions button { min-height: 44px; padding: 8px 12px; font-size: 14px; }
-@media (min-width: 769px) and (max-width: 1000px) {
-  .exercise-overview-row .treat-ratings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 768px) {
   .practice-workspace.editing-counts { display: flex; flex-direction: column; }
   .practice-workspace.editing-counts.dock-roomy { min-height: calc(100svh - 80px); }
   .practice-workspace.editing-counts.dock-roomy > .shared-interaction { margin-top: auto; }
-  .exercise-overview-row { grid-template-columns: minmax(88px, 1fr) minmax(0, 2fr); gap: 8px; margin-bottom: 8px; }
+  .exercise-overview-row { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
   .exercise-overview-row .field > span { font-size: 12px; }
   .exercise-overview-row select { min-height: 44px; padding: 8px 22px 8px 6px; font-size: 13px; }
   .exercise-overview-row #pending-level { font-size: 10px; }
-  .exercise-overview-row .feedback-snapshot { padding: 0; border: 0; background: none; }
-  .exercise-overview-row .feedback-snapshot h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .exercise-overview-row .treat-ratings { gap: 3px; margin: 0; }
-  .exercise-overview-row .treat-ratings li { align-items: center; gap: 5px; font-size: 10px; }
   .treat-label-full, .treat-ratings .bone-slots, .treat-ratings .treat-unrated { display: none; }
   .treat-label-short { display: inline; }
   .bone-count { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; }
@@ -478,8 +468,7 @@ main.rhythm-app {
   .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* Counting feedback uses the same checked snapshot as the top Treat Bag. */
-.exercise-overview-row .treat-ratings:has(.counting-rating) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* Counting feedback uses the confirmed checked snapshot. */
 .counting-rating { grid-column: 1 / -1; flex-wrap: wrap; }
 .counting-totals { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .counting-confirmation { font-size: .82rem; margin: .3rem 0; }
@@ -501,15 +490,14 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
   .counting-rating .counting-bones { display: none; }
   .counting-confirmation { font-size: .7rem; }
 }
-.exercise-overview-row .treat-ratings .counting-rating { flex-direction: row; align-items: center; gap: 6px 14px; }
 
 /* Keep next-exercise actions with the preset they configure. */
-.exercise-overview-row .level-configuration { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; align-items: end; }
+.exercise-overview-row .level-configuration { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0 8px; align-items: end; }
 .level-configuration > .field { grid-column: 1; grid-row: 1; min-width: 0; gap: 2px; }
 .level-configuration > .level-customize { grid-column: 2; grid-row: 1; padding-inline: 12px; }
-.level-configuration > #pending-level, .level-configuration > .setup-actions { grid-column: 1 / -1; }
-.level-configuration > .setup-actions { margin-top: 4px; }
-.level-configuration .setup-actions .control { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+.level-configuration > #pending-level { grid-column: 1 / -1; grid-row: 2; }
+.level-configuration > .setup-actions { grid-column: 3; grid-row: 1; margin: 0; }
+.level-configuration .setup-actions .control { width: 100%; min-height: 44px; padding: 8px 12px; white-space: nowrap; }
 .customize-icon { display: none; width: 20px; height: 20px; }
 @media (max-width: 1100px) {
   .level-customize .customize-label { display: none; }
@@ -517,7 +505,7 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
   .level-configuration > .level-customize { width: 44px; min-height: 44px; padding: 10px; }
 }
 @media (max-width: 768px) {
-  .exercise-overview-row { grid-template-columns: minmax(148px, 1fr) minmax(0, 2fr); }
+  .exercise-overview-row { grid-template-columns: minmax(0, 1fr); }
   .exercise-overview-row .level-configuration { column-gap: 4px; }
   .level-configuration .setup-actions .control { font-size: 12px; }
 }
@@ -564,7 +552,6 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 #practice-view[data-phase='input'] .interaction-body { border-color: var(--color-teal); }
 #practice-view[data-phase='review'] .interaction-body { background: var(--color-surface); }
 #practice-view[data-phase='review'] .feedback-snapshot { border-color: var(--color-accent); }
-.exercise-overview-row .feedback-snapshot[data-scored='false'] { background: transparent; border-color: transparent; padding: 8px 12px; }
 .feedback-snapshot[data-scored='false'] .treat-ratings { display: none; }
 .feedback-snapshot[data-scored='false'] .treat-details { display: none; }
 .rhythm-app[data-view='settings'] { max-width: var(--content-width); }
@@ -583,3 +570,49 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .practice-workspace.editing-counts.dock-roomy > .shared-interaction { margin-top: 8px; }
 
 .rhythm-settings .control { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+/* Feedback shares the response surface and keeps the score available for review. */
+.interaction-body > .feedback-snapshot { min-width: 0; margin: 0; padding: 12px; }
+.interaction-body > .feedback-snapshot[hidden] { display: none; }
+.interaction-body .feedback-snapshot h2 { margin-top: 0; }
+.interaction-body .treat-ratings { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* Rhythm chooser follows tuNotes' range dialog, with wide notation cards. */
+.custom-exercise-dialog { width: min(640px, calc(100vw - 24px)); padding: 24px; box-shadow: 0 12px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }
+.custom-exercise-dialog::backdrop { background: color-mix(in srgb, var(--color-ink) 18%, transparent); }
+.custom-exercise-header h2 { font-size: 24px; }
+.custom-exercise-header > .control { font-size: 24px; padding: 8px; }
+.rhythm-preset-trigger { width: 100%; justify-content: space-between; text-align: left; }
+.rhythm-preset-tabs { display: flex; padding: 4px; gap: 4px; background: var(--color-canvas); border: 1px solid var(--color-line); border-radius: 999px; }
+.rhythm-preset-tabs > .control { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--color-ink); font-size: 14px; white-space: normal; }
+.rhythm-preset-tabs > .control[aria-selected=true] { color: var(--color-surface); background: var(--color-accent); }
+.rhythm-preset-panel { padding-top: 16px; }
+.rhythm-preset-panel > .field { margin-bottom: 12px; }
+.rhythm-preset-panel > .setting-hint { margin: 0 0 12px; }
+.rhythm-preset-list { display: grid; gap: 10px; }
+.rhythm-preset-card { position: relative; border: 2px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-canvas); overflow: hidden; }
+.rhythm-preset-card.is-selected { border-color: var(--color-accent); }
+.rhythm-preset-select.control { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; padding: 12px 16px; border: 0; border-radius: 0; text-align: left; background: transparent; color: var(--color-ink); white-space: normal; }
+.rhythm-preset-select.control:hover { background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas)); color: var(--color-ink); }
+.rhythm-preset-heading { display: flex; align-items: center; gap: 12px; padding-right: 44px; font: 700 18px var(--font-heading); }
+.rhythm-preset-check { color: var(--color-accent); }
+.rhythm-preset-symbols { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding-right: 28px; }
+.rhythm-preset-symbol { display: inline-flex; height: 44px; align-items: center; }
+.rhythm-preset-symbol .rhythm-symbol-preview { width: auto; height: 44px; max-width: none; }
+.rhythm-preset-symbol .rhythm-pattern-preview { width: auto; height: 40px; max-width: none; }
+.rhythm-preset-meta { color: var(--color-muted); font-size: 13px; line-height: 1.5; }
+.rhythm-preset-edit.control { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; padding: 11px; color: var(--color-muted); border: 0; background: transparent; }
+.rhythm-preset-edit.control:hover { color: var(--color-accent); background: var(--color-surface); }
+.rhythm-preset-edit svg { width: 22px; height: 22px; }
+.rhythm-preset-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-line); }
+.rhythm-preset-custom > details { margin-top: 16px; }
+@media (max-width: 440px) {
+  .custom-exercise-dialog { padding: 16px; }
+  .rhythm-preset-tabs > .control { font-size: 12px; padding-inline: 6px; }
+  .rhythm-preset-select.control { padding: 10px 12px; }
+  .rhythm-preset-symbols { gap: 4px 6px; padding-right: 0; }
+}
+.exercise-overview-row .level-configuration { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.level-configuration > .setup-actions { grid-column: 2; }
+.rhythm-preset-footer { position: sticky; bottom: -24px; padding-bottom: 12px; background: var(--color-surface); z-index: 2; }
+@media (max-width: 440px) { .rhythm-preset-footer { bottom: -16px; } }

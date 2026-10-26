@@ -81,7 +81,7 @@ window.__assessmentCheck = (async () => {
     // Its late release goes to the
     // hidden pad or focused noninteractive heading, never to a result button.
     await wait(()=>surface.hidden);await sleep(40);
-    assert(document.activeElement.id==='performance-results-heading','completion moves focus to results heading');
+    assert(document.activeElement.id==='feedback-panel' && button('Feedback').getAttribute('aria-pressed')==='true','completion displays and focuses Feedback');
     const panel=document.querySelector('.performance-results'),text=panel.textContent;
     stamp('up',count*spacing*scale,start);pad.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));
     document.activeElement.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true}));
