@@ -14,6 +14,7 @@ try {
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto(new URL('/prototypes/rhythm-walk/?fixture=half-rest',host.url).href);
     await page.evaluate(()=>document.fonts.ready);
+    assert.equal(await page.locator('.interaction-selector button:visible').evaluateAll(buttons=>buttons.every(button=>button.scrollWidth<=button.clientWidth)),true,'Response pill labels fit without overlap');
     const slots=page.locator('.count-slot'), totals=page.locator('.counting-totals');
     const shot=async name=>{await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`${output}/${width}-${name}.png`,fullPage:true});};
     assert.equal(await slots.first().evaluate(el=>el===document.activeElement),true,'Practice load selects the first count');
@@ -27,7 +28,7 @@ try {
     await shot('incomplete');
     await slots.nth(1).focus(); await page.keyboard.press('4');
     await page.getByRole('button',{name:'Check',exact:true}).click();
-    assert.equal(await slots.first().evaluate(el=>el===document.activeElement),true,'Check selects the first count with a problem, including rest/connect issues');
+    assert.equal(await page.locator('.feedback-snapshot').evaluate(el=>el===document.activeElement && !el.hidden),true,'Check displays and focuses Feedback');
     assert.equal(await totals.textContent(),'4/10 · 40%');
     assert.equal(await slots.nth(1).getAttribute('data-tokens'),'incorrect');
     assert.equal(await slots.nth(2).getAttribute('data-tokens'),'missing');
@@ -37,6 +38,7 @@ try {
     assert.equal(await page.locator('.passage-feedback').count(),0);
     assert.equal(await page.locator('.count-problem-marker').count(),0);
     assert.equal(await slots.nth(1).textContent(),'4');
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     await slots.nth(1).focus();
     const focused = await slots.nth(1).evaluate(el => ({
       focus: getComputedStyle(el).outlineStyle,
@@ -58,6 +60,7 @@ try {
     assert.equal(await slots.nth(1).evaluate(el=>getComputedStyle(el).borderStyle),'dotted');
     assert.equal(await slots.nth(1).textContent(),'2');
     await shot('awaiting-check');
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     await page.getByRole('button',{name:'Check Again',exact:true}).click();
     assert.equal(await totals.textContent(),'5/10 · 50%');
     assert.equal(await slots.nth(1).getAttribute('data-tokens'),null);
@@ -71,20 +74,24 @@ try {
     const checkedExercise = await page.locator('.passage').getAttribute('data-exercise-id');
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('.passage').getAttribute('data-exercise-id'),checkedExercise,'checking with Enter does not activate Next prematurely');
-    assert.equal(await page.getByRole('button',{name:'Next Exercise',exact:true}).evaluate(el=>el===document.activeElement),true,'correct Check focuses Next Exercise');
+    assert.equal(await page.locator('.feedback-snapshot').evaluate(el=>el===document.activeElement && !el.hidden),true,'correct Check displays and focuses Feedback');
     assert.equal(await totals.textContent(),'10/10 · 100%');
     assert.equal(await page.locator('.counting-rating').getAttribute('data-bones'),'5');
     assert.equal(await page.locator('.count-problem-marker').count(),0);
     assert.equal(await page.getByRole('button',{name:'Next Exercise',exact:true}).isVisible(),true);
     assert.equal(await page.locator('.count-slot[data-correction], .count-slot[data-awaiting-check]').count(),0);
     // A nearly perfect checked answer earns four, and edits keep that confirmed rating.
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     await slots.last().focus(); await page.keyboard.press('Backspace');
     assert.equal(await page.locator('.counting-rating').getAttribute('data-bones'),'5');
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     await page.getByRole('button',{name:'Check Again',exact:true}).click();
     assert.equal(await totals.textContent(),'9/10 · 90%');
     assert.equal(await page.locator('.counting-rating').getAttribute('data-bones'),'4');
-    await page.keyboard.press('&');
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
+    await slots.last().focus(); await page.keyboard.press('&');
     assert.equal(await page.locator('.counting-rating').getAttribute('data-bones'),'4');
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     await page.getByRole('button',{name:'Check Again',exact:true}).click();
     assert.equal(await totals.textContent(),'10/10 · 100%');
     assert.equal(await page.locator('.counting-rating').getAttribute('data-bones'),'5');
@@ -100,6 +107,7 @@ try {
     await page.locator('[data-preset]').evaluate(el => { el.value='half-rest'; el.dispatchEvent(new Event('change',{bubbles:true})); });
     await slots.first().focus(); await page.keyboard.press('r');
     await page.getByRole('button',{name:'Check',exact:true}).click();
+    await page.getByRole('button',{name:'Counts',exact:true}).click();
     assert.equal(await slots.first().evaluate(el => el.classList.contains('rest-slashed') && getComputedStyle(el,'::after').transform !== 'none' && getComputedStyle(el,'::before').borderStyle === 'dashed'),true,'Rest slashes and correction border coexist');
     for (const fixture of ['tie-across-bar','dense-sixteenths','dotted-quarter','triplet-mixed-3']) {
       await page.locator('[data-preset]').evaluate((el,value)=>{el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));},fixture);

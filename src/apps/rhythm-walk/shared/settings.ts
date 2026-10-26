@@ -1,3 +1,4 @@
+import { rhythmPresetPicker } from './preset-picker.ts';
 import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol, renderRhythmPattern } from './notation.ts';
@@ -28,7 +29,7 @@ export function createSettingsPage(callbacks: {
   saveCountingDefaults: () => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
-  const intro = el('p', 'settings-intro', 'Use Customize… in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
+  const intro = el('p', 'settings-intro', 'Choose a rhythm preset in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
   const savedNote = el('p', 'setting-hint');
   const updateSavedNote = () => { savedNote.textContent = `${callbacks.isLinked() ? 'Linked counting preferences and your edits stay in this session until you choose Save as my defaults.' : 'Preferences are saved automatically in this browser.'} Counting changes apply on New exercise. Current music, answers and results are kept.`; };
   updateSavedNote();
@@ -97,6 +98,7 @@ export function createSettingsPage(callbacks: {
   countingHelp.append(el('summary', '', 'Counting and keyboard help'));
   countingHelp.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
   activeControls.append(countingHelp);
+  let draft: GenerationSettings | undefined;
   let generation = structuredClone(callbacks.initialGeneration);
   generation.sixteenthPatterns = selectedSixteenthPatterns(generation);
   const lengthField = el('fieldset', 'exercise-length segmented-field');
@@ -191,27 +193,10 @@ export function createSettingsPage(callbacks: {
   function generationChanged(customize = true) {
     if (customize) generation = customizeTeachingPreset(generation);
     updateGenerationStatus();
-    callbacks.generation(structuredClone(generation));
-    teachingPickers.forEach(picker => { picker.value = generation.teachingPreset?.id ?? ''; });
+    if (!draft) callbacks.generation(structuredClone(generation));
     renderTeachingPreset();
   }
   const exerciseControls = el('div', 'settings-live-controls shared-exercise-settings');
-  const levelOptions = [{ value: '', label: 'Custom' }, ...generationLevels.map(p => ({ value: p.id, label: resolveTeachingPreset(p).supported ? teachingPresetLabel({ id: p.id, version: p.version, customized: false }) : `${p.label} · unavailable` }))];
-  function chooseLevel(value: string) {
-    teachingPickers.forEach(picker => { picker.value = value; });
-    if (!value) {
-      const { teachingPreset: _source, restrictions: _restrictions, figureProfile: _profile, meterChanges: _changes, ...custom } = generation;
-      generation = custom; generationChanged(false);
-    } else { applySelectedLevel(value); renderTeachingPreset(); }
-  }
-  const teachingPickers = [select(levelOptions, chooseLevel), select(levelOptions, chooseLevel)];
-  const [teachingPicker, customTeachingPicker] = teachingPickers as [HTMLSelectElement, HTMLSelectElement];
-  teachingPickers.forEach(picker => { picker.dataset.setting = 'teaching-preset'; picker.value = generation.teachingPreset?.id ?? ''; });
-  customTeachingPicker.autofocus = true;
-  const customLevelField = field('Level', customTeachingPicker); customLevelField.classList.add('custom-level-field');
-  const customLevelStatus = el('p', 'setting-hint'); customLevelStatus.id = 'custom-level-status'; customLevelStatus.setAttribute('role', 'status');
-  customTeachingPicker.setAttribute('aria-describedby', customLevelStatus.id);
-  customLevelField.append(customLevelStatus);
   const teachingStatus = el('p', 'setting-hint'); teachingStatus.setAttribute('role', 'status');
   const teachingAttribution = el('p', 'setting-hint');
   const teachingDetails = el('details'); teachingDetails.append(el('summary', '', 'Source and pattern requirements'));
@@ -223,37 +208,33 @@ export function createSettingsPage(callbacks: {
     if (!result.supported) { teachingStatus.textContent = `Unavailable: ${result.reasons.map(unavailableReason).join(' ')}`; return; }
     generation = result.settings;
     generation.sixteenthPatterns = selectedSixteenthPatterns(generation);
+    syncGenerationControls();
+    generationChanged(false);
+  }
+  function syncGenerationControls() {
     lengthField.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Number(input.value) === generation.measures; });
     meterField.querySelectorAll<HTMLInputElement>('[data-meter]').forEach(input => { input.checked = (generation.meters ?? []).includes(input.dataset.meter as typeof meters[number]); });
     vocabulary.querySelectorAll<HTMLInputElement>('[data-ingredient]').forEach(input => { input.checked = generation.ingredients.includes(input.dataset.ingredient as typeof generation.ingredients[number]); });
     groupingOptions.querySelectorAll<HTMLInputElement>('[data-sixteenth-pattern]').forEach(input => { input.checked = selectedSixteenthPatterns(generation).some(id => id === input.dataset.sixteenthPattern); });
     patternFields.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = Boolean(generation[input.dataset.generationKey as 'allowUnintuitiveNotation' | 'ties' | 'syncopation']); });
-    generationChanged(false);
   }
-  const instrumentScope = select([{ value: 'general', label: 'General' }, { value: 'percussion', label: 'Percussion' }], () => applySelectedLevel(teachingPicker.value));
+  const instrumentScope = select([{ value: 'general', label: 'General' }, { value: 'percussion', label: 'Percussion' }]);
   instrumentScope.dataset.setting = 'instrument-scope';
-  const scopeField = field('UIL instrument scope', instrumentScope);
-  const applyPreset = button('Apply level', () => applySelectedLevel(teachingPicker.value));
+  const applyPreset = button('Apply level', () => applySelectedLevel(generation.teachingPreset?.id ?? ''));
   applyPreset.dataset.setting = 'apply-teaching-preset';
   function renderTeachingPreset() {
-    for (const definition of generationLevels) {
-      const label = resolveTeachingPreset(definition).supported ? teachingPresetLabel({ id: definition.id, version: definition.version, scope: generation.teachingPreset?.scope, customized: generation.teachingPreset?.id === definition.id && generation.teachingPreset.customized }) : `${definition.label} · unavailable`;
-      teachingPickers.forEach(picker => { [...picker.options].find(o => o.value === definition.id)!.textContent = label; });
-    }
-    const active = generationLevels.find(p => p.id === generation.teachingPreset?.id);
-    scopeField.hidden = !active?.source;
     instrumentScope.value = generation.teachingPreset?.scope ?? 'general';
+    presetTrigger.textContent = 'Choose rhythms';
+    presetTrigger.setAttribute('aria-haspopup', 'dialog'); presetTrigger.setAttribute('aria-controls', 'custom-exercise');
     teachingAttribution.textContent = `${teachingPresetLabel(generation.teachingPreset)} · for next exercise`;
     if (generation.teachingPreset?.customized && generation.teachingPreset.id.startsWith('uil-')) teachingAttribution.textContent += '. Customized vocabulary; one supported meter per exercise. Reapply a level for verified figure practice.';
-    const definition = generationLevels.find(p => p.id === teachingPicker.value);
-    customLevelStatus.hidden = true; customLevelStatus.textContent = '';
+    const definition = generationLevels.find(p => p.id === generation.teachingPreset?.id);
     teachingEvidence.replaceChildren();
     if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
     const result = resolveTeachingPreset(definition, undefined, instrumentScope.value as 'general' | 'percussion');
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
-    if (!result.supported) { customLevelStatus.hidden = false; customLevelStatus.textContent = `Unavailable: ${unavailable.join(' ')}`; }
     teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
       teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
@@ -273,16 +254,21 @@ export function createSettingsPage(callbacks: {
     teachingEvidence.append(el('p', '', [...definition.restrictions, ...definition.unresolved].join(' ')));
     if (!result.supported) teachingEvidence.append(el('p', '', unavailable.join(' ')));
   }
-  teachingPicker.value = generation.teachingPreset?.id ?? '';
   const teachingField = el('div', 'level-configuration');
-  teachingField.append(field('Level', teachingPicker));
+  const presetTrigger = button('Choose preset…'); presetTrigger.classList.add('rhythm-preset-trigger');
+  const triggerField = el('div', 'field'); triggerField.append(el('span', 'field-label', 'Rhythm preset'), presetTrigger);
+  teachingField.append(triggerField);
   teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'Uno levels are practice configurations. UIL levels retain their qualified scope; they are not complete composition validators or UIL endorsements. Meters remain editable. No requirement that every allowed figure appear.'));
   teachingAttribution.id = 'pending-level';
-  teachingPicker.setAttribute('aria-describedby', teachingAttribution.id);
+  presetTrigger.setAttribute('aria-describedby', teachingAttribution.id);
   teachingField.append(teachingAttribution);
   teachingDetails.dataset.levelDetails = '';
   renderTeachingPreset();
-  exerciseControls.append(customLevelField, scopeField, meterField, lengthField, vocabulary, patternFields, generationStatus);
+  exerciseControls.append(meterField, lengthField, vocabulary, patternFields, generationStatus);
+  const presetChooser = rhythmPresetPicker({ editor: exerciseControls, details: teachingDetails, current: () => generation,
+    choose: (id, scope) => { instrumentScope.value = scope; applySelectedLevel(id); },
+    customize: () => { generation = customizeTeachingPreset(generation); generationChanged(false); },
+  });
   available.append(activeHeader, activeControls);
   page.append(intro, savedNote, settingsActions, available);
   const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
@@ -292,12 +278,24 @@ export function createSettingsPage(callbacks: {
   return {
     page,
     exerciseControls,
+    presetChooser: presetChooser.node,
+    validGeneration: () => !generationIssue(generation),
+    presetTrigger,
+    beginPresetSelection() { draft = structuredClone(generation); presetChooser.open(); },
+    finishPresetSelection(accept: boolean) {
+      if (!draft) return;
+      if (!accept) generation = draft;
+      draft = undefined;
+      syncGenerationControls();
+      if (accept) generationChanged(false);
+      else { updateGenerationStatus(); renderTeachingPreset(); }
+    },
     levelField: teachingField,
     levelDetails: teachingDetails,
     setLocked: (active: boolean) => {
       locked = active;
       page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
-      teachingPicker.disabled = active;
+      presetTrigger.disabled = active;
       applyPreset.disabled = active;
       exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
       if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }

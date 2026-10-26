@@ -28,7 +28,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       .find(node => !node.closest('[hidden]'));
     if (next !== stage) {
       clear(); stage = next;
-      viewport = stage?.closest<HTMLElement>('.notes-home > section') ?? undefined;
+      viewport = stage?.closest<HTMLElement>('.notes-workspace > section') ?? undefined;
       home.classList.toggle('is-playing',Boolean(stage));
       const fullscreen = home.querySelector<HTMLButtonElement>('.notes-fullscreen')!;
       fullscreen.hidden = !stage || stage.classList.contains('multiplayer-round') || !document.fullscreenEnabled;

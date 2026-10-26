@@ -47,31 +47,26 @@ export function practiceView() {
   options.append(el('h2', '', 'Options'));
   const savedPace = () => store.data.configuration.continueAfter === 'correct' ? 'correct' as const : 'instant' as const;
   let pace: ContinueAfter = savedPace();
-  const practiceMode = el('section','visual-content-section practice-mode-section');
+  const practiceMode = el('section','visual-content-section practice-mode-section mode-pill-selector');
   practiceMode.setAttribute('aria-label','Practice Mode');
   const modeChoices = el('div','practice-mode-choices'); modeChoices.setAttribute('role','group'); modeChoices.setAttribute('aria-label','Practice Mode');
   const modeButtons = (['instant','correct'] as const).map(value => {
     const label = value === 'instant' ? 'Normal' : 'Correct Only';
-    const mark = el('span','range-content-mark'); mark.setAttribute('aria-hidden','true');
     const choice = button('',() => {
       pace = value; refreshPacing();
       store.update(data => { data.configuration.continueAfter = pace; data.configuration.selfPaced = false; });
     });
     choice.classList.add('range-content-button'); choice.setAttribute('aria-label',label);
-    choice.append(el('span','',label),mark);
-    return {value,choice,mark};
+    choice.append(el('span','',label));
+    return {value,choice};
   });
   const automatic = el('div','practice-mode-auto');
   const autoChoice = button('Auto Every',() => {}); autoChoice.disabled = true; autoChoice.title = 'Coming soon'; autoChoice.classList.add('range-content-button');
-  const seconds = el('select','control'); seconds.setAttribute('aria-label','Auto Every seconds');
-  for (let value=0;value<=10;value++) {
-    const option = el('option','',value ? `${value} sec` : 'COMING SOON'); option.value = String(value); seconds.append(option);
-  }
-  automatic.append(autoChoice,seconds);
+  automatic.append(autoChoice);
   modeChoices.append(modeButtons[0]!.choice,automatic,modeButtons[1]!.choice);
   practiceMode.append(el('h3','','Practice Mode'),modeChoices);
   const refreshPacing = () => {
-    modeButtons.forEach(({value,choice,mark}) => { const active=pace===value; choice.setAttribute('aria-pressed',String(active)); mark.textContent=active ? '✓' : ''; });
+    modeButtons.forEach(({value,choice}) => choice.setAttribute('aria-pressed',String(pace===value)));
   };
   refreshPacing();
   const guidanceKey = 'tunotes:keyboard-accidental-guidance';

@@ -87,6 +87,20 @@ try {
       assert.equal(await page.locator('.suite-header .tagline').textContent(), subtitle);
       assert.ok(await page.locator('.suite-header .tagline').isVisible());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), path + ' overflows');
+      const otherAreas = {
+        tUno: [['tuNotes', '/notes/'], ['Uno234', '/rhythm/']],
+        tuNotes: [['tUno', '/tune/'], ['Uno234', '/rhythm/']],
+        Uno234: [['tUno', '/tune/'], ['tuNotes', '/notes/']],
+      }[title];
+      if (otherAreas) {
+        const headerHeight = await page.locator('.suite-header').evaluate(node => node.getBoundingClientRect().height);
+        assert.ok(headerHeight <= 80, 'Other practice areas stay beside the app name');
+        for (const [name, href] of otherAreas) {
+          const link = page.getByRole('navigation', { name: 'Other practice areas' }).getByRole('link', { name, exact: true });
+          assert.equal(await link.getAttribute('href'), href);
+          assert.ok(await link.locator('img').evaluate(image => image.complete && image.naturalWidth > 0));
+        }
+      }
       for (const box of await page.locator('.suite-header .control:visible').evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height }; }))) {
         assert.ok(box.x >= 0 && box.right <= width && box.height >= 40, path + ' navigation clipped');
       }
@@ -109,9 +123,7 @@ try {
   assert.ok(await page.locator('#view-tone').isVisible());
   await page.goForward(); assert.ok(await page.locator('#view-metronome').isVisible());
   assert.ok(await page.evaluate(() => document === window.originalDocument));
-  await nav.getByRole('button', { name: 'Settings', exact: true }).click();
-  assert.ok(await page.getByRole('dialog', { name: 'Practice settings', exact: true }).isVisible());
-  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).count(), 0);
   // Leaving the app stops live playback, including when restored from history.
   await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
   await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().waitFor();

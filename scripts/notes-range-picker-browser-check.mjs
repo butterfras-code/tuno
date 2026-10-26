@@ -21,7 +21,7 @@ try {
     const modes = page.getByRole('group',{name:'Practice Mode',exact:true});
     assert.equal(await modes.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),true);
-    assert.deepEqual(await modes.locator('option').allTextContents(),['COMING SOON',...Array.from({length:10},(_,i)=>`${i+1} sec`)]);
+    assert.equal(await modes.getByRole('combobox').count(),0,'Auto Every timing stays deferred');
     await modes.getByRole('button',{name:'Correct Only',exact:true}).click();
     assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.continueAfter),'correct');

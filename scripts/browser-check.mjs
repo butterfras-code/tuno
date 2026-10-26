@@ -52,21 +52,27 @@ try {
       await page.goto(url);
       await page.getByText('Offline ready', { exact: true }).waitFor();
     }
-    const settings = page.getByRole('dialog');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await settings.getByLabel('Written pitch', { exact: true }).selectOption('2');
-    await settings.getByRole('button', { name: 'Save settings' }).click();
-    assert.equal(await settings.isVisible(), false);
-    // Settings are a draft until Save; Escape discards the draft and returns focus.
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await settings.getByLabel('A4 reference (Hz)', { exact: true }).fill('442');
+    assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).count(), 0);
+    const setTransposition = async name => {
+      await page.getByRole('button', { name: 'Transposition', exact: true }).click();
+      await page.getByRole('menuitemradio', { name, exact: true }).click();
+    };
+    const setReference = async value => {
+      await page.getByRole('button', { name: /^A4 = / }).click();
+      const reference = page.getByRole('slider', { name: 'A4 reference (Hz)', exact: true });
+      await reference.focus();
+      await reference.press('Home');
+      for (let i = 432; i < value; i++) await reference.press('ArrowRight');
+      await page.keyboard.press('Escape');
+    };
+    await setTransposition('B-flat instrument');
+    await page.getByRole('button', { name: 'A4 = 440 Hz', exact: true }).click();
     await page.keyboard.press('Escape');
-    assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).evaluate((node) => node === document.activeElement), true);
-    assert.equal(await page.getByRole('button', { name: 'A4 = 440 Hz', exact: true }).isVisible(), true);
+    assert.equal(await page.getByRole('button', { name: 'A4 = 440 Hz', exact: true }).evaluate(node => node === document.activeElement), true);
 
     const nav = page.getByRole('navigation', { name: 'tUno tools' });
     const selectTool = async name => {
-      const tab = page.getByRole('tab', { name: ({ Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'Tempo' })[name], exact: true });
+      const tab = page.getByRole('tab', { name: ({ Tuner: 'Tune', 'Reference tone': 'Tone', Metronome: 'UnoMet' })[name], exact: true });
       await nav.getByRole('link', { name, exact: true }).click();
       if (await tab.isVisible()) await tab.click();
     };
@@ -148,14 +154,10 @@ try {
     const settlingMs = await page.evaluate(() => performance.now() - window.inputStarted);
     assert.deepEqual(await page.evaluate(() => window.inputConstraints), { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
     assert.ok(settlingMs <= 500, `${mode}: settling ${settlingMs} ms`);
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await settings.getByLabel('A4 reference (Hz)', { exact: true }).fill('442');
-    await settings.getByRole('button', { name: 'Save settings' }).click();
+    await setReference(442);
     await page.waitForFunction(() => Math.abs(parseFloat(document.querySelector('.pitch-marker').style.top) - (50 - 1200 * Math.log2(440 / 442))) < 0.5);
     assert.equal(await page.locator('.pitch-note').innerText(), 'B4', 'Calibration and written transposition apply to live input in both formats');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await settings.getByLabel('A4 reference (Hz)', { exact: true }).fill('440');
-    await settings.getByRole('button', { name: 'Save settings' }).click();
+    await setReference(440);
     await selectTool('Reference tone');
     if (await page.getByRole('button', { name: 'Sustain off', exact: true }).isVisible()) await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
     await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
@@ -309,9 +311,7 @@ try {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
     await selectTool('Tuner');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await settings.getByLabel('Show Uno', { exact: true }).uncheck();
-    await settings.getByRole('button', { name: 'Save settings' }).click();
+    await page.getByRole('button', { name: 'Show Uno', exact: true }).click();
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
     assert.equal(await page.locator('.pitch-lane').isVisible(), true);
     assert.deepEqual(errors, []);
@@ -319,10 +319,8 @@ try {
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {
       const directory = process.env.TUNO_SCREENSHOT_DIR;
       await mkdir(directory, { recursive: true });
-      await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await settings.getByLabel('Show Uno', { exact: true }).check();
-      await settings.getByLabel('Written pitch', { exact: true }).selectOption('0');
-      await settings.getByRole('button', { name: 'Save settings' }).click();
+      await page.getByRole('button', { name: 'Show Uno', exact: true }).click();
+      await setTransposition('Concert pitch');
       for (const width of [1120, 390]) {
         await page.setViewportSize({ width, height: 900 });
         for (const focus of ['Tuner', 'Reference tone', 'Metronome']) {

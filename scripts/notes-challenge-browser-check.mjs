@@ -16,7 +16,7 @@ async function run(page,url,label) {
   const modes = page.getByRole('group',{name:'Challenge Mode',exact:true});
   assert.equal(await modes.getByRole('button',{name:'Timed',exact:true}).getAttribute('aria-pressed'),'true');
   assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).isDisabled(),true);
-  assert.equal(await modes.getByText('Coming soon',{exact:true}).isVisible(),true);
+  assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('title'),'Coming soon');
   assert.equal(await button(page,'Show Intro').isVisible(),false);
   await page.getByLabel('Duration (seconds)').fill('14');await button(page,'Start Challenge').click();assert.match(await page.getByRole('alert').textContent(),/15 to 300/);
   await page.getByLabel('Duration (seconds)').fill('15');await button(page,'Start Challenge').click();
