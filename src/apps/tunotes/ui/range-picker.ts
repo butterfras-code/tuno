@@ -89,7 +89,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
   const notation = el('section','preset-notation-setting'); notation.hidden = true;
   const notationChoices = el('div','preset-notation-options'); notationChoices.setAttribute('role','group'); notationChoices.setAttribute('aria-label','Accidentals');
   const notationButtons = ([[false,'On each note'],[true,'Key Signature']] as const).map(([value,label]) => {
-    const button = control('',() => { showSignature = value; updateNotation(); });
+    const button = control('',() => { showSignature = value; renderPresets(); });
     button.setAttribute('aria-label',label);
     const mark = el('span','preset-notation-mark'); mark.setAttribute('aria-hidden','true');
     button.append(el('span','',label),mark); notationChoices.append(button);
@@ -128,7 +128,7 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
       const low = ordered[0]!, high = ordered.at(-1)!;
       const tile = control('',() => { pendingPreset = preset.id; pendingName.textContent = preset.name; show('Adaptive'); });
       tile.classList.add('range-picker-choice'); tile.dataset.presetId = preset.id;
-      tile.append(el('strong','',myPresets ? preset.name : preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key,preset.keyless));
+      tile.append(el('strong','',myPresets ? preset.name : preset.name.split(' — ')[1] ?? preset.name),renderRangeStaff(low,high,preset.clef,preset.key,preset.keyless,showSignature));
       presetChoices.append(tile);
     }
   }

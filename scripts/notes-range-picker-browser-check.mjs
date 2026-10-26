@@ -278,14 +278,14 @@ try {
   const signature = notation.getByRole('button',{name:'Key Signature',exact:true});
   assert.equal(await eachNote.getAttribute('aria-pressed'),'true','accidentals on notes is the default');
   assert.equal(await signature.locator('.preset-notation-mark').textContent(),'','inactive exclusive option has no plus');
-  assert.equal(await fluteCards.locator('.key-accidental').count(),6,'preset cards always show their assigned keys');
+  assert.equal(await fluteCards.locator('.key-accidental').count(),0,'preset cards default to accidentals on notes');
   const originalPreviews = await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML));
   assert.ok((await fluteCards.first().boundingBox()).height<180,'mobile preset cards are compact');
   await signature.click();
   assert.equal(await signature.getAttribute('aria-pressed'),'true');
   assert.equal(await eachNote.getAttribute('aria-pressed'),'false');
   assert.equal(await eachNote.locator('.preset-notation-mark').textContent(),'');
-  assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'gameplay notation leaves previews unchanged');
+  assert.notDeepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'notation selection redraws preset previews');
   for (const card of await fluteCards.all()) {
     const isBb = (await card.getAttribute('data-preset-id')) === 'flute-starter-bb';
     assert.equal(await card.locator('.key-accidental').count(),isBb ? 2 : 1,'Flute presets show their assigned key signatures');
@@ -310,13 +310,13 @@ try {
   await openFlute();
   assert.equal(await signature.getAttribute('aria-pressed'),'true','notation preference is remembered');
   await eachNote.click();
-  assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'On each note preserves key information in every preview');
+  assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'On each note restores accidentals beside notes in every preview');
   await previewPage.getByRole('button',{name:'Close range selection',exact:true}).click();
   assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'cancel preserves notation preference');
   await openFlute(); await eachNote.click(); await fluteCards.first().click();
   await previewPage.getByRole('button',{name:'Keep this range',exact:true}).click();
   assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),false);
-  assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),2,'selected preset overview always shows its key');
+  assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),0,'selected preset overview follows accidentals on notes');
   await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
   await previewPage.getByRole('button',{name:'Clef',exact:true}).click();
   await previewPage.getByRole('button',{name:'Treble',exact:true}).click();

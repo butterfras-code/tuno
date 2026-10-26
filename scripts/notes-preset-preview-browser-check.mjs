@@ -16,7 +16,27 @@ try {
   await openRange(page);await dialog.getByRole('button',{name:'Clef',exact:true}).click();await dialog.getByRole('button',{name:'Bass',exact:true}).click();
   await dialog.locator('[data-preset-id="bass-spaces"]').click();await dialog.getByRole('button',{name:'Keep this range',exact:true}).click();
   assert.match(await summary.textContent(),/Spaces.*Bass clef/);assert.equal(await page.locator('.preset-preview:visible .notehead').count(),2);
+  await openRange(page);
+  await dialog.getByRole('button',{name:'Band instruments',exact:true}).click();await dialog.getByRole('button',{name:'Flute',exact:true}).click();
+  const starter=dialog.locator('[data-preset-id="flute-starter-bb"]');
+  const onNotes=dialog.getByRole('button',{name:'On each note',exact:true}),signature=dialog.getByRole('button',{name:'Key Signature',exact:true});
+  async function checkNotation(showSignature) {
+   assert.equal(await starter.locator('.key-accidental').count(),showSignature ? 2 : 0);
+   assert.equal(await starter.locator('.note-accidental').count(),showSignature ? 0 : 1,'B flat is marked beside the note when the signature is hidden');
+   assert.equal(await starter.locator('.range-preset-note-label').first().textContent(),'B♭4');
+   assert.equal(await (showSignature ? signature : onNotes).getAttribute('aria-pressed'),'true');
+  }
+  await checkNotation(false);await signature.click();await checkNotation(true);await onNotes.click();await checkNotation(false);
+  await signature.click();await page.keyboard.press('Escape');
+  await openRange(page);await dialog.getByRole('button',{name:'Band instruments',exact:true}).click();await dialog.getByRole('button',{name:'Flute',exact:true}).click();
+  await checkNotation(false);
+  await signature.click();await starter.click();await dialog.getByRole('button',{name:'Keep this range',exact:true}).click();
+  assert.equal(await page.locator('.preset-preview:visible .key-accidental').count(),4);
+  await openRange(page);await dialog.getByRole('button',{name:'Band instruments',exact:true}).click();await dialog.getByRole('button',{name:'Flute',exact:true}).click();
+  await checkNotation(true);await onNotes.click();await starter.click();await dialog.getByRole('button',{name:'Keep this range',exact:true}).click();
+  assert.equal(await page.locator('.preset-preview:visible .key-accidental').count(),0);
+  assert.equal(await page.locator('.preset-preview:visible .note-accidental').count(),1);
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log(`${engine}: illustrated preset cards, modal bounds, cancel/accept and overview in all activities passed.`);
+ console.log(`${engine}: illustrated preset cards, modal bounds, cancel/accept, accidental display toggles and overview in all activities passed.`);
 } finally {await browser.close();await host.close();}
