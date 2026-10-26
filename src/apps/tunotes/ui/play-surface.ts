@@ -3,7 +3,7 @@ import { el } from '../../../shared/ui/components.ts';
 /** Fit a flexible play layout to the space left by the real navigation/footer.
  * Scale up on classroom displays; scale down only below the layout's minimum
  * usable dimensions. Transforming the stage preserves SVG and pointer geometry.
- * Setup/results retain normal document scrolling and browser text zoom.
+ * Setup, introduction and results retain normal document scrolling and browser text zoom.
  */
 export function playSurface(home: HTMLElement, options: HTMLElement) {
   const preferenceKey = 'tunotes:classroom-display';
@@ -24,7 +24,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
   };
   const fit = () => {
     frame = 0;
-    const next = [...home.querySelectorAll<HTMLElement>('.practice-view[data-screen="playing"], .practice-view[data-screen="intro"], .multiplayer-round:not([hidden])')]
+    const next = [...home.querySelectorAll<HTMLElement>('.practice-view[data-screen="playing"], .multiplayer-round:not([hidden])')]
       .find(node => !node.closest('[hidden]'));
     if (next !== stage) {
       clear(); stage = next;

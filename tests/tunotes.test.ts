@@ -118,7 +118,7 @@ test('Uno milestones are positive, monotonic, once-only and independent of strea
   assert.equal(p.update(10,0).pose, 'happy'); assert.equal(p.update(11,1).treat, false);
 });
 
-test('Instant advances correct answers immediately but reveals mistakes; Delay and Click/Tap retain their pacing', () => {
+test('Instant advances correct and incorrect answers immediately; Delay and Click/Tap retain their pacing', () => {
   for (const mode of ['instant','delay','click'] as const) {
     let now = 0;
     const practice = new Practice(defaultPreset,false,() => now,() => 0,{continueAfter:mode});
@@ -130,9 +130,12 @@ test('Instant advances correct answers immediately but reveals mistakes; Delay a
     assert.equal(practice.answer(token,practice.pitch),false);
     const next = practice.token;
     practice.answer(next,{letter:practice.pitch.letter === 'C' ? 'D' : 'C',accidental:0});
-    assert.equal(practice.advance(next),false);
-    now += 799; assert.equal(practice.advance(next),false);
-    now++; assert.equal(practice.advance(next),mode !== 'click');
+    assert.equal(practice.advance(next),mode === 'instant');
+    if (mode !== 'instant') {
+      now += 799; assert.equal(practice.advance(next),false);
+      now++; assert.equal(practice.advance(next),mode !== 'click');
+    }
+    assert.equal(practice.answer(next,practice.pitch),false);
   }
 });
 

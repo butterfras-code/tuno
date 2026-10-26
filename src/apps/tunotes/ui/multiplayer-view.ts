@@ -1,14 +1,13 @@
 import { resultReward } from './result-reward.ts';
+import { resultMetric, scoreHint } from './results.ts';
 import headToHeadIcon from '../../../assets/uno-head-to-head.svg';
 import sideBySideIcon from '../../../assets/uno-side-by-side.svg';
 import passAndPlayIcon from '../../../assets/uno-pass-and-play.svg';
-import { answerFeedback } from './answer-feedback.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
 import { defaultPreset, fingerprint, clefForPitch, normalizePreset, presets } from '../domain/presets.ts';
 import type { Preset } from '../domain/presets.ts';
 import type { AnswerSpelling } from '../domain/notation.ts';
-import { spelling } from '../domain/notation.ts';
 import { Challenge, describeRules } from '../engine/challenge.ts';
 import type { ChallengeRules } from '../engine/challenge.ts';
 import { canPair, displayNames, schedule, standings } from '../engine/multiplayer.ts';
@@ -18,7 +17,7 @@ import type { PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import type { Context } from '../persistence/store.ts';
 import { NotesStore } from '../persistence/store.ts';
-import { answerControls } from './answers.ts';
+import { noteEntry, keyboardGuidanceKey } from './note-entry.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeSetup } from './challenge-setup.ts';
 import { button, presetSetup } from './setup.ts';
@@ -29,8 +28,8 @@ interface Player extends PlayerEntry { preset: Preset; profileId?: string; notes
 interface Lane {
   player: Player; session: Challenge; progress: NotesProgress;
   node: HTMLElement; heading: HTMLElement; status: HTMLElement; stats: HTMLElement; announcement: HTMLElement;
-  staff: HTMLElement; feedback: ReturnType<typeof answerFeedback>; note: HTMLElement; intro: HTMLElement;
-  cue: HTMLElement; dog: ReturnType<typeof animatedUno>; answers: ReturnType<typeof answerControls>;
+  staff: HTMLElement; feedback: ReturnType<typeof noteEntry>['feedback']; note: HTMLElement; intro: HTMLElement;
+  cue: HTMLElement; dog: ReturnType<typeof animatedUno>; answers: ReturnType<typeof noteEntry>;
   keyHelp: HTMLElement; recorded: boolean; prompt: string; phase: string; inputSince: number; tenSeconds: boolean;
 }
 const leftLetters = ['Q','W','E','R','T','Y','U'];
@@ -40,8 +39,9 @@ const modifierCodes = [['Digit1','Digit2','Digit3'],['Digit8','Digit9','Digit0']
 const accuracy = (s: Challenge) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
 const seconds = (ms: number) => (Math.floor(ms) / 1000).toFixed(2);
 
-export function multiplayerView(store: NotesStore, home: () => void) {
+export function multiplayerView(store: NotesStore) {
   const node = el('section','multiplayer-view'); node.setAttribute('aria-label','Multi Player'); node.hidden = true;
+  let keyboardGuidance = true;
   const setup = el('section','multiplayer-setup');
   const rosterSection = el('section','multiplayer-roster-section');
   const roster = el('div','multiplayer-roster'); roster.setAttribute('role','group'); roster.setAttribute('aria-label','Players');
@@ -146,13 +146,26 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   roundHeader.append(roundTitle,roundSummary,roundActions,fullscreenHelp);
   round.append(roundHeader,panels);
 
-  const result = el('section','multiplayer-result'); result.hidden = true;
+  const result = el('section','multiplayer-result session-results'); result.hidden = true;
   const resultTitle = el('h2','','Round results'); resultTitle.tabIndex = -1;
   const resultSummary = el('p','muted');
   const board = el('div','multiplayer-board');
-  const resultActions = el('div','control-row');
-  resultActions.append(button('Retry',() => startRound()),button('Edit setup',showSetup),button('Home',() => { showSetup(); home(); }));
-  result.append(resultTitle,resultSummary,board,resultActions);
+  let resultIndex = 0;
+  const previousResult = button('Previous',() => selectResult(resultIndex-1));
+  const nextResult = button('Next',() => selectResult(resultIndex+1));
+  const resultPosition = el('span'); resultPosition.setAttribute('role','status');
+  const resultNavigation = el('nav','result-navigation'); resultNavigation.setAttribute('aria-label','Player results');
+  resultNavigation.append(previousResult,resultPosition,nextResult);
+  function selectResult(index: number) {
+    resultIndex = Math.max(0,Math.min(board.children.length-1,index));
+    [...board.children].forEach((card,i) => { card.classList.toggle('result-card-selected',i === resultIndex); });
+    previousResult.disabled = resultIndex === 0; nextResult.disabled = resultIndex === board.children.length-1;
+    resultPosition.textContent = `${resultIndex+1} of ${board.children.length}`;
+  }
+  const resultActions = el('div','control-row result-controls');
+  const retryResult = button('Retry',() => startRound()); retryResult.classList.add('control--primary');
+  resultActions.append(retryResult,button('Edit setup',showSetup));
+  result.append(resultTitle,resultSummary,board,resultNavigation,resultActions);
   node.append(setup,fitWarning,round,result,styleDialog,playerMenu);
 
   let players: Player[] = [newPlayer(1)];
@@ -397,7 +410,6 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const heading = el('h3','',displayName); const status = el('p','multiplayer-status'); status.setAttribute('role','timer'); status.setAttribute('aria-live','off');
     const announcement = el('p','multiplayer-announcement'); announcement.setAttribute('role','status'); announcement.setAttribute('aria-live','polite');
     const stats = el('p','muted'); const staff = el('div','staff-panel');
-    const feedback = answerFeedback();
     const note = el('div','multiplayer-note'); note.append(staff);
     const cue = el('strong','multiplayer-cue');
     const intro = el('div','multiplayer-intro');
@@ -405,9 +417,14 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     blankStaff.querySelectorAll('.notehead,.note-accidental,.ledger').forEach(n=>n.remove()); blankStaff.removeAttribute('aria-label'); blankStaff.setAttribute('aria-hidden','true');
     intro.append(blankStaff,cue,el('p','muted',player.preset.name));
     const dog = animatedUno(); dog.pose('wag');
-    const lane = { player, session, progress, node: panel, heading, status, stats, announcement, staff, feedback, note, intro, cue, dog, answers: undefined as unknown as ReturnType<typeof answerControls>, keyHelp: el('p','muted keyboard-help'), recorded: false, prompt: '', phase: '', inputSince: 0, tenSeconds: false };
-    lane.answers = answerControls((answer,token) => submit(lane,answer,token),true);
-    panel.append(heading,status,stats,announcement,note,intro,dog.node,lane.answers.node,lane.keyHelp,feedback.node);
+    const lane = { player, session, progress, node: panel, heading, status, stats, announcement, staff, feedback: undefined as unknown as ReturnType<typeof noteEntry>['feedback'], note, intro, cue, dog, answers: undefined as unknown as ReturnType<typeof noteEntry>, keyHelp: el('p','muted keyboard-help'), recorded: false, prompt: '', phase: '', inputSince: 0, tenSeconds: false };
+    lane.answers = noteEntry((answer,token) => submit(lane,answer,token), {
+      concurrentPointers: true, guidance: () => { try { return localStorage.getItem(keyboardGuidanceKey) !== 'false'; } catch { return keyboardGuidance; } },
+      showKeySignature: () => store.data.configuration.showKeySignature,
+      disableGuidance: () => { keyboardGuidance = false; try { localStorage.setItem(keyboardGuidanceKey,'false'); } catch { /* Session stays usable without storage. */ } },
+    });
+    lane.feedback = lane.answers.feedback;
+    panel.append(heading,status,stats,announcement,note,intro,dog.node,lane.answers.status,lane.answers.node,lane.keyHelp);
     return lane;
   }
   function prepareHeat() {
@@ -450,13 +467,17 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       const item = el('section','multiplayer-result-row');
       const heading = el('h3','',`${row.rank ? `#${row.rank} · ` : ''}${named.get(row.player.id)}`);
       const main = el('strong','multiplayer-result-value',rulesValue!.goal === 'timed' ? `${row.session.score.toFixed(2)} points` : `${seconds(row.session.activeMs)} seconds`);
-      const detail = el('p','',`${row.session.correct}/${row.session.attempts} correct · ${accuracy(row.session)} accuracy · best streak ${row.session.bestStreak}`);
+      const detail = el('div','practice-result-metrics');
+      detail.append(resultMetric(`${row.session.correct}/${row.session.attempts}`,' correct'),resultMetric(accuracy(row.session),'Accuracy ',true),resultMetric(String(row.session.bestStreak),'Best streak ',true));
+      const hint = el('p','practice-result-score-hint',scoreHint(rulesValue!));
       const status = el('p','muted',row.session.qualified ? 'Qualified' : row.session.end === 'timeout' ? `Nice practice — try another round. ${row.session.correct}/${row.session.rules.goal === 'target' ? row.session.rules.target : 0} target · time out · unranked` : row.session.interrupted ? 'Interrupted · unranked' : row.session.end !== 'completed' ? 'Incomplete · unranked' : !row.session.attempts ? 'No attempts · unranked' : 'Nice run! Improve your accuracy to make finals. Unranked');
       const reward = resultReward();
       reward.update(sessionTreats.get(row.player.id) ?? 0,!row.rank ? 'rest' : row.rank === 1 ? 'treat' : 'happy');
       item.classList.toggle('multiplayer-result-winner',row.rank === 1);
       if (row.rank === 1) status.textContent = 'Winner · Qualified';
-      item.append(heading,reward.node,main,detail,status); board.append(item);
+      const stats = el('div','practice-result-stats'); stats.append(main,hint);
+      const overview = el('div','practice-result-overview'); overview.append(stats,reward.node);
+      item.append(heading,overview,detail,status); board.append(item);
     }
     for (const player of players.filter(p => !completed.has(p.id))) {
       const item = el('section','multiplayer-result-row');
@@ -464,6 +485,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       item.append(el('h3','',named.get(player.id)!),reward.node,el('p','muted','Not played · unranked'));
       board.append(item);
     }
+    selectResult(0);
   }
   function showSetup() {
     leaveFullscreen();
@@ -487,7 +509,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       lane.cue.textContent = phase === 'ready' ? 'Ready?' : phase === 'countdown' ? String(s.countdown) : phase === 'paused' ? 'Paused' : 'Finished';
       lane.intro.hidden = phase === 'playing';
       lane.note.hidden = phase !== 'playing';
-      lane.answers.node.hidden = phase !== 'playing'; lane.keyHelp.hidden = phase !== 'playing';
+      lane.answers.status.hidden = phase !== 'playing'; lane.answers.node.hidden = phase !== 'playing'; lane.keyHelp.hidden = phase !== 'playing';
       if (phase !== 'playing') lane.feedback.clear();
       if (phase !== lane.phase) {
         lane.phase = phase; lane.inputSince = performance.now();
@@ -503,6 +525,7 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       }
       if (phase === 'playing') { lane.feedback.mount(lane.staff.querySelector('svg')!); }
       lane.answers.update(s.activePreset,s.token,phase !== 'playing' || s.state !== 'running');
+      lane.answers.shortcuts(indexModifiers(active.indexOf(lane)), active.indexOf(lane) === 0 ? leftLetters : rightLetters);
       showModifier(lane);
       if (phase === 'finished') { lane.intro.querySelector('p')!.textContent = `${s.correct}/${s.attempts} correct · ${accuracy(s)} accuracy. Waiting for the other player.`; record(lane); }
     }
@@ -521,10 +544,9 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       guestContexts.set(key,{ fingerprint:fingerprint(s.preset,s.adaptive,'challenge'), version:1, updated:Date.now(), notes:structuredClone(s.learning.notes) as Context['notes'], ...(s.adaptive ? {learning:s.savedLearning} : {}) });
     }
     const reward = lane.progress.update(s.correct,s.streak,s.attempts);
-    if (s.last!.correct) lane.feedback.celebrate(reward, s.announcement !== previousAnnouncement ? s.announcement : '');
-    else lane.feedback.show(`That note is ${spelling(s.pitch)}.`, false);
     lane.dog.pose(reward.treat ? 'catch' : reward.pose);
     lane.dog.look(reward.look,-8); if (reward.nod) lane.dog.nod();
+    lane.answers.respond(s,reward,previousAnnouncement);
     renderRound();
   }
   function resetInput() { gate.reset(); held.forEach(set => set.clear()); active.forEach(l => { l.answers.reset(); l.answers.modifier(); }); }
@@ -536,6 +558,10 @@ export function multiplayerView(store: NotesStore, home: () => void) {
       lane.keyHelp.textContent = `${seats[index]}: ${keys[index]} for ♭/♮/♯.`;
     });
   }
+  function indexModifiers(index: number): [string,string,string] {
+    const codes = modifierCodes[index] ?? modifierCodes[0]!;
+    return [codes[0]!.replace('Digit',''),codes[1]!.replace('Digit',''),codes[2]!.replace('Digit','')];
+  }
   function showModifier(lane: Lane) {
     const index = active.indexOf(lane); const set = held[index];
     const codes = modifierCodes[index] ?? modifierCodes[0]!;
@@ -544,6 +570,11 @@ export function multiplayerView(store: NotesStore, home: () => void) {
   }
   const keydown = (event: KeyboardEvent) => {
     if (node.hidden || round.hidden || event.altKey || event.ctrlKey || event.metaKey || event.target instanceof HTMLElement && event.target.closest('input,select,textarea,[contenteditable="true"]')) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      const focused = active.find(lane => lane.answers.buttons.includes(event.target as HTMLButtonElement));
+      if (focused) focused.answers.focusedKey(event, gate.down(event.code || event.key,event.repeat) && event.timeStamp >= focused.inputSince);
+      return;
+    }
     const code = event.code; const panelIndex = active.findIndex((_,i) => modifierCodes[i]?.includes(code) || (i === 0 ? leftLetters : rightLetters).some(letter => code === `Key${letter}`));
     if (panelIndex < 0) return;
     const lane = active[panelIndex]!; const set = held[panelIndex]!;
@@ -554,7 +585,8 @@ export function multiplayerView(store: NotesStore, home: () => void) {
     const letters = panelIndex === 0 ? leftLetters : rightLetters;
     const letter = letterNames[letters.indexOf(code.slice(3))];
     const codes = modifierCodes[panelIndex]!; const pressed = codes.filter(v => set.has(v));
-    if (letter && pressed.length < 2) lane.answers.letter(letter,pressed[0] === codes[0] ? -1 : pressed[0] === codes[2] ? 1 : 0);
+    if (letter && pressed.length < 2) lane.answers.keyboard(letter,pressed[0] === codes[0] ? -1 : pressed[0] === codes[2] ? 1 : 0,pressed.length > 0,lane.session, hint =>
+      hint.replace(/[↓→↑]/, arrow => codes[arrow === '↓' ? 0 : arrow === '↑' ? 2 : 1]!.replace('Digit','')).replace(` + ${letter} `, ` + ${letters[letterNames.indexOf(letter)]} `));
   };
   const keyup = (event: KeyboardEvent) => { gate.up(event.code); held.forEach(set => set.delete(event.code)); active.forEach(showModifier); };
   const visibility = () => { if (document.hidden) { active.forEach(l => l.session.pause()); resetInput(); store.flush(); renderRound(); } };

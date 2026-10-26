@@ -105,7 +105,7 @@ export class Practice {
     if (this.records.length > 100) this.records.shift();
     if (correct) { this.correct++; this.streak++; } else this.streak = 0;
     this.bestStreak = Math.max(this.bestStreak, this.streak);
-    this.feedbackEnd = now + (correct ? this.continueAfter === 'instant' ? 0 : 250 : 800); this.state = 'feedback'; return true;
+    this.feedbackEnd = now + (this.continueAfter === 'instant' ? 0 : correct ? 250 : 800); this.state = 'feedback'; return true;
   }
   advance(token: PromptToken, explicit = false) {
     if (this.state !== 'feedback' || !this.matches(token) || (this.selfPaced ? !explicit : this.activeMs < this.feedbackEnd)) return false;

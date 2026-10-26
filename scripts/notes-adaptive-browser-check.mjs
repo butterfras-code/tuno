@@ -106,7 +106,7 @@ async function run(page,url,mode) {
   const labels=await previewLabels(page); assert.equal(labels.length,5);
   assert.equal(labels[0],'B♭'); assert.equal(labels.at(-1),'F');
   assert.equal(await page.locator('.preview-note-status').textContent(),'1 of 5');
-  assert.equal(await page.locator('.preview-navigation').evaluate(n=>n.parentElement.className),'preview-staff-viewport');
+  assert.equal(await page.locator('.preview-navigation').evaluate(n=>n.parentElement.classList.contains('preview-actions')),true);
   assert.equal(await page.locator('.note-preview').evaluate(n=>n.getAnimations({subtree:true}).filter(a=>a.playState==='running').length),0);
   await button(page,'Replay').click();await button(page,'Start Practice').click();
   assert.equal(await page.locator('.practice-stage .staff').count(),1);

@@ -81,6 +81,17 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
   scroll.append(grid); rows.append(hints, scroll); node.append(rows, preview);
   return {
     node, buttons, reset,
+    shortcuts(modifiers: readonly [string, string, string], notes?: readonly string[]) {
+      keycaps.forEach(cap => {
+        const index = Number(cap.dataset.accidental) + 1;
+        cap.textContent = modifiers[index]!;
+        const label = `Hold ${modifiers[index]} for ${index === 0 ? 'flats' : index === 2 ? 'sharps' : 'naturals'}`;
+        cap.title = label; cap.setAttribute('aria-label', label);
+      });
+      for (const b of buttons) {
+        if (b.dataset.accidental === '0') b.setAttribute('aria-keyshortcuts', notes?.[['A','B','C','D','E','F','G'].indexOf(b.dataset.letter!)] ?? b.dataset.letter!);
+      }
+    },
     modifier(accidental?: Accidental) {
       for (const b of buttons) b.classList.toggle('answer-modifier', values.get(b)!.accidental === accidental);
       for (const cap of keycaps) cap.classList.toggle('keycap-held', cap.dataset.accidental === String(accidental));

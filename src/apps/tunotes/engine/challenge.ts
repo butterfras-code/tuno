@@ -36,7 +36,7 @@ export class Challenge extends Practice {
   private countInRemaining = 3000;
   constructor(preset: Preset, rules: ChallengeRules, clock = () => performance.now(), random = Math.random, options: ConstructorParameters<typeof Practice>[4] = {}) {
     const frozen = validateRules(rules), timeline: { origin?: number } = {};
-    super(preset, false, () => timeline.origin === undefined ? 0 : clock() - timeline.origin, random, { ...options, continueAfter: 'delay', activity: 'challenge' });
+    super(preset, false, () => timeline.origin === undefined ? 0 : clock() - timeline.origin, random, { ...options, continueAfter: 'instant', activity: 'challenge' });
     this.rules = frozen; this.now = clock; this.timeline = timeline;
   }
   get limitMs() { return (this.rules.goal === 'timed' ? this.rules.seconds : this.rules.timeout) * 1000; }
