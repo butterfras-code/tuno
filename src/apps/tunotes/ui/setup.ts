@@ -129,7 +129,7 @@ export function presetSetup(store: NotesStore, idPrefix = '', copyPlayers?: Copy
       const ordered = [...current.pool].sort((a,b) => diatonic(a)-diatonic(b) || chromatic(a)-chromatic(b));
       for (const [label,pitch] of [['Low note',ordered[0]!],['High note',ordered.at(-1)!]] as const) {
         const endpoint = el('div','range-endpoint');
-        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,true); staff.classList.replace('staff','endpoint-staff');
+        const staff = renderStaff(pitch,clefForPitch(current,pitch),current.key,current.keyless,store.data.configuration.showKeySignature); staff.classList.replace('staff','endpoint-staff');
         endpoint.append(el('h4','',label),el('output','',pitchLabel(pitch)),staff); preview.append(endpoint);
       }
     }
