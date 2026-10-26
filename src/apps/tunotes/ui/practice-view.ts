@@ -1,5 +1,5 @@
 import { resultReward } from './result-reward.ts';
-import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
+import { resultMetric, scoreHint as resultScoreHint } from './results.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
 import { Challenge } from '../engine/challenge.ts';
@@ -16,13 +16,12 @@ import { onUnmount } from '../../../shared/ui/unmount.ts';
 import { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
-import { spelling, pitchLabel } from '../domain/notation.ts';
+import { pitchLabel } from '../domain/notation.ts';
 import type { AnswerSpelling, Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
-import { answerControls } from './answers.ts';
-import { answerFeedback } from './answer-feedback.ts';
+import { noteEntry, keyboardGuidanceKey } from './note-entry.ts';
 import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
@@ -69,7 +68,7 @@ export function practiceView() {
     modeButtons.forEach(({value,choice}) => choice.setAttribute('aria-pressed',String(pace===value)));
   };
   refreshPacing();
-  const guidanceKey = 'tunotes:keyboard-accidental-guidance';
+  const guidanceKey = keyboardGuidanceKey;
   let keyboardGuidance = true;
   try { keyboardGuidance = storage?.getItem(guidanceKey) !== 'false'; } catch { /* Session-only preference. */ }
   const guidanceLabel = el('label', 'setting');
@@ -77,10 +76,9 @@ export function practiceView() {
   guidanceLabel.append(guidanceSetting, document.createTextNode(' Keyboard accidental guidance'));
   const guidanceDescription = el('p', 'muted', 'Show a shortcut hint instead of scoring a matching letter entered without its required accidental. Saved on this device.');
   const guidanceGroup = el('section', 'keyboard-guidance-settings'); guidanceGroup.append(guidanceLabel, guidanceDescription); options.append(guidanceGroup);
-  let keyboardHint = '';
   const setGuidance = (enabled: boolean) => {
-    if (keyboardHint) answerNotice.clear();
-    keyboardGuidance = enabled; guidanceSetting.checked = enabled; keyboardHint = '';
+    answerNotice.clear();
+    keyboardGuidance = enabled; guidanceSetting.checked = enabled;
     try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
   };
   guidanceSetting.addEventListener('change', () => setGuidance(guidanceSetting.checked));
@@ -118,13 +116,12 @@ export function practiceView() {
   const heading = el('h2'); heading.tabIndex = -1;
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const staff = el('div', 'staff-panel');
-  const answerNotice = answerFeedback();
-  const feedback = el('p', 'feedback'); feedback.id = 'feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
-  const feedbackText = el('span');
-  const dismissGuidance = button('Dismiss accidental reminders', () => { setGuidance(false); render(); });
-  dismissGuidance.classList.add('keyboard-guidance-dismiss'); dismissGuidance.hidden = true;
-  feedback.append(feedbackText, dismissGuidance);
-  const answers = answerControls((answer, token) => submit(answer, token));
+  const answers = noteEntry((answer, token) => submit(answer, token), {
+    guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
+    disableGuidance: () => setGuidance(false),
+  });
+  const answerNotice = answers.feedback;
+  const feedback = answers.status; feedback.id = 'feedback';
   const gate = new PressGate();
   const arrows = new Set<string>();
   let session: Practice | undefined;
@@ -138,13 +135,14 @@ export function practiceView() {
   let disposed = false;
   const showModifier = () => answers.modifier(session && !play.hidden && session.state !== 'paused' && session.state !== 'finished' && arrows.size === 1
     ? arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0 : undefined);
-  const result = el('section','practice-results'); result.hidden = true;
+  const result = el('section','practice-results session-results'); result.hidden = true;
   const resultHeading = el('h2', '', 'Practice results'); resultHeading.tabIndex = -1;
   const resultSummary = el('div','practice-result-metrics'); resultSummary.id = 'result-summary';
   const resultScore = el('strong'); resultScore.id = 'practice-result-score';
   const scoreValue = el('p','scoreboard-value'); scoreValue.append(resultScore,el('span','','points'));
-  const scoreLabel = el('p','practice-result-score-label','Score · Correct × Accuracy');
-  const resultStats = el('div','practice-result-stats'); resultStats.append(scoreLabel,scoreValue,resultSummary);
+  const scoreHint = el('p','practice-result-score-hint',resultScoreHint());
+  scoreHint.id = 'practice-score-hint'; resultScore.setAttribute('aria-describedby',scoreHint.id);
+  const resultStats = el('div','practice-result-stats'); resultStats.append(scoreValue,scoreHint);
   const resultOverview = el('div','practice-result-overview');
   const resultTiming = el('p');
   const rewardSummary = resultReward();
@@ -174,9 +172,9 @@ export function practiceView() {
     resultRecorded = true; session.finish(); store.record(profileId, session); store.flush(); dataUI.refresh(); resetInput(); play.hidden = true; result.hidden = false;
     resultScore.textContent = (session.correct * (session.accuracy ?? 0)).toFixed(2);
     resultSummary.replaceChildren(
-      el('p','',`${session.correct} correct / ${session.attempts} attempts`),
-      el('p','',`Accuracy ${accuracy(session)}`),
-      el('p','',`Best streak ${session.bestStreak}`),
+      resultMetric(String(session.correct),` correct / ${session.attempts} attempts`),
+      resultMetric(accuracy(session),'Accuracy ',true),
+      resultMetric(String(session.bestStreak),'Best streak ',true),
     );
     const average = session.attempts ? `${(session.responseTotalMs / session.attempts / 1000).toFixed(1)} s` : '—';
     resultTiming.textContent = `${(session.activeMs / 1000).toFixed(1)} s active practice · Average response ${average}. ${session.interrupted ? 'Pauses excluded. ' : ''}${session.attempts ? 'Every note is a step forward. Thanks for practicing!' : 'Ready whenever you are. Try a note next time.'}`;
@@ -187,7 +185,7 @@ export function practiceView() {
       scene.finish(session,progress.treats,profileId ? store.data.profiles.find(p => p.id === profileId)?.name : undefined);
       answers.node.hidden = true; keyboardHelp.hidden = true; feedback.hidden = true; controls.hidden = true;
     }
-    coaching.textContent = recommendation(session.attempts,session.correct,session.learning.notes,session.misses);
+    coaching.textContent = session.attempts ? recommendation(session.attempts,session.correct,session.learning.notes,session.misses) : 'Ready when you are. Try a note next time.';
     if (performance.now() >= treatUntil) dog.pose(progress.treats ? 'happy' : 'rest'); dog.look(false); dog.tail(0, false);
     if (!(session instanceof Challenge)) resultHeading.focus();
   };
@@ -224,7 +222,7 @@ export function practiceView() {
     counts.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = `${session.session}:${session.prompt}:${store.data.configuration.showKeySignature ?? false}`;
     if (renderedPrompt !== identity) {
-      keyboardHint = ''; inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
+      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature));
     }
     answerNotice.mount(staff.querySelector('svg')!);
     if (paused || waiting) answerNotice.clear();
@@ -233,14 +231,12 @@ export function practiceView() {
     answers.update(session.activePreset, session.token, locked);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
-    dismissGuidance.hidden = paused || !keyboardHint;
-    feedbackText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';
+    answers.paused(paused);
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
   const submit = (answer: AnswerSpelling, token: PromptToken) => {
     const previousAnnouncement = session?.announcement;
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
-    keyboardHint = '';
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
@@ -249,15 +245,13 @@ export function practiceView() {
       if (guestContexts.size > 128) guestContexts.delete(guestContexts.keys().next().value!);
     }
     const reward = progress.update(session.correct, session.streak, session.attempts);
-    if (session.last!.correct) answerNotice.celebrate(reward, session.announcement !== previousAnnouncement ? session.announcement : '');
-    else answerNotice.show(session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, false);
     dog.look(reward.look, -8);
     if (reward.treat || performance.now() >= treatUntil) dog.pose(reward.treat ? 'catch' : reward.pose);
     dog.tail(0, reward.pose === 'wag');
     if (reward.nod) dog.nod();
     treatProgress.textContent = `${progress.remaining} to a treat`;
     if (reward.treat) { dog.catch(session instanceof Challenge ? scene.treat : counts); treatUntil = performance.now() + 450; }
-    if (session.continueAfter === 'instant') session.advance(session.token);
+    answers.respond(session, reward, previousAnnouncement);
     if (session.state === 'finished') finish(); else render();
   };
   const start = () => {
@@ -298,12 +292,14 @@ export function practiceView() {
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
-  play.append(heading, counts, scene.node, staff, feedback, answers.node, controls, answerNotice.node);
-  const resultControls = el('div', 'control-row'); resultControls.append(button('Retry', start), button('Edit setup', showSetup), button('Home', showSetup));
+  play.append(heading, counts, scene.node, staff, feedback, answers.node, controls);
+  const resultControls = el('div', 'control-row result-controls');
+  const retry = button('Retry',start); retry.classList.add('control--primary');
+  resultControls.append(retry, button('Edit setup', showSetup));
   const resultDetails = el('details','practice-result-details');
   resultDetails.append(el('summary','','Session details'),resultTiming);
   resultOverview.append(resultStats,rewardSummary.node);
-  result.append(resultHeading, resultOverview, coaching, resultControls, resultDetails);
+  result.append(resultHeading, resultOverview, resultSummary, coaching, resultControls, resultDetails);
   stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
   presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
@@ -314,16 +310,10 @@ export function practiceView() {
     if (/^[A-G]$/.test(letter)) {
       event.preventDefault();
       if (!fresh || arrows.size >= 2) return;
-      const hint = keyboardGuidance && arrows.size === 0 && session.state === 'running' && (!(session instanceof Challenge) || session.phase === 'playing')
-        ? missingAccidentalHint(letter as Letter, session.pitch, session.preset, store.data.configuration.showKeySignature) : undefined;
-      if (hint) {
-        answers.reset(); keyboardHint = hint;
-        render();
-        answerNotice.show(hint, false, 2500);
-      } else answers.letter(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0);
-    } else if ((event.key === 'Enter' || event.key === ' ') && answers.buttons.includes(event.target as HTMLButtonElement)) {
-      event.preventDefault(); if (fresh) answers.focused(event.target as HTMLButtonElement);
-    }
+      if (session.state === 'running' && (!(session instanceof Challenge) || session.phase === 'playing')) {
+        answers.keyboard(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0, arrows.size > 0, session);
+      }
+    } else answers.focusedKey(event, fresh);
   };
   const keyup = (event: KeyboardEvent) => { gate.up(event.code || event.key); arrows.delete(event.key); showModifier(); };
   // Key releases outside the page may never reach document; repeats remain gated.

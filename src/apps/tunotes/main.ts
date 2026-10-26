@@ -39,7 +39,7 @@ export function mountNotes(root: HTMLElement) {
       else practice.leave();
       if (index < 2) { practice.setActivity(index === 1 ? 'challenge' : 'practice'); views[index]!.append(practice.node); }
       if (index === 2) {
-        if (!multiplayer) { multiplayer = multiplayerView(practice.store, () => links[0]!.click()); multiplayerPanel.append(multiplayer.node); }
+        if (!multiplayer) { multiplayer = multiplayerView(practice.store); multiplayerPanel.append(multiplayer.node); }
       }
       if (index < 2) practice.enter();
       practice.node.hidden = index >= 2;

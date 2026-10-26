@@ -11,8 +11,22 @@ function fixture(rules: ChallengeRules = defaultTimed) {
 }
 function respond(f: ReturnType<typeof fixture>, correct = true) {
   assert.equal(f.round.answer(f.round.token,correct ? f.round.pitch : { letter: f.round.pitch.letter === 'C' ? 'D' : 'C', accidental: 0 }),true);
-  f.add(correct ? 250 : 800); f.round.advance(f.round.token);
+  assert.equal(f.round.advance(f.round.token), f.round.state !== 'finished');
 }
+test('Challenge advances correct and incorrect answers immediately, preserving stale-token protection', () => {
+  const f = fixture(); f.begin();
+  assert.equal(f.round.continueAfter, 'instant');
+  for (const correct of [true, false, true]) {
+    const token = f.round.token;
+    respond(f, correct);
+    assert.equal(f.round.state, 'running');
+    assert.equal(f.round.prompt, token.prompt + 1);
+    assert.equal(f.round.answer(token, f.round.pitch), false);
+    assert.equal(f.round.activeMs, 0);
+  }
+  assert.equal(f.round.attempts, 3);
+  assert.equal(f.round.correct, 2);
+});
 test('rules are validated, copied and frozen; Ready/countdown accept no answers or active time', () => {
   for (const seconds of [NaN, Infinity, 1.5, 14, 301]) assert.throws(() => validateRules({ ...defaultTimed, seconds }));
   for (const bad of [{...defaultTarget,target:0},{...defaultTarget,timeout:601},{...defaultTarget,accuracyFloor:49},{...defaultTimed,extra:1}]) assert.throws(() => validateRules(bad));
@@ -42,7 +56,7 @@ test('formula fixtures and Target floor use exact counts, not rounded percentage
 });
 test('pauses preserve remaining countdown, prompt, feedback and time but invalidate ranking', () => {
   const f=fixture();f.round.ready();f.add(1000);f.round.pause();f.add(20000);assert.equal(f.round.countdown,2);f.round.resume();f.add(1999);f.round.tick();assert.equal(f.round.phase,'countdown');f.add(1);f.round.tick();
-  const token=f.round.token;f.add(100);f.round.answer(token,f.round.pitch);f.add(100);f.round.pause();const duration=f.round.activeMs;f.add(5000);assert.equal(f.round.activeMs,duration);f.round.resume();assert.equal(f.round.advance(token),false);f.add(150);assert.equal(f.round.advance(token),true);
+  const token=f.round.token;f.add(100);f.round.answer(token,f.round.pitch);f.add(100);f.round.pause();const duration=f.round.activeMs;f.add(5000);assert.equal(f.round.activeMs,duration);f.round.resume();assert.equal(f.round.advance(token),true);
   f.add(60000);f.round.tick();assert.equal(f.round.qualified,false);assert.equal(f.round.interrupted,true);assert.equal(f.round.activeMs,60000);
 });
 test('stale prompt/session input and repeated finish cannot change results', () => {

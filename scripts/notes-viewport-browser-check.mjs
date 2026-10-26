@@ -122,9 +122,12 @@ try {
   for (const [width,height] of [[390,844],[844,390],[3840,2160]]) {
     const intro=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
     await intro.clock.install();await intro.goto(new URL('/notes/',host.url).href);
-    await button(intro,'Start Practice').click();await check(intro,`${width} intro`);
+    await button(intro,'Start Practice').click();await intro.clock.runFor(100);
+    assert.equal(await intro.locator('#home').evaluate(node=>node.classList.contains('is-playing')),false,`${width}: intro retains the regular layout`);
+    assert.equal(await intro.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${width}: intro has no horizontal overflow`);
+    const panel=await intro.locator('#notes-practice').boundingBox();
     const staff=await intro.locator('.preview-staff').boundingBox();
-    assert.ok(staff.height>0 && staff.y>=0 && staff.y+staff.height<=height,`${width}: intro staff fits`);
+    assert.ok(staff.height>0 && staff.y>=panel.y && staff.y+staff.height<=panel.y+panel.height+1,`${width}: intro staff fits the panel`);
     await intro.close();
   }
 } finally {await browser.close();await host.close();}
