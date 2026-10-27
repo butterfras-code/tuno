@@ -161,6 +161,25 @@ try {
   await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
+  // All horn key chords reach the held state, regardless of trigger press order.
+  for (const triggerFirst of [true,false]) {
+    for (let bits=0;bits<8;bits++) {
+      await page.evaluate(()=>window.fixture.start('C4','correct','horn-f'));
+      const valves=['j','k','l'].filter((_,i)=>bits & (1<<i));
+      const keys=triggerFirst ? ['n',...valves] : [...valves,'n'];
+      for (const key of keys) await page.keyboard.down(key);
+      const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
+      assert.equal(await mask(),expected,keys.join('+'));
+      for (const key of [...keys].reverse()) await page.keyboard.up(key);
+      assert.equal(await mask(),'00000000');
+    }
+  }
+  for (const [pitch,keys] of [['D4',['n','j','k']],['Db4',['n','k','l']],['C3',['n','j','l']]]) {
+    await page.evaluate(p=>window.fixture.start(p,'instant','horn-f'),pitch);
+    for (const key of keys) await page.keyboard.down(key);
+    await settle(); assert.equal(await correct(),1,pitch+': '+keys.join('+'));
+    for (const key of [...keys].reverse()) await page.keyboard.up(key);
+  }
   for (const [instrument,pitch] of [['euphonium','Bb2'],['tuba','Bb1']]) {
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
     assert.equal(await page.locator('.fingering-valve').count(),3);
