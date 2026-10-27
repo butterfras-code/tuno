@@ -11,7 +11,13 @@ export function fingeringInput(fingers: readonly FingerPosition[], change: (mask
   const buttons = fingers.map(finger => {
     const button = el('button', 'control fingering-valve'); button.type = 'button';
     button.setAttribute('aria-label', finger.accessibleLabel); button.setAttribute('aria-keyshortcuts', finger.key.toUpperCase());
-    button.append(el('span', 'fingering-label', finger.label), el('kbd', '', finger.key.toUpperCase()));
+    const shape = el('span', 'valve-outline'); shape.setAttribute('aria-hidden', 'true');
+    const moving = el('span', 'valve-moving');
+    const cap = el('span', 'valve-cap', finger.label);
+    moving.append(el('span', 'valve-stem'), cap);
+    shape.append(moving, el('span', 'valve-casing'));
+    button.classList.toggle('fingering-trigger', finger.label === 'T');
+    button.append(shape, el('kbd', '', finger.key.toUpperCase()));
     button.addEventListener('contextmenu', e => e.preventDefault());
     button.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
     button.addEventListener('pointerdown', e => {

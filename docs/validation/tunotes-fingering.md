@@ -17,7 +17,7 @@ Musical keyboard uses the actual tUno piano component and styles extracted from 
 - `src/apps/tunotes/engine/adaptive.ts`: continues observing accuracy, but does not invent a guessed pitch from a valve mask for spelling contrast exercises.
 - `src/apps/tunotes/persistence/store.ts`: snapshot version 5 stores and validates fingering and musical-keyboard observations. Earlier snapshots migrate on read. Older application versions cannot read version 5 backups.
 - `src/apps/tunotes/ui/multiplayer-view.ts`: accepts the shared answer type; its input behavior remains note names.
-- `src/apps/tunotes/styles.css`: Uno234-inspired pad dimensions, teal borders, tinted pressed states, typography, and touch-safe targets; existing shared UI tokens and element helpers are reused.
+- `src/apps/tunotes/styles.css`: simple outlined valve caps, stems, and casings inside fixed touch-safe targets. Held caps move downward and tint; the casing stays still. Horn’s T control uses a compact outlined lever. Reduced motion removes the transition while preserving the pressed position. Existing shared UI tokens and element helpers are reused.
 - `tests/tunotes-fingering.test.ts`, `scripts/notes-fingering-browser-check.mjs`, and `package.json`: unit and browser coverage, with the new browser script included in `test:browser`.
 - Existing adaptive, challenge, and configurator tests now expect migrated snapshot version 5.
 

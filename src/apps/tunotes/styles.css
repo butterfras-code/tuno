@@ -1268,14 +1268,25 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }
 
-/* Uno234 performance pad proportions, outline, typography and held-state language. */
+/* Held instrument controls retain fixed touch targets while the valve caps move. */
 .fingering-method { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; font-size: 14px; }
 .fingering-panel { max-width: 480px; margin: 0 auto; text-align: center; }
 .fingering-input { display: flex; gap: 10px; }
-.fingering-input .fingering-valve { flex: 1; min-width: 0; height: clamp(96px, 16vh, 144px); display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 12px; border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); touch-action: none; }
+.fingering-input .fingering-valve { flex: 1; min-width: 0; height: clamp(96px, 16vh, 144px); display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 4px; border: 0; border-radius: 12px; background: transparent; touch-action: none; }
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-.fingering-input .fingering-valve[aria-pressed=true] { background: #c3dce1; box-shadow: inset 0 -4px var(--color-teal); }
-.fingering-label { font: 800 28px var(--font-heading); }
+#home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
+.valve-outline { position: relative; display: block; flex: 1; width: min(90%, 86px); min-height: 0; color: var(--color-teal); pointer-events: none; }
+.valve-moving { position: absolute; inset: 0; transition: transform 90ms ease-out; }
+.valve-cap { position: absolute; top: 0; left: 0; width: 100%; height: 28px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; background: var(--color-surface); font: 800 20px/1 var(--font-heading); }
+.valve-stem { position: absolute; top: 26px; bottom: 8px; left: calc(50% - 5px); width: 10px; border: 2px solid currentColor; background: var(--color-surface); }
+.valve-casing { position: absolute; bottom: 0; left: 25%; width: 50%; height: 42%; border: 2px solid currentColor; border-radius: 5px 5px 12px 12px; background: var(--color-surface); }
+.fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(12px); }
+.fingering-valve[aria-pressed=true] .valve-cap { background: var(--color-tint); }
+.fingering-input[data-instrument='horn-f'] .fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(6px); }
+.fingering-trigger .valve-outline { flex: none; width: min(70%, 200px); height: 28px; }
+.fingering-trigger .valve-cap { border-radius: 14px; height: 24px; }
+.fingering-trigger .valve-stem, .fingering-trigger .valve-casing { display: none; }
+@media (prefers-reduced-motion: reduce) { .valve-moving { transition: none; } }
 .fingering-valve kbd { font: 500 12px var(--font-body); }
 .fingering-open { margin-top: 8px; }
 .fingering-help { font-size: 12px; margin: 6px 0; }
