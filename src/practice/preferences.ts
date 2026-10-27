@@ -10,7 +10,7 @@ const fields = {
 } as const;
 
 /** Persist preferences only: capture, playback, and pitch evidence always start fresh. */
-export function keepPreferences(store: PracticeStore, storage: PreferenceStorage | undefined) {
+export function keepPreferences(store: PracticeStore, storage: PreferenceStorage | undefined, persist = true) {
   if (!storage) return;
   try {
     const saved: unknown = JSON.parse(storage.getItem(PREFERENCES_KEY) ?? 'null');
@@ -40,6 +40,7 @@ export function keepPreferences(store: PracticeStore, storage: PreferenceStorage
       }
     }
   } catch { /* Invalid or unavailable storage must never prevent practice. */ }
+  if (!persist) return;
   let previous = '';
   return store.subscribe(state => {
     const values = Object.fromEntries(

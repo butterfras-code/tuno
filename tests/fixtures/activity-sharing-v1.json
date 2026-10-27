@@ -1,0 +1,238 @@
+[
+  {
+    "app": "tuno",
+    "url": "https://tuno.cc/tune/?activity=1z.eJyFj7FOw0AQRP9l6i2CMChsl46KBlEhivV5TU7Ye9bdnqMQ5d9RbCxKmpVmRjt6c4EEj3P0M_gCacBNsyNICGoO9lyV0Kr4YXEK-H3xehnKP_eDEIYYvl5TtQ68ChD6FGoBw6tpBmEUqzI8f4OtDgNhVNcMRp9VQbA6tpq1A6_dSMFlVvA9oRzT6c3Sxllq28U5lpgMfHfTxSXaFruOUwI_PRI8mb4kV_DDflUbZY7hCIJnsTKlEn0p29GKewihZglnMFr9jHZbcCXINK2D0t9r9oVh1vzLc_0BrJV8EQ",
+    "value": {
+      "a4": 440,
+      "transposition": 0,
+      "showUno": true,
+      "manualHz": null,
+      "focus": "tuner",
+      "tunerAccuracy": "beginner",
+      "toneNote": 58,
+      "octave": 3,
+      "sustain": true,
+      "toneSound": "rich",
+      "tempo": 96,
+      "meter": "free",
+      "numbered": false,
+      "subdivision": 1,
+      "accent": true,
+      "clickSound": "click",
+      "beatAccents": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  {
+    "app": "tunotes",
+    "url": "https://tuno.cc/notes/?activity=1z.eJxtkk2KGzEQha9i3jYyzBDbC-08_ltkFgOTnemFoi7bmlGXGqnaiTGGHCInzElCtYhDYDZPfFKpX9crXeG8hHOQC-wVh5Q7J7CQIXOBQWDJCfbgYiGDLrUEC39yMRIfCQa987oVuIhjgUF2fKQCu7_Cta6XcCZYyQMZ0I_ecQmJX1KKWrLHeobG7LGbj8uq0rLS0-e6VFpWWi3qhUrrSttKm0qbSttK60q7BZrGoE8pwu6xmcFgq7JTWao8qazmMFirbFS2ao5ySt-_0OU1HNnJkO8NlTRkbf8K531oicVpX3inyzRxvMDARzponpm-Rc3LJxZijTgGpjJ13E6Lhjim3d5Lpx8cv1MdUjjIqcA-3AfSubeUYSCJg___d8aySCKUYbGCQfLidCaz282AXacf-Dp6Tn7__DV5Vt_Jp8nrX9dxoP8ym6O53RqDPEQd8xXHpC6Q0FELg-JTDnyEhWvfhiJ1k3zitsAuHtTV9f34xjjJaCHZcelTFthHgzNlfSSwj7c_rTvOvQ",
+    "value": {
+      "mode": "challenge",
+      "ranges": [
+        {
+          "expansionPools": [
+            [
+              "D4"
+            ],
+            [
+              "G5"
+            ],
+            [
+              "C4"
+            ],
+            [
+              "A5"
+            ],
+            [
+              "B3"
+            ],
+            [
+              "B5"
+            ],
+            [
+              "A3"
+            ],
+            [
+              "C6"
+            ],
+            [
+              "G3"
+            ],
+            [
+              "D6"
+            ],
+            [
+              "F3"
+            ],
+            [
+              "E6"
+            ],
+            [
+              "E3"
+            ],
+            [
+              "F6"
+            ],
+            [
+              "D3"
+            ],
+            [
+              "G6"
+            ]
+          ],
+          "source": {
+            "id": "treble-lines-and-spaces",
+            "name": "Treble — Lines + Spaces",
+            "clef": "treble",
+            "range": [
+              "E4",
+              "F5"
+            ],
+            "content": "lines-and-spaces",
+            "key": {
+              "tonic": {
+                "letter": "C",
+                "accidental": 0,
+                "octave": 4
+              },
+              "fifths": 0,
+              "mode": "major"
+            },
+            "accidentals": "key-only"
+          },
+          "pool": [
+            "E4",
+            "F4",
+            "G4",
+            "A4",
+            "B4",
+            "C5",
+            "D5",
+            "E5",
+            "F5"
+          ],
+          "adaptive": true,
+          "showKeySignature": true
+        }
+      ],
+      "pace": "instant",
+      "intro": false,
+      "rules": {
+        "goal": "timed",
+        "seconds": 60,
+        "scoring": "adjusted"
+      },
+      "format": "turns"
+    }
+  },
+  {
+    "app": "rhythm",
+    "url": "https://tuno.cc/rhythm/?activity=1z.eJy1U8Fu2zAM_Zd32EnFmjQDBt2G7bgGw4adjBwUm46F2ZQq0cmMwP8-0HbcFSiwXXoTRfLhvUfyCleKP3sZYK-IiWpKxCVlDY-xg_14b1CGnsXzST-rIEIVbO3aTAaey7av6DtlybCS-ulPKLFrP8VILjkuCRbJ-UwVDFrP9K11JXXEAosjZV-RJgKf9kFoxQl1fSSnNe9gkCjLC8ToErE0lCnDIDfh8qVPTnzgr57pBnKmlH1g2I3BOZTu2LcuDbDgvjtSyhgNTsQ0d6pC17bh8pM9S-_Fn2kfZMmtmk-JKk-skgs89S4JJRiQPzXSwKBxbQ2zeHX3XLC87lTLWn-LtGl-Hww6crlP6sVWA1GmtsDu_U6zeeAyxJesxGv1FIxTSwocutWHLlRq2iV5UbNj64YfMrT6Jy4uBn7WQecV8pJcjOuwR4NchkTq0TO94jrTgy12Zncw4HmExbQqGfbewFew6Da8gcEvzxppFSbSe_otf4no6DFUvvbloq54MNuDgQxRqS4Oj-YV9O2boj-8Kfru3-gzyG2XXkX58L8o036Oh_EwjgYuRr3PZpCm05bkOMeQZD6Z9XzGP28SZ3I",
+    "value": {
+      "score": {
+        "measures": [
+          {
+            "meter": [
+              4,
+              4
+            ],
+            "notes": [
+              {
+                "id": "m1n1",
+                "kind": "note",
+                "type": "eighth",
+                "dots": 0,
+                "tieNext": false,
+                "timeModification": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "id": "m1n2",
+                "kind": "note",
+                "type": "eighth",
+                "dots": 0,
+                "tieNext": false,
+                "timeModification": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "id": "m1n3",
+                "kind": "note",
+                "type": "eighth",
+                "dots": 0,
+                "tieNext": false,
+                "timeModification": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "id": "m1n4",
+                "kind": "note",
+                "type": "quarter",
+                "dots": 0,
+                "tieNext": false
+              },
+              {
+                "id": "m1n5",
+                "kind": "note",
+                "type": "half",
+                "dots": 0,
+                "tieNext": false
+              }
+            ]
+          }
+        ]
+      },
+      "preferences": {
+        "mode": "write",
+        "generation": {
+          "meters": [
+            "4/4"
+          ],
+          "measures": 2,
+          "ingredients": [
+            "quarter",
+            "eighth",
+            "half",
+            "dotted-quarter",
+            "quarter-rest",
+            "eighth-rest",
+            "half-rest"
+          ],
+          "allowUnintuitiveNotation": false,
+          "ties": false,
+          "syncopation": false
+        },
+        "counting": {
+          "version": 1,
+          "longNotes": true,
+          "dotted": false,
+          "includeRests": true,
+          "showDurationLine": true,
+          "linePlacement": "beside",
+          "internalAppearance": "raised",
+          "restAppearance": "parentheses",
+          "vocabulary": "numbers",
+          "offbeat": "&"
+        },
+        "bpm": 80,
+        "metronome": true,
+        "showCounts": false,
+        "wrapped": false,
+        "playStyle": "tap"
+      }
+    }
+  }
+]

@@ -1,3 +1,8 @@
+import { readActivityLink } from '../../shared/sharing/activity-link.ts';
+import { shareControl, sharedActivityNotice } from '../../shared/sharing/share-control.ts';
+import { notesAdapter } from './sharing.ts';
+import type { ActivityLink } from '../../shared/sharing/activity-link.ts';
+import type { NotesActivity } from './sharing.ts';
 import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
 import { createAreaNavigation } from '../../shared/ui/area-navigation.ts';
@@ -13,7 +18,8 @@ import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { tunotes } from '../../distribution/identity.ts';
 
-export function mountNotes(root: HTMLElement) {
+export function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity> = {kind:'none'}) {
+  if (linked.kind === 'error') { root.append(sharedActivityNotice(linked,notesAdapter)); return () => {}; }
   const home = el('main', 'notes-home');
   home.id = 'home';
   home.tabIndex = -1;
@@ -21,7 +27,7 @@ export function mountNotes(root: HTMLElement) {
   header.append(createAreaNavigation('tunotes'));
   const workspace = el('div', 'notes-workspace');
   const workspaceHeader = el('div', 'notes-workspace-header');
-  const practice = practiceView();
+  const practice = practiceView(linked.kind === 'loaded');
   const practicePanel = el('section'); practicePanel.append(practice.node);
   const challenge = el('section','notes-challenge'); challenge.hidden = true;
   const multiplayerPanel = el('section'); multiplayerPanel.hidden = true;
@@ -29,6 +35,7 @@ export function mountNotes(root: HTMLElement) {
   const navigation = el('nav','focus-navigation'); navigation.setAttribute('aria-label','tuNotes modes');
   const views = [practicePanel,challenge,multiplayerPanel,practice.options];
   let current = 0;
+  let activityIndex = 0;
   const links = ['Practice','Challenge','Multi Player','Options'].map((label,index) => {
     const control = el('button','control',label); control.type = 'button';
     views[index]!.id = `notes-${label.toLowerCase()}`;
@@ -46,10 +53,11 @@ export function mountNotes(root: HTMLElement) {
       views.forEach((view,i) => { view.hidden = i !== index; links[i]!.setAttribute('aria-pressed',String(i === index)); });
       if (index === 2) multiplayer!.enter();
       current = index;
+      if (index !== 3) activityIndex = index;
     });
     navigation.append(control); return control;
   });
-  workspaceHeader.append(navigation);
+  workspaceHeader.append(navigation,shareControl(notesAdapter,() => activityIndex === 2 ? multiplayer!.captureActivity() : practice.captureActivity()));
   const fullscreen = el('button','control notes-fullscreen','Enter fullscreen'); fullscreen.type = 'button';
   fullscreen.hidden = true;
   const fullscreenStatus = el('p','fullscreen-status'); fullscreenStatus.setAttribute('role','status');
@@ -68,11 +76,17 @@ export function mountNotes(root: HTMLElement) {
   prepareOffline(offline, tunotes);
   const footer = createAppFooter({ app: tunotes, status: offline });
   workspace.append(workspaceHeader, ...views);
+  workspaceHeader.prepend(sharedActivityNotice(linked,notesAdapter));
   home.append(header, workspace, footer);
+  if (linked.kind === 'loaded') {
+    const value = linked.value;
+    if (value.mode === 'multiplayer') { links[2]!.click(); multiplayer!.loadActivity(value); }
+    else { if (value.mode === 'challenge') links[1]!.click(); practice.loadActivity(value); }
+  }
   root.append(home);
   const stopFitting = playSurface(home,practice.options);
   const dispose = () => { stopFitting(); document.removeEventListener('fullscreenchange',updateFullscreen); practice.dispose(); multiplayer?.dispose(); };
   const stopWatching = onUnmount(home, dispose);
   return () => { stopWatching(); dispose(); home.remove(); };
 }
-mountNotes(document.querySelector<HTMLElement>('#app')!);
+void readActivityLink(location.href,notesAdapter).then(link => mountNotes(document.querySelector<HTMLElement>('#app')!,link));
