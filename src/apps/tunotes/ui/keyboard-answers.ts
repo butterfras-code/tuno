@@ -24,7 +24,7 @@ export function keyboardAnswers(accept: (answer: KeyboardAnswer, token: PromptTo
     octaveSelect.value=String(octave); down.disabled=octave===0; up.disabled=octave===8;
     piano.keys.forEach((key,i)=>{
       const note=(octave+1)*12+i;
-      key.textContent=noteName(note); key.setAttribute('aria-label',`Answer ${noteName(note)}`);
+      key.setAttribute('aria-label',`Answer ${noteName(note)}`);
       key.disabled=!enabled || locked || note>119;
     });
   }
