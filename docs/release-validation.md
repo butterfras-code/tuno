@@ -8,6 +8,8 @@ A later [tuner investigation](validation/tuner-investigation/README.md) records 
 
 The [tuNotes foundation validation](validation/tunotes-foundation.md) records the later dual-app Stage 0 checks. It does not supersede the historical measurements below.
 
+Current responsive acceptance follows [the responsive design standard](responsive-design.md), including classroom, Chromebook, phone, and provisional Galaxy Z Fold8 profiles. Historical viewport results below are retained as evidence for their original candidate.
+
 ## Candidate and evidence
 
 The build writes shared release/build versions into both HTML formats, exposes them in the footer, and records source revision, working-tree status, and SHA-256 checksums in `dist/release.json`. The hosted download is byte-identical to `dist/portable/tuno.html`. The content-derived build identifier covers app source output, HTML template, service worker, manifest, package version, and app icons.

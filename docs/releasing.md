@@ -4,6 +4,10 @@ Use Node 24.22.1 from `.nvmrc` and the pinned lockfile. Confirm `node --version`
 
 Run `npm run verify` from the repository root. It type-checks, runs unit tests, builds once, verifies checksums/manifest/icon dimensions, and runs Chromium and Firefox integration, offline/update, audio-render, performance, HTTPS and installation-lifecycle checks. A failure stops the command and is recorded in `dist/validation/summary.json`. Physical acceptance is always recorded separately. See [release validation](release-validation.md) for thresholds, measurements and gaps.
 
+## Responsive acceptance
+
+Follow [the responsive design standard](responsive-design.md). Review the shared viewport screenshots and affected activity states. Record physical Chromebook, phone, Galaxy Z Fold8 cover/inner transition, and classroom viewing-distance checks against the candidate build. Automated viewport passes do not complete physical acceptance; unmeasured Fold8 dimensions remain provisional.
+
 ## Outputs
 
 | Path | Purpose |
