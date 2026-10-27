@@ -50,15 +50,16 @@ function observation(v: unknown): Observation {
   const p = object(o.pitch,['letter','accidental','octave']);
   if (!letters.includes(p.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
-  const a = object(o.answer,['letter','accidental','kind','mask','note','matchOctave']);
+  const a = object(o.answer,['letter','accidental','kind','mask','note','matchOctave','instrument']);
   const correct = boolean(o.correct);
   let answer: NoteAnswer;
   if (a.kind === 'fingering') {
-    object(a,['kind','mask']);
-    const config = fingeringFor(presets.find(p => p.id === o.preset)?.instrument, 4);
+    object(a,['kind','mask','instrument']);
+    const instrument = a.instrument === undefined ? undefined : string(a.instrument,40);
+    const config = fingeringFor(instrument ?? presets.find(p => p.id === o.preset)?.instrument, 4);
     const mask = string(a.mask,8);
     if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
-    answer = { kind: 'fingering', mask };
+    answer = { kind: 'fingering', mask, ...(instrument ? {instrument} : {}) };
   } else if (a.kind === 'keyboard') {
     object(a,['kind','note','matchOctave']);
     const note = integer(a.note,12,119);

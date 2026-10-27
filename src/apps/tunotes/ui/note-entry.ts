@@ -34,7 +34,18 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let prompt = '';
   let method = 'names';
   let supported = false;
-  let valveCount: 3 | 4 = 3;
+  const instruments = [
+    { value: 'piano', label: 'Piano', instrument: undefined, valves: 3 as const },
+    { value: 'trumpet-bb', label: 'B♭ Trumpet', instrument: 'trumpet-bb', valves: 3 as const },
+    { value: 'horn-f', label: 'Horn in F (Dbl)', instrument: 'horn-f', valves: 3 as const },
+    { value: 'euphonium-3', label: 'Euphonium – 3V', instrument: 'euphonium', valves: 3 as const },
+    { value: 'euphonium-4', label: 'Euphonium – 4V', instrument: 'euphonium', valves: 4 as const },
+    { value: 'tuba-3', label: 'B♭ Tuba – 3V', instrument: 'tuba', valves: 3 as const },
+    { value: 'tuba-4', label: 'B♭ Tuba – 4V', instrument: 'tuba', valves: 4 as const },
+  ];
+  let selectedInstrument = instruments[0]!;
+  let presetInstrument: string | undefined;
+  let initialized = false;
   let lastUpdate: Parameters<typeof answers.update> | undefined;
   const node = el('div', 'note-entry');
   const interaction = el('section', 'input-workspace');
@@ -42,17 +53,18 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const methodSelector = el('div', 'interaction-selector');
   methodSelector.setAttribute('role', 'group'); methodSelector.setAttribute('aria-label', 'Answer method');
   const methodButtons = new Map<string, HTMLButtonElement>();
-  for (const [value, title] of [['names', 'Note names'], ['keyboard', 'Keyboard'], ['fingering', 'Fingering']] as const) {
+  for (const [value, title] of [['names', 'Note Names'], ['instrument', 'Instrument']] as const) {
     const button = el('button', 'control', title); button.type = 'button';
     button.addEventListener('click', () => {
-      if (method === value) return;
-      reset(); feedback.clear(); dismiss.hidden = true; method = value;
+      const next = value === 'names' ? 'names' : selectedInstrument.instrument ? 'fingering' : 'keyboard';
+      if (method === next) return;
+      reset(); feedback.clear(); dismiss.hidden = true; method = next;
       options.onMethodChange?.(); refreshMethod();
     });
     methodButtons.set(value, button); methodSelector.append(button);
   }
   const interactionBody = el('div', 'interaction-body');
-  const policy = new FingeringPolicy((mask, token) => accept({ kind: 'fingering', mask }, token));
+  const policy = new FingeringPolicy((mask, token) => accept({ kind: 'fingering', mask, instrument: selectedInstrument.instrument }, token));
   let configuration: ReturnType<typeof fingeringFor>;
   let fingers = fingeringInput([], (mask, intentional) => policy.change(mask, intentional));
   const keyboard = keyboardAnswers(accept);
@@ -62,34 +74,52 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
   const fingeringHelp = el('p', 'muted fingering-help');
   const side = el('p','muted horn-side','F side'); side.hidden = true;
-  const valveSelect = el('select','control'); valveSelect.setAttribute('aria-label','Valve configuration');
-  for (const count of [3,4]) { const option = el('option','',`${count} valves`); option.value = String(count); valveSelect.append(option); }
-  valveSelect.hidden = true;
-  valveSelect.addEventListener('change', () => {
-    reset(); feedback.clear(); options.onMethodChange?.();
-    valveCount = valveSelect.value === '4' ? 4 : 3;
+  const instrumentSelect = el('select', 'control'); instrumentSelect.setAttribute('aria-label', 'Instrument');
+  for (const item of instruments) {
+    const option = el('option', '', item.label); option.value = item.value; instrumentSelect.append(option);
+  }
+  instrumentSelect.addEventListener('change', () => {
+    reset(); feedback.clear(); dismiss.hidden = true;
+    selectedInstrument = instruments.find(item => item.value === instrumentSelect.value)!;
+    method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    options.onMethodChange?.();
     if (lastUpdate) update(...lastUpdate);
   });
-  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,valveSelect);
+  const instrumentPicker = el('label', 'instrument-picker');
+  instrumentPicker.append(el('span', '', 'Instrument'), instrumentSelect);
+  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
     answers.node.hidden = active || method === 'keyboard'; fingeringPanel.hidden = !active;
     keyboard.node.hidden = method !== 'keyboard'; keyboard.enable(method === 'keyboard');
-    for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === method));
+    for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' ? 'names' : 'instrument')));
+    instrumentPicker.hidden = method === 'names';
     fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   if (options.fingering) {
-    interactionBody.append(answers.node, fingeringPanel, keyboard.node);
+    interactionBody.append(instrumentPicker, answers.node, fingeringPanel, keyboard.node);
     interaction.append(methodSelector, interactionBody); node.append(interaction);
   } else node.append(answers.node);
 
   function update(...args: Parameters<typeof answers.update>) {
     lastUpdate = args;
     const [preset, token, locked] = args;
-    valveSelect.hidden = !['tuba','euphonium'].includes(preset.instrument ?? '');
-    const config = options.fingering ? fingeringFor(preset.instrument,valveCount) : undefined;
+    if (!initialized || presetInstrument !== preset.instrument) {
+      initialized = true; presetInstrument = preset.instrument;
+      selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? instruments[0]!;
+    }
+    for (const option of instrumentSelect.options) {
+      const item = instruments.find(item => item.value === option.value)!;
+      const chart = fingeringFor(item.instrument, item.valves);
+      option.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
+      option.textContent = item.label + (option.disabled ? ' (outside note range)' : '');
+    }
+    if (instrumentSelect.querySelector<HTMLOptionElement>(`option[value="${selectedInstrument.value}"]`)!.disabled) selectedInstrument = instruments[0]!;
+    instrumentSelect.value = selectedInstrument.value;
+    if (method !== 'names') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
     if (configuration !== config) {
       fingers.reset(); configuration = config;
@@ -106,7 +136,6 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';
     }
-    methodButtons.get('fingering')!.hidden = !supported;
     if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);
     policy.update(token, locked);

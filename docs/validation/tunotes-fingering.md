@@ -1,10 +1,10 @@
 # Musical keyboard and brass fingering input
 
-Practice and single-player Challenge offer Note names, Musical keyboard, and instrument-specific Fingering. Note names remain the default. Fingering supports B♭ trumpet, three- or four-valve B♭ tuba and bass-clef euphonium, and F/B♭ double horn. Tuba and euphonium have a 3 valves / 4 valves selector next to Open. J/K/L (I/O/P for horn) or simultaneous pointer contacts hold valves 1/2/3; semicolon holds valve 4 in four-valve mode; Space or Open explicitly submits no valves. Horn adds a held T thumb pad below the valves, with a live F-side/B♭-side label. The horn rests in F; N holds the trigger to select B♭. Multiplayer retains its existing note-name controls and player keyboard mappings.
+Practice and single-player Challenge offer Note Names and Instrument pills. Note Names remains the default. Instrument contains a dropdown for Piano, B♭ Trumpet, Horn in F (Dbl), Euphonium – 3V/4V, and B♭ Tuba – 3V/4V. The preset instrument is selected initially; students can choose any chart covering the current written-note range. Charts outside that range remain listed but disabled. Fingering supports B♭ trumpet, three- or four-valve B♭ tuba and bass-clef euphonium, and F/B♭ double horn. Tuba and euphonium valve counts are separate Instrument dropdown choices. J/K/L (I/O/P for horn) or simultaneous pointer contacts hold valves 1/2/3; semicolon holds valve 4 in four-valve mode; Space or Open explicitly submits no valves. Horn adds a held T thumb pad below the valves, with a live F-side/B♭-side label. The horn rests in F; N holds the trigger to select B♭. Multiplayer retains its existing note-name controls and player keyboard mappings.
 
-Musical keyboard uses the actual tUno piano component and styles extracted from the Tone view. It grades written pitch class in any octave by default, offers a Match octave checkbox for strict grading, accepts enharmonic keys, and provides octave selection without transposing the instrument to concert pitch. It does not generate audio in tuNotes.
+Musical keyboard uses the actual tUno piano component and styles extracted from the Tone view. It grades written pitch class in any octave by default, offers a Match octave checkbox for strict grading, accepts enharmonic keys, and provides octave selection without transposing the instrument to concert pitch. It does not generate audio in tuNotes. On mobile the tuNotes piano fits eight white keys (C through C) without horizontal scrolling, with narrower black keys and reduced side padding; the Tone keyboard is unchanged.
 
-The lower answer area uses Uno234’s pill selector and rounded input panel, with shared styles in `src/shared/ui/input-workspace.css`. Only available input methods appear; switching pills cancels held input and pending submissions.
+The lower answer area uses Uno234’s pill selector and rounded input panel, with shared styles in `src/shared/ui/input-workspace.css`. Switching pills or instruments cancels held input and pending submissions. The selected instrument is saved with each fingering observation so grading and backup validation use the same chart.
 
 ## Implementation
 
@@ -27,7 +27,7 @@ The lower answer area uses Uno234’s pill selector and rounded input panel, wit
 
 Node 24.22.1, dependencies installed with `npm ci`.
 
-- `npm run check`: 471 tests passed, typecheck and hosted build passed.
+- `npm run check`: 472 tests passed, typecheck and hosted build passed.
 - New fingering browser checks: Chromium and Firefox. Real simultaneous touch contacts are exercised in Chromium through CDP, including valves 2+4. Tests cover fourth-valve scoring and backups for both instruments, repeated held keys, configuration switching, and all 16 held-state combinations. Desktop 1280 px and mobile 360 px layouts have no horizontal overflow and valve targets exceed 44 px.
 - Existing tUno `browser-check.mjs`: passed in hosted and offline modes after keyboard extraction.
 - Existing `notes-input-browser-check.mjs`: passed, including note-name keyboard, pointer, accidental, and touchscreen behavior.

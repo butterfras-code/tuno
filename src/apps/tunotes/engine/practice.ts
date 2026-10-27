@@ -88,11 +88,11 @@ export class Practice {
     if (this.state !== 'running' || !this.matches(token)) return false;
     if ('kind' in answer && answer.kind === 'keyboard' && (!Number.isInteger(answer.note) || answer.note < 12 || answer.note > 119)) return false;
     const now = this.activeMs;
-    const config = fingeringFor(this.preset.instrument, 4);
+    const config = fingeringFor('kind' in answer && answer.kind === 'fingering' ? answer.instrument ?? this.preset.instrument : this.preset.instrument, 4);
     if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
     const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, mask: answer.mask } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, mask: answer.mask, ...(answer.instrument ? {instrument: answer.instrument} : {}) } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
     if (this.adaptive) {
       const previousPool = this.activePreset.pool;
       const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;

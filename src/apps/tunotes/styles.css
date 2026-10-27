@@ -1308,3 +1308,15 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 /* The note-name grid needs the full width to retain 44px touch targets. */
 .note-entry[data-input-method='names'] .input-workspace { padding-inline: 0; }
 .note-entry[data-input-method='names'] .interaction-body { padding-inline: 0; border: 0; box-shadow: inset 0 0 0 1px var(--color-line); }
+.instrument-picker { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+.instrument-picker select { min-width: 0; max-width: 100%; font-size: 14px; }
+@media (max-width: 650px) {
+  .note-entry .input-workspace { padding-inline: 0; }
+  .note-entry .interaction-body { padding-inline: 3px; }
+  .note-entry[data-input-method='names'] .interaction-body { padding-inline: 0; }
+  .keyboard-answers .piano { --white-key-count: 8; grid-template-columns: repeat(8, minmax(0, 1fr)); min-width: 0; width: 100%; height: 116px; gap: 2px; }
+  .keyboard-answers .piano-key--extension { display: none; }
+  .keyboard-answers .piano-key { font-size: 12px; padding: 8px 0; }
+  .keyboard-answers .piano-key--black { width: 7.4%; height: 62%; font-size: 10px; }
+  .keyboard-answers > .control-row { margin: 0 0 6px; }
+}

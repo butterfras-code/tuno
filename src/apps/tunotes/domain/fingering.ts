@@ -12,7 +12,7 @@ export interface FingeringConfiguration {
   /** Existing written chromatic pitch numbers, never concert/transposed pitch. */
   readonly pitches: Readonly<Record<number, readonly FingeringMask[]>>;
 }
-export interface FingeringAnswer { readonly kind: 'fingering'; readonly mask: FingeringMask }
+export interface FingeringAnswer { readonly kind: 'fingering'; readonly mask: FingeringMask; readonly instrument?: string }
 export interface KeyboardAnswer { readonly kind: 'keyboard'; readonly note: number; readonly matchOctave?: boolean }
 export type NoteAnswer = AnswerSpelling | FingeringAnswer | KeyboardAnswer;
 export function validMask(mask: string) { return /^[01]{8}$/.test(mask); }

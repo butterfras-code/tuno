@@ -9,7 +9,14 @@ const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
 const errors = [];
-const chooseMethod = (page, value) => page.getByRole('group', {name:'Answer method',exact:true}).getByRole('button', {name:({names:'Note names',keyboard:'Keyboard',fingering:'Fingering'})[value],exact:true}).click();
+const chooseMethod = async (page, value) => {
+  await page.getByRole('group', {name:'Answer method',exact:true}).getByRole('button', {name:value==='names' ? 'Note Names' : 'Instrument',exact:true}).click();
+  if (value==='names') return;
+  const picker=page.getByRole('combobox',{name:'Instrument',exact:true});
+  if (value==='keyboard') await picker.selectOption('piano');
+  else if (await picker.inputValue()==='piano') await picker.selectOption('trumpet-bb');
+  await picker.blur();
+};
 try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(new URL('/notes/',host.url).href);
@@ -17,8 +24,8 @@ try {
   await chooseMethod(page,'fingering');
   assert.equal(await page.getByRole('button',{name:/^Valve [123]$/}).count(),3);
   const selector = page.getByRole('group', {name:'Answer method',exact:true});
-  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note names','Keyboard','Fingering']);
-  assert.equal(await selector.getByRole('button',{name:'Fingering',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note Names','Instrument']);
+  assert.equal(await selector.getByRole('button',{name:'Instrument',exact:true}).getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('.input-workspace .interaction-body .fingering-panel:visible').count(),1);
 
   await mkdir('dist/validation',{recursive:true});
@@ -49,12 +56,14 @@ try {
     const select=presetPage.getByRole('group',{name:'Answer method',exact:true});
     await chooseMethod(presetPage,id==='flute-starter' ? 'keyboard' : 'fingering');
     if (id==='tuba-starter' || id==='euphonium-starter') {
-      await presetPage.getByLabel('Valve configuration',{exact:true}).selectOption('4');
+      await presetPage.getByRole('combobox',{name:'Instrument',exact:true}).selectOption(id.replace('-starter','-4'));
       assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     }
     if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     if (id==='flute-starter') {
-      assert.equal(await select.getByRole('button',{name:'Fingering',exact:true}).count(),0);
+      assert.equal(await presetPage.getByRole('combobox',{name:'Instrument',exact:true}).locator('option').count(),7);
+      assert.equal(await presetPage.locator('.piano-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+      assert.equal(await presetPage.locator('.piano-key--white:visible').count(),8);
       await presetPage.getByRole('button',{name:/^Answer C[0-9]$/,exact:false}).first().click();
       assert.match(await presetPage.locator('#practice-counts').textContent(),/1 attempts/);
     }
@@ -193,19 +202,19 @@ try {
   // Four-valve setups retain standard alternatives and safely switch while held.
   for (const [instrument,pitch,combined] of [['euphonium','F2','E2'],['tuba','F1','E1']]) {
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
-    const valves=page.getByLabel('Valve configuration',{exact:true});
-    await valves.selectOption('4'); await valves.blur();
+    const valves=page.getByRole('combobox',{name:'Instrument',exact:true});
+    await valves.selectOption(`${instrument}-4`); await valves.blur();
     assert.equal(await page.locator('.fingering-valve').count(),4);
     await page.keyboard.down(';'); assert.equal(await mask(),'00000001');
     await settle(); assert.equal(await correct(),1);
     await page.keyboard.down(';'); await settle(); assert.equal(await attempts(),1);
-    await valves.selectOption('3'); await page.keyboard.up(';'); await settle();
+    await valves.selectOption(`${instrument}-3`); await page.keyboard.up(';'); await settle();
     assert.equal(await mask(),'00000000'); assert.equal(await attempts(),1);
-    await valves.selectOption('4'); await valves.blur();
-    await page.keyboard.down(';'); await valves.selectOption('3'); await settle();
+    await valves.selectOption(`${instrument}-4`); await valves.blur();
+    await page.keyboard.down(';'); await valves.selectOption(`${instrument}-3`); await settle();
     assert.equal(await attempts(),1); await page.keyboard.up(';');
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,combined]);
-    await valves.selectOption('4'); await valves.blur();
+    await valves.selectOption(`${instrument}-4`); await valves.blur();
     await page.keyboard.down('k'); await page.waitForTimeout(70); await page.keyboard.down(';');
     assert.equal(await mask(),'00000101'); await settle(); assert.equal(await correct(),1);
     await page.keyboard.up('k'); await page.keyboard.up(';');
@@ -223,7 +232,7 @@ try {
       await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
       assert.equal(await mask(),'00000000'); await cdp.detach();
     }
-    await valves.selectOption('3');
+    await valves.selectOption(`${instrument}-3`);
   }
   // The shared piano submits once per physical press, including a repeated target.
   await start('C4'); await chooseMethod(page,'keyboard');
@@ -252,6 +261,14 @@ try {
   }
   await chooseMethod(page,'fingering'); await page.keyboard.down('j');
   await chooseMethod(page,'keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
+  await start('C4');
+  await page.getByRole('combobox',{name:'Instrument',exact:true}).selectOption('horn-f');
+  await page.getByRole('combobox',{name:'Instrument',exact:true}).blur();
+  await page.keyboard.down('n'); await settle(); assert.equal(await correct(),1);
+  assert.equal(await page.evaluate(()=>window.fixture.session.last.answer.instrument),'horn-f');
+  await page.getByRole('combobox',{name:'Instrument',exact:true}).selectOption('trumpet-bb');
+  assert.equal(await mask(),'00000000');
+  await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
   assert.deepEqual(errors,[]);
   console.log(`${name}: fingering keyboard, touch, scoring, repeated notes, open, cancellation, and method switching passed`);
 } finally { await browser.close(); await host.close(); }

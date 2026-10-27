@@ -197,3 +197,20 @@ test('fourth-valve scores and saved observations round-trip for both bass-clef i
     store.flush();
   }
 });
+
+test('selected input instrument overrides the preset chart and survives backup export', async () => {
+  const { NotesStore, parseBackup } = await import('../src/apps/tunotes/persistence/store.ts');
+  const preset = presets.find(p => p.id === 'trumpet-bb-starter')!;
+  const session = new Practice(preset, false, () => 0, () => 0, {continueAfter:'instant'});
+  session.pitch = parsePitch('C4');
+  // N alone is valid on double horn, while trumpet has no left-hand trigger bit.
+  session.answer(session.token, {kind:'fingering', mask:'00010000', instrument:'horn-f'});
+  assert.equal(session.correct, 1);
+  const store = new NotesStore();
+  store.update(data=>data.profiles.push({id:'instrument',name:'Instrument',results:[],contexts:[],defaultPresetId:preset.id}));
+  store.observe('instrument',preset,session.last!);
+  assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
+  const invalid = store.export().replaceAll('horn-f','not-an-instrument');
+  assert.throws(()=>parseBackup(invalid),/Invalid fingering observation/);
+  store.flush();
+});
