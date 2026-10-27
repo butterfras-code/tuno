@@ -40,9 +40,9 @@ Capture a detached snapshot when Share is invoked. Later edits must not change t
 
 ### Current exercise and pending settings
 
-Uno234 already separates the displayed exercise from settings pending for New exercise. Share activity captures the displayed score and its captured counting/generation configuration, plus the applicable current performance and presentation settings. Pending changes must not be represented as if they produced the displayed passage.
+Uno234 applies a changed rhythm configuration immediately when the teacher confirms Use preset. This generates a new displayed exercise and clears its previous responses/results; Cancel, ×, and Escape discard the chooser draft. Accepting unchanged settings retains the exercise. A teacher can select UIL II, use it, and share without an additional Next Exercise step.
 
-If pending changes exist, explain in the share UI that the link contains the current exercise and that New exercise applies the pending setup. The first version does not add a second, ambiguous default for sharing a future generated exercise. Existing legacy counting-preferences sharing remains a separate compatibility behavior until explicitly retired.
+Share activity captures the displayed score and its counting/generation configuration, including preset identity and UIL instrument scope, plus applicable current performance and presentation settings. The share summary names the preset. Students open that exact passage with blank responses and keep the shared recipe for Next Exercise. Sharing itself never replaces the sender’s score or responses. Pending counting edits and unapplied chooser drafts remain excluded. Existing legacy counting-preferences sharing remains a separate compatibility behavior.
 
 ## Activity definitions
 
@@ -131,7 +131,7 @@ Existing assignments should remain usable as the suite evolves. When a future ch
 1. From each supported mode, configure an activity, share it, and open it in a fresh browser context. The intended mode, effective settings, and summary match without account creation, preset import, or configurator steps.
 2. Share built-in, saved custom, and unsaved custom tuNotes ranges. Their fixed pools and display settings survive the round trip. Adaptive links work with both existing and absent recipient history without exposing sender history.
 3. Share multiplayer with different ranges per slot and with matching ranges in Head to Head. Slot order, count, format, and rules match; names and profile IDs are absent.
-4. Share an Uno234 passage containing supported rests, ties, dots, and tuplets. Written score and counting preferences match exactly, responses are blank, and Counts/Perform switching retains the passage. Pending settings cannot alter the captured exercise.
+4. Share an Uno234 passage containing supported rests, ties, dots, and tuplets. Written score and counting preferences match exactly, responses are blank, and Counts/Perform switching retains the passage. Use preset immediately applies a changed rhythm setup; sharing then preserves the displayed passage. Pending counting settings remain excluded. The selected preset and UIL scope remain selected for the student’s subsequent exercises.
 5. Open tUno links with audio and microphone inactive. The selected tool and agreed musical settings match, and local volume follows the chosen policy.
 6. Share during gameplay and from results. The sender's attempt is unchanged, and recipients receive a fresh activity without answers, scores, elapsed time, or capture evidence.
 7. Saved settings remain unchanged after load, edits, reload, and exit. Explicit save actions persist only their stated scope. Verify with existing profiles and with unavailable storage.

@@ -82,9 +82,13 @@ test('every rhythm preset shares and restores explicit groupings without changin
         assert.deepEqual(preferences.generation,before,'matching must not mutate settings');
         const activity = new Activity(preferences,generateExercise(preferences.generation,() => 0.5));
         const value = captureRhythm(activity);
+        assert.ok(rhythmAdapter.describe(value).includes(definition.label));
         assert.deepEqual(value.preferences.generation,before);
         assert.deepEqual(activity.exerciseGeneration,before);
         assert.deepEqual(await readActivityLink(await activityUrl(base,rhythmAdapter,value),rhythmAdapter),{kind:'loaded',value});
+        const recipient = new Activity({...defaultPreferences(),...structuredClone(value.preferences)},value.score);
+        recipient.next(() => 0.25);
+        assert.deepEqual(recipient.exerciseGeneration,before,'continued practice retains the shared preset and scope');
       }
     });
   }

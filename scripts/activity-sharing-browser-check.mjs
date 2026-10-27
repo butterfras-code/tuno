@@ -96,7 +96,7 @@ try {
   await rhythmTeacher.goto(new URL('/rhythm/',host.url).href);
   for (const [label,id,scope] of [
     ['Uno4','uno-4'],['Uno5','uno-5'],
-    ['UIL I','uil-1','percussion'],['UIL II','uil-2','percussion'],['UIL III','uil-3','percussion'],
+    ['UIL I','uil-1','percussion'],['UIL II','uil-2','general'],['UIL II','uil-2','percussion'],['UIL III','uil-3','percussion'],
     ['UIL IV','uil-4','general'],['UIL IV','uil-4','percussion'],
   ]) {
     await rhythmTeacher.getByRole('button',{name:'Choose rhythms',exact:true}).click();
@@ -105,12 +105,28 @@ try {
     if (scope) await chooser.getByRole('combobox',{name:'UIL instrument scope',exact:true}).selectOption(scope);
     await chooser.getByRole('button',{name:label,exact:true}).click();
     await chooser.getByRole('button',{name:'Use preset',exact:true}).click();
-    await rhythmTeacher.getByRole('button',{name:'Next Exercise',exact:true}).click();
+    assert.ok((await rhythmTeacher.locator('.exercise-summary').textContent()).includes(`Current exercise: ${label}`));
+    assert.ok(!(await rhythmTeacher.locator('.exercise-summary').textContent()).includes('Pending settings'));
+    const teacherMusic=() => rhythmTeacher.locator('.passage g[data-event]').evaluateAll(nodes => nodes.map(n => [n.dataset.value,n.dataset.kind,n.dataset.dots,n.dataset.start,n.dataset.duration,n.dataset.tieNext,n.dataset.tupletGroup]));
+    const teacherScore=await teacherMusic();
+    const teacherExerciseId=await rhythmTeacher.locator('.passage').getAttribute('data-exercise-id');
     const value=await share(rhythmTeacher,rhythmAdapter);
+    assert.deepEqual(await teacherMusic(),teacherScore,'sharing preserves the teacher score');
+    assert.equal(await rhythmTeacher.locator('.passage').getAttribute('data-exercise-id'),teacherExerciseId);
     assert.equal(value.preferences.generation.teachingPreset.id,id);
     assert.equal(value.preferences.generation.teachingPreset.scope,scope);
     assert.equal(value.preferences.generation.teachingPreset.customized,false);
     const received=await open(rhythmAdapter,value);
+    assert.ok((await received.page.locator('.shared-activity-notice').textContent()).includes(label));
+    await received.page.getByRole('button',{name:'Choose rhythms',exact:true}).click();
+    const recipientChooser=received.page.getByRole('dialog',{name:'Choose rhythms',exact:true});
+    assert.equal(await recipientChooser.getByRole('button',{name:label,exact:true}).getAttribute('aria-pressed'),'true');
+    if (scope) assert.equal(await recipientChooser.getByRole('combobox',{name:'UIL instrument scope',exact:true}).inputValue(),scope);
+    await recipientChooser.getByRole('button',{name:'Cancel',exact:true}).click();
+    await received.page.getByRole('button',{name:'Next Exercise',exact:true}).click();
+    const continued=await share(received.page,rhythmAdapter);
+    assert.deepEqual(continued.preferences.generation,value.preferences.generation,'student continues with the assigned preset');
+    assert.deepEqual(await received.page.evaluate(() => JSON.parse(localStorage.getItem('tuno.rhythm-walk.preferences.v1')).generation),defaultPreferences().generation,'assignment does not overwrite student defaults');
     await received.context.close();
   }
   await rhythmTeacher.close();
