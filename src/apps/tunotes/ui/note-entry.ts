@@ -48,7 +48,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let fingers = fingeringInput([], (mask, intentional) => policy.change(mask, intentional));
   const keyboard = keyboardAnswers(accept);
   const fingeringPanel = el('div', 'fingering-panel'); fingeringPanel.hidden = true;
-  const open = el('button', 'control fingering-open', 'Open (0)'); open.type = 'button';
+  const open = el('button', 'control fingering-open', 'Open (Space)'); open.type = 'button'; open.setAttribute('aria-keyshortcuts','Space');
   open.addEventListener('click', () => policy.open());
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
   const fingeringHelp = el('p', 'muted fingering-help');
@@ -84,15 +84,15 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       const previous = fingers.node;
       fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
         policy.change(mask,intentional);
-        side.textContent = mask[3] === '1' ? 'B♭ side — T held' : 'F side';
+        side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
       });
       previous.replaceWith(fingers.node);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       side.hidden = config?.instrument !== 'horn-f';
       fingeringHelp.textContent = config?.instrument === 'horn-f'
-        ? 'J K L = valves · T = B♭ trigger. Open = F-side open.'
-        : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, choose Open (0).'
-        : 'Hold valves or J K L. For no valves, choose Open (0).';
+        ? 'J K L = valves · N = B♭ trigger. Space = F-side open.'
+        : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
+        : 'Hold valves or J K L. For no valves, press Space.';
     }
     const fingeringOption = methodSelect.querySelector<HTMLOptionElement>('option[value="fingering"]')!;
     fingeringOption.hidden = !supported; fingeringOption.disabled = !supported;
@@ -114,7 +114,18 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     ...answers, node, feedback, status, reset,
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get isFingering() { return supported && method === 'fingering'; },
-    heldKeydown(event: KeyboardEvent) { return supported && method === 'fingering' && fingers.keydown(event); },
+    heldKeydown(event: KeyboardEvent) {
+      if (!supported || method !== 'fingering') return false;
+      // Space is the flashcard Open action even when a valve has focus.
+      // Leave unrelated buttons (Pause, Finish, etc.) their native activation.
+      const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
+      if (event.key === ' ' && (!button || fingeringPanel.contains(button))) {
+        event.preventDefault();
+        if (!event.repeat) policy.open();
+        return true;
+      }
+      return fingers.keydown(event);
+    },
     heldKeyup(event: KeyboardEvent) { fingers.keyup(event); },
     focus() { if (method === 'keyboard') keyboard.focus(); else if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
     update,

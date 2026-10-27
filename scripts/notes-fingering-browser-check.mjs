@@ -102,9 +102,17 @@ try {
   await page.keyboard.up('l'); await settle(); assert.equal(await attempts(),2);
   // Open answers are explicit, including repeated open notes.
   await start('C4'); await settle(); assert.equal(await attempts(),0);
-  await page.getByRole('button',{name:'Open (0)',exact:true}).click();
+  await page.getByRole('button',{name:'Open (Space)',exact:true}).click();
   assert.equal(await correct(),1); await settle(); assert.equal(await attempts(),1);
-  await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),2);
+  await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
+  await page.getByRole('button',{name:'Valve 1',exact:true}).focus();
+  await page.keyboard.down('Space'); assert.equal(await correct(),3);
+  assert.equal(await mask(),'00000000');
+  await page.keyboard.down('Space'); await settle(); assert.equal(await attempts(),3);
+  await page.keyboard.up('Space'); assert.equal(await attempts(),3);
+  await page.keyboard.press('Space'); assert.equal(await correct(),4);
+  await page.getByRole('button',{name:'Open (Space)',exact:true}).focus();
+  await page.keyboard.press('Space'); assert.equal(await correct(),5);
   // Wrong settled combination retains existing correct-only feedback and score.
   await start('E4','correct'); await page.keyboard.down('j'); await settle();
   assert.equal(await attempts(),1); assert.equal(await correct(),0);
@@ -146,17 +154,17 @@ try {
   await page.evaluate(()=>window.fixture.start('C4','instant','horn-f'));
   await method.selectOption('fingering'); await method.blur();
   assert.equal(await page.locator('.fingering-valve').count(),4);
-  await page.keyboard.down('t'); assert.equal(await mask(),'00010000');
+  await page.keyboard.down('n'); assert.equal(await mask(),'00010000');
   await settle(); assert.equal(await correct(),1);
   assert.match(await page.locator('.horn-side').textContent(),/B♭ side/);
   await settle(); assert.equal(await attempts(),1);
-  await page.keyboard.up('t'); await settle(); assert.equal(await attempts(),1);
-  await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),2);
+  await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
+  await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
   for (const [instrument,pitch] of [['euphonium','Bb2'],['tuba','Bb1']]) {
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
     assert.equal(await page.locator('.fingering-valve').count(),3);
-    await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),1);
+    await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),1);
   }
   // Four-valve setups retain standard alternatives and safely switch while held.
   for (const [instrument,pitch,combined] of [['euphonium','F2','E2'],['tuba','F1','E1']]) {

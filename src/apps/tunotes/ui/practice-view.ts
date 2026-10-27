@@ -292,7 +292,7 @@ export function practiceView() {
   startButton.classList.add('control--primary'); setupUI.action(startButton);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));
   const keyboardHelp = el('details', 'practice-help');
-  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Fingering: hold J/K/L for valves 1/2/3, or choose Open (0). Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
+  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Fingering: hold J/K/L for valves 1/2/3, Space = Open, N = horn trigger. Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
   play.append(heading, counts, scene.node, staff, feedback, answers.node, controls);
   const resultControls = el('div', 'control-row result-controls');

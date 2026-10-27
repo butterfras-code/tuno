@@ -96,7 +96,7 @@ export const hornFingering: FingeringConfiguration = {
     { position: 0, label: '1', accessibleLabel: 'Valve 1', key: 'j' },
     { position: 1, label: '2', accessibleLabel: 'Valve 2', key: 'k' },
     { position: 2, label: '3', accessibleLabel: 'Valve 3', key: 'l' },
-    { position: 3, label: 'T', accessibleLabel: 'Thumb trigger — B♭ side', key: 't' },
+    { position: 3, label: 'T', accessibleLabel: 'Thumb trigger — B♭ side', key: 'n' },
   ],
   pitches: Object.fromEntries(hornChart.map((choices,i) => [36+i, choices.map(choice =>
     `${choice.includes('1') ? 1 : 0}${choice.includes('2') ? 1 : 0}${choice.includes('3') ? 1 : 0}${choice.includes('T') ? 1 : 0}0000`)])),
