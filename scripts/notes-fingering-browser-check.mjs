@@ -9,12 +9,18 @@ const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
 const errors = [];
+const chooseMethod = (page, value) => page.getByRole('group', {name:'Answer method',exact:true}).getByRole('button', {name:({names:'Note names',keyboard:'Keyboard',fingering:'Fingering'})[value],exact:true}).click();
 try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(new URL('/notes/',host.url).href);
   await choosePreset(page,'trumpet-bb-starter'); await startPractice(page);
-  await page.getByLabel('Answer method',{exact:true}).selectOption('fingering');
+  await chooseMethod(page,'fingering');
   assert.equal(await page.getByRole('button',{name:/^Valve [123]$/}).count(),3);
+  const selector = page.getByRole('group', {name:'Answer method',exact:true});
+  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note names','Keyboard','Fingering']);
+  assert.equal(await selector.getByRole('button',{name:'Fingering',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('.input-workspace .interaction-body .fingering-panel:visible').count(),1);
+
   await mkdir('dist/validation',{recursive:true});
   for (const width of [1280,360]) {
     await page.setViewportSize({width,height:800});
@@ -28,7 +34,7 @@ try {
   assert.match(await page.locator('#practice-counts').textContent(), /1 attempts/);
   await page.waitForTimeout(500);
   assert.match(await page.locator('#practice-counts').textContent(), /1 attempts/);
-  await page.getByLabel('Answer method',{exact:true}).selectOption('names');
+  await chooseMethod(page,'names');
   await page.keyboard.up('j');
   assert.equal(await page.locator('.answer:visible').count(),18);
   await page.keyboard.press('c');
@@ -40,15 +46,15 @@ try {
     presetPage.on('pageerror',e=>errors.push(e.message));
     await presetPage.goto(new URL('/notes/',host.url).href);
     await choosePreset(presetPage,id); await startPractice(presetPage);
-    const select=presetPage.getByLabel('Answer method',{exact:true});
-    await select.selectOption(id==='flute-starter' ? 'keyboard' : 'fingering');
+    const select=presetPage.getByRole('group',{name:'Answer method',exact:true});
+    await chooseMethod(presetPage,id==='flute-starter' ? 'keyboard' : 'fingering');
     if (id==='tuba-starter' || id==='euphonium-starter') {
       await presetPage.getByLabel('Valve configuration',{exact:true}).selectOption('4');
       assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     }
     if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     if (id==='flute-starter') {
-      assert.equal(await select.locator('option[value="fingering"]').evaluate(o=>o.disabled),true);
+      assert.equal(await select.getByRole('button',{name:'Fingering',exact:true}).count(),0);
       await presetPage.getByRole('button',{name:/^Answer C[0-9]$/,exact:false}).first().click();
       assert.match(await presetPage.locator('#practice-counts').textContent(),/1 attempts/);
     }
@@ -84,8 +90,7 @@ try {
     window.fixture.start();
   `,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife'});
   await page.addScriptTag({content:fixture.outputFiles[0].text});
-  const method = page.getByLabel('Answer method',{exact:true});
-  await method.selectOption('fingering'); await method.blur();
+  await chooseMethod(page,'fingering');
   const start = async (pitch='E4',pace='instant') => { await page.evaluate(([p,s])=>window.fixture.start(p,s),[pitch,pace]); };
   const attempts = () => page.evaluate(()=>window.fixture.session.attempts);
   const correct = () => page.evaluate(()=>window.fixture.session.correct);
@@ -122,8 +127,8 @@ try {
   await start(); await page.keyboard.down('j');
   await page.evaluate(()=>window.dispatchEvent(new Event('blur'))); await settle();
   assert.equal(await attempts(),0); assert.equal(await mask(),'00000000'); await page.keyboard.up('j');
-  await page.keyboard.down('j'); await method.selectOption('names');
-  await method.selectOption('fingering'); await method.blur();
+  await page.keyboard.down('j'); await chooseMethod(page,'names');
+  await chooseMethod(page,'fingering');
   await page.keyboard.down('j'); await settle(); assert.equal(await attempts(),0);
   await page.keyboard.up('j');
   // Native mouse pointer capture and cancellation.
@@ -152,7 +157,7 @@ try {
   }
   // Horn trigger is an independent held thumb bit; F and B-flat sides share written pitch.
   await page.evaluate(()=>window.fixture.start('C4','instant','horn-f'));
-  await method.selectOption('fingering'); await method.blur();
+  await chooseMethod(page,'fingering');
   assert.equal(await page.locator('.fingering-valve').count(),4);
   await page.keyboard.down('n'); assert.equal(await mask(),'00010000');
   await settle(); assert.equal(await correct(),1);
@@ -221,7 +226,7 @@ try {
     await valves.selectOption('3');
   }
   // The shared piano submits once per physical press, including a repeated target.
-  await start('C4'); await method.selectOption('keyboard'); await method.blur();
+  await start('C4'); await chooseMethod(page,'keyboard');
   const c4=page.getByRole('button',{name:'Answer C4',exact:true});
   await c4.click(); assert.equal(await correct(),1); assert.equal(await attempts(),1);
   await c4.focus(); await page.keyboard.down('Enter'); assert.equal(await correct(),2);
@@ -245,8 +250,8 @@ try {
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:`dist/validation/notes-keyboard-${name}-${width}.png`});
   }
-  await method.selectOption('fingering'); await page.keyboard.down('j');
-  await method.selectOption('keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
+  await chooseMethod(page,'fingering'); await page.keyboard.down('j');
+  await chooseMethod(page,'keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
   assert.deepEqual(errors,[]);
   console.log(`${name}: fingering keyboard, touch, scoring, repeated notes, open, cancellation, and method switching passed`);
 } finally { await browser.close(); await host.close(); }

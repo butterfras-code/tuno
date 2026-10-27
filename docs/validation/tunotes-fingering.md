@@ -4,6 +4,8 @@ Practice and single-player Challenge offer Note names, Musical keyboard, and ins
 
 Musical keyboard uses the actual tUno piano component and styles extracted from the Tone view. It grades written pitch class in any octave by default, offers a Match octave checkbox for strict grading, accepts enharmonic keys, and provides octave selection without transposing the instrument to concert pitch. It does not generate audio in tuNotes.
 
+The lower answer area uses Uno234’s pill selector and rounded input panel, with shared styles in `src/shared/ui/input-workspace.css`. Only available input methods appear; switching pills cancels held input and pending submissions.
+
 ## Implementation
 
 - `src/apps/tunotes/domain/fingering.ts`: instrument configuration, written-pitch validation, answer union, and charts including alternates: trumpet F♯3–C6, euphonium E2–B♭4, B♭ tuba E1–B♭3, and double horn C2–G5. Chart source: [Yamaha trumpet fingering chart](https://www.yamaha.com/en/musical_instrument_guide/common/images/trumpet/fingering.pdf). Low-brass charts are cross-checked against [Micah Everett](https://olemiss.edu/lowbrass/studio/fingeringcharts/euphbcfingering.pdf) and [Yamaha tuba](https://www.yamaha.com/en/musical_instrument_guide/tuba/play/play002.html); horn uses [Colin Dorman’s double-horn chart](https://colindorman.com/french-horn-exercises/fingering_charts/). Chromatic numbers come from the existing written-pitch model; there is no concert-pitch conversion or reverse lookup from masks.
@@ -31,6 +33,7 @@ Node 24.22.1, dependencies installed with `npm ci`.
 - Existing `notes-input-browser-check.mjs`: passed, including note-name keyboard, pointer, accidental, and touchscreen behavior.
 - Existing `notes-challenge-browser-check.mjs`: passed, including hosted/offline gating, scoring, countdowns, navigation, and responsive layout.
 - Existing `notes-multiplayer-browser-check.mjs`: passed, including hosted/offline rosters, independent keyboard lanes, concurrent touch, and responsive layouts.
+- Shared input-panel update: Uno234 `counting-plan-browser-check.mjs` passed; tuNotes pill switching and available-method coverage passed in Chromium and Firefox. Note names retain 44px touch targets.
 - `git diff --check`: passed.
 - Existing `notes-browser-check.mjs`: fails at line 68, expecting two attempts after a second intentional click in Normal (instant advancement) mode. The same assertion fails on an untouched HEAD archive, confirming a pre-existing test expectation mismatch.
 

@@ -54,7 +54,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     // entire surface still fits, with the multiplayer warning left actionable.
     const minWidth = head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
     const physicalInput = Boolean(stage.querySelector('.note-entry[data-input-method="fingering"], .note-entry[data-input-method="keyboard"]'));
-    const minHeight = head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 640 : 540 : stage.classList.contains('challenge-active') ? 600 : 560;
+    const minHeight = head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 710 : multiplayer ? 540 : 580 : stage.classList.contains('challenge-active') ? 600 : 560;
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));

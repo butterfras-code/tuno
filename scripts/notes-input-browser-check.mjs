@@ -110,7 +110,8 @@ try {
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:950});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
-    assert.ok(await page.locator('.answer:visible').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
+    const sizes = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.width,r.height]; }));
+    assert.ok(sizes.every(([w,h])=>w>=44 && h>=44), JSON.stringify({width,sizes}));
     await page.screenshot({path:`dist/validation/notes-input-${name}-${width}.png`,fullPage:true});
   }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click();

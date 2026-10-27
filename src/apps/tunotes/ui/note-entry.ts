@@ -37,12 +37,21 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let valveCount: 3 | 4 = 3;
   let lastUpdate: Parameters<typeof answers.update> | undefined;
   const node = el('div', 'note-entry');
-  const methodLabel = el('label', 'fingering-method');
-  const methodSelect = el('select', 'control'); methodSelect.setAttribute('aria-label', 'Answer method');
-  for (const [value, title] of [['names', 'Note names'], ['keyboard', 'Musical keyboard'], ['fingering', 'Fingering']]) {
-    const option = el('option', '', title); option.value = value!; methodSelect.append(option);
+  const interaction = el('section', 'input-workspace');
+  interaction.setAttribute('aria-label', 'Note answer input');
+  const methodSelector = el('div', 'interaction-selector');
+  methodSelector.setAttribute('role', 'group'); methodSelector.setAttribute('aria-label', 'Answer method');
+  const methodButtons = new Map<string, HTMLButtonElement>();
+  for (const [value, title] of [['names', 'Note names'], ['keyboard', 'Keyboard'], ['fingering', 'Fingering']] as const) {
+    const button = el('button', 'control', title); button.type = 'button';
+    button.addEventListener('click', () => {
+      if (method === value) return;
+      reset(); feedback.clear(); dismiss.hidden = true; method = value;
+      options.onMethodChange?.(); refreshMethod();
+    });
+    methodButtons.set(value, button); methodSelector.append(button);
   }
-  methodLabel.append(document.createTextNode('Answer method '), methodSelect); methodLabel.hidden = true;
+  const interactionBody = el('div', 'interaction-body');
   const policy = new FingeringPolicy((mask, token) => accept({ kind: 'fingering', mask }, token));
   let configuration: ReturnType<typeof fingeringFor>;
   let fingers = fingeringInput([], (mask, intentional) => policy.change(mask, intentional));
@@ -68,10 +77,13 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     const active = supported && method === 'fingering';
     answers.node.hidden = active || method === 'keyboard'; fingeringPanel.hidden = !active;
     keyboard.node.hidden = method !== 'keyboard'; keyboard.enable(method === 'keyboard');
+    for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === method));
     fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
   };
-  methodSelect.addEventListener('change', () => { reset(); feedback.clear(); dismiss.hidden = true; method = methodSelect.value; options.onMethodChange?.(); refreshMethod(); });
-  node.append(methodLabel, answers.node, fingeringPanel, keyboard.node);
+  if (options.fingering) {
+    interactionBody.append(answers.node, fingeringPanel, keyboard.node);
+    interaction.append(methodSelector, interactionBody); node.append(interaction);
+  } else node.append(answers.node);
 
   function update(...args: Parameters<typeof answers.update>) {
     lastUpdate = args;
@@ -94,10 +106,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';
     }
-    const fingeringOption = methodSelect.querySelector<HTMLOptionElement>('option[value="fingering"]')!;
-    fingeringOption.hidden = !supported; fingeringOption.disabled = !supported;
-    if (!supported && method === 'fingering') { method = 'names'; methodSelect.value = method; }
-    methodLabel.hidden = !options.fingering;
+    methodButtons.get('fingering')!.hidden = !supported;
+    if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);
     policy.update(token, locked);
     open.disabled = locked;
