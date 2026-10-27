@@ -307,6 +307,7 @@ export function practiceView() {
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
+    if (answers.isMusicalKeyboard) return;
     if (answers.isFingering) { if (session.state !== 'paused') answers.heldKeydown(event); return; }
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); if (fresh) arrows.add(event.key); showModifier(); return; }
     const letter = event.key.toUpperCase();

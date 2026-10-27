@@ -103,3 +103,44 @@ test('saved profiles and backups round-trip fingering observations and migrate o
   const observation = Object.values(invalid.profiles[0].contexts[0].notes)[0] as {answer:{mask:string}}[];
   observation[0]!.answer.mask = '1000'; assert.throws(()=>validateSnapshot(invalid));
 });
+
+test('additional brass charts cover every preset and adaptive expansion in written pitch', async () => {
+  const { fingeringFor } = await import('../src/apps/tunotes/domain/fingering.ts');
+  for (const instrument of ['horn-f','tuba','euphonium']) {
+    const config = fingeringFor(instrument)!;
+    for (const preset of presets.filter(p=>p.instrument===instrument)) {
+      for (const pitch of [...preset.pool,...expansionPlan(preset).flat()]) {
+        const masks = config.pitches[chromatic(pitch)];
+        assert.ok(masks?.length,`${instrument}: ${JSON.stringify(pitch)}`);
+        assert.ok(masks.every(mask=>validMask(mask) && [...mask].every((bit,i)=>bit==='0' || config.fingers.some(f=>f.position===i))));
+      }
+    }
+  }
+  const tuba=fingeringFor('tuba')!, euph=fingeringFor('euphonium')!, horn=fingeringFor('horn-f')!;
+  assert.ok(acceptsFingering(tuba,parsePitch('Bb1'),OPEN_FINGERING));
+  assert.ok(acceptsFingering(euph,parsePitch('Bb2'),OPEN_FINGERING));
+  assert.ok(!acceptsFingering(euph,parsePitch('C3'),OPEN_FINGERING));
+  assert.ok(acceptsFingering(euph,parsePitch('C3'),'00001010'));
+  assert.ok(acceptsFingering(horn,parsePitch('C4'),OPEN_FINGERING));
+  assert.ok(acceptsFingering(horn,parsePitch('C4'),'00010000'));
+  assert.ok(acceptsFingering(horn,parsePitch('Ab4'),'01110000'));
+  assert.ok(acceptsFingering(horn,parsePitch('Ab4'),'01100000'));
+  assert.ok(acceptsFingering(horn,parsePitch('Db2'),'01110000'));
+  assert.ok(!acceptsFingering(horn,parsePitch('Db2'),'01100000'));
+});
+
+test('musical keyboard grades written chromatic pitch, octave and enharmonics, and stores answers', async () => {
+  const { NotesStore,parseBackup }=await import('../src/apps/tunotes/persistence/store.ts');
+  const preset=normalizePreset({id:'keyboard-test',name:'C sharp',instrument:'trumpet-bb',clef:'treble',range:['C#4','C#4'],exactRange:true,content:'lines-and-spaces'});
+  const s=new Practice(preset,false,()=>0,Math.random,{continueAfter:'instant'});
+  s.answer(s.token,{kind:'keyboard',note:49}); assert.equal(s.correct,0);
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:59}); assert.equal(s.correct,0); // concert pitch is wrong
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:61}); assert.equal(s.correct,1);
+  const builtIn=presets.find(p=>p.id==='trumpet-bb-starter')!;
+  const stored=new Practice(builtIn); stored.answer(stored.token,{kind:'keyboard',note:chromatic(stored.pitch)});
+  const store=new NotesStore();
+  store.update(data=>data.profiles.push({id:'piano',name:'Piano',results:[],contexts:[],defaultPresetId:builtIn.id}));
+  store.observe('piano',builtIn,stored.last!);
+  assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
+  store.flush();
+});

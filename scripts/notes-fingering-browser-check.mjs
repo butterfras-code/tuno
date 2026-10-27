@@ -34,10 +34,33 @@ try {
   await page.keyboard.press('c');
   assert.match(await page.locator('#practice-counts').textContent(), /2 attempts/);
 
+  // Exercise real preset selection and responsive staff/input composition.
+  for (const id of ['horn-f-starter','tuba-starter','euphonium-starter','flute-starter']) {
+    const presetPage=await browser.newPage({viewport:{width:360,height:800}});
+    presetPage.on('pageerror',e=>errors.push(e.message));
+    await presetPage.goto(new URL('/notes/',host.url).href);
+    await choosePreset(presetPage,id); await startPractice(presetPage);
+    const select=presetPage.getByLabel('Answer method',{exact:true});
+    await select.selectOption(id==='flute-starter' ? 'keyboard' : 'fingering');
+    if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
+    if (id==='flute-starter') {
+      assert.equal(await select.locator('option[value="fingering"]').evaluate(o=>o.disabled),true);
+      await presetPage.getByRole('button',{name:/^Answer C[0-9]$/,exact:false}).first().click();
+      assert.match(await presetPage.locator('#practice-counts').textContent(),/1 attempts/);
+    }
+    assert.ok(await presetPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    const finish=await presetPage.getByRole('button',{name:'Finish',exact:true}).boundingBox();
+    await presetPage.screenshot({path:`dist/validation/notes-layout-${id}-${name}.png`,fullPage:true});
+    assert.ok(finish && finish.y+finish.height<=800,`${id}: Finish must remain onscreen ${JSON.stringify(finish)}`);
+    await presetPage.screenshot({path:`dist/validation/notes-input-${id}-${name}.png`,fullPage:true});
+    await presetPage.close();
+  }
+
   // Deterministic fixture uses the production entry surface and scoring engine.
   // Fixed pitches expose repeated-card, held-state, and correct-only edge cases.
   const fixture = await build({stdin:{contents:`
     import { noteEntry } from './src/apps/tunotes/ui/note-entry.ts';
+    import { parsePitch } from './src/apps/tunotes/domain/notation.ts';
     import { Practice } from './src/apps/tunotes/engine/practice.ts';
     import { normalizePreset } from './src/apps/tunotes/domain/presets.ts';
     const preset = normalizePreset({id:'fixture',name:'E4',instrument:'trumpet-bb',clef:'treble',range:['E4','E4'],content:'lines-and-spaces'});
@@ -47,8 +70,8 @@ try {
       entry.respond(session,{treat:false,text:''}); render();
     },{fingering:true,guidance:()=>false,showKeySignature:()=>false,disableGuidance:()=>{}});
     function render(){entry.update(session.preset,session.token,session.state!=='running');}
-    window.fixture = {entry, get session(){return session;}, start(pitch='E4',pace='instant'){
-      entry.reset(); session = new Practice({...preset,pool:[{...preset.pool[0],letter:pitch[0],octave:Number(pitch[1])}]},false,()=>performance.now(),Math.random,{continueAfter:pace}); render();
+    window.fixture = {entry, get session(){return session;}, start(pitch='E4',pace='instant',instrument='trumpet-bb'){
+      entry.reset(); session = new Practice({...preset,instrument,pool:[parsePitch(pitch)]},false,()=>performance.now(),Math.random,{continueAfter:pace}); render();
     }};
     document.body.replaceChildren(entry.node,entry.status);
     document.addEventListener('keydown',e=>{if(!e.target.closest('select')) entry.heldKeydown(e);});
@@ -115,6 +138,41 @@ try {
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await cdp.detach();
   }
+  // Horn trigger is an independent held thumb bit; F and B-flat sides share written pitch.
+  await page.evaluate(()=>window.fixture.start('C4','instant','horn-f'));
+  await method.selectOption('fingering'); await method.blur();
+  assert.equal(await page.locator('.fingering-valve').count(),4);
+  await page.keyboard.down('t'); assert.equal(await mask(),'00010000');
+  await settle(); assert.equal(await correct(),1);
+  assert.match(await page.locator('.horn-side').textContent(),/B♭ side/);
+  await settle(); assert.equal(await attempts(),1);
+  await page.keyboard.up('t'); await settle(); assert.equal(await attempts(),1);
+  await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),2);
+  await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
+  for (const [instrument,pitch] of [['euphonium','Bb2'],['tuba','Bb1']]) {
+    await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
+    assert.equal(await page.locator('.fingering-valve').count(),3);
+    await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),1);
+  }
+  // The shared piano submits once per physical press, including a repeated target.
+  await start('C4'); await method.selectOption('keyboard'); await method.blur();
+  const c4=page.getByRole('button',{name:'Answer C4',exact:true});
+  await c4.click(); assert.equal(await correct(),1); assert.equal(await attempts(),1);
+  await c4.focus(); await page.keyboard.down('Enter'); assert.equal(await correct(),2);
+  await page.keyboard.down('Enter'); await settle(); assert.equal(await attempts(),2);
+  await page.keyboard.up('Enter');
+  await page.keyboard.press('Space'); assert.equal(await correct(),3);
+  await page.getByRole('button',{name:'+ Octave',exact:true}).click();
+  await page.getByRole('button',{name:'Answer C5',exact:true}).click();
+  assert.equal(await attempts(),4); assert.equal(await correct(),3);
+  await start('Db4'); await page.getByRole('button',{name:'Answer C♯4',exact:true}).click(); assert.equal(await correct(),1);
+  for (const width of [1280,360]) {
+    await page.setViewportSize({width,height:800});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:`dist/validation/notes-keyboard-${name}-${width}.png`});
+  }
+  await method.selectOption('fingering'); await page.keyboard.down('j');
+  await method.selectOption('keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
   assert.deepEqual(errors,[]);
   console.log(`${name}: fingering keyboard, touch, scoring, repeated notes, open, cancellation, and method switching passed`);
 } finally { await browser.close(); await host.close(); }

@@ -53,7 +53,8 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     // The staff flexes above the reserved answer rows. Below these sizes the
     // entire surface still fits, with the multiplayer warning left actionable.
     const minWidth = head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
-    const minHeight = head ? portrait ? 1120 : 600 : short ? 280 : compact ? 540 : stage.classList.contains('challenge-active') ? 600 : 560;
+    const physicalInput = Boolean(stage.querySelector('.note-entry[data-input-method="fingering"], .note-entry[data-input-method="keyboard"]'));
+    const minHeight = head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 640 : 540 : stage.classList.contains('challenge-active') ? 600 : 560;
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));
@@ -76,7 +77,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       ? record.target instanceof Element && record.target.matches('.multiplayer-panels')
       : record.oldValue !== (record.target as Element).getAttribute(record.attributeName!))) schedule();
   });
-  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen']});
+  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen','data-input-method']});
   window.addEventListener('resize',schedule);
   document.fonts.ready.then(schedule);
   schedule();

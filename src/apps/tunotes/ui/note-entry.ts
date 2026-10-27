@@ -1,6 +1,7 @@
+import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { FingeringPolicy } from '../engine/fingering-policy.ts';
-import { fingeringFor, trumpetFingering } from '../domain/fingering.ts';
+import { fingeringFor } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { chromatic } from '../domain/notation.ts';
 import { el } from '../../../shared/ui/components.ts';
@@ -36,39 +37,64 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const node = el('div', 'note-entry');
   const methodLabel = el('label', 'fingering-method');
   const methodSelect = el('select', 'control'); methodSelect.setAttribute('aria-label', 'Answer method');
-  for (const [value, title] of [['names', 'Note names'], ['fingering', 'Fingering']]) {
+  for (const [value, title] of [['names', 'Note names'], ['keyboard', 'Musical keyboard'], ['fingering', 'Fingering']]) {
     const option = el('option', '', title); option.value = value!; methodSelect.append(option);
   }
   methodLabel.append(document.createTextNode('Answer method '), methodSelect); methodLabel.hidden = true;
   const policy = new FingeringPolicy((mask, token) => accept({ kind: 'fingering', mask }, token));
-  const fingers = fingeringInput(trumpetFingering.fingers, (mask, intentional) => policy.change(mask, intentional));
+  let configuration: ReturnType<typeof fingeringFor>;
+  let fingers = fingeringInput([], (mask, intentional) => policy.change(mask, intentional));
+  const keyboard = keyboardAnswers(accept);
   const fingeringPanel = el('div', 'fingering-panel'); fingeringPanel.hidden = true;
   const open = el('button', 'control fingering-open', 'Open (0)'); open.type = 'button';
   open.addEventListener('click', () => policy.open());
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
-  fingeringPanel.append(fingers.node, open, el('p', 'muted fingering-help', 'Hold valves or J K L. For no valves, choose Open (0).'));
-  const reset = () => { answers.reset(); fingers.reset(); policy.cancel(); };
+  const fingeringHelp = el('p', 'muted fingering-help');
+  const side = el('p','muted horn-side','F side'); side.hidden = true;
+  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open);
+  fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
+  const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
-    answers.node.hidden = active; fingeringPanel.hidden = !active;
-    fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : 'names';
+    answers.node.hidden = active || method === 'keyboard'; fingeringPanel.hidden = !active;
+    keyboard.node.hidden = method !== 'keyboard'; keyboard.enable(method === 'keyboard');
+    fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   methodSelect.addEventListener('change', () => { reset(); feedback.clear(); dismiss.hidden = true; method = methodSelect.value; options.onMethodChange?.(); refreshMethod(); });
-  node.append(methodLabel, answers.node, fingeringPanel);
+  node.append(methodLabel, answers.node, fingeringPanel, keyboard.node);
 
   // Keep controls and their live announcement together in every mode.
   node.append(feedback.node);
   return {
     ...answers, node, feedback, status, reset,
+    get isMusicalKeyboard() { return method === 'keyboard'; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) { return supported && method === 'fingering' && fingers.keydown(event); },
     heldKeyup(event: KeyboardEvent) { fingers.keyup(event); },
-    focus() { if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
+    focus() { if (method === 'keyboard') keyboard.focus(); else if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
     update(...args: Parameters<typeof answers.update>) {
       const [preset, token, locked] = args;
       const config = options.fingering ? fingeringFor(preset.instrument) : undefined;
       supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
-      methodLabel.hidden = !supported;
+      if (configuration !== config) {
+        fingers.reset(); configuration = config;
+        const previous = fingers.node;
+        fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
+          policy.change(mask,intentional);
+          side.textContent = mask[3] === '1' ? 'B♭ side — T held' : 'F side';
+        });
+        previous.replaceWith(fingers.node);
+        fingers.node.dataset.instrument = config?.instrument ?? '';
+        side.hidden = config?.instrument !== 'horn-f';
+        fingeringHelp.textContent = config?.instrument === 'horn-f'
+          ? 'J K L = valves · T = B♭ trigger. Open = F-side open.'
+          : 'Hold valves or J K L. For no valves, choose Open (0).';
+      }
+      const fingeringOption = methodSelect.querySelector<HTMLOptionElement>('option[value="fingering"]')!;
+      fingeringOption.hidden = !supported; fingeringOption.disabled = !supported;
+      if (!supported && method === 'fingering') { method = 'names'; methodSelect.value = method; }
+      methodLabel.hidden = !options.fingering;
+      keyboard.update(token,locked,preset.pool[0]!.octave);
       policy.update(token, locked);
       open.disabled = locked;
       refreshMethod();
@@ -82,14 +108,14 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       statusText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';
     },
     focusedKey(event: KeyboardEvent, fresh: boolean) {
-      if (supported && method === 'fingering') return false;
+      if (method === 'keyboard' || supported && method === 'fingering') return false;
       if ((event.key !== 'Enter' && event.key !== ' ') || !answers.buttons.includes(event.target as HTMLButtonElement)) return false;
       event.preventDefault();
       if (fresh) answers.focused(event.target as HTMLButtonElement);
       return true;
     },
     keyboard(letter: Letter, accidental: Accidental, explicit: boolean, session: Practice, shortcut?: (hint: string) => string) {
-      if (supported && method === 'fingering') return;
+      if (method === 'keyboard' || supported && method === 'fingering') return;
       const hint = !explicit && options.guidance() && session.state === 'running'
         ? missingAccidentalHint(letter, session.pitch, session.preset, options.showKeySignature()) : undefined;
       if (hint) {

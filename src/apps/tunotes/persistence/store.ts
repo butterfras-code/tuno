@@ -50,7 +50,7 @@ function observation(v: unknown): Observation {
   const p = object(o.pitch,['letter','accidental','octave']);
   if (!letters.includes(p.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
-  const a = object(o.answer,['letter','accidental','kind','mask']);
+  const a = object(o.answer,['letter','accidental','kind','mask','note']);
   const correct = boolean(o.correct);
   let answer: NoteAnswer;
   if (a.kind === 'fingering') {
@@ -59,6 +59,11 @@ function observation(v: unknown): Observation {
     const mask = string(a.mask,8);
     if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
     answer = { kind: 'fingering', mask };
+  } else if (a.kind === 'keyboard') {
+    object(a,['kind','note']);
+    const note = integer(a.note,12,119);
+    if (correct !== (note === chromatic(pitch))) fail('Invalid keyboard observation.');
+    answer = { kind: 'keyboard', note };
   } else {
     object(a,['letter','accidental']);
     if (!letters.includes(a.letter as never)) fail('Invalid observation.');
