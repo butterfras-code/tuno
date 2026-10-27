@@ -1,5 +1,6 @@
 import { el } from '../../../shared/ui/components.ts';
 import { segments } from './range-editor.ts';
+import type { ChallengeRules } from '../engine/challenge.ts';
 import { validateRules } from '../engine/challenge.ts';
 export function challengeSetup(title = 'Solo Challenge', inline = false) {
   const node = inline ? el('section','challenge-settings visual-content-section practice-mode-section mode-pill-selector') : el('fieldset','challenge-settings'); node.hidden = true;
@@ -8,7 +9,7 @@ export function challengeSetup(title = 'Solo Challenge', inline = false) {
   let goal: 'timed' | 'target' = 'timed';
   const timed = el('div','control-row challenge-main-fields'), target = el('div','control-row challenge-main-fields'); target.hidden = true;
   const mode = segments<'timed' | 'target'>(inline ? title : 'Challenge goal',[['timed','Timed'],['target',inline ? 'Goal' : 'Target']], value => {
-    goal = value; mode.update([goal]); if (!inline) { timed.hidden = goal !== 'timed'; target.hidden = goal !== 'target'; }
+    loadedRules = undefined; goal = value; mode.update([goal]); if (!inline) { timed.hidden = goal !== 'timed'; target.hidden = goal !== 'target'; }
   }); mode.update([goal]);
   if (inline) {
     mode.node.className = 'practice-mode-choices';
@@ -42,14 +43,15 @@ export function challengeSetup(title = 'Solo Challenge', inline = false) {
   node.append(mode.node);
   if (!inline) node.append(timed,target);
   node.append(error);
+  let loadedRules: ChallengeRules | undefined;
   let changed = () => {};
-  node.addEventListener('input',() => changed()); node.addEventListener('change',() => changed());
+  node.addEventListener('input',() => { loadedRules = undefined; changed(); }); node.addEventListener('change',() => changed());
   mode.buttons.forEach(control => control.addEventListener('click',() => changed()));
-  return { node, onChange: (fn: () => void) => { changed = fn; },
+  return { node, load: (value: ChallengeRules) => { loadedRules = validateRules(value); goal = value.goal; if (value.goal === 'timed') seconds.value = String(value.seconds); else count.value = String(value.target); mode.update([goal]); if (!inline) { timed.hidden = goal !== 'timed'; target.hidden = goal !== 'target'; } }, onChange: (fn: () => void) => { changed = fn; },
     summary: () => goal === 'timed' ? `Timed · ${seconds.value || '—'} seconds` : `${inline ? 'Goal' : 'Target'} · ${count.value || '—'} correct · 120 seconds`,
     read(onInvalid?: () => void) {
     try {
-      const rules = validateRules(goal === 'timed' ? { goal, seconds: seconds.valueAsNumber, scoring: 'adjusted' } : { goal, target: count.valueAsNumber, timeout: 120, accuracyFloor: 80 });
+      const rules = loadedRules ?? validateRules(goal === 'timed' ? { goal, seconds: seconds.valueAsNumber, scoring: 'adjusted' } : { goal, target: count.valueAsNumber, timeout: 120, accuracyFloor: 80 });
       error.textContent = ''; error.hidden = true; return rules;
     } catch (e) { onInvalid?.(); error.hidden = false; error.textContent = (e as Error).message; const invalid = (goal === 'timed' ? [seconds] : [count]).find(i => !i.validity.valid); invalid?.focus(); return undefined; }
   } };

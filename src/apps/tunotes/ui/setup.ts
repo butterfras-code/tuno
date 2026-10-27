@@ -158,12 +158,13 @@ export function presetSetup(store: NotesStore, idPrefix = '', copyPlayers?: Copy
     if (!currentSource || !current || editing) return false;
     if (!presets.some(p => p.id === current!.id)) {
       const source = currentSource;
+      store.automaticPreset(source.id);
       store.update(data => { const index = data.customPresets.findIndex(p => p.id === source.id); if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source; });
     }
     return true;
   }
   refresh();
-  return { node,picker,rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,loadRange: (preset: Preset) => { const {pool,version,...source} = preset; currentSource = source; current = preset; selectionError = ''; closeEditor(false); renderOverview(); },rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
@@ -214,7 +215,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
   const nameLabel = el('label','setting','Name'); nameLabel.append(name);
   const profilePreset = presetPicker(() => store.data.customPresets,id => {
     const p = selectedProfile(); if (!p) return;
-    store.update(data => { data.profiles.find(v => v.id === p.id)!.defaultPresetId = id; if (data.configuration.remember) data.configuration.presetId = id; }); refresh();
+    store.saveProfileDefault(p.id,id); refresh();
     saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.';
   },'profile-',false,'Default preset');
   const status = el('p'); status.setAttribute('role','status'); status.id = 'storage-status';

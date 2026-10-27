@@ -1,3 +1,6 @@
+import { readActivityLink } from '../../shared/sharing/activity-link.ts';
+import { shareControl, sharedActivityNotice } from '../../shared/sharing/share-control.ts';
+import { captureRhythm, rhythmAdapter } from './sharing.ts';
 import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
@@ -27,20 +30,24 @@ import { teachingPresetLabel } from './shared/teaching-presets.ts';
 import { createWritingWorkspace } from './writing-workspace.ts';
 import { keepCountingDockClear } from './counting-dock.ts';
 
+async function startRhythm() {
+const linked = await readActivityLink(location.href,rhythmAdapter);
+if (linked.kind === 'error') { document.querySelector('#app')!.append(sharedActivityNotice(linked,rhythmAdapter)); return; }
 let saved: string | null = null;
 try { saved = localStorage.getItem(preferenceKey); } catch { /* Memory fallback. */ }
-const preferenceSession = createPreferenceSession(saved, location.search);
+const preferenceSession = createPreferenceSession(saved, location.search, linked.kind === 'loaded' ? linked.value.preferences : undefined);
 const preferences = preferenceSession.preferences;
+if (linked.kind === 'loaded') preferences.preset = 'generated';
 let migratedCounting = false;
 try { migratedCounting = Boolean(saved && !JSON.parse(saved)?.counting); } catch { /* malformed preferences use defaults */ }
-const testing = fixtureAccess(location.search);
+const testing = fixtureAccess(linked.kind === 'loaded' ? '' : location.search);
 if (testing.fixture) preferences.preset = testing.fixture.id;
 let generation = preferences.generation;
 let fixtureId = preferences.preset;
-const activity = new Activity(preferences, fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.score);
+const activity = new Activity(preferences, linked.kind === 'loaded' ? linked.value.score : fixtureId === 'generated' ? generateExercise(generationIssue(generation) ? defaultGeneration() : generation) : practiceFixtures.find(f => f.id === fixtureId)!.score);
 function persist() {
   Object.assign(preferences, { generation, preset: fixtureId });
-  try { localStorage.setItem(preferenceKey, preferenceSession.serialize()); } catch { /* Memory fallback. */ }
+  try { if (linked.kind !== 'loaded') localStorage.setItem(preferenceKey, preferenceSession.serialize()); } catch { /* Memory fallback. */ }
 }
 let editors: ReturnType<typeof createPlanEditor>[] = [];
 let tieNotation: ReturnType<typeof renderPassageTies> | null = null;
@@ -239,7 +246,7 @@ const settings = createSettingsPage({
   newExercise: () => newExercise(true),
   initialCounting: preferences.counting,
   isLinked: preferenceSession.isLinked,
-  saveCountingDefaults: () => preferenceSession.saveAsDefaults(raw => localStorage.setItem(preferenceKey, raw)),
+  saveCountingDefaults: () => preferenceSession.saveAsDefaults(raw => localStorage.setItem(preferenceKey,raw)),
   counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
   generation: value => {
     generation = value; persist();
@@ -264,7 +271,10 @@ practiceView.append(exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink, helpButton);
-activitySurface.append(nav, pageTitle, practiceView, settings.page);
+const sharing = shareControl(rhythmAdapter,() => captureRhythm(activity),() => JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration) || JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) ? 'This link shares the current exercise. New exercise applies your pending settings.' : 'This link opens the displayed exercise with blank responses.');
+
+const activityToolbar = el('div','activity-toolbar'); activityToolbar.append(nav,sharing);
+activitySurface.append(activityToolbar, sharedActivityNotice(linked,rhythmAdapter), pageTitle, practiceView, settings.page);
 const footer = createAppFooter({ app: { id: 'rhythm', name: 'Uno234' }, status: offlineStatus });
 main.append(header, activitySurface, footer, help, customDialog); app.append(main);
 function chooseFixture(id: string) {
@@ -433,3 +443,5 @@ function decoratePerformance(record: AttemptRecord | null) {
 }
 loadExercise(activity.exercise.score, false, false);
 showPage(false);
+}
+void startRhythm();
