@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-const host = await hostBuild(), browser = await chromium.launch();
-const output = 'dist/validation/rhythm-patterns';
+const engine = process.env.TUNO_BROWSER || 'chromium';
+const host = await hostBuild(), browser = await ({ chromium, firefox })[engine].launch();
+const output = `dist/validation/rhythm-patterns-${engine}`;
 await mkdir(output, { recursive: true });
 const results = [];
 try {

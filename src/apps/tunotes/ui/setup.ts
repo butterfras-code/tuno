@@ -267,7 +267,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     const control = delta < 0 ? previous : next; if (control.disabled) profiles.input.focus(); else control.focus();
   }
   const erase = button('Delete all tuNotes data',() => {
-    if (!window.confirm('Delete all tuNotes profiles, presets, settings and progress in this storage context? Other browsers, files and tUno data are unaffected.')) return;
+    if (!window.confirm(store.canDeleteSavedData ? 'Delete all tuNotes profiles, presets, settings and progress in this storage context? Other browsers, files and tUno data are unaffected.' : 'Delete only this tab’s in-memory tuNotes data? Saved data will stay unchanged.')) return;
     store.clear(); refresh(); reload();
   });
   const backupLink = el('a','control','Save backup JSON'); backupLink.hidden = true; backupLink.download = 'tunotes-backup.json'; let url = '';
@@ -293,5 +293,6 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     } catch (error) { if (own === generation) preview.textContent = (error as Error).message; }
   });
   node.append(rememberLabel,profiles.node,create,card,status,erase,exportButton,backupLink,fileLabel,preview,replace); refresh();
-  return { node,refresh,dispose: () => { generation++; if (url) URL.revokeObjectURL(url); } };
+  const stopStatus = store.onStatusChange(() => { status.textContent = store.message; });
+  return { node,refresh,dispose: () => { stopStatus(); generation++; if (url) URL.revokeObjectURL(url); } };
 }

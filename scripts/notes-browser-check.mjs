@@ -65,10 +65,14 @@ async function loop(page, mode) {
   const wrongFor = await expected(page); const wrong = wrongFor === 'A' ? 'B' : 'A';
   await page.getByRole('button', { name: wrong, exact: true }).first().click();
   await count(page, 2); assert.match(await page.locator('.answer-feedback-announcement').textContent(), new RegExp(`That note is ${wrongFor}`));
+  // Normal mode now advances misses immediately. Exercise locked input through
+  // Pause; note-entry checks separately verify synchronous correct/miss advance.
+  await page.getByRole('button', { name: 'Pause', exact: true }).first().click();
   await page.getByRole('button', { name: wrong, exact: true }).first().click({ force: true }); await count(page, 2);
-  // Pointer pressed during locked feedback cannot click into the next card.
+  // A pointer or keyboard event created while paused cannot submit after Resume.
   await page.evaluate(() => { window.oldPress = new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }); });
   await page.getByRole('button', { name: 'A', exact: true }).first().dispatchEvent('pointerdown', { pointerId: 1 });
+  await page.getByRole('button', { name: 'Resume', exact: true }).first().click();
   await readyForAnswer(page);
   await page.getByRole('button', { name: 'A', exact: true }).first().dispatchEvent('click', { detail: 1 }); await count(page, 2);
   await page.evaluate(() => document.dispatchEvent(window.oldPress)); await count(page, 2); await page.keyboard.up('a');
@@ -98,7 +102,7 @@ async function loop(page, mode) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     await page.screenshot({path:`dist/validation/notes-results-${name}-${width}.png`,fullPage:true});
   }
-  const statsBox = await page.locator('.practice-result-stats').boundingBox();
+  const statsBox = await page.locator('.practice-results .practice-result-stats').boundingBox();
   const rewardBox = await page.locator('.practice-results .result-reward').boundingBox();
   assert.ok(statsBox.x + statsBox.width <= rewardBox.x,'Stats sit to the left of Uno on desktop');
   assert.match(await page.locator('.practice-results .result-treats').textContent(), /^1 treat earned this session$/);
@@ -114,7 +118,7 @@ async function loop(page, mode) {
   const bass = await expected(page); await page.keyboard.press(bass.toLowerCase()); await running(page);
   const bad = (await expected(page)) === 'A' ? 'C' : 'A'; await page.keyboard.press(bad.toLowerCase());
   assert.match(await page.locator('.answer-feedback-announcement').textContent(), /That note is/);
-  await page.waitForTimeout(350); assert.equal(await page.locator('.answer').first().getAttribute('aria-disabled'), 'true');
+  assert.equal(await page.locator('.answer').first().getAttribute('aria-disabled'), 'false', 'Normal-mode misses immediately enable the next note');
   await running(page); await count(page, 2);
   await page.getByRole('button', { name: 'A', exact: true }).first().focus(); await page.keyboard.press('Space'); await count(page, 3);
   for (const width of [360, 768, 1280]) {

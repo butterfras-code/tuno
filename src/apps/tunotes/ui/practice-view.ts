@@ -13,7 +13,7 @@ import type { Context } from '../persistence/store.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
 import { onUnmount } from '../../../shared/ui/unmount.ts';
-import { NotesStore } from '../persistence/store.ts';
+import type { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
 import { pitchLabel } from '../domain/notation.ts';
@@ -26,7 +26,7 @@ import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
 }
-export function practiceView() {
+export function practiceView(store: NotesStore) {
   let activity: 'practice' | 'challenge' = 'practice';
   const rulesUI = challengeSetup('Challenge Mode',true);
   const node = el('section', 'practice-view');
@@ -35,9 +35,7 @@ export function practiceView() {
   node.setAttribute('aria-label', 'Note reading Practice');
   const dog = animatedUno(); dog.pose('rest');
   const stage = el('div', 'practice-stage');
-  const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
-  const store = new NotesStore(storage);
   const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
   presetsUI.rangeContext('Practice');
@@ -198,8 +196,6 @@ export function practiceView() {
   const continueButton = button('Continue', () => { if (session?.advance(session.token, true)) { render(); answers.focus(); } });
   const render = () => {
     if (!session || session.state === 'finished') return;
-    const storageMessage = store.durable ? '' : store.message;
-    if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
     const paused = session.state === 'paused';
     const waiting = session instanceof Challenge && session.phase !== 'playing';
     const isChallenge = session instanceof Challenge;
@@ -300,7 +296,7 @@ export function practiceView() {
   resultDetails.append(el('summary','','Session details'),resultTiming);
   resultOverview.append(resultStats,rewardSummary.node);
   result.append(resultHeading, resultOverview, resultSummary, coaching, resultControls, resultDetails);
-  stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
+  stage.append(setup, play, result); node.append(stage, dogHome);
   presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
@@ -322,8 +318,6 @@ export function practiceView() {
   window.addEventListener('blur', resetInput);
   document.addEventListener('keydown', keydown); document.addEventListener('keyup', keyup); document.addEventListener('visibilitychange', visibility);
   const timer = setInterval(() => {
-    const storageMessage = store.durable ? '' : store.message;
-    if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
     if (treatUntil && performance.now() >= treatUntil) { dog.pose(session?.state === 'finished' && progress.treats ? 'happy' : progress.pose); treatUntil = 0; }
     if (session?.state === 'finished') finish();
     if (!session || session.state === 'finished' || session.state === 'paused') return;
