@@ -6,7 +6,8 @@ import { captureCountingPreferences } from '../../music/counting/preferences.ts'
 import { buildCountingPlan } from '../../music/counting/plan.ts';
 import { defaultPreferences, readPreferences } from './activity.ts';
 import type { Activity, Preferences } from './activity.ts';
-import { generationIssue } from './shared/generation.ts';
+import { generationIssue, selectedSixteenthPatterns } from './shared/generation.ts';
+import { teachingPresetLabel } from './shared/teaching-presets.ts';
 
 const fields = ['mode','generation','counting','bpm','metronome','showCounts','wrapped','playStyle'] as const;
 export type SharedRhythmPreferences = Pick<Preferences,typeof fields[number]>;
@@ -14,6 +15,10 @@ export interface RhythmActivity { score: RhythmScore; preferences: SharedRhythmP
 function stable(value: unknown): string {
   const sort = (v: unknown): unknown => Array.isArray(v) ? v.map(sort) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([,v]) => v !== undefined).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => [k,sort(v)])) : v;
   return JSON.stringify(sort(value));
+}
+export function hasPendingGeneration(activity: Activity): boolean {
+  const comparable = (generation: Preferences['generation']) => stable({...generation,sixteenthPatterns:[...selectedSixteenthPatterns(generation)].sort()});
+  return comparable(activity.preferences.generation) !== comparable(activity.exerciseGeneration);
 }
 export function captureRhythm(activity: Activity): RhythmActivity {
   const preferences = Object.fromEntries(fields.map(k => [k,structuredClone(activity.preferences[k])])) as unknown as SharedRhythmPreferences;
@@ -47,5 +52,5 @@ export const rhythmAdapter: ActivityAdapter<RhythmActivity> = {
     const preferences = Object.fromEntries(fields.map(k => [k,restored[k]])) as unknown as SharedRhythmPreferences;
     return {score,preferences};
   },
-  describe:value => `Uno234 · ${value.preferences.mode === 'tap' ? 'Perform' : 'Counts'} · ${value.score.measures.length} measures · ${value.preferences.bpm} BPM`,
+  describe:value => `Uno234 · ${teachingPresetLabel(value.preferences.generation.teachingPreset)} · ${value.preferences.mode === 'tap' ? 'Perform' : 'Counts'} · ${value.score.measures.length} measures · ${value.preferences.bpm} BPM`,
 };

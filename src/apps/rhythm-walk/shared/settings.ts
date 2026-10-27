@@ -230,14 +230,14 @@ export function createSettingsPage(callbacks: {
     if (generation.teachingPreset?.customized && generation.teachingPreset.id.startsWith('uil-')) teachingAttribution.textContent += '. Customized vocabulary; one supported meter per exercise. Reapply a level for verified figure practice.';
     const definition = generationLevels.find(p => p.id === generation.teachingPreset?.id);
     teachingEvidence.replaceChildren();
-    if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Changes apply on New exercise.'; applyPreset.disabled = true; return; }
+    if (!definition) { teachingStatus.textContent = 'Choose a level or customize the musical settings. Use preset starts a new exercise when these settings change.'; applyPreset.disabled = true; return; }
     const result = resolveTeachingPreset(definition, undefined, instrumentScope.value as 'general' | 'percussion');
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
-    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Applying updates pending settings and keeps both responses.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Use preset starts a new exercise when these settings change.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
-      teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Changes apply on New exercise and keep both responses.' : `Unavailable: ${unavailable.join(' ')}`;
+      teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Use preset starts a new exercise when these settings change.' : `Unavailable: ${unavailable.join(' ')}`;
       const settings = definition.recommended;
       teachingEvidence.append(el('p', '', `Time signatures: ${settings.meters!.join(', ')}. One selected meter per exercise; your chosen length is preserved.`),
         el('p', '', `Ingredients: ${ingredients.filter(i => settings.ingredients.includes(i.id)).map(i => i.label).join(', ')}.`),

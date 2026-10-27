@@ -76,7 +76,7 @@ export function teachingPresetLabel(identity?: TeachingPresetIdentity): string {
 }
 export type PresetResolution = { supported: true; settings: GenerationSettings } | { supported: false; reasons: string[] };
 export function matchesTeachingPreset(settings: GenerationSettings, definition: TeachingPresetDefinition): boolean {
-  const controlled = (g: GenerationSettings) => JSON.stringify({ meters: [...(g.meters ?? [g.meter ?? '4/4'])].sort(), ingredients: [...g.ingredients].sort(), allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: Boolean(g.ties), syncopation: Boolean(g.syncopation), pairedEighths: Boolean(g.restrictions?.pairedEighths), noQuarterRestBeatOne: Boolean(g.restrictions?.noQuarterRestBeatOne), figureProfile: g.figureProfile, sixteenthPatterns: selectedSixteenthPatterns(g).sort() });
+  const controlled = (g: GenerationSettings) => JSON.stringify({ meters: [...(g.meters ?? [g.meter ?? '4/4'])].sort(), ingredients: [...g.ingredients].sort(), allowUnintuitiveNotation: g.allowUnintuitiveNotation, ties: Boolean(g.ties), syncopation: Boolean(g.syncopation), pairedEighths: Boolean(g.restrictions?.pairedEighths), noQuarterRestBeatOne: Boolean(g.restrictions?.noQuarterRestBeatOne), figureProfile: g.figureProfile, sixteenthPatterns: [...selectedSixteenthPatterns(g)].sort() });
   return controlled(settings) === controlled(scopedSettings(definition, settings.teachingPreset?.scope ?? 'general')) && (settings.meterChanges ?? 0) === 0;
 }
 function scopedSettings(definition: TeachingPresetDefinition, scope: InstrumentScope): GenerationSettings {

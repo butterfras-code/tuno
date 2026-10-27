@@ -1,6 +1,6 @@
 import { readActivityLink } from '../../shared/sharing/activity-link.ts';
 import { shareControl, sharedActivityNotice } from '../../shared/sharing/share-control.ts';
-import { captureRhythm, rhythmAdapter } from './sharing.ts';
+import { captureRhythm, hasPendingGeneration, rhythmAdapter } from './sharing.ts';
 import { createAppFooter } from '../../shared/ui/app-footer.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { createAppHeader } from '../../shared/ui/app-header.ts';
@@ -74,7 +74,12 @@ const customDialog = el('dialog', 'custom-exercise-dialog'); customDialog.id = '
 customDialog.setAttribute('aria-labelledby', 'custom-exercise-title');
 const customTitle = el('h2', '', 'Choose rhythms'); customTitle.id = 'custom-exercise-title';
 const openRhythmPicker = () => { editors.forEach(editor => editor.suspend()); settings.beginPresetSelection(); customClose.disabled = !settings.validGeneration(); customDialog.showModal(); };
-const customClose = button('Use preset', () => { if (!settings.validGeneration()) return; settings.finishPresetSelection(true); customDialog.close(); });
+const customClose = button('Use preset', () => {
+  if (!settings.validGeneration()) return;
+  settings.finishPresetSelection(true);
+  if (fixtureId !== 'generated' || hasPendingGeneration(activity)) newExercise();
+  else customDialog.close();
+});
 customClose.classList.add('control--primary');
 const cancelPreset = button('Cancel', () => { settings.finishPresetSelection(false); customDialog.close(); });
 const dismissPreset = button('×', () => { settings.finishPresetSelection(false); customDialog.close(); }); dismissPreset.setAttribute('aria-label', 'Cancel rhythm selection');
@@ -108,7 +113,7 @@ help.append(el('h2', '', 'Practice help'),
   el('p', '', 'In Counts or Perform, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Connect when appropriate.'),
   el('p', '', 'Select any count in a group. Rest (R) and Connect (C) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
   el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
-  el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Exercise settings apply on New exercise. Reloading starts with blank responses.'));
+  el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Use preset applies rhythm changes immediately; counting changes apply on a new exercise. Reloading starts with blank responses.'));
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
 const writeResponse = el('section', 'write-response'); writeResponse.setAttribute('aria-label', 'Write Counts');
@@ -271,7 +276,7 @@ practiceView.append(exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
 const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink, helpButton);
-const sharing = shareControl(rhythmAdapter,() => captureRhythm(activity),() => JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration) || JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) ? 'This link shares the current exercise. New exercise applies your pending settings.' : 'This link opens the displayed exercise with blank responses.');
+const sharing = shareControl(rhythmAdapter,() => captureRhythm(activity),() => 'This link opens the displayed exercise with blank responses. Next Exercise continues with the shared preset or custom rhythms.' + (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) ? ' Pending counting changes are not included.' : ''));
 
 const activityToolbar = el('div','activity-toolbar'); activityToolbar.append(nav,sharing);
 activitySurface.append(activityToolbar, sharedActivityNotice(linked,rhythmAdapter), pageTitle, practiceView, settings.page);
@@ -331,7 +336,7 @@ function updateExerciseSummary() {
   const source = activity.exerciseGeneration.teachingPreset;
   const label = teachingPresetLabel(source);
   exerciseSummary.textContent = `Current exercise: ${fixtureId === 'generated' ? label : `Testing fixture · ${activity.exercise.label}`} · ${currentMeasures.length} ${currentMeasures.length === 1 ? 'measure' : 'measures'} · ${currentMeasures[0]!.meter.join('/')}.`;
-  if (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) || fixtureId !== 'generated' || JSON.stringify(generation) !== JSON.stringify(activity.exerciseGeneration)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
+  if (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) || fixtureId !== 'generated' || hasPendingGeneration(activity)) exerciseSummary.textContent += ' Pending settings apply on New exercise; current responses are kept.';
   const issue = generationIssue(generation);
   if (preferenceSession.notice) exerciseSummary.textContent += ` ${preferenceSession.notice}`;
   if (migratedCounting) exerciseSummary.textContent += ' Counting updated: groups are inferred; long-note subdivision is on and dotted subdivision is off. Review Settings.';
