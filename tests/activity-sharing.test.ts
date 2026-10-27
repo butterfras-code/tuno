@@ -9,7 +9,8 @@ import { defaultPreset, normalizePreset, presets } from '../src/apps/tunotes/dom
 import { defaultTimed } from '../src/apps/tunotes/engine/challenge.ts';
 import { Activity, defaultPreferences } from '../src/apps/rhythm-walk/activity.ts';
 import { captureRhythm, rhythmAdapter } from '../src/apps/rhythm-walk/sharing.ts';
-import { generateExercise } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { generateExercise, selectedSixteenthPatterns } from '../src/apps/rhythm-walk/shared/generation.ts';
+import { applyTeachingPreset, generationLevels, matchesTeachingPreset } from '../src/apps/rhythm-walk/shared/teaching-presets.ts';
 import { NotesStore, STORAGE_KEY, emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { note, score } from '../src/music/measure.ts';
 
@@ -63,6 +64,30 @@ test('rhythm sharing preserves written passage and captured settings rather than
   assert.deepEqual(await readActivityLink(await activityUrl(base,rhythmAdapter,value),rhythmAdapter),{kind:'loaded',value});
   assert.throws(() => rhythmAdapter.validate({...value,preferences:{...value.preferences,bpm:999}}));
   assert.throws(() => rhythmAdapter.validate({...value,score:{measures:[...passage.measures,...passage.measures,...passage.measures,...passage.measures,...passage.measures]}}));
+});
+
+test('every rhythm preset shares and restores explicit groupings without changing their order',async t => {
+  for (const definition of generationLevels) for (const scope of definition.source ? ['general', 'percussion'] as const : ['general'] as const) {
+    await t.test(`${definition.id} ${scope}`,async () => {
+      const preferences = defaultPreferences();
+      const applied = applyTeachingPreset(preferences.generation,definition,undefined,scope);
+      assert.ok(applied.supported);
+      preferences.generation = applied.settings;
+      // The chooser makes inferred groupings explicit in display order.
+      const patterns = selectedSixteenthPatterns(preferences.generation);
+      for (const order of [patterns,[...patterns].reverse()]) {
+        preferences.generation.sixteenthPatterns = [...order];
+        const before = structuredClone(preferences.generation);
+        assert.equal(matchesTeachingPreset(preferences.generation,definition),true);
+        assert.deepEqual(preferences.generation,before,'matching must not mutate settings');
+        const activity = new Activity(preferences,generateExercise(preferences.generation,() => 0.5));
+        const value = captureRhythm(activity);
+        assert.deepEqual(value.preferences.generation,before);
+        assert.deepEqual(activity.exerciseGeneration,before);
+        assert.deepEqual(await readActivityLink(await activityUrl(base,rhythmAdapter,value),rhythmAdapter),{kind:'loaded',value});
+      }
+    });
+  }
 });
 
 test('transport rejects invalid, conflicting, wrong-route, unknown-version and oversized links',async () => {

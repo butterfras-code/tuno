@@ -90,6 +90,30 @@ try {
   await teacher.evaluate(() => { HTMLCanvasElement.prototype.toDataURL=window.savedToDataURL; });
   await share(teacher,notesAdapter);
   await teacher.close();
+  // Exercise the chooser's explicit grouping order, which differs from sorted IDs.
+  const rhythmTeacher=await browser.newPage({viewport:{width:390,height:900}});
+  rhythmTeacher.on('pageerror',e=>errors.push(e.message));
+  await rhythmTeacher.goto(new URL('/rhythm/',host.url).href);
+  for (const [label,id,scope] of [
+    ['Uno4','uno-4'],['Uno5','uno-5'],
+    ['UIL I','uil-1','percussion'],['UIL II','uil-2','percussion'],['UIL III','uil-3','percussion'],
+    ['UIL IV','uil-4','general'],['UIL IV','uil-4','percussion'],
+  ]) {
+    await rhythmTeacher.getByRole('button',{name:'Choose rhythms',exact:true}).click();
+    const chooser=rhythmTeacher.getByRole('dialog',{name:'Choose rhythms',exact:true});
+    await chooser.getByRole('tab',{name:scope?'UIL Sight Reading':'Uno’s Choice',exact:true}).click();
+    if (scope) await chooser.getByRole('combobox',{name:'UIL instrument scope',exact:true}).selectOption(scope);
+    await chooser.getByRole('button',{name:label,exact:true}).click();
+    await chooser.getByRole('button',{name:'Use preset',exact:true}).click();
+    await rhythmTeacher.getByRole('button',{name:'Next Exercise',exact:true}).click();
+    const value=await share(rhythmTeacher,rhythmAdapter);
+    assert.equal(value.preferences.generation.teachingPreset.id,id);
+    assert.equal(value.preferences.generation.teachingPreset.scope,scope);
+    assert.equal(value.preferences.generation.teachingPreset.customized,false);
+    const received=await open(rhythmAdapter,value);
+    await received.context.close();
+  }
+  await rhythmTeacher.close();
   for(const focus of ['tuner','tone','metronome']) {
     const store=createPracticeStore();store.dispatch({type:'focus',value:focus});store.dispatch({type:'tempo',value:123});
     const {page,context}=await open(toolAdapter,captureTools(store));
