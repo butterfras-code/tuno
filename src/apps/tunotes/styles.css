@@ -762,7 +762,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage .staff-panel { min-width: 0; min-height: 0; height: 100%; }
 #home .play-stage .staff { width: 100%; height: 100%; max-height: none; }
 #home .play-stage .feedback { flex: none; min-height: 44px; margin: 2px 0; font-size: 14px; }
-#home .play-stage .answer-input { flex: none; }
+#home .play-stage .note-entry { flex: none; }
 #home .play-stage .answer-rows { gap: 8px; }
 #home .play-stage .answers { grid-template-rows: 44px 48px 44px; gap: 4px 0; }
 #home .play-stage .answer-key-hints { grid-template-rows: 44px 48px 44px; gap: 4px; }
@@ -829,7 +829,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--short .counts { grid-column: 1; grid-row: 2; }
 #home .play-stage--short .practice-play > .staff-panel { grid-column: 1; grid-row: 3; min-height: 0; }
 #home .play-stage--short .practice-play > .feedback { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
-#home .play-stage--short .answer-input { grid-column: 2; grid-row: 3; align-self: center; }
+#home .play-stage--short .note-entry { grid-column: 2; grid-row: 3; align-self: center; }
 #home .play-stage--short .answer-rows { display: block; }
 #home .play-stage--short .answer-key-hints { display: none; }
 #home .play-stage--short .practice-play > .control-row { grid-column: 1 / -1; grid-row: 4; }
@@ -1266,3 +1266,15 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 
 .range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }
+
+/* Uno234 performance pad proportions, outline, typography and held-state language. */
+.fingering-method { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; font-size: 14px; }
+.fingering-panel { max-width: 480px; margin: 0 auto; text-align: center; }
+.fingering-input { display: flex; gap: 10px; }
+.fingering-input .fingering-valve { flex: 1; min-width: 0; height: clamp(96px, 16vh, 144px); display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 12px; border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); touch-action: none; }
+.fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.fingering-input .fingering-valve[aria-pressed=true] { background: #c3dce1; box-shadow: inset 0 -4px var(--color-teal); }
+.fingering-label { font: 800 28px var(--font-heading); }
+.fingering-valve kbd { font: 500 12px var(--font-body); }
+.fingering-open { margin-top: 8px; }
+.fingering-help { font-size: 12px; margin: 6px 0; }

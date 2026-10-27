@@ -1,3 +1,4 @@
+import type { NoteAnswer } from '../domain/fingering.ts';
 import { resultReward } from './result-reward.ts';
 import { resultMetric, scoreHint as resultScoreHint } from './results.ts';
 import { activitySetup } from './activity-setup.ts';
@@ -17,7 +18,7 @@ import { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
 import { pitchLabel } from '../domain/notation.ts';
-import type { AnswerSpelling, Letter } from '../domain/notation.ts';
+import type { Letter } from '../domain/notation.ts';
 import { Practice, PressGate } from '../engine/practice.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
@@ -117,6 +118,7 @@ export function practiceView() {
   const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const staff = el('div', 'staff-panel');
   const answers = noteEntry((answer, token) => submit(answer, token), {
+    fingering: true, onMethodChange: () => resetInput(),
     guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
     disableGuidance: () => setGuidance(false),
   });
@@ -234,7 +236,7 @@ export function practiceView() {
     answers.paused(paused);
     if (paused) { dog.look(false); dog.tail(0, false); }
   };
-  const submit = (answer: AnswerSpelling, token: PromptToken) => {
+  const submit = (answer: NoteAnswer, token: PromptToken) => {
     const previousAnnouncement = session?.announcement;
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
     store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
@@ -290,7 +292,7 @@ export function practiceView() {
   startButton.classList.add('control--primary'); setupUI.action(startButton);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));
   const keyboardHelp = el('details', 'practice-help');
-  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Keyboard: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
+  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Fingering: hold J/K/L for valves 1/2/3, or choose Open (0). Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
   play.append(heading, counts, scene.node, staff, feedback, answers.node, controls);
   const resultControls = el('div', 'control-row result-controls');
@@ -305,6 +307,7 @@ export function practiceView() {
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
     if (node.hidden || !session || session.state === 'finished' || play.hidden || event.timeStamp < inputSince || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && event.target.closest('input, select, textarea, [contenteditable="true"]'))) return;
+    if (answers.isFingering) { if (session.state !== 'paused') answers.heldKeydown(event); return; }
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); if (fresh) arrows.add(event.key); showModifier(); return; }
     const letter = event.key.toUpperCase();
     if (/^[A-G]$/.test(letter)) {
@@ -315,7 +318,7 @@ export function practiceView() {
       }
     } else answers.focusedKey(event, fresh);
   };
-  const keyup = (event: KeyboardEvent) => { gate.up(event.code || event.key); arrows.delete(event.key); showModifier(); };
+  const keyup = (event: KeyboardEvent) => { answers.heldKeyup(event); gate.up(event.code || event.key); arrows.delete(event.key); showModifier(); };
   // Key releases outside the page may never reach document; repeats remain gated.
   const resetInput = () => { gate.reset(); arrows.clear(); answers.reset(); answers.modifier(); };
   const visibility = () => { if (document.hidden) { resetInput(); store.flush(); session?.pause(); if (session?.state === 'finished') finish(); else render(); } };

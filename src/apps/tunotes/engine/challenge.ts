@@ -1,6 +1,6 @@
 import { Practice } from './practice.ts';
 import type { PromptToken } from './practice.ts';
-import type { AnswerSpelling } from '../domain/notation.ts';
+import type { NoteAnswer } from '../domain/fingering.ts';
 import type { Preset } from '../domain/presets.ts';
 
 export type ChallengeRules = Readonly<{ goal: 'timed'; seconds: number; scoring: 'adjusted' | 'correct' } | { goal: 'target'; target: number; timeout: number; accuracyFloor: number }>;
@@ -55,7 +55,7 @@ export class Challenge extends Practice {
     if (this.phase === 'playing' && this.activeMs >= this.limitMs) this.complete(this.rules.goal === 'timed' ? 'completed' : 'timeout');
   }
   private complete(end: ChallengeEnd) { this.end = end; super.finish(); }
-  override answer(token: PromptToken, answer: AnswerSpelling) {
+  override answer(token: PromptToken, answer: NoteAnswer) {
     this.tick();
     if (this.phase !== 'playing' || !super.answer(token, answer)) return false;
     if (this.rules.goal === 'target' && this.correct === this.rules.target) this.complete('completed');
