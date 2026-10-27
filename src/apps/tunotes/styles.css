@@ -1291,7 +1291,9 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-open { margin-top: 8px; }
 .fingering-help { font-size: 12px; margin: 6px 0; }
 .keyboard-answers { max-width: 760px; margin: auto; min-width: 0; }
-.keyboard-answers > .control-row { justify-content: center; gap: 8px; margin: 8px 0 12px; }
+.keyboard-answers > .control-row { justify-content: center; gap: 4px; margin: 8px 0 12px; }
+.keyboard-answers > .control-row .control { min-height: 44px; margin: 0; padding: 4px; font-size: 14px; gap: 4px; }
+.keyboard-answers > .control-row button { min-width: 44px; }
 .keyboard-answers .piano { min-width: 512px; height: 136px; }
 .keyboard-answers .keyboard-help { font-size: 12px; text-align: center; margin: 6px 0; }
 .fingering-input[data-instrument='horn-f'] { flex-wrap: wrap; }

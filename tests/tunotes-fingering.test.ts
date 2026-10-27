@@ -129,19 +129,31 @@ test('additional brass charts cover every preset and adaptive expansion in writt
   assert.ok(!acceptsFingering(horn,parsePitch('Db2'),'01100000'));
 });
 
-test('musical keyboard grades written chromatic pitch, octave and enharmonics, and stores answers', async () => {
+test('musical keyboard defaults to pitch class with optional octave matching, enharmonics, and stores answers', async () => {
   const { NotesStore,parseBackup }=await import('../src/apps/tunotes/persistence/store.ts');
   const preset=normalizePreset({id:'keyboard-test',name:'C sharp',instrument:'trumpet-bb',clef:'treble',range:['C#4','C#4'],exactRange:true,content:'lines-and-spaces'});
   const s=new Practice(preset,false,()=>0,Math.random,{continueAfter:'instant'});
-  s.answer(s.token,{kind:'keyboard',note:49}); assert.equal(s.correct,0);
-  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:59}); assert.equal(s.correct,0); // concert pitch is wrong
-  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:61}); assert.equal(s.correct,1);
+  s.answer(s.token,{kind:'keyboard',note:49}); assert.equal(s.correct,1);
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:59}); assert.equal(s.correct,1); // concert pitch is wrong
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:61}); assert.equal(s.correct,2);
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:49,matchOctave:true}); assert.equal(s.correct,2);
+  s.advance(s.token); s.answer(s.token,{kind:'keyboard',note:61,matchOctave:true}); assert.equal(s.correct,3);
   const builtIn=presets.find(p=>p.id==='trumpet-bb-starter')!;
-  const stored=new Practice(builtIn); stored.answer(stored.token,{kind:'keyboard',note:chromatic(stored.pitch)});
+  const stored=new Practice(builtIn); stored.answer(stored.token,{kind:'keyboard',note:chromatic(stored.pitch)-12});
   const store=new NotesStore();
   store.update(data=>data.profiles.push({id:'piano',name:'Piano',results:[],contexts:[],defaultPresetId:builtIn.id}));
   store.observe('piano',builtIn,stored.last!);
   assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
+  const legacy=JSON.parse(store.export());
+  const record=Object.values(legacy.profiles[0].contexts[0].notes)[0] as Array<{answer:{matchOctave?:boolean};correct:boolean}>;
+  delete record[0]!.answer.matchOctave;
+  record[0]!.correct=false; // This different-octave answer was wrong under the old rule.
+  const restored=parseBackup(JSON.stringify(legacy));
+  const historical=Object.values(restored.profiles[0]!.contexts[0]!.notes)[0]![0]!;
+  assert.equal(historical.correct,false);
+  assert.deepEqual(historical.answer,{kind:'keyboard',note:chromatic(stored.pitch)-12,matchOctave:true});
+  record[0]!.answer.matchOctave=false; // The same grading result would be inconsistent under the new rule.
+  assert.throws(()=>parseBackup(JSON.stringify(legacy)),/Invalid keyboard observation/);
   store.flush();
 });
 

@@ -203,7 +203,15 @@ try {
   await page.keyboard.press('Space'); assert.equal(await correct(),3);
   await page.getByRole('button',{name:'+ Octave',exact:true}).click();
   await page.getByRole('button',{name:'Answer C5',exact:true}).click();
-  assert.equal(await attempts(),4); assert.equal(await correct(),3);
+  assert.equal(await attempts(),4); assert.equal(await correct(),4);
+  await page.getByRole('button',{name:'Answer D5',exact:true}).click();
+  assert.equal(await correct(),4);
+  await page.getByRole('checkbox',{name:'Match octave',exact:true}).check();
+  await page.getByRole('button',{name:'Answer C5',exact:true}).click();
+  assert.equal(await correct(),4); assert.equal(await attempts(),6);
+  await page.getByRole('button',{name:'− Octave',exact:true}).click();
+  await c4.click(); assert.equal(await correct(),5);
+  await page.getByRole('checkbox',{name:'Match octave',exact:true}).uncheck();
   await start('Db4'); await page.getByRole('button',{name:'Answer C♯4',exact:true}).click(); assert.equal(await correct(),1);
   for (const width of [1280,360]) {
     await page.setViewportSize({width,height:800});

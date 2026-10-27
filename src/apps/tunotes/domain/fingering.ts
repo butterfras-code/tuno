@@ -13,7 +13,7 @@ export interface FingeringConfiguration {
   readonly pitches: Readonly<Record<number, readonly FingeringMask[]>>;
 }
 export interface FingeringAnswer { readonly kind: 'fingering'; readonly mask: FingeringMask }
-export interface KeyboardAnswer { readonly kind: 'keyboard'; readonly note: number }
+export interface KeyboardAnswer { readonly kind: 'keyboard'; readonly note: number; readonly matchOctave?: boolean }
 export type NoteAnswer = AnswerSpelling | FingeringAnswer | KeyboardAnswer;
 export function validMask(mask: string) { return /^[01]{8}$/.test(mask); }
 export function acceptsFingering(config: FingeringConfiguration, pitch: WrittenPitch, mask: FingeringMask) {
@@ -101,3 +101,8 @@ export const hornFingering: FingeringConfiguration = {
   pitches: Object.fromEntries(hornChart.map((choices,i) => [36+i, choices.map(choice =>
     `${choice.includes('1') ? 1 : 0}${choice.includes('2') ? 1 : 0}${choice.includes('3') ? 1 : 0}${choice.includes('T') ? 1 : 0}0000`)])),
 };
+
+/** Keyboard answers use written pitch class unless octave matching is requested. */
+export function acceptsKeyboard(pitch: WrittenPitch, answer: KeyboardAnswer): boolean {
+  return answer.matchOctave ? chromatic(pitch) === answer.note : chromatic(pitch) % 12 === answer.note % 12;
+}

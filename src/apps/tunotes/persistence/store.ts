@@ -1,4 +1,4 @@
-import { acceptsFingering, fingeringFor, validMask } from '../domain/fingering.ts';
+import { acceptsFingering, acceptsKeyboard, fingeringFor, validMask } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { Challenge, validateRules } from '../engine/challenge.ts';
 import type { ChallengeRules, ChallengeEnd } from '../engine/challenge.ts';
@@ -50,7 +50,7 @@ function observation(v: unknown): Observation {
   const p = object(o.pitch,['letter','accidental','octave']);
   if (!letters.includes(p.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
-  const a = object(o.answer,['letter','accidental','kind','mask','note']);
+  const a = object(o.answer,['letter','accidental','kind','mask','note','matchOctave']);
   const correct = boolean(o.correct);
   let answer: NoteAnswer;
   if (a.kind === 'fingering') {
@@ -60,10 +60,12 @@ function observation(v: unknown): Observation {
     if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
     answer = { kind: 'fingering', mask };
   } else if (a.kind === 'keyboard') {
-    object(a,['kind','note']);
+    object(a,['kind','note','matchOctave']);
     const note = integer(a.note,12,119);
-    if (correct !== (note === chromatic(pitch))) fail('Invalid keyboard observation.');
-    answer = { kind: 'keyboard', note };
+    // Earlier backups graded exact octaves; retain that historical scoring rule.
+    const matchOctave = a.matchOctave === undefined ? true : boolean(a.matchOctave);
+    answer = { kind: 'keyboard', note, matchOctave };
+    if (correct !== acceptsKeyboard(pitch,answer)) fail('Invalid keyboard observation.');
   } else {
     object(a,['letter','accidental']);
     if (!letters.includes(a.letter as never)) fail('Invalid observation.');

@@ -1,4 +1,4 @@
-import { acceptsFingering, fingeringFor } from '../domain/fingering.ts';
+import { acceptsFingering, acceptsKeyboard, fingeringFor } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { ALGORITHM_VERSION, activePool, initialAdaptive, learn, observe, selectAdaptive } from './adaptive.ts';
 import type { Learning, NoteHistory, AdaptiveState } from './adaptive.ts';
@@ -90,9 +90,9 @@ export class Practice {
     const now = this.activeMs;
     const config = fingeringFor(this.preset.instrument, 4);
     if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
-    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? chromatic(this.pitch) === answer.note : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
+    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note } : { kind: answer.kind, mask: answer.mask } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, mask: answer.mask } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
     if (this.adaptive) {
       const previousPool = this.activePreset.pool;
       const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;
