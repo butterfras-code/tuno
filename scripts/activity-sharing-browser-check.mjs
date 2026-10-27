@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import {mkdir} from 'node:fs/promises';
 import { choosePreset, openCustom, setEndpoint, useRange } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
@@ -26,8 +28,24 @@ async function share(page,adapter) {
   await page.getByRole('button',{name:'Share activity',exact:true}).press('Enter');
   const dialog=page.getByRole('dialog',{name:'Share activity',exact:true});
   await page.waitForFunction(() => document.querySelector('.activity-share-dialog textarea')?.value);
-  const url=await dialog.getByRole('textbox',{name:'Activity link'}).inputValue();
+  const url=await dialog.locator('textarea[aria-label="Activity link"]').inputValue();
   const loaded=await readActivityLink(url,adapter); assert.equal(loaded.kind,'loaded');
+  await dialog.locator('.activity-share-qr').waitFor({state:'visible'});
+  if (!await page.evaluate(() => typeof window.jsQR === 'function')) await page.addScriptTag({path:require.resolve('jsqr')});
+  const decoded = await dialog.locator('.activity-share-qr').evaluate(async img => {
+    await img.decode();
+    const canvas=document.createElement('canvas'); canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+    const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);
+    return window.jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height)?.data;
+  });
+  assert.equal(decoded,url,'QR scans to the exact activity link');
+  const download = dialog.getByRole('link',{name:'Download QR code'});
+  assert.equal(await download.getAttribute('href'),await dialog.locator('.activity-share-qr').getAttribute('src'));
+  const downloaded = page.waitForEvent('download'); await download.click();
+  assert.equal((await downloaded).suggestedFilename(),`${adapter.app}-activity-qr.png`);
+  assert.ok(await dialog.evaluate(node=>node.scrollWidth<=node.clientWidth+1),'no dialog horizontal overflow');
+  await page.screenshot({path:`${artifacts}/share-dialog-${adapter.app}-${page.viewportSize().width}.png`});
+
   await dialog.getByRole('button',{name:'Copy link',exact:true}).click();
   await page.waitForFunction(() => /Link copied|Copy the selected/.test(document.querySelector('.activity-share-dialog [role="status"]')?.textContent));
   await dialog.getByRole('button',{name:'Close',exact:true}).click();
@@ -59,7 +77,19 @@ try {
   await teacher.evaluate(() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('blocked');}}}));assert.equal(adaptive.ranges[0].adaptive,true);assert.ok(adaptive.ranges[0].expansionPools.length);
   await openCustom(teacher);await setEndpoint(teacher,'Lowest note','C3');await setEndpoint(teacher,'Highest note','G5');await useRange(teacher);
   const unsaved=await share(teacher,notesAdapter);assert.equal(unsaved.ranges[0].source.id,'custom-shared');
-  const received=await open(notesAdapter,unsaved);await received.context.close();await teacher.close();
+  const received=await open(notesAdapter,unsaved);await received.context.close();
+  // A rendering failure must not take away the usable activity link or leave a stale QR.
+  await teacher.evaluate(() => { window.savedToDataURL=HTMLCanvasElement.prototype.toDataURL; HTMLCanvasElement.prototype.toDataURL=()=>{throw new Error('Canvas unavailable');}; });
+  await teacher.getByRole('button',{name:'Share activity',exact:true}).click();
+  await teacher.getByText('A QR code could not be created for this activity. Use Copy link instead.',{exact:true}).waitFor();
+  assert.equal(await teacher.locator('.activity-share-qr').isVisible(),false);
+  assert.equal(await teacher.getByRole('link',{name:'Download QR code'}).count(),0);
+  await teacher.getByRole('button',{name:'Copy link',exact:true}).click();
+  await teacher.getByRole('textbox',{name:'Activity link'}).waitFor();
+  await teacher.getByRole('button',{name:'Close',exact:true}).click();
+  await teacher.evaluate(() => { HTMLCanvasElement.prototype.toDataURL=window.savedToDataURL; });
+  await share(teacher,notesAdapter);
+  await teacher.close();
   for(const focus of ['tuner','tone','metronome']) {
     const store=createPracticeStore();store.dispatch({type:'focus',value:focus});store.dispatch({type:'tempo',value:123});
     const {page,context}=await open(toolAdapter,captureTools(store));

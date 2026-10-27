@@ -20,6 +20,8 @@ Student identities, profile IDs, learning history, device calibration, and micro
 
 The teacher configures the activity using existing controls, selects Share activity, and copies the link. Copy link is the primary action; an operating-system share action may be offered where supported. Clipboard failure exposes a selectable link. Cancellation of an operating-system share action is not an error.
 
+The dialog follows the suite’s shared colors, typography, and controls. Show a scannable QR code for the same activity URL with a Download QR code action that saves a PNG. Generate the QR locally, without sending activity settings to a third-party service. Keep the long URL under an expandable View activity link control, opening it automatically for clipboard fallback. If QR generation fails or the URL exceeds QR capacity, explain the fallback and keep Copy link available.
+
 The recipient sees the completed activity with a concise description and its normal primary action: Start practice, Start challenge, Start round, or the appropriate tool control. Uno234 displays the shared passage with the selected Counts or Perform panel. No extra confirmation or import step is required for a valid link.
 
 Show a small indication that a shared activity is loaded. Its summary describes meaningful settings in plain language, for example “Two players · Head to Head · Treble E4–F5 · 60 seconds.” The URL itself need not be human-readable.

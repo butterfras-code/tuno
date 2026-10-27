@@ -16,3 +16,5 @@ Existing Chromium regression checks passed:
 `git diff --check` and relative-link checks for the sharing documentation passed. The [format contract](../activity-sharing-format.md) records the wire format, limits, app-specific persistence behavior, and measured payload corpus. The sharing browser check is included in both `npm run test:browser` and `npm run verify`.
 
 Actual LMS platforms, real operating-system share sheets/clipboard permissions, physical touch devices, and assistive technology remain release checks. Full `npm run verify` was not run for this feature validation. No production deployment is part of these results.
+
+The updated share dialog and QR download passed the sharing browser checks in Chromium and Firefox. An independent QR decoder verifies the rendered PNG against the exact copied URL; checks also exercise PNG downloads, QR rendering failure with clipboard fallback, immediate reopening, and dialog overflow. Desktop and mobile screenshots were reviewed. `npm run check` again passed all 471 tests and both builds; final type checking and `git diff --check` passed. Physical-camera scanning remains a release check.
