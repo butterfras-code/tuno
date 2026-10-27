@@ -55,7 +55,7 @@ function observation(v: unknown): Observation {
   let answer: NoteAnswer;
   if (a.kind === 'fingering') {
     object(a,['kind','mask']);
-    const config = fingeringFor(presets.find(p => p.id === o.preset)?.instrument);
+    const config = fingeringFor(presets.find(p => p.id === o.preset)?.instrument, 4);
     const mask = string(a.mask,8);
     if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
     answer = { kind: 'fingering', mask };

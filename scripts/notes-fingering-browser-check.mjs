@@ -42,6 +42,10 @@ try {
     await choosePreset(presetPage,id); await startPractice(presetPage);
     const select=presetPage.getByLabel('Answer method',{exact:true});
     await select.selectOption(id==='flute-starter' ? 'keyboard' : 'fingering');
+    if (id==='tuba-starter' || id==='euphonium-starter') {
+      await presetPage.getByLabel('Valve configuration',{exact:true}).selectOption('4');
+      assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
+    }
     if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     if (id==='flute-starter') {
       assert.equal(await select.locator('option[value="fingering"]').evaluate(o=>o.disabled),true);
@@ -153,6 +157,41 @@ try {
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
     assert.equal(await page.locator('.fingering-valve').count(),3);
     await page.getByRole('button',{name:'Open (0)',exact:true}).click(); assert.equal(await correct(),1);
+  }
+  // Four-valve setups retain standard alternatives and safely switch while held.
+  for (const [instrument,pitch,combined] of [['euphonium','F2','E2'],['tuba','F1','E1']]) {
+    await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
+    const valves=page.getByLabel('Valve configuration',{exact:true});
+    await valves.selectOption('4'); await valves.blur();
+    assert.equal(await page.locator('.fingering-valve').count(),4);
+    await page.keyboard.down(';'); assert.equal(await mask(),'00000001');
+    await settle(); assert.equal(await correct(),1);
+    await page.keyboard.down(';'); await settle(); assert.equal(await attempts(),1);
+    await valves.selectOption('3'); await page.keyboard.up(';'); await settle();
+    assert.equal(await mask(),'00000000'); assert.equal(await attempts(),1);
+    await valves.selectOption('4'); await valves.blur();
+    await page.keyboard.down(';'); await valves.selectOption('3'); await settle();
+    assert.equal(await attempts(),1); await page.keyboard.up(';');
+    await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,combined]);
+    await valves.selectOption('4'); await valves.blur();
+    await page.keyboard.down('k'); await page.waitForTimeout(70); await page.keyboard.down(';');
+    assert.equal(await mask(),'00000101'); await settle(); assert.equal(await correct(),1);
+    await page.keyboard.up('k'); await page.keyboard.up(';');
+    // Real simultaneous touchscreen contacts on valves 2 and 4.
+    if (name === 'chromium') {
+      await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,combined]);
+      const cdp=await page.context().newCDPSession(page);
+      const points=[];
+      for (const n of [2,4]) {
+        const b=await page.getByRole('button',{name:`Valve ${n}`,exact:true}).boundingBox();
+        points.push({x:b.x+b.width/2,y:b.y+b.height/2,id:n});
+      }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
+      assert.equal(await mask(),'00000101'); await settle(); assert.equal(await correct(),1);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+      assert.equal(await mask(),'00000000'); await cdp.detach();
+    }
+    await valves.selectOption('3');
   }
   // The shared piano submits once per physical press, including a repeated target.
   await start('C4'); await method.selectOption('keyboard'); await method.blur();

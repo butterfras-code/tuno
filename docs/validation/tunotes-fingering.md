@@ -1,6 +1,6 @@
 # Musical keyboard and brass fingering input
 
-Practice and single-player Challenge offer Note names, Musical keyboard, and instrument-specific Fingering. Note names remain the default. Fingering supports B♭ trumpet, three-valve B♭ tuba, bass-clef euphonium, and F/B♭ double horn. J/K/L or simultaneous pointer contacts hold valves 1/2/3; Open (0) explicitly submits no valves. Horn adds a held T thumb pad below the valves, with a live F-side/B♭-side label. The horn rests in F; T selects B♭. Multiplayer retains its existing note-name controls and player keyboard mappings.
+Practice and single-player Challenge offer Note names, Musical keyboard, and instrument-specific Fingering. Note names remain the default. Fingering supports B♭ trumpet, three- or four-valve B♭ tuba and bass-clef euphonium, and F/B♭ double horn. Tuba and euphonium have a 3 valves / 4 valves selector next to Open. J/K/L or simultaneous pointer contacts hold valves 1/2/3; semicolon holds valve 4 in four-valve mode; Open (0) explicitly submits no valves. Horn adds a held T thumb pad below the valves, with a live F-side/B♭-side label. The horn rests in F; T selects B♭. Multiplayer retains its existing note-name controls and player keyboard mappings.
 
 Musical keyboard uses the actual tUno piano component and styles extracted from the Tone view. It grades written pitch including octave, accepts enharmonic keys, and provides octave selection without transposing the instrument to concert pitch. It does not generate audio in tuNotes.
 
@@ -25,8 +25,8 @@ Musical keyboard uses the actual tUno piano component and styles extracted from 
 
 Node 24.22.1, dependencies installed with `npm ci`.
 
-- `npm run check`: 469 tests passed, typecheck and hosted build passed.
-- New fingering browser checks: Chromium and Firefox. Real simultaneous touch contacts are exercised in Chromium through CDP. Desktop 1280 px and mobile 360 px layouts have no horizontal overflow and valve targets exceed 44 px.
+- `npm run check`: 471 tests passed, typecheck and hosted build passed.
+- New fingering browser checks: Chromium and Firefox. Real simultaneous touch contacts are exercised in Chromium through CDP, including valves 2+4. Tests cover fourth-valve scoring and backups for both instruments, repeated held keys, configuration switching, and all 16 held-state combinations. Desktop 1280 px and mobile 360 px layouts have no horizontal overflow and valve targets exceed 44 px.
 - Existing tUno `browser-check.mjs`: passed in hosted and offline modes after keyboard extraction.
 - Existing `notes-input-browser-check.mjs`: passed, including note-name keyboard, pointer, accidental, and touchscreen behavior.
 - Existing `notes-challenge-browser-check.mjs`: passed, including hosted/offline gating, scoring, countdowns, navigation, and responsive layout.
@@ -38,4 +38,6 @@ Node 24.22.1, dependencies installed with `npm ci`.
 
 An intermediate fingering held for at least 200 ms can submit; this is an explicit, unit-tested limitation of the settling policy. Holding a correct combination alone cannot answer a subsequent card. A beat-based activity can consume held state directly without this policy.
 
-Physical iOS/Android hardware and Safari were not tested. Input method choice is session-local. Other tuba tunings, fourth-valve low-brass fingerings, reversed horn triggers, multiplayer instrument mappings, and continuous beat-based evaluation are not implemented. Existing preset ranges are fully covered; no false-tone or compensating-system assumptions are needed.
+Four-valve mode adds 4 as an alternative to 1+3 and 2+4 as an alternative to 1+2+3, plus the documented common alternatives in the current range. Three-valve choices remain acceptable. Switching configurations cancels held states and pending submissions. Valve 4 occupies the last right-hand mask position (`00000001`). Scoring and saved observations accept valid masks independently of the current control layout.
+
+Physical iOS/Android hardware and Safari were not tested. Input method and valve-count choices are session-local. Other tuba tunings, compensating/non-compensating pedal-register extensions, reversed horn triggers, multiplayer instrument mappings, and continuous beat-based evaluation are not implemented. Existing preset ranges are fully covered; no false-tone or compensating-system assumptions are needed.

@@ -34,6 +34,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let prompt = '';
   let method = 'names';
   let supported = false;
+  let valveCount: 3 | 4 = 3;
+  let lastUpdate: Parameters<typeof answers.update> | undefined;
   const node = el('div', 'note-entry');
   const methodLabel = el('label', 'fingering-method');
   const methodSelect = el('select', 'control'); methodSelect.setAttribute('aria-label', 'Answer method');
@@ -51,7 +53,15 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
   const fingeringHelp = el('p', 'muted fingering-help');
   const side = el('p','muted horn-side','F side'); side.hidden = true;
-  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open);
+  const valveSelect = el('select','control'); valveSelect.setAttribute('aria-label','Valve configuration');
+  for (const count of [3,4]) { const option = el('option','',`${count} valves`); option.value = String(count); valveSelect.append(option); }
+  valveSelect.hidden = true;
+  valveSelect.addEventListener('change', () => {
+    reset(); feedback.clear(); options.onMethodChange?.();
+    valveCount = valveSelect.value === '4' ? 4 : 3;
+    if (lastUpdate) update(...lastUpdate);
+  });
+  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,valveSelect);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
@@ -63,6 +73,41 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   methodSelect.addEventListener('change', () => { reset(); feedback.clear(); dismiss.hidden = true; method = methodSelect.value; options.onMethodChange?.(); refreshMethod(); });
   node.append(methodLabel, answers.node, fingeringPanel, keyboard.node);
 
+  function update(...args: Parameters<typeof answers.update>) {
+    lastUpdate = args;
+    const [preset, token, locked] = args;
+    valveSelect.hidden = !['tuba','euphonium'].includes(preset.instrument ?? '');
+    const config = options.fingering ? fingeringFor(preset.instrument,valveCount) : undefined;
+    supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
+    if (configuration !== config) {
+      fingers.reset(); configuration = config;
+      const previous = fingers.node;
+      fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
+        policy.change(mask,intentional);
+        side.textContent = mask[3] === '1' ? 'B♭ side — T held' : 'F side';
+      });
+      previous.replaceWith(fingers.node);
+      fingers.node.dataset.instrument = config?.instrument ?? '';
+      side.hidden = config?.instrument !== 'horn-f';
+      fingeringHelp.textContent = config?.instrument === 'horn-f'
+        ? 'J K L = valves · T = B♭ trigger. Open = F-side open.'
+        : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, choose Open (0).'
+        : 'Hold valves or J K L. For no valves, choose Open (0).';
+    }
+    const fingeringOption = methodSelect.querySelector<HTMLOptionElement>('option[value="fingering"]')!;
+    fingeringOption.hidden = !supported; fingeringOption.disabled = !supported;
+    if (!supported && method === 'fingering') { method = 'names'; methodSelect.value = method; }
+    methodLabel.hidden = !options.fingering;
+    keyboard.update(token,locked,preset.pool[0]!.octave);
+    policy.update(token, locked);
+    open.disabled = locked;
+    refreshMethod();
+    const identity = `${token.session}:${token.prompt}`;
+    if (identity !== prompt || locked) dismiss.hidden = true;
+    prompt = identity;
+    answers.update(...args);
+  }
+
   // Keep controls and their live announcement together in every mode.
   node.append(feedback.node);
   return {
@@ -72,37 +117,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     heldKeydown(event: KeyboardEvent) { return supported && method === 'fingering' && fingers.keydown(event); },
     heldKeyup(event: KeyboardEvent) { fingers.keyup(event); },
     focus() { if (method === 'keyboard') keyboard.focus(); else if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
-    update(...args: Parameters<typeof answers.update>) {
-      const [preset, token, locked] = args;
-      const config = options.fingering ? fingeringFor(preset.instrument) : undefined;
-      supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
-      if (configuration !== config) {
-        fingers.reset(); configuration = config;
-        const previous = fingers.node;
-        fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
-          policy.change(mask,intentional);
-          side.textContent = mask[3] === '1' ? 'B♭ side — T held' : 'F side';
-        });
-        previous.replaceWith(fingers.node);
-        fingers.node.dataset.instrument = config?.instrument ?? '';
-        side.hidden = config?.instrument !== 'horn-f';
-        fingeringHelp.textContent = config?.instrument === 'horn-f'
-          ? 'J K L = valves · T = B♭ trigger. Open = F-side open.'
-          : 'Hold valves or J K L. For no valves, choose Open (0).';
-      }
-      const fingeringOption = methodSelect.querySelector<HTMLOptionElement>('option[value="fingering"]')!;
-      fingeringOption.hidden = !supported; fingeringOption.disabled = !supported;
-      if (!supported && method === 'fingering') { method = 'names'; methodSelect.value = method; }
-      methodLabel.hidden = !options.fingering;
-      keyboard.update(token,locked,preset.pool[0]!.octave);
-      policy.update(token, locked);
-      open.disabled = locked;
-      refreshMethod();
-      const identity = `${token.session}:${token.prompt}`;
-      if (identity !== prompt || locked) dismiss.hidden = true;
-      prompt = identity;
-      answers.update(...args);
-    },
+    update,
     paused(paused: boolean) {
       if (paused) reset();
       statusText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';

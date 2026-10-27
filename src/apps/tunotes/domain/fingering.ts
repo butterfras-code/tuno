@@ -42,7 +42,11 @@ export const trumpetFingering: FingeringConfiguration = {
   ],
   pitches: Object.fromEntries(chart.map((valves, i) => [54 + i, valves.map(v => masks[v]!)])),
 };
-export function fingeringFor(instrument?: string) { return [trumpetFingering, euphoniumFingering, tubaFingering, hornFingering].find(config => config.instrument === instrument); }
+export function fingeringFor(instrument?: string, valves: 3 | 4 = 3) {
+  if (valves === 4 && instrument === 'euphonium') return euphoniumFourValveFingering;
+  if (valves === 4 && instrument === 'tuba') return tubaFourValveFingering;
+  return [trumpetFingering, euphoniumFingering, tubaFingering, hornFingering].find(config => config.instrument === instrument);
+}
 
 /** Three-valve B♭ bass-clef instruments; written notes are already concert pitch.
  * The same valve series is 14 / 26 semitones below written trumpet pitch.
@@ -55,6 +59,23 @@ function bassBrass(instrument: string, offset: number): FingeringConfiguration {
 }
 export const euphoniumFingering = bassBrass('euphonium', 14);
 export const tubaFingering = bassBrass('tuba', 26);
+
+/** Standard fourth-valve substitutions in the existing range: 4 for 1+3,
+ * 2+4 for 1+2+3. These do not enter the model-dependent pedal register.
+ * Additional common alternatives (E3, B3, B♭2 on euphonium) are from Everett.
+ */
+function fourValve(base: FingeringConfiguration, octaveOffset: number): FingeringConfiguration {
+  const pitches = Object.fromEntries(Object.entries(base.pitches).map(([pitch, choices]) => {
+    const extra = choices.flatMap(mask => mask === '00001010' ? ['00000001'] : mask === '00001110' ? ['00000101'] : []);
+    const euphoniumPitch = Number(pitch) + octaveOffset;
+    if (euphoniumPitch === 52 || euphoniumPitch === 59) extra.push('00000101');
+    if (euphoniumPitch === 46) extra.push('00001001');
+    return [pitch, [...new Set([...choices, ...extra])]];
+  }));
+  return { ...base, fingers: [...base.fingers, { position: 7, label: '4', accessibleLabel: 'Valve 4', key: ';' }], pitches };
+}
+export const euphoniumFourValveFingering = fourValve(euphoniumFingering, 0);
+export const tubaFourValveFingering = fourValve(tubaFingering, 12);
 
 // Written C2–G5, F/B♭ double horn resting in F. T selects the B♭ side.
 // Common choices and alternates checked against Colin Dorman's double-horn chart:

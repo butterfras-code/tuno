@@ -88,7 +88,7 @@ export class Practice {
     if (this.state !== 'running' || !this.matches(token)) return false;
     if ('kind' in answer && answer.kind === 'keyboard' && (!Number.isInteger(answer.note) || answer.note < 12 || answer.note > 119)) return false;
     const now = this.activeMs;
-    const config = fingeringFor(this.preset.instrument);
+    const config = fingeringFor(this.preset.instrument, 4);
     if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
     const correct = 'kind' in answer ? answer.kind === 'keyboard' ? chromatic(this.pitch) === answer.note : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;

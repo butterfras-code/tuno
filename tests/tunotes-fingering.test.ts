@@ -144,3 +144,44 @@ test('musical keyboard grades written chromatic pitch, octave and enharmonics, a
   assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
   store.flush();
 });
+
+test('four-valve low brass retains three-valve choices and adds standard fourth-valve answers', async () => {
+  const { fingeringFor } = await import('../src/apps/tunotes/domain/fingering.ts');
+  for (const [instrument,octave] of [['euphonium',2],['tuba',1]] as const) {
+    const three=fingeringFor(instrument,3)!, four=fingeringFor(instrument,4)!;
+    assert.equal(three.fingers.length,3); assert.equal(four.fingers.length,4);
+    assert.deepEqual(four.fingers[3],{position:7,label:'4',accessibleLabel:'Valve 4',key:';'});
+    for (const [pitch,masks] of Object.entries(three.pitches)) {
+      assert.ok(masks.every(mask=>four.pitches[Number(pitch)]!.includes(mask)));
+      assert.ok(four.pitches[Number(pitch)]!.every(validMask));
+    }
+    for (const [pitch,mask] of [[`F${octave}`,'00000001'],[`E${octave}`,'00000101'],[`C${octave+1}`,'00000001'],[`Bb${octave}`,'00001001']] as const) {
+      assert.ok(acceptsFingering(four,parsePitch(pitch),mask));
+      assert.ok(!acceptsFingering(three,parsePitch(pitch),mask));
+    }
+    assert.ok(!acceptsFingering(four,parsePitch(`F${octave}`),'00001001'));
+    for (let bits=0;bits<16;bits++) {
+      const held=new HeldFingers();
+      for (let i=0;i<4;i++) if (bits & (1 << (3-i))) held.down(`key:${i}`,4+i);
+      assert.equal(held.mask,'0000'+bits.toString(2).padStart(4,'0'));
+    }
+  }
+  assert.equal(fingeringFor('trumpet-bb',4)!.fingers.length,3);
+  assert.equal(fingeringFor('horn-f',4)!.fingers[3]!.label,'T');
+});
+
+test('fourth-valve scores and saved observations round-trip for both bass-clef instruments', async () => {
+  const { NotesStore,parseBackup }=await import('../src/apps/tunotes/persistence/store.ts');
+  for (const instrument of ['euphonium','tuba']) {
+    const preset=presets.find(p=>p.id===`${instrument}-one-and-half-octaves`)!;
+    const session=new Practice(preset,false,()=>0,()=>0.999,{continueAfter:'instant'});
+    session.pitch=parsePitch(instrument==='tuba' ? 'F1' : 'F2');
+    session.answer(session.token,{kind:'fingering',mask:'00000001'});
+    assert.equal(session.correct,1);
+    const store=new NotesStore();
+    store.update(data=>data.profiles.push({id:'four',name:'Four valves',results:[],contexts:[],defaultPresetId:preset.id}));
+    store.observe('four',preset,session.last!);
+    assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
+    store.flush();
+  }
+});
