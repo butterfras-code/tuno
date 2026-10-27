@@ -90,7 +90,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingers.node.dataset.instrument = config?.instrument ?? '';
       side.hidden = config?.instrument !== 'horn-f';
       fingeringHelp.textContent = config?.instrument === 'horn-f'
-        ? 'J K L = valves · N = B♭ trigger. Space = F-side open.'
+        ? 'I O P = valves · N = B♭ trigger. Space = F-side open.'
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';
     }

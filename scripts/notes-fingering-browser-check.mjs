@@ -165,7 +165,7 @@ try {
   for (const triggerFirst of [true,false]) {
     for (let bits=0;bits<8;bits++) {
       await page.evaluate(()=>window.fixture.start('C4','correct','horn-f'));
-      const valves=['j','k','l'].filter((_,i)=>bits & (1<<i));
+      const valves=['i','o','p'].filter((_,i)=>bits & (1<<i));
       const keys=triggerFirst ? ['n',...valves] : [...valves,'n'];
       for (const key of keys) await page.keyboard.down(key);
       const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
@@ -174,7 +174,7 @@ try {
       assert.equal(await mask(),'00000000');
     }
   }
-  for (const [pitch,keys] of [['D4',['n','j','k']],['Db4',['n','k','l']],['C3',['n','j','l']]]) {
+  for (const [pitch,keys] of [['D4',['n','i','o']],['Db4',['n','o','p']],['C3',['n','i','p']]]) {
     await page.evaluate(p=>window.fixture.start(p,'instant','horn-f'),pitch);
     for (const key of keys) await page.keyboard.down(key);
     await settle(); assert.equal(await correct(),1,pitch+': '+keys.join('+'));
