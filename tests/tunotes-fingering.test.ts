@@ -203,7 +203,7 @@ test('selected input instrument overrides the preset chart and survives backup e
   const preset = presets.find(p => p.id === 'trumpet-bb-starter')!;
   const session = new Practice(preset, false, () => 0, () => 0, {continueAfter:'instant'});
   session.pitch = parsePitch('C4');
-  // N alone is valid on double horn, while trumpet has no left-hand trigger bit.
+  // The thumb trigger alone is valid on double horn, while trumpet has no left-hand trigger bit.
   session.answer(session.token, {kind:'fingering', mask:'00010000', instrument:'horn-f'});
   assert.equal(session.correct, 1);
   const store = new NotesStore();
@@ -212,5 +212,50 @@ test('selected input instrument overrides the preset chart and survives backup e
   assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
   const invalid = store.export().replaceAll('horn-f','not-an-instrument');
   assert.throws(()=>parseBackup(invalid),/Invalid fingering observation/);
+  store.flush();
+});
+
+test('string Big 5 charts cover every existing preset in written pitch', async () => {
+  const { fingeringFor } = await import('../src/apps/tunotes/domain/fingering.ts');
+  for (const instrument of ['violin','viola','cello','double-bass']) {
+    const chart=fingeringFor(instrument)!;
+    assert.equal(chart.hand,'left'); assert.equal(chart.control,'finger');
+    assert.deepEqual(chart.fingers.map(f=>f.key),['f','d','s','a']);
+    const bigFive=presets.filter(p=>p.instrument===instrument && p.id.includes('starter'));
+    assert.equal(bigFive.length,4);
+    for(const preset of bigFive) for(const note of preset.pool) assert.ok(chart.pitches[chromatic(note)]?.length,`${preset.id}: ${JSON.stringify(note)}`);
+  }
+});
+
+test('string fingerings accept lower held fingers but reject higher fingers and right-hand bits', async () => {
+  const { fingeringFor } = await import('../src/apps/tunotes/domain/fingering.ts');
+  const violin=fingeringFor('violin')!;
+  for(const [pitch,finger] of [['E4',1],['F#4',2],['G4',3],['A4',4]] as const) {
+    for(let bits=0;bits<256;bits++) {
+      const mask=bits.toString(2).padStart(8,'0');
+      const highest=mask.slice(0,4).lastIndexOf('1')+1;
+      const expected=(highest===finger && mask.slice(4)==='0000') || pitch==='A4' && bits===0;
+      assert.equal(acceptsFingering(violin,parsePitch(pitch),mask),expected,`${pitch}: ${mask}`);
+    }
+  }
+  assert.ok(acceptsFingering(fingeringFor('cello')!,parsePitch('F#3'),'00100000'));
+  assert.ok(!acceptsFingering(fingeringFor('cello')!,parsePitch('F#3'),'01000000'));
+  assert.ok(acceptsFingering(fingeringFor('double-bass')!,parsePitch('F#3'),'00010000'));
+  assert.ok(acceptsFingering(fingeringFor('double-bass')!,parsePitch('G3'),OPEN_FINGERING));
+  assert.ok(!acceptsFingering(fingeringFor('double-bass')!,parsePitch('G2'),OPEN_FINGERING));
+  assert.ok(!acceptsFingering(fingeringFor('cello')!,parsePitch('E4'),OPEN_FINGERING));
+});
+
+test('string answers grade through the existing activity and survive backup export', async () => {
+  const { NotesStore, parseBackup } = await import('../src/apps/tunotes/persistence/store.ts');
+  const preset=presets.find(p=>p.id==='violin-starter')!;
+  const session=new Practice(preset,false,()=>0,()=>0,{continueAfter:'instant'});
+  session.pitch=parsePitch('F#4');
+  session.answer(session.token,{kind:'fingering',mask:'11000000',instrument:'violin'});
+  assert.equal(session.correct,1);
+  const store=new NotesStore();
+  store.update(data=>data.profiles.push({id:'strings',name:'Strings',results:[],contexts:[],defaultPresetId:preset.id}));
+  store.observe('strings',preset,session.last!);
+  assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
   store.flush();
 });

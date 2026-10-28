@@ -6,6 +6,7 @@ import { hostBuild } from './test-host.mjs';
 import { viewportProfiles } from './viewport-profiles.mjs';
 import { choosePreset, startPractice } from './notes-setup-helpers.mjs';
 
+const strings = ['violin','viola','cello','double-bass'];
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
@@ -88,7 +89,7 @@ try {
     }
     if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     if (id==='flute-starter') {
-      assert.equal(await presetPage.locator('.instrument-picker button').count(),7);
+      assert.equal(await presetPage.locator('.instrument-picker button').count(),11);
       assert.equal(await presetPage.locator('.piano-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
       assert.equal(await presetPage.locator('.piano-key--white:visible').count(),8);
       await presetPage.getByRole('button',{name:/^Answer C[0-9]$/,exact:false}).first().click();
@@ -103,7 +104,8 @@ try {
   }
 
   // Phones rotate into an edge-mounted valve column, mirrored for the horn.
-  for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium']) {
+  for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium',...strings]) {
+    const left = instrument==='horn-f' || strings.includes(instrument);
     const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
     const phone=await context.newPage(); phone.on('pageerror',e=>errors.push(e.message));
     await phone.goto(new URL('/notes/',host.url).href);
@@ -122,14 +124,14 @@ try {
       const entry=await phone.locator('.note-entry').boundingBox();
       assert.ok(entry.y<=8 && entry.y+entry.height>=viewport.height-8,`Hand column spans the app viewport: ${JSON.stringify({entry,viewport})}`);
       const header=await phone.locator('.app-header').boundingBox();
-      assert.ok(instrument==='horn-f' ? header.x>=entry.x+entry.width : header.x+header.width<=entry.x,'Header moves beside the hand column');
+      assert.ok(left ? header.x>=entry.x+entry.width : header.x+header.width<=entry.x,'Header moves beside the hand column');
       assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Landscape has no horizontal overflow');
       for (const [i,v] of valves.entries()) {
         assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
         assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');
         assert.ok(v.w>=40 && v.h>=40, 'Valve targets remain usable after fitting the stage');
         if(i) assert.ok(v.y<valves[i-1].y && Math.abs(v.x-valves[0].x)<1,'Valves run bottom to top');
-        assert.ok(instrument==='horn-f' ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
+        assert.ok(left ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
       }
       if(instrument==='horn-f') {
         const trigger=await phone.locator('.fingering-trigger').boundingBox();
@@ -140,7 +142,7 @@ try {
     if(name==='chromium') {
       const cdp=await context.newCDPSession(phone), points=[];
       for(const n of [1,2]) {
-        const r=await phone.getByRole('button',{name:`Valve ${n}`,exact:true}).boundingBox();
+        const r=await phone.getByRole('button',{name:`${strings.includes(instrument) ? 'Finger' : 'Valve'} ${n}`,exact:true}).boundingBox();
         points.push({x:r.x+r.width/2,y:r.y+r.height/2,id:n});
       }
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
@@ -158,26 +160,27 @@ try {
     await context.close();
   }
 
-  for (const profile of viewportProfiles) {
+  for (const instrument of ['horn-f',...strings]) for (const profile of viewportProfiles) {
     const context=await browser.newContext({viewport:profile.viewport,hasTouch:profile.hasTouch});
     const screen=await context.newPage();
     await screen.goto(new URL('/notes/',host.url).href);
-    await choosePreset(screen,'horn-f-starter');
-    await screen.screenshot({path:`dist/validation/horn-${profile.id}-setup-${name}.png`,fullPage:true});
+    await choosePreset(screen,`${instrument}-starter`);
+    await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-setup-${name}.png`,fullPage:true});
     await startPractice(screen); await chooseMethod(screen,'fingering');
-    await screen.keyboard.down('q'); await screen.keyboard.down('w'); await screen.keyboard.down('v');
-    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),'11010000');
+    const keys=instrument==='horn-f' ? ['q','w','v'] : ['f','d'];
+    for(const key of keys) await screen.keyboard.down(key);
+    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : '11000000');
     await screen.waitForTimeout(250);
-    for(const key of ['q','w','v']) await screen.keyboard.up(key);
+    for(const key of keys) await screen.keyboard.up(key);
     assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    await screen.screenshot({path:`dist/validation/horn-${profile.id}-input-${name}.png`,fullPage:true});
+    await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-input-${name}.png`,fullPage:true});
     await instrumentPill(screen).click();
     const menu=await screen.getByRole('dialog',{name:'Choose instrument',exact:true}).boundingBox();
     assert.ok(menu.x>=0 && menu.y>=0 && menu.x+menu.width<=profile.viewport.width && menu.y+menu.height<=profile.viewport.height);
-    await screen.screenshot({path:`dist/validation/horn-${profile.id}-menu-${name}.png`,fullPage:true});
+    await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-menu-${name}.png`,fullPage:true});
     await screen.keyboard.press('Escape');
     await screen.getByRole('button',{name:'Finish',exact:true}).click();
-    await screen.screenshot({path:`dist/validation/horn-${profile.id}-results-${name}.png`,fullPage:true});
+    await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-results-${name}.png`,fullPage:true});
     await context.close();
   }
 
@@ -330,7 +333,7 @@ try {
       const cdp=await page.context().newCDPSession(page);
       const points=[];
       for (const n of [2,4]) {
-        const b=await page.getByRole('button',{name:`Valve ${n}`,exact:true}).boundingBox();
+        const b=await page.getByRole('button',{name:`${strings.includes(instrument) ? 'Finger' : 'Valve'} ${n}`,exact:true}).boundingBox();
         points.push({x:b.x+b.width/2,y:b.y+b.height/2,id:n});
       }
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
@@ -339,6 +342,28 @@ try {
       assert.equal(await mask(),'00000000'); await cdp.detach();
     }
     await valves.selectOption(`${instrument}-3`);
+  }
+  // String answers share held-state timing, explicit Open and persistence grading.
+  for(const [instrument,pitch,keys,openPitch] of [
+    ['violin','F#4',['f','d'],'D4'], ['viola','F#4',['f','d'],'D4'],
+    ['cello','F#3',['f','s'],'D3'], ['double-bass','F#3',['f','a'],'D3'],
+  ]) {
+    await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
+    await chooseMethod(page,'fingering');
+    assert.equal(await page.getByRole('button',{name:/^Finger [1-4]$/}).count(),4);
+    await page.keyboard.down(keys[0]); await page.waitForTimeout(70); await page.keyboard.down(keys[1]);
+    await settle(); assert.equal(await correct(),1);
+    await settle(); assert.equal(await attempts(),1,'Held fingers do not answer the repeated note');
+    await page.keyboard.up(keys[1]); await page.keyboard.down(keys[1]); await settle();
+    assert.equal(await correct(),2);
+    await chooseMethod(page,'names');
+    for(const key of keys) await page.keyboard.up(key);
+    await settle(); assert.equal(await attempts(),2);
+    await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,openPitch]);
+    await chooseMethod(page,'fingering');
+    await settle(); assert.equal(await attempts(),0);
+    await page.keyboard.press('Space'); assert.equal(await correct(),1);
+    await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
   }
   // The shared piano submits once per physical press, including a repeated target.
   await start('C4'); await chooseMethod(page,'keyboard');

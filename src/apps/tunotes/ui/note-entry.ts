@@ -35,6 +35,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let method = 'names';
   let supported = false;
   const instruments = [
+    ...['violin','viola','cello','double-bass'].map(instrument => ({value: instrument, label: instrument === 'double-bass' ? 'Double bass' : instrument[0]!.toUpperCase() + instrument.slice(1), instrument, valves: 3 as const})),
     { value: 'piano', label: 'Piano', instrument: undefined, valves: 3 as const },
     { value: 'trumpet-bb', label: 'B♭ Trumpet', instrument: 'trumpet-bb', valves: 3 as const },
     { value: 'horn-f', label: 'Horn in F (Dbl)', instrument: 'horn-f', valves: 3 as const },
@@ -43,7 +44,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     { value: 'tuba-3', label: 'B♭ Tuba – 3V', instrument: 'tuba', valves: 3 as const },
     { value: 'tuba-4', label: 'B♭ Tuba – 4V', instrument: 'tuba', valves: 4 as const },
   ];
-  let selectedInstrument = instruments[0]!;
+  const pianoInstrument = instruments.find(item => item.value === 'piano')!;
+  let selectedInstrument = pianoInstrument;
   let presetInstrument: string | undefined;
   let initialized = false;
   let instrumentChosen = false;
@@ -133,7 +135,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     const [preset, token, locked] = args;
     if (!initialized || presetInstrument !== preset.instrument) {
       initialized = true; presetInstrument = preset.instrument;
-      selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? instruments[0]!;
+      selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? pianoInstrument;
     }
     for (const item of instruments) {
       const choice = instrumentChoices.get(item.value)!;
@@ -141,7 +143,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
       choice.textContent = item.label + (choice.disabled ? ' (outside note range)' : '');
     }
-    if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = instruments[0]!;
+    if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = pianoInstrument;
     for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
     if (method !== 'names') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
@@ -155,8 +157,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       });
       previous.replaceWith(fingers.node);
       fingers.node.dataset.instrument = config?.instrument ?? '';
+      fingers.node.dataset.hand = config?.hand ?? 'right';
+      fingers.node.dataset.control = config?.control ?? 'valve';
       side.hidden = config?.instrument !== 'horn-f';
-      fingeringHelp.textContent = config?.instrument === 'horn-f'
+      fingeringHelp.textContent = config?.control === 'finger'
+        ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
+        : config?.instrument === 'horn-f'
         ? 'Q W E = valves · V = B♭ trigger. Space = F-side open.'
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';

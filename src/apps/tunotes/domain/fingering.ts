@@ -1,3 +1,4 @@
+import { stringFingerings } from './string-fingering.ts';
 import type { FingerPosition } from '../../../shared/input/held-fingers.ts';
 import { chromatic } from './notation.ts';
 import type { AnswerSpelling, WrittenPitch } from './notation.ts';
@@ -7,6 +8,8 @@ export type FingeringMask = string;
 export const OPEN_FINGERING: FingeringMask = '00000000';
 export interface FingeringConfiguration {
   readonly instrument: string;
+  readonly hand?: 'left' | 'right';
+  readonly control?: 'valve' | 'finger';
   /** Array order is the visual arrangement; position indexes the eight-bit mask. */
   readonly fingers: readonly FingerPosition[];
   /** Existing written chromatic pitch numbers, never concert/transposed pitch. */
@@ -45,7 +48,7 @@ export const trumpetFingering: FingeringConfiguration = {
 export function fingeringFor(instrument?: string, valves: 3 | 4 = 3) {
   if (valves === 4 && instrument === 'euphonium') return euphoniumFourValveFingering;
   if (valves === 4 && instrument === 'tuba') return tubaFourValveFingering;
-  return [trumpetFingering, euphoniumFingering, tubaFingering, hornFingering].find(config => config.instrument === instrument);
+  return [trumpetFingering, euphoniumFingering, tubaFingering, hornFingering, ...stringFingerings].find(config => config.instrument === instrument);
 }
 
 /** Three-valve B♭ bass-clef instruments; written notes are already concert pitch.
@@ -91,7 +94,7 @@ const hornChart = [
   ['T2','T12','2'], ['T0','0','T1'],
 ];
 export const hornFingering: FingeringConfiguration = {
-  instrument: 'horn-f',
+  instrument: 'horn-f', hand: 'left',
   fingers: [
     { position: 0, label: '1', accessibleLabel: 'Valve 1', key: 'q' },
     { position: 1, label: '2', accessibleLabel: 'Valve 2', key: 'w' },
