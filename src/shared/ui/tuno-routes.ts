@@ -16,7 +16,10 @@ export function connectToolRoutes(store: PracticeStore) {
     if (state.focus === previous) return;
     previous = state.focus;
     if (focusForPath(location.pathname) !== state.focus) {
-      history.pushState(null, '', toolPaths[state.focus] + location.search);
+      // The original assignment belongs to its entry route. Keep temporary state
+      // in memory when switching tools, and avoid a mismatched payload on reload.
+      const search = new URLSearchParams(location.search); search.delete('activity');
+      history.pushState(null, '', toolPaths[state.focus] + (search.size ? `?${search}` : ''));
     }
   });
 }

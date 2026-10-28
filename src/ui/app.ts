@@ -1,3 +1,5 @@
+import { shareControl } from '../shared/sharing/share-control.ts';
+import { captureTools, toolAdapter } from '../practice/sharing.ts';
 import { createAppHeader } from '../shared/ui/app-header.ts';
 import { toolPaths } from '../shared/ui/tuno-routes.ts';
 import tapHeadAsset from '../assets/uno-tap-head.svg';
@@ -48,7 +50,7 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
   main.id = 'practice';
   main.tabIndex = -1;
   const panelHeader = el('div', 'practice-navigation');
-  panelHeader.append(navigation);
+  panelHeader.append(navigation, shareControl(toolAdapter,() => captureTools(store)));
   main.append(panelHeader, createTuner(store, audio), createTone(store, audio), createMetronome(store, audio));
   const tools = el('aside', 'tool-strip');
   tools.setAttribute('aria-label', 'Practice tools');

@@ -4,6 +4,7 @@ export const browserEngines = ['chromium', 'firefox'];
 
 // Explicit classification: discovering a file never silently enables or omits it.
 export const browserChecks = [
+  { file: 'activity-sharing-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'counting-plan-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'layout-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },

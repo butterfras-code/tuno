@@ -157,6 +157,40 @@ export class NotesStore {
   private saved: string | null = null;
   private writeAllowed = true;
   private statusListeners = new Set<() => void>();
+  private sharedDefaults: Snapshot | undefined;
+  private transientPresets = new Set<string>();
+  beginSharedSession() { this.sharedDefaults = structuredClone(this.data); }
+  saveProfileDefault(profileId: string, presetId: string) {
+    this.update(data => {
+      data.profiles.find(p => p.id === profileId)!.defaultPresetId = presetId;
+      if (data.configuration.remember) data.configuration.presetId = presetId;
+    });
+    if (this.sharedDefaults) {
+      const saved = this.sharedDefaults.profiles.find(p => p.id === profileId);
+      if (saved) saved.defaultPresetId = presetId;
+      this.transientPresets.delete(presetId);
+      this.flush();
+    }
+  }
+  automaticPreset(id: string) { if (this.sharedDefaults && !this.sharedDefaults.customPresets.some(p => p.id === id)) this.transientPresets.add(id); }
+  transientPreset(id: string) { this.transientPresets.add(id); }
+  private durableData() {
+    if (!this.sharedDefaults) return this.data;
+    const data = structuredClone(this.data);
+    data.configuration = structuredClone(this.sharedDefaults.configuration);
+    data.customPresets = data.customPresets.filter(p => !this.transientPresets.has(p.id));
+    for (const profile of data.profiles) {
+      const saved = this.sharedDefaults.profiles.find(p => p.id === profile.id);
+      if (saved) { profile.defaultPresetId = saved.defaultPresetId; profile.adaptive = saved.adaptive; profile.preview = saved.preview; }
+      if (this.transientPresets.has(profile.defaultPresetId)) profile.defaultPresetId = emptySnapshot().configuration.presetId;
+      const transient = (fp: string) => this.transientPresets.has(JSON.parse(fp)[0]);
+      profile.contexts = profile.contexts.filter(c => !transient(c.fingerprint));
+      profile.results = profile.results.filter(r => !transient(r.context));
+    }
+    if (!data.profiles.some(p => p.id === data.configuration.profileId)) { data.configuration.profileId = null; data.configuration.remember = false; }
+    if (!presets.some(p => p.id === data.configuration.presetId) && !data.customPresets.some(p => p.id === data.configuration.presetId)) data.configuration.presetId = emptySnapshot().configuration.presetId;
+    return data;
+  }
   private pending: ReturnType<typeof setTimeout> | undefined;
   /** Shared browser storage must be opened through connectNotesStore, which holds the writer lock. */
   constructor(storage?: StorageAdapter) {
@@ -198,7 +232,7 @@ export class NotesStore {
   flush() {
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
     if (!this.durable) return;
-    try { this.write(JSON.stringify(this.data)); }
+    try { this.write(JSON.stringify(this.durableData())); }
     catch { if (this.writeAllowed) { this.durable = false; this.message = 'Storage is unavailable or full. Progress is kept in memory; export a backup before closing.'; this.statusChanged(); } }
   }
   replace(candidate: Snapshot) {
@@ -209,12 +243,14 @@ export class NotesStore {
       catch { throw new Error('Import was not committed: saved data changed or storage write failed. Existing data is unchanged.'); }
     }
     if (this.pending) clearTimeout(this.pending); this.pending = undefined; this.data = next;
+    if (this.sharedDefaults) this.sharedDefaults = structuredClone(next); this.transientPresets.clear();
     this.message = this.durable ? 'Backup imported.' : 'Backup replaced in memory only. Export before closing.';
     this.statusChanged();
   }
   clear() {
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
     this.data = emptySnapshot();
+    if (this.sharedDefaults) this.sharedDefaults = emptySnapshot(); this.transientPresets.clear();
     if (!this.writeAllowed) { this.message = 'This tab’s in-memory data was deleted. Saved data is unchanged; reload to use it.'; this.statusChanged(); return; }
     try { this.requireCurrent(); this.storage!.removeItem(STORAGE_KEY); this.saved = null; this.durable = true; this.message = 'All tuNotes data in this storage context was deleted.'; }
     catch { this.durable = false; this.message = 'In-memory data was deleted. Saved data could not be deleted; reload to review it or clear site data in your browser.'; }

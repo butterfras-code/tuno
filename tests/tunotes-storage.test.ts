@@ -151,3 +151,23 @@ test('failed import preserves pending memory and persisted data', async () => {
     assert.equal(session.store.export(), pending);
   } finally { session.close(); }
 });
+
+test('shared activities preserve local defaults while retaining stale-writer protection', async () => {
+  const storage = memory(), locks = new Locks();
+  const owner = await connectNotesStore(storage, locks), reader = await connectNotesStore(storage, locks);
+  try {
+    owner.store.beginSharedSession(); reader.store.beginSharedSession();
+    owner.store.update(data => { data.configuration.continueAfter = 'correct'; });
+    add(owner.store, 'Owner');
+    const saved = parseBackup(storage.getItem(STORAGE_KEY)!);
+    assert.equal(saved.configuration.continueAfter, emptySnapshot().configuration.continueAfter);
+    assert.deepEqual(saved.profiles.map(p => p.name), ['Owner']);
+    assert.equal(owner.store.durable, true, 'filtered saves remain recognized as the current snapshot');
+    add(reader.store, 'Reader'); reader.store.clear();
+    assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Owner']);
+    const external = JSON.stringify(emptySnapshot()); storage.values.set(STORAGE_KEY, external);
+    add(owner.store, 'Stale');
+    assert.equal(owner.store.durable, false);
+    assert.equal(storage.getItem(STORAGE_KEY), external);
+  } finally { owner.close(); reader.close(); }
+});
