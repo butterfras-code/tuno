@@ -249,8 +249,8 @@ try {
       entry.respond(session,{treat:false,text:''}); render();
     },{fingering:true,currentPitch:()=>session?.pitch,guidance:()=>false,showKeySignature:()=>false,disableGuidance:()=>{}});
     function render(){entry.update(session.preset,session.token,session.state!=='running');}
-    window.fixture = {entry, get session(){return session;}, sequence(){
-      entry.reset(); session = new Practice({...preset,range:['C4','E4'],pool:[parsePitch('C4'),parsePitch('E4')]},false,()=>performance.now(),()=>0.999,{continueAfter:'instant'}); render();
+    window.fixture = {entry, get session(){return session;}, sequence(first='E4',next='C4',instrument='trumpet-bb'){
+      entry.reset(); session = new Practice({...preset,instrument,range:[next,first],pool:[parsePitch(next),parsePitch(first)]},false,()=>performance.now(),()=>0.999,{continueAfter:'instant'}); render();
     }, start(pitch='E4',pace='instant',instrument='trumpet-bb'){
       entry.reset(); session = new Practice({...preset,instrument,pool:[parsePitch(pitch)]},false,()=>performance.now(),Math.random,{continueAfter:pace}); render();
     }};
@@ -274,6 +274,16 @@ try {
   await page.keyboard.up('j'); await page.waitForTimeout(50); await page.keyboard.up('k');
   await settle(); assert.equal(await correct(),2); assert.equal(await attempts(),2);
   await settle(); assert.equal(await attempts(),2);
+  // Violin release-to-open uses D4/A4/E5 as primary open strings.
+  for (const [first,next] of [['E4','D4'],['B4','A4'],['F#5','E5']]) {
+    await page.evaluate(([first,next])=>window.fixture.sequence(first,next,'violin'),[first,next]);
+    await chooseMethod(page,'fingering');
+    await page.keyboard.down('f'); await settle(); assert.equal(await correct(),1,first);
+    await page.keyboard.up('f'); await settle(); assert.equal(await correct(),2,next);
+    await settle(); assert.equal(await attempts(),2,'Remaining open does not submit again');
+  }
+  await page.evaluate(()=>window.fixture.sequence());
+  await chooseMethod(page,'fingering');
   // Real pointer release works too; pointer cancellation and layout reset do not.
   for (const action of ['release','cancel','move']) {
     await page.evaluate(()=>window.fixture.sequence());

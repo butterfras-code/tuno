@@ -246,6 +246,21 @@ test('string fingerings accept lower held fingers but reject higher fingers and 
   assert.ok(!acceptsFingering(fingeringFor('cello')!,parsePitch('E4'),OPEN_FINGERING));
 });
 
+test('violin open strings are primary without losing fourth-finger alternatives', async () => {
+  const { fingeringFor } = await import('../src/apps/tunotes/domain/fingering.ts');
+  const violin = fingeringFor('violin')!;
+  for (const pitch of ['G3','D4','A4','E5']) {
+    const note = parsePitch(pitch);
+    assert.equal(violin.pitches[chromatic(note)]![0],OPEN_FINGERING,pitch);
+    for (let bits = 0; bits < 256; bits++) {
+      const mask = bits.toString(2).padStart(8,'0');
+      const fourthFinger = mask.slice(0,4).lastIndexOf('1') === 3 && mask.slice(4) === '0000';
+      assert.equal(acceptsFingering(violin,note,mask),bits === 0 || pitch !== 'G3' && fourthFinger,`${pitch}: ${mask}`);
+    }
+  }
+  assert.notEqual(violin.pitches[chromatic(parsePitch('B5'))]![0],OPEN_FINGERING,'The top-string fourth finger is still required');
+});
+
 test('string answers grade through the existing activity and survive backup export', async () => {
   const { NotesStore, parseBackup } = await import('../src/apps/tunotes/persistence/store.ts');
   const preset=presets.find(p=>p.id==='violin-starter')!;

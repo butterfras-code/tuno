@@ -11,7 +11,8 @@ function masks(finger: number): string[] {
     Array.from({length: 8}, (_, i) => i === finger - 1 || i < finger - 1 && Boolean(lower & (1 << i)) ? '1' : '0').join(''));
 }
 /** The five diatonic notes above each open string in the existing Big 5 presets.
- * Violin/viola: first-position 0–1–2–3–4, with the next open string as an alternate.
+ * Violin/viola: first-position 0–1–2–3–4, also accepting the next open string.
+ * Violin prefers open strings; fourth-finger choices remain accepted alternatives.
  * Cello: 0–1–3–4–0; highest A-string E uses a shift (finger 1).
  * Bass: written octaves, 0–1–4–0–1; highest G-string C/D use shifted 1/4.
  * Sources and the deliberate absence of string/position selection are documented
@@ -26,6 +27,11 @@ function chart(instrument: string, opens: number[], pattern: number[], top: numb
       pitches[pitch] = [...new Set([...(pitches[pitch] ?? []), ...masks(finger)])];
     });
   });
+  if (instrument === 'violin') {
+    for (const open of opens) {
+      pitches[open] = [...new Set([...masks(0), ...pitches[open]!])];
+    }
+  }
   return {instrument, fingers, pitches, hand: 'left', control: 'finger'};
 }
 export const stringFingerings = [
