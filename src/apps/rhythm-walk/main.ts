@@ -127,7 +127,7 @@ let feedbackOpen = false;
 const mobileInput = window.matchMedia('(max-width: 760px)');
 // Legacy Both preferences open Counts; the selected panel now owns the response context.
 activity.setMode(responsePanel === 'perform' ? 'tap' : 'write');
-const interaction = el('section', 'shared-interaction'); interaction.setAttribute('aria-label', 'Exercise interaction');
+const interaction = el('section', 'shared-interaction input-workspace'); interaction.setAttribute('aria-label', 'Exercise interaction');
 const panelSelector = el('div', 'interaction-selector'); panelSelector.setAttribute('role', 'group'); panelSelector.setAttribute('aria-label', 'Choose response');
 const countsButton = button('Counts', () => { selectResponsePanel('counts'); focusCounts(); });
 // Keep pad blur from moving the selector before the click can select Counts.

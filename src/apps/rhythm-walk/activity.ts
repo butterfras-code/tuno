@@ -42,7 +42,7 @@ export interface Preferences {
   bpm: number; metronome: boolean; showCounts: boolean; wrapped: boolean; playStyle: PlayStyle;
 }
 export const preferenceKey = 'tuno.rhythm-walk.preferences.v1';
-export const defaultPreferences = (): Preferences => ({ counting: defaultCountingPreferences, version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', countingSystem: 'numbers', offbeat: '&', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
+export const defaultPreferences = (): Preferences => ({ counting: defaultCountingPreferences, version: 1, mode: 'write', generation: defaultGeneration(), preset: 'generated', countingSystem: 'numbers', offbeat: '+', presentation: { ...defaultPresentation }, convention: 'review', bpm: 80, metronome: true, showCounts: false, wrapped: false, playStyle: 'tap' });
 /** Restore known, structurally valid fields; keep invalid ingredient combinations editable. */
 export function readPreferences(raw: string | null): Preferences {
   const defaults = defaultPreferences();

@@ -50,6 +50,15 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       const value = target.answer;
       const { letter, accidental } = value;
       const b = el('button', `control answer answer-${accidental === 1 ? 'sharp' : accidental === -1 ? 'flat' : 'natural'}`, spelling(value));
+      if (accidental) b.replaceChildren(document.createTextNode(letter), el('span', 'answer-accidental', accidental === 1 ? '♯' : '♭'));
+      const bone = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      bone.setAttribute('viewBox', '0 0 100 52'); bone.setAttribute('preserveAspectRatio', 'none');
+      bone.setAttribute('class', 'answer-bone'); bone.setAttribute('aria-hidden', 'true'); bone.setAttribute('focusable', 'false');
+      const outline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      outline.setAttribute('d', accidental
+        ? 'M10 2 H90 Q98 2 98 10 V42 Q98 50 90 50 H10 Q2 50 2 42 V10 Q2 2 10 2Z'
+        : 'M32 7 H68 C80 -5 98 2 98 16 C98 20 96 23 93 26 C96 29 98 32 98 36 C98 50 80 57 68 45 H32 C20 57 2 50 2 36 C2 32 4 29 7 26 C4 23 2 20 2 16 C2 2 20 -5 32 7Z');
+      outline.setAttribute('vector-effect', 'non-scaling-stroke'); bone.append(outline); b.prepend(bone);
       b.style.gridColumn = `${target.column} / span 2`; b.style.gridRow = String(target.row);
       // Compact layouts stack spellings by letter, starting at the same tonic.
       b.style.setProperty('--answer-compact-column', String((letters.indexOf(letter) - letters.indexOf(next.key.tonic.letter) + letters.length) % letters.length + 1));

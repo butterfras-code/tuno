@@ -1,18 +1,20 @@
+import { acceptsFingering, acceptsKeyboard, fingeringFor, validMask } from '../domain/fingering.ts';
+import type { NoteAnswer } from '../domain/fingering.ts';
 import { Challenge, validateRules } from '../engine/challenge.ts';
 import type { ChallengeRules, ChallengeEnd } from '../engine/challenge.ts';
 import { ALGORITHM_VERSION, activePool, expansionPlan } from '../engine/adaptive.ts';
 import type { Learning } from '../engine/adaptive.ts';
 import { normalizePreset, presets, fingerprint } from '../domain/presets.ts';
 import type { PresetSource, Preset } from '../domain/presets.ts';
-import { keySignature, keyName, parsePitch, pitchLabel, letters } from '../domain/notation.ts';
+import { chromatic, keySignature, keyName, parsePitch, pitchLabel, letters } from '../domain/notation.ts';
 import type { ContinueAfter, Observation, Practice } from '../engine/practice.ts';
 export const STORAGE_KEY = 'tunotes:data:v1';
 export const MAX_BYTES = 5 * 1024 * 1024;
 export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; challenge?: { rules: ChallengeRules; end: ChallengeEnd; bestStreak: number }; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]>; learning?: Learning }
 export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean; defaultPresetId: string }
-export interface Snapshot { appId: 'tunotes'; schemaVersion: 4; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
-export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 4, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
+export interface Snapshot { appId: 'tunotes'; schemaVersion: 5; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
+export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 5, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
 function object(v: unknown, keys: string[]): Record<string, unknown> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail('Expected an object.');
@@ -45,12 +47,32 @@ function source(v: unknown): PresetSource {
 }
 function observation(v: unknown): Observation {
   const o = object(v,['pitch','answer','correct','responseMs','activity','preset']);
-  const p = object(o.pitch,['letter','accidental','octave']), a = object(o.answer,['letter','accidental']);
-  if (!letters.includes(p.letter as never) || !letters.includes(a.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
+  const p = object(o.pitch,['letter','accidental','octave']);
+  if (!letters.includes(p.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
-  const answer = { letter: a.letter as typeof pitch.letter, accidental: integer(a.accidental,-1,1) as typeof pitch.accidental };
+  const a = object(o.answer,['letter','accidental','kind','mask','note','matchOctave','instrument']);
   const correct = boolean(o.correct);
-  if (correct !== (pitch.letter === answer.letter && pitch.accidental === answer.accidental)) fail('Inconsistent observation.');
+  let answer: NoteAnswer;
+  if (a.kind === 'fingering') {
+    object(a,['kind','mask','instrument']);
+    const instrument = a.instrument === undefined ? undefined : string(a.instrument,40);
+    const config = fingeringFor(instrument ?? presets.find(p => p.id === o.preset)?.instrument, 4);
+    const mask = string(a.mask,8);
+    if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
+    answer = { kind: 'fingering', mask, ...(instrument ? {instrument} : {}) };
+  } else if (a.kind === 'keyboard') {
+    object(a,['kind','note','matchOctave']);
+    const note = integer(a.note,12,119);
+    // Earlier backups graded exact octaves; retain that historical scoring rule.
+    const matchOctave = a.matchOctave === undefined ? true : boolean(a.matchOctave);
+    answer = { kind: 'keyboard', note, matchOctave };
+    if (correct !== acceptsKeyboard(pitch,answer)) fail('Invalid keyboard observation.');
+  } else {
+    object(a,['letter','accidental']);
+    if (!letters.includes(a.letter as never)) fail('Invalid observation.');
+    answer = { letter: a.letter as typeof pitch.letter, accidental: integer(a.accidental,-1,1) as typeof pitch.accidental };
+    if (correct !== (pitch.letter === answer.letter && pitch.accidental === answer.accidental)) fail('Inconsistent observation.');
+  }
   return { pitch, answer, correct, responseMs: number(o.responseMs), activity: o.activity as Observation['activity'], preset: id(o.preset) };
 }
 function exposure(value: unknown) {
@@ -64,10 +86,10 @@ export function validateSnapshot(input: unknown): Snapshot {
   const o = object(input,['appId','schemaVersion','profiles','customPresets','configuration']);
   if (o.appId !== 'tunotes') fail('This is not a tuNotes backup.');
   const version = integer(o.schemaVersion);
-  if (version > 4) fail('This backup needs a newer version of tuNotes.');
+  if (version > 5) fail('This backup needs a newer version of tuNotes.');
   if (version === 0) {
     if (o.configuration !== undefined) fail('Version 0 backups cannot contain configuration.');
-    return validateSnapshot({ ...o, schemaVersion: 4, configuration: emptySnapshot().configuration });
+    return validateSnapshot({ ...o, schemaVersion: 5, configuration: emptySnapshot().configuration });
   }
   const customPresets = array(o.customPresets,100).map(source);
   unique([...presets.map(p => p.id), ...customPresets.map(p => p.id)]);
@@ -128,7 +150,7 @@ export function validateSnapshot(input: unknown): Snapshot {
   const profileId = c.profileId === null ? null : id(c.profileId);
   if (profileId !== null && !profiles.some(p => p.id === profileId)) fail('Selected profile does not exist.');
   const presetId = id(c.presetId); if (!validPresets.has(presetId)) fail('Selected preset does not exist.');
-  return { appId: 'tunotes', schemaVersion: 4, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
+  return { appId: 'tunotes', schemaVersion: 5, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
 }
 function validateContext(value: string, validPresets: Set<string>) {
   const parts: unknown = JSON.parse(value);

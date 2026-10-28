@@ -1,7 +1,9 @@
+import { acceptsFingering, acceptsKeyboard, fingeringFor } from '../domain/fingering.ts';
+import type { NoteAnswer } from '../domain/fingering.ts';
 import { ALGORITHM_VERSION, activePool, initialAdaptive, learn, observe, selectAdaptive } from './adaptive.ts';
 import type { Learning, NoteHistory, AdaptiveState } from './adaptive.ts';
-import { diatonic, pitchLabel, sameAnswer, spelling } from '../domain/notation.ts';
-import type { AnswerSpelling, WrittenPitch } from '../domain/notation.ts';
+import { chromatic, diatonic, pitchLabel, sameAnswer, spelling } from '../domain/notation.ts';
+import type { WrittenPitch } from '../domain/notation.ts';
 import type { Preset } from '../domain/presets.ts';
 export class ShuffledBag {
   private bag: WrittenPitch[] = [];
@@ -28,7 +30,7 @@ export class ShuffledBag {
   }
 }
 export interface PromptToken { readonly session: number; readonly prompt: number }
-export interface Observation { readonly pitch: WrittenPitch; readonly answer: AnswerSpelling; readonly correct: boolean; readonly responseMs: number; readonly activity: 'practice' | 'challenge'; readonly preset: string }
+export interface Observation { readonly pitch: WrittenPitch; readonly answer: NoteAnswer; readonly correct: boolean; readonly responseMs: number; readonly activity: 'practice' | 'challenge'; readonly preset: string }
 let nextSession = 0;
 export type ContinueAfter = 'instant' | 'delay' | 'click' | 'correct';
 export class Practice {
@@ -82,12 +84,15 @@ export class Practice {
   get last() { return this.records.at(-1); }
   get activeMs() { return this.endTime ?? (this.state === 'paused' ? this.pausedAt : this.clock()) - this.origin - this.pausedMs; }
   matches(token: PromptToken) { return token.session === this.session && token.prompt === this.prompt; }
-  answer(token: PromptToken, answer: AnswerSpelling) {
+  answer(token: PromptToken, answer: NoteAnswer) {
     if (this.state !== 'running' || !this.matches(token)) return false;
+    if ('kind' in answer && answer.kind === 'keyboard' && (!Number.isInteger(answer.note) || answer.note < 12 || answer.note > 119)) return false;
     const now = this.activeMs;
-    const correct = sameAnswer(this.pitch, answer);
+    const config = fingeringFor('kind' in answer && answer.kind === 'fingering' ? answer.instrument ?? this.preset.instrument : this.preset.instrument, 4);
+    if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
+    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze({ letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, mask: answer.mask, ...(answer.instrument ? {instrument: answer.instrument} : {}) } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
     if (this.adaptive) {
       const previousPool = this.activePreset.pool;
       const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;

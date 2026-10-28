@@ -76,6 +76,7 @@ export function learn(state: AdaptiveState, observation: Observation, preset: Pr
     }
     const counts = new Map<string, number>();
     for (const o of next.recent.filter(o => !o.correct)) {
+      if ('kind' in o.answer) continue; // Physical input answers do not identify a guessed spelling.
       const pair = `${spelling(o.pitch)}→${spelling(o.answer)}`;
       counts.set(pair,(counts.get(pair) ?? 0)+1);
     }

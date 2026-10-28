@@ -1,3 +1,4 @@
+import type { NoteAnswer } from '../domain/fingering.ts';
 import { captureRange, resolveSharedPreset } from '../sharing.ts';
 import type { NotesActivity } from '../sharing.ts';
 import { resultReward } from './result-reward.ts';
@@ -9,7 +10,6 @@ import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
 import { defaultPreset, fingerprint, clefForPitch, normalizePreset, presets } from '../domain/presets.ts';
 import type { Preset } from '../domain/presets.ts';
-import type { AnswerSpelling } from '../domain/notation.ts';
 import { Challenge, describeRules } from '../engine/challenge.ts';
 import type { ChallengeRules } from '../engine/challenge.ts';
 import { canPair, displayNames, schedule, standings } from '../engine/multiplayer.ts';
@@ -537,7 +537,7 @@ export function multiplayerView(store: NotesStore) {
       else finishRound();
     }
   }
-  function submit(lane: Lane,answer: AnswerSpelling,token: PromptToken) {
+  function submit(lane: Lane,answer: NoteAnswer,token: PromptToken) {
     const previousAnnouncement = lane.session.announcement;
     if (!active.includes(lane) || round.hidden || !lane.session.answer(token,answer)) return;
     const s = lane.session;

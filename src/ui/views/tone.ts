@@ -1,3 +1,4 @@
+import { pianoKeyboard } from '../../shared/input/piano-keyboard.ts';
 import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
@@ -71,56 +72,13 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   increase.setAttribute('aria-label', '+ Octave');
   keyboardTop.append(selected, row(decrease, octavePicker, increase));
 
-  const keyboard = el('div', 'keyboard-layout');
-  const scroll = el('div', 'piano-scroll');
-  const piano = el('div', 'piano');
-  piano.setAttribute('role', 'group');
-  piano.setAttribute('aria-label', 'Concert-pitch keyboard');
-  scroll.append(piano);
-  keyboard.append(scroll);
-  // One octave of keys, kept mounted so selection changes preserve keyboard focus.
-  const whiteSemitones = [0, 2, 4, 5, 7, 9, 11, 12, 14];
-  const keys = Array.from({ length: 15 }, (_, semitone) => {
-    let activeNote: number | undefined;
-    let suppressClick = false;
-    const note = () => (store.get().octave + 1) * 12 + semitone;
-    const press = () => {
-      activeNote = note();
-      audio.pressToneKey(activeNote);
-    };
-    const release = () => {
-      if (activeNote !== undefined) audio.releaseToneKey(activeNote);
-      activeNote = undefined;
-    };
-    const key = button('', () => {
-      if (suppressClick) { suppressClick = false; return; }
-      audio.pressToneKey(note());
-    });
-    key.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || store.get().sustain) return;
-      suppressClick = true;
-      key.setPointerCapture(event.pointerId);
-      press();
-    });
-    key.addEventListener('pointerup', release);
-    key.addEventListener('pointercancel', release);
-    key.addEventListener('contextmenu', event => event.preventDefault());
-    key.addEventListener('keydown', event => {
-      if (store.get().sustain || event.repeat || (event.key !== ' ' && event.key !== 'Enter')) return;
-      suppressClick = true;
-      press();
-    });
-    key.addEventListener('keyup', event => {
-      if (event.key === ' ' || event.key === 'Enter') release();
-    });
-    const whiteIndex = whiteSemitones.indexOf(semitone);
-    key.className = `piano-key ${whiteIndex < 0 ? 'piano-key--black' : 'piano-key--white'}`;
-    if (semitone > 12) key.classList.add('piano-key--extension');
-    if (whiteIndex >= 0) key.style.gridColumn = String(whiteIndex + 1);
-    else key.style.left = `calc(${whiteSemitones.filter((value) => value < semitone).length} * 100% / var(--white-key-count, 8))`;
-    piano.append(key);
-    return key;
+  const sharedKeyboard = pianoKeyboard({
+    note: semitone => (store.get().octave + 1) * 12 + semitone,
+    sustain: () => store.get().sustain,
+    press: note => audio.pressToneKey(note), release: note => audio.releaseToneKey(note),
+    label: 'Concert-pitch keyboard',
   });
+  const { node: keyboard, scroll, keys, whiteSemitones } = sharedKeyboard;
   const keyboardHint = el('p', 'keyboard-hint small muted');
   const primary = el('div', 'tone-primary');
   primary.append(top, controls, keyboardTop, keyboard, keyboardHint);

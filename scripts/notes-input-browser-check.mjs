@@ -42,8 +42,8 @@ try {
     assert.equal(await page.locator('.answer-modifier').count(), 0);
   }
   await page.keyboard.down('ArrowDown');
-  const glow = await button(page, 'B', -1).evaluate(b => ({ shadow: getComputedStyle(b).boxShadow, opacity: getComputedStyle(b).opacity }));
-  const mutedGlow = await button(page, 'D', -1).evaluate(b => ({ shadow: getComputedStyle(b).boxShadow, opacity: getComputedStyle(b).opacity }));
+  const glow = await button(page, 'B', -1).evaluate(b => ({ shadow: getComputedStyle(b.querySelector('.answer-bone')).filter, opacity: getComputedStyle(b).opacity }));
+  const mutedGlow = await button(page, 'D', -1).evaluate(b => ({ shadow: getComputedStyle(b.querySelector('.answer-bone')).filter, opacity: getComputedStyle(b).opacity }));
   assert.notEqual(glow.shadow, 'none'); assert.notEqual(mutedGlow.shadow, 'none');
   assert.equal(mutedGlow.opacity, '1');
   assert.notEqual(mutedGlow.shadow, glow.shadow, 'Ghosted notes retain a quieter modifier highlight');
@@ -109,8 +109,11 @@ try {
   await page.mouse.move(to.x,to.y); await page.mouse.up(); await count(page,n);
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:950});
+    // The play surface fits itself on the next animation frame after a resize.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
-    assert.ok(await page.locator('.answer:visible').evaluateAll(bs => bs.every(b => { const r=b.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
+    const sizes = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.width,r.height]; }));
+    assert.ok(sizes.every(([w,h])=>w>=44 && h>=44), JSON.stringify({width,sizes}));
     await page.screenshot({path:`dist/validation/notes-input-${name}-${width}.png`,fullPage:true});
   }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click();
@@ -166,10 +169,13 @@ try {
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
     const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();
-    assert.ok(Math.abs(last.x-first.x-first.width*7)<1);
     const c=await button(preview,'C').boundingBox(),d=await button(preview,'D').boundingBox(),cs=await button(preview,'C',1).boundingBox(),df=await button(preview,'D',-1).boundingBox();
-    assert.ok(Math.abs(cs.x-(c.x+d.x)/2)<1); assert.ok(Math.abs(cs.x-df.x)<1);
+    assert.ok(Math.abs(last.x-first.x-c.width*7)<1);
+    assert.ok(Math.abs(cs.x+cs.width/2-(c.x+c.width/2+d.x+d.width/2)/2)<1);
+    assert.ok(Math.abs(cs.x+cs.width/2-df.x-df.width/2)<1);
+    assert.ok(cs.width<c.width && df.width<d.width, 'Accidentals fit their labels within the staggered columns');
     await preview.screenshot({path:`dist/validation/notes-input-${name}-${preset}.png`,fullPage:true});
+    await preview.locator('.note-entry').screenshot({path:`dist/validation/notes-answer-panel-${name}-${preset}.png`});
     await preview.close();
   }
   results.push('C, B-flat and G tonic-to-tonic layouts; duplicate tonic accepts answers; rendered sharp/flat half-key alignment and octave width');

@@ -19,7 +19,7 @@ export interface CountingPreferences {
   readonly vocabulary: CountingSystem;
   readonly offbeat: '&' | '+';
 }
-export const defaultCountingPreferences: CountingPreferences = immutable({ version: 1, longNotes: true, dotted: false, includeRests: true, showDurationLine: true, linePlacement: 'beside', internalAppearance: 'raised', restAppearance: 'parentheses', vocabulary: 'numbers', offbeat: '&' });
+export const defaultCountingPreferences: CountingPreferences = immutable({ version: 1, longNotes: true, dotted: false, includeRests: true, showDurationLine: true, linePlacement: 'beside', internalAppearance: 'raised', restAppearance: 'parentheses', vocabulary: 'numbers', offbeat: '+' });
 /** Complete contract validation; persistence/URL migration belongs to the settings slice. */
 export function captureCountingPreferences(value: CountingPreferences): CountingPreferences {
   if (!value || typeof value !== 'object' || Object.keys(value).length !== Object.keys(defaultCountingPreferences).length || value.version !== 1 ||
