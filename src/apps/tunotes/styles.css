@@ -1352,3 +1352,12 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   outline: none;
 }
 .answer-input .answer:is(.answer-pending, :focus-visible) .answer-bone path { stroke-width: 2px; }
+.answer-input .answer:is(.answer-sharp, .answer-flat), #home .answer-input .answer:is(.answer-sharp, .answer-flat) {
+  --bone-fill: var(--color-accent);
+  --bone-stroke: var(--color-accent);
+  color: var(--color-surface);
+}
+.answer-input .answer:is(.answer-sharp, .answer-flat):is(:hover, :focus-visible, .answer-modifier, .answer-pending),
+#home .answer-input .answer:is(.answer-sharp, .answer-flat):is(:hover, :focus-visible, .answer-modifier, .answer-pending) {
+  --bone-fill: color-mix(in srgb, var(--color-accent) 80%, var(--color-ink));
+}
