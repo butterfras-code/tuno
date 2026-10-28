@@ -1291,11 +1291,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-open { margin-top: 8px; }
 .fingering-help { font-size: 12px; margin: 6px 0; }
 .keyboard-answers { max-width: 760px; margin: auto; min-width: 0; }
-.keyboard-answers > .control-row { justify-content: center; gap: 4px; margin: 8px 0 12px; }
-.keyboard-answers > .control-row .control { min-height: 44px; margin: 0; padding: 4px; font-size: 14px; gap: 4px; }
-.keyboard-answers > .control-row button { min-width: 44px; }
 .keyboard-answers .piano { min-width: 512px; height: 136px; }
-.keyboard-answers .keyboard-help { font-size: 12px; text-align: center; margin: 6px 0; }
 .fingering-input[data-instrument='horn-f'] { flex-wrap: wrap; }
 .fingering-input[data-instrument='horn-f'] .fingering-valve:last-child { flex: 0 0 100%; height: 64px; flex-direction: row; }
 .horn-side { font-size: 12px; margin: 6px 0; }
@@ -1308,8 +1304,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 /* The note-name grid needs the full width to retain 44px touch targets. */
 .note-entry[data-input-method='names'] .input-workspace { padding-inline: 0; }
 .note-entry[data-input-method='names'] .interaction-body { padding-inline: 0; border: 0; box-shadow: inset 0 0 0 1px var(--color-line); }
-.instrument-picker { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
-.instrument-picker select { min-width: 0; max-width: 100%; font-size: 14px; }
 @media (max-width: 650px) {
   .note-entry .input-workspace { padding-inline: 0; }
   .note-entry .interaction-body { padding-inline: 3px; }
@@ -1318,5 +1312,9 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .keyboard-answers .piano-key--extension { display: none; }
   .keyboard-answers .piano-key { font-size: 12px; padding: 8px 0; }
   .keyboard-answers .piano-key--black { width: 7.4%; height: 62%; font-size: 10px; }
-  .keyboard-answers > .control-row { margin: 0 0 6px; }
 }
+
+.instrument-picker { position: fixed; inset: auto; margin: 0; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 6px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 4px 20px #0003; }
+.instrument-picker:popover-open { display: grid; gap: 4px; }
+.instrument-picker .control { width: 100%; justify-content: flex-start; text-align: left; font-size: 14px; }
+.note-entry .interaction-selector [aria-haspopup='dialog']::after { content: '▾'; margin-left: 6px; font-size: 12px; }

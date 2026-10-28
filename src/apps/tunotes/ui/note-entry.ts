@@ -46,6 +46,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let selectedInstrument = instruments[0]!;
   let presetInstrument: string | undefined;
   let initialized = false;
+  let instrumentChosen = false;
   let lastUpdate: Parameters<typeof answers.update> | undefined;
   const node = el('div', 'note-entry');
   const interaction = el('section', 'input-workspace');
@@ -56,7 +57,21 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   for (const [value, title] of [['names', 'Note Names'], ['instrument', 'Instrument']] as const) {
     const button = el('button', 'control', title); button.type = 'button';
     button.addEventListener('click', () => {
-      const next = value === 'names' ? 'names' : selectedInstrument.instrument ? 'fingering' : 'keyboard';
+      if (value === 'instrument') {
+        reset();
+        if (instrumentPicker.matches(':popover-open')) instrumentPicker.hidePopover();
+        else {
+          const bounds = button.getBoundingClientRect();
+          instrumentPicker.style.width = `${Math.min(320, innerWidth - 16)}px`;
+          instrumentPicker.style.left = `${Math.max(8, Math.min(bounds.right - 320, innerWidth - 328))}px`;
+          instrumentPicker.showPopover();
+          const height = instrumentPicker.getBoundingClientRect().height;
+          instrumentPicker.style.top = `${Math.max(8, bounds.top - height - 8)}px`;
+          (instrumentPicker.querySelector<HTMLButtonElement>('[aria-pressed="true"]:not(:disabled)') ?? instrumentPicker.querySelector<HTMLButtonElement>('button:not(:disabled)'))?.focus();
+        }
+        return;
+      }
+      const next = 'names';
       if (method === next) return;
       reset(); feedback.clear(); dismiss.hidden = true; method = next;
       options.onMethodChange?.(); refreshMethod();
@@ -74,19 +89,28 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
   const fingeringHelp = el('p', 'muted fingering-help');
   const side = el('p','muted horn-side','F side'); side.hidden = true;
-  const instrumentSelect = el('select', 'control'); instrumentSelect.setAttribute('aria-label', 'Instrument');
+  const instrumentPicker = el('div', 'instrument-picker');
+  instrumentPicker.setAttribute('popover', 'auto');
+  instrumentPicker.setAttribute('role', 'dialog'); instrumentPicker.setAttribute('aria-label', 'Choose instrument');
+  const instrumentButton = methodButtons.get('instrument')!;
+  instrumentButton.setAttribute('aria-haspopup', 'dialog');
+  instrumentButton.setAttribute('aria-expanded', 'false');
+  instrumentPicker.addEventListener('beforetoggle', event => instrumentButton.setAttribute('aria-expanded', String((event as ToggleEvent).newState === 'open')));
+  const instrumentChoices = new Map<string, HTMLButtonElement>();
   for (const item of instruments) {
-    const option = el('option', '', item.label); option.value = item.value; instrumentSelect.append(option);
+    const choice = el('button', 'control', item.label); choice.type = 'button';
+    choice.dataset.instrument = item.value;
+    choice.addEventListener('click', () => {
+      reset(); feedback.clear(); dismiss.hidden = true;
+      selectedInstrument = item; instrumentChosen = true;
+      method = item.instrument ? 'fingering' : 'keyboard';
+      options.onMethodChange?.();
+      instrumentPicker.hidePopover();
+      if (lastUpdate) update(...lastUpdate);
+      instrumentButton.focus();
+    });
+    instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
-  instrumentSelect.addEventListener('change', () => {
-    reset(); feedback.clear(); dismiss.hidden = true;
-    selectedInstrument = instruments.find(item => item.value === instrumentSelect.value)!;
-    method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
-    options.onMethodChange?.();
-    if (lastUpdate) update(...lastUpdate);
-  });
-  const instrumentPicker = el('label', 'instrument-picker');
-  instrumentPicker.append(el('span', '', 'Instrument'), instrumentSelect);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
@@ -95,12 +119,13 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     answers.node.hidden = active || method === 'keyboard'; fingeringPanel.hidden = !active;
     keyboard.node.hidden = method !== 'keyboard'; keyboard.enable(method === 'keyboard');
     for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' ? 'names' : 'instrument')));
-    instrumentPicker.hidden = method === 'names';
+    instrumentButton.textContent = instrumentChosen ? selectedInstrument.label : 'Instrument';
+    instrumentButton.setAttribute('aria-label', instrumentChosen ? `Choose instrument: ${selectedInstrument.label}` : 'Choose instrument');
     fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   if (options.fingering) {
-    interactionBody.append(instrumentPicker, answers.node, fingeringPanel, keyboard.node);
-    interaction.append(methodSelector, interactionBody); node.append(interaction);
+    interactionBody.append(answers.node, fingeringPanel, keyboard.node);
+    interaction.append(methodSelector, interactionBody, instrumentPicker); node.append(interaction);
   } else node.append(answers.node);
 
   function update(...args: Parameters<typeof answers.update>) {
@@ -110,14 +135,14 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       initialized = true; presetInstrument = preset.instrument;
       selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? instruments[0]!;
     }
-    for (const option of instrumentSelect.options) {
-      const item = instruments.find(item => item.value === option.value)!;
+    for (const item of instruments) {
+      const choice = instrumentChoices.get(item.value)!;
       const chart = fingeringFor(item.instrument, item.valves);
-      option.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
-      option.textContent = item.label + (option.disabled ? ' (outside note range)' : '');
+      choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
+      choice.textContent = item.label + (choice.disabled ? ' (outside note range)' : '');
     }
-    if (instrumentSelect.querySelector<HTMLOptionElement>(`option[value="${selectedInstrument.value}"]`)!.disabled) selectedInstrument = instruments[0]!;
-    instrumentSelect.value = selectedInstrument.value;
+    if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = instruments[0]!;
+    for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
     if (method !== 'names') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
@@ -154,7 +179,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) {
-      if (!supported || method !== 'fingering') return false;
+      if (!supported || method !== 'fingering' || instrumentPicker.matches(':popover-open')) return false;
       // Space is the flashcard Open action even when a valve has focus.
       // Leave unrelated buttons (Pause, Finish, etc.) their native activation.
       const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
@@ -180,7 +205,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       return true;
     },
     keyboard(letter: Letter, accidental: Accidental, explicit: boolean, session: Practice, shortcut?: (hint: string) => string) {
-      if (method === 'keyboard' || supported && method === 'fingering') return;
+      if (instrumentPicker.matches(':popover-open') || method === 'keyboard' || supported && method === 'fingering') return;
       const hint = !explicit && options.guidance() && session.state === 'running'
         ? missingAccidentalHint(letter, session.pitch, session.preset, options.showKeySignature()) : undefined;
       if (hint) {

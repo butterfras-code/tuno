@@ -9,13 +9,24 @@ const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
 const errors = [];
+const instrumentPill = page => page.getByRole('button', {name:/^Choose instrument/});
+const selectInstrument = async (page, value) => {
+  await instrumentPill(page).click();
+  const picker=page.getByRole('dialog',{name:'Choose instrument',exact:true});
+  await picker.locator(`[data-instrument="${value}"]`).click();
+  await instrumentPill(page).blur();
+};
 const chooseMethod = async (page, value) => {
-  await page.getByRole('group', {name:'Answer method',exact:true}).getByRole('button', {name:value==='names' ? 'Note Names' : 'Instrument',exact:true}).click();
-  if (value==='names') return;
-  const picker=page.getByRole('combobox',{name:'Instrument',exact:true});
-  if (value==='keyboard') await picker.selectOption('piano');
-  else if (await picker.inputValue()==='piano') await picker.selectOption('trumpet-bb');
-  await picker.blur();
+  if (value==='names') {
+    await page.getByRole('group', {name:'Answer method',exact:true}).getByRole('button', {name:'Note Names',exact:true}).click();
+    return;
+  }
+  if (value==='keyboard') return selectInstrument(page,'piano');
+  await instrumentPill(page).click();
+  const picker=page.getByRole('dialog',{name:'Choose instrument',exact:true});
+  const current=await picker.locator('[aria-pressed="true"]').getAttribute('data-instrument');
+  await picker.locator(`[data-instrument="${current==='piano' ? 'trumpet-bb' : current}"]`).click();
+  await instrumentPill(page).blur();
 };
 try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
@@ -24,9 +35,16 @@ try {
   await chooseMethod(page,'fingering');
   assert.equal(await page.getByRole('button',{name:/^Valve [123]$/}).count(),3);
   const selector = page.getByRole('group', {name:'Answer method',exact:true});
-  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note Names','Instrument']);
-  assert.equal(await selector.getByRole('button',{name:'Instrument',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note Names','B♭ Trumpet']);
+  assert.equal(await instrumentPill(page).getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('.input-workspace .interaction-body .fingering-panel:visible').count(),1);
+  await instrumentPill(page).click();
+  assert.equal(await page.getByRole('dialog',{name:'Choose instrument',exact:true}).isVisible(),true);
+  assert.equal(await instrumentPill(page).getAttribute('aria-expanded'),'true');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog',{name:'Choose instrument',exact:true}).count(),0);
+  assert.equal(await instrumentPill(page).textContent(),'B♭ Trumpet');
+  await instrumentPill(page).blur();
 
   await mkdir('dist/validation',{recursive:true});
   for (const width of [1280,360]) {
@@ -35,6 +53,14 @@ try {
     const buttons = await page.locator('.fingering-valve:visible').evaluateAll(bs=>bs.map(b=>({w:b.clientWidth,h:b.clientHeight})));
     assert.ok(buttons.every(b=>b.w>=44 && b.h>=44));
     await page.screenshot({path:`dist/validation/notes-fingering-${name}-${width}.png`});
+    await instrumentPill(page).click();
+    const menu = page.getByRole('dialog',{name:'Choose instrument',exact:true});
+    const bounds = await menu.boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0);
+    await page.screenshot({path:`dist/validation/notes-instrument-picker-${name}-${width}.png`});
+    await page.mouse.click(2,2);
+    assert.equal(await menu.count(),0);
+    await instrumentPill(page).blur();
   }
   await page.setViewportSize({width:1280,height:800});
   await page.keyboard.down('j'); await page.waitForTimeout(260);
@@ -56,12 +82,12 @@ try {
     const select=presetPage.getByRole('group',{name:'Answer method',exact:true});
     await chooseMethod(presetPage,id==='flute-starter' ? 'keyboard' : 'fingering');
     if (id==='tuba-starter' || id==='euphonium-starter') {
-      await presetPage.getByRole('combobox',{name:'Instrument',exact:true}).selectOption(id.replace('-starter','-4'));
+      await selectInstrument(presetPage,id.replace('-starter','-4'));
       assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     }
     if (id==='horn-f-starter') assert.equal(await presetPage.locator('.fingering-valve:visible').count(),4);
     if (id==='flute-starter') {
-      assert.equal(await presetPage.getByRole('combobox',{name:'Instrument',exact:true}).locator('option').count(),7);
+      assert.equal(await presetPage.locator('.instrument-picker button').count(),7);
       assert.equal(await presetPage.locator('.piano-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
       assert.equal(await presetPage.locator('.piano-key--white:visible').count(),8);
       await presetPage.getByRole('button',{name:/^Answer C[0-9]$/,exact:false}).first().click();
@@ -202,7 +228,7 @@ try {
   // Four-valve setups retain standard alternatives and safely switch while held.
   for (const [instrument,pitch,combined] of [['euphonium','F2','E2'],['tuba','F1','E1']]) {
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,pitch]);
-    const valves=page.getByRole('combobox',{name:'Instrument',exact:true});
+    const valves={selectOption: value=>selectInstrument(page,value),blur:()=>instrumentPill(page).blur()};
     await valves.selectOption(`${instrument}-4`); await valves.blur();
     assert.equal(await page.locator('.fingering-valve').count(),4);
     await page.keyboard.down(';'); assert.equal(await mask(),'00000001');
@@ -242,17 +268,13 @@ try {
   await page.keyboard.down('Enter'); await settle(); assert.equal(await attempts(),2);
   await page.keyboard.up('Enter');
   await page.keyboard.press('Space'); assert.equal(await correct(),3);
-  await page.getByRole('button',{name:'+ Octave',exact:true}).click();
   await page.getByRole('button',{name:'Answer C5',exact:true}).click();
   assert.equal(await attempts(),4); assert.equal(await correct(),4);
-  await page.getByRole('button',{name:'Answer D5',exact:true}).click();
+  await page.getByRole('button',{name:'Answer D4',exact:true}).click();
   assert.equal(await correct(),4);
-  await page.getByRole('checkbox',{name:'Match octave',exact:true}).check();
-  await page.getByRole('button',{name:'Answer C5',exact:true}).click();
-  assert.equal(await correct(),4); assert.equal(await attempts(),6);
-  await page.getByRole('button',{name:'− Octave',exact:true}).click();
-  await c4.click(); assert.equal(await correct(),5);
-  await page.getByRole('checkbox',{name:'Match octave',exact:true}).uncheck();
+  assert.equal(await page.getByRole('checkbox',{name:'Match octave',exact:true}).count(),0);
+  assert.equal(await page.locator('.keyboard-help, .keyboard-answers select').count(),0);
+  assert.ok(await page.locator('.piano-key').evaluateAll(keys=>keys.every(key=>!key.textContent)));
   await start('Db4'); await page.getByRole('button',{name:'Answer C♯4',exact:true}).click(); assert.equal(await correct(),1);
   for (const width of [1280,360]) {
     await page.setViewportSize({width,height:800});
@@ -262,11 +284,10 @@ try {
   await chooseMethod(page,'fingering'); await page.keyboard.down('j');
   await chooseMethod(page,'keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
   await start('C4');
-  await page.getByRole('combobox',{name:'Instrument',exact:true}).selectOption('horn-f');
-  await page.getByRole('combobox',{name:'Instrument',exact:true}).blur();
+  await selectInstrument(page,'horn-f');
   await page.keyboard.down('n'); await settle(); assert.equal(await correct(),1);
   assert.equal(await page.evaluate(()=>window.fixture.session.last.answer.instrument),'horn-f');
-  await page.getByRole('combobox',{name:'Instrument',exact:true}).selectOption('trumpet-bb');
+  await selectInstrument(page,'trumpet-bb');
   assert.equal(await mask(),'00000000');
   await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
   assert.deepEqual(errors,[]);
