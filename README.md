@@ -8,7 +8,7 @@ tUno is a hosted, installable PWA with verified offline caching. Standalone HTML
 
 The app provides a responsive tuner, reference-note keyboard, and metronome with shared session state. Microphone capture, live pitch detection, reference-tone playback, tap tempo, meter, subdivisions, accents, and click volume/sound work. Hosted builds prepare their essential resources for offline use and verify readiness. Installation controls open the browser’s native prompt when available and provide menu guidance otherwise. Animated Uno rewards and physical-device acceptance checks remain ahead.
 
-## Project documents
+## Project documents and info
 
 - [Rhythm Walk: current direction](docs/rhythm/README.md) and [shared activity contract](docs/rhythm/unified-activity.md): one exercise with Write Counts, Tap Rhythms and Both modes.
 - [tuNotes specification](docs/tuNotes_spec.md) and [staged build plan](docs/tuNotes_build-plan.md): note-reading roadmap and implemented Stage 4 Practice and solo Challenge preview with full presets, adaptation and optional local progress ([validation](docs/validation/tunotes-stage4.md)).
