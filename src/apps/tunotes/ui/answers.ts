@@ -55,7 +55,9 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       bone.setAttribute('viewBox', '0 0 100 52'); bone.setAttribute('preserveAspectRatio', 'none');
       bone.setAttribute('class', 'answer-bone'); bone.setAttribute('aria-hidden', 'true'); bone.setAttribute('focusable', 'false');
       const outline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      outline.setAttribute('d', 'M27 8 H73 C79 0 88 0 94 6 C100 12 99 19 94 24 Q92 26 94 28 C99 33 100 40 94 46 C88 52 79 52 73 44 H27 C21 52 12 52 6 46 C0 40 1 33 6 28 Q8 26 6 24 C1 19 0 12 6 6 C12 0 21 0 27 8Z');
+      outline.setAttribute('d', accidental
+        ? 'M10 2 H90 Q98 2 98 10 V42 Q98 50 90 50 H10 Q2 50 2 42 V10 Q2 2 10 2Z'
+        : 'M32 7 H68 C80 -5 98 2 98 16 C98 20 96 23 93 26 C96 29 98 32 98 36 C98 50 80 57 68 45 H32 C20 57 2 50 2 36 C2 32 4 29 7 26 C4 23 2 20 2 16 C2 2 20 -5 32 7Z');
       outline.setAttribute('vector-effect', 'non-scaling-stroke'); bone.append(outline); b.prepend(bone);
       b.style.gridColumn = `${target.column} / span 2`; b.style.gridRow = String(target.row);
       // Compact layouts stack spellings by letter, starting at the same tonic.
