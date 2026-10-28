@@ -42,8 +42,8 @@ try {
     assert.equal(await page.locator('.answer-modifier').count(), 0);
   }
   await page.keyboard.down('ArrowDown');
-  const glow = await button(page, 'B', -1).evaluate(b => ({ shadow: getComputedStyle(b).boxShadow, opacity: getComputedStyle(b).opacity }));
-  const mutedGlow = await button(page, 'D', -1).evaluate(b => ({ shadow: getComputedStyle(b).boxShadow, opacity: getComputedStyle(b).opacity }));
+  const glow = await button(page, 'B', -1).evaluate(b => ({ shadow: getComputedStyle(b.querySelector('.answer-bone')).filter, opacity: getComputedStyle(b).opacity }));
+  const mutedGlow = await button(page, 'D', -1).evaluate(b => ({ shadow: getComputedStyle(b.querySelector('.answer-bone')).filter, opacity: getComputedStyle(b).opacity }));
   assert.notEqual(glow.shadow, 'none'); assert.notEqual(mutedGlow.shadow, 'none');
   assert.equal(mutedGlow.opacity, '1');
   assert.notEqual(mutedGlow.shadow, glow.shadow, 'Ghosted notes retain a quieter modifier highlight');

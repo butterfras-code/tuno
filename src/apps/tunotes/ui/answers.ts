@@ -51,6 +51,12 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       const { letter, accidental } = value;
       const b = el('button', `control answer answer-${accidental === 1 ? 'sharp' : accidental === -1 ? 'flat' : 'natural'}`, spelling(value));
       if (accidental) b.replaceChildren(document.createTextNode(letter), el('span', 'answer-accidental', accidental === 1 ? '♯' : '♭'));
+      const bone = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      bone.setAttribute('viewBox', '0 0 100 52'); bone.setAttribute('preserveAspectRatio', 'none');
+      bone.setAttribute('class', 'answer-bone'); bone.setAttribute('aria-hidden', 'true'); bone.setAttribute('focusable', 'false');
+      const outline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      outline.setAttribute('d', 'M20 9 Q50 16 80 9 C85 -2 99 1 97 15 C102 20 99 26 96 27 C101 43 86 53 80 43 Q50 36 20 43 C14 53 -1 43 4 27 C0 24 -2 19 3 15 C0 1 15 -2 20 9Z');
+      outline.setAttribute('vector-effect', 'non-scaling-stroke'); bone.append(outline); b.prepend(bone);
       b.style.gridColumn = `${target.column} / span 2`; b.style.gridRow = String(target.row);
       // Compact layouts stack spellings by letter, starting at the same tonic.
       b.style.setProperty('--answer-compact-column', String((letters.indexOf(letter) - letters.indexOf(next.key.tonic.letter) + letters.length) % letters.length + 1));
