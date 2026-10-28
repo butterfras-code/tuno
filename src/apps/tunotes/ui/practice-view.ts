@@ -332,7 +332,7 @@ export function practiceView(store: NotesStore, shared = false) {
     if (session.advance(session.token) || session instanceof Challenge) { if ((session as Practice).state === 'finished') finish(); else render(); }
   }, 25);
   const dispose = () => {
-    if (disposed) return; disposed = true; answerNotice.clear(); closePreview(); answers.reset(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
+    if (disposed) return; disposed = true; answerNotice.clear(); closePreview(); answers.dispose(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
     document.removeEventListener('keydown', keydown); document.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('blur', resetInput);
   };

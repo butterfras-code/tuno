@@ -18,7 +18,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
   let stage: HTMLElement | undefined, viewport: HTMLElement | undefined;
   let frame = 0, disposed = false;
   const clear = () => {
-    stage?.classList.remove('play-stage','play-stage--compact','play-stage--short','play-stage--grip');
+    stage?.classList.remove('play-stage','play-stage--compact','play-stage--short','play-stage--grip','play-stage--bottom');
     stage?.style.removeProperty('width'); stage?.style.removeProperty('height'); stage?.style.removeProperty('transform'); stage?.style.removeProperty('top');
     viewport?.classList.remove('play-viewport');
   };
@@ -38,12 +38,15 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     }
     if (!stage || !viewport) return;
     const multiplayer = stage.classList.contains('multiplayer-round');
-    const grip = !multiplayer && Boolean(stage.querySelector('.note-entry[data-input-method="fingering"]'))
-      && matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 600px)').matches;
+    const grip = !multiplayer && Boolean(stage.querySelector('.note-entry:not([hidden])[data-input-method="fingering"]:is([data-grip-position="left"], [data-grip-position="right"])'));
+    const bottom = !multiplayer && Boolean(stage.querySelector('.note-entry:not([hidden])[data-input-method="fingering"][data-grip-position="bottom"]'))
+      && matchMedia('(orientation: landscape) and (max-height: 600px)').matches;
     // Reserve the full-height hand column before measuring the remaining staff area.
     stage.classList.toggle('play-stage--grip',grip);
+    stage.classList.toggle('play-stage--bottom',bottom);
     const warning = viewport.querySelector<HTMLElement>('.multiplayer-fit-warning:not([hidden])');
     const inset = warning ? warning.offsetHeight+16 : 0;
+    stage.style.setProperty('--grip-top', `${viewport.getBoundingClientRect().top}px`);
     const width = viewport.clientWidth, height = viewport.clientHeight-inset;
     if (!width || !height) return;
     stage.style.top = `${inset}px`;
@@ -62,10 +65,10 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));
-    const scale = grip ? 1 : Math.min(grow,width/minWidth,height/minHeight);
+    const scale = grip || bottom ? 1 : Math.min(grow,width/minWidth,height/minHeight);
     stage.style.width = `${width/scale}px`;
     stage.style.height = `${height/scale}px`;
-    stage.style.transform = grip ? 'none' : `scale(${scale})`;
+    stage.style.transform = grip || bottom ? 'none' : `scale(${scale})`;
   };
   const schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(fit); };
   setting.addEventListener('change',() => {
@@ -81,7 +84,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       ? record.target instanceof Element && record.target.matches('.multiplayer-panels')
       : record.oldValue !== (record.target as Element).getAttribute(record.attributeName!))) schedule();
   });
-  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen','data-input-method']});
+  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen','data-input-method','data-grip-position']});
   window.addEventListener('resize',schedule);
   document.fonts.ready.then(schedule);
   schedule();

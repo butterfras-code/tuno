@@ -1384,12 +1384,12 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .fingering-valve kbd,
 #home .play-stage--grip .fingering-help { display: none; }
 #home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 1; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
-#home .play-stage--grip .fingering-open { font-size: 13px; padding: 8px; }
+#home .play-stage--grip .fingering-open { min-height: 44px; font-size: 12px; padding: 4px; white-space: nowrap; }
 #home .play-stage--grip .horn-side { display: none; }
 #home .play-stage--grip .practice-play > :is(h2, .counts, .staff-panel, .feedback, .control-row, .challenge-scene) { grid-column: 1; }
-#home .play-stage--grip:has(.fingering-input[data-hand='left']) .note-entry { right: auto; left: max(8px, env(safe-area-inset-left)); }
-#home .play-stage--grip:has(.fingering-input[data-hand='left']) .fingering-panel { grid-template-columns: 88px minmax(0, 1fr); }
-#home .play-stage--grip .fingering-input[data-hand='left'] { grid-column: 1; }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .note-entry { right: auto; left: max(8px, env(safe-area-inset-left)); }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .fingering-panel { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-input { grid-column: 1; }
 #home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .fingering-actions { grid-column: 2; align-self: end; margin-bottom: 64px; }
 #home .play-stage--grip .fingering-input[data-instrument='horn-f'] .fingering-trigger { position: absolute; left: calc(100% + 6px); bottom: 0; width: 72px; height: 60px; }
 #home .play-stage--grip .fingering-trigger .valve-outline { height: 28px; width: 56px; }
@@ -1397,20 +1397,20 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-rows: minmax(0, 1fr); gap: 6px; }
 #home .play-stage--grip .interaction-selector { grid-column: 1; grid-row: 1; grid-auto-flow: row; grid-auto-columns: auto; align-self: start; margin: 6px 0 0 6px; z-index: 1; }
 #home .play-stage--grip .interaction-body { grid-column: 1 / -1; grid-row: 1; }
-#home .play-stage--grip:has(.fingering-input[data-hand='left']) .input-workspace { grid-template-columns: 88px minmax(0, 1fr); }
-#home .play-stage--grip:has(.fingering-input[data-hand='left']) .interaction-selector { grid-column: 2; margin: 6px 6px 0 0; }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .input-workspace { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .interaction-selector { grid-column: 2; margin: 6px 6px 0 0; }
 
 /* Reserve the hand column beside the entire app, including its compact header. */
 #home.is-playing:has(.play-stage--grip) { padding-right: calc(228px + max(8px, env(safe-area-inset-right))); grid-template-rows: auto minmax(0, 1fr); padding-top: 4px; gap: 4px; }
-#home.is-playing:has(.play-stage--grip .fingering-input[data-hand='left']) { padding-right: max(8px, env(safe-area-inset-right)); padding-left: calc(228px + max(8px, env(safe-area-inset-left))); }
-#home.is-playing:has(.play-stage--grip) .brand,
-#home.is-playing:has(.play-stage--grip) > footer { display: none; }
-#home.is-playing:has(.play-stage--grip) > .app-header { display: flex; flex-wrap: nowrap; gap: 8px; }
-#home.is-playing:has(.play-stage--grip) .suite-tools { width: 44px; padding: 0; font-size: 0; }
-#home.is-playing:has(.play-stage--grip) .suite-tools::before { content: '←'; font-size: 20px; }
-#home.is-playing:has(.play-stage--grip) .area-navigation { width: auto; margin-left: auto; gap: 4px; }
-#home.is-playing:has(.play-stage--grip) .area-link { flex-direction: row; min-height: 44px; padding: 3px 6px; gap: 4px; font-size: 12px; border-radius: 12px; }
-#home.is-playing:has(.play-stage--grip) .area-navigation img { flex-basis: 28px; width: 28px; height: 28px; }
+#home.is-playing:has(.play-stage--grip .note-entry[data-grip-position='left']) { padding-right: max(8px, env(safe-area-inset-right)); padding-left: calc(228px + max(8px, env(safe-area-inset-left))); }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .brand,
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) > footer { display: none; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) > .app-header { display: flex; flex-wrap: nowrap; gap: 8px; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .suite-tools { width: 44px; padding: 0; font-size: 0; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .suite-tools::before { content: '←'; font-size: 20px; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .area-navigation { width: auto; margin-left: auto; gap: 4px; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .area-link { flex-direction: row; min-height: 44px; padding: 3px 6px; gap: 4px; font-size: 12px; border-radius: 12px; }
+#home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .area-navigation img { flex-basis: 28px; width: 28px; height: 28px; }
 
 /* String fingers use simple fingertip pads, sharing the held-input interactions. */
 .fingering-input[data-control='finger'] { flex-direction: row-reverse; }
@@ -1420,4 +1420,75 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-input[data-control='finger'] .fingering-valve[aria-pressed='true'] .valve-moving { transform: translateY(4px); }
 #home .play-stage--grip .fingering-input[data-control='finger'] .valve-outline { width: 48px; height: 48px; }
 #home .play-stage--grip .fingering-input[data-control='finger'] .valve-cap { height: 48px; }
-#home .play-stage--grip:has(.fingering-input[data-control='finger']) .fingering-actions { grid-column: 2; }
+
+
+/* Grip controls share the Open action row; visual order never changes finger identity. */
+.fingering-layout-tools { display: flex; gap: 2px; }
+.fingering-layout-tools .control { min-width: 44px; min-height: 44px; padding: 4px 6px; font-size: 12px; border-color: transparent; background: transparent; box-shadow: none; }
+.fingering-actions { flex-wrap: wrap; gap: 4px 8px; }
+.fingering-input[data-flipped='true'] { flex-direction: row-reverse; }
+.fingering-input[data-control='finger'][data-flipped='true'] { flex-direction: row; }
+#home .play-stage--grip .fingering-input[data-control='finger'] { flex-direction: column; }
+#home .play-stage--grip .fingering-input[data-flipped='true'] { flex-direction: column; }
+#home .play-stage--grip .fingering-input[data-control='finger'][data-flipped='true'] { flex-direction: column-reverse; }
+#home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-actions { grid-column: 2; }
+#home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-actions { grid-column: 1; }
+#home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-trigger { left: auto; right: calc(100% + 6px); }
+#home .play-stage--grip .fingering-input[data-flipped='true'] .fingering-trigger { bottom: auto; top: 0; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f'][data-flipped='true']) .interaction-selector { margin-top: 70px; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f'][data-flipped='true']) .fingering-actions { margin-bottom: 0; }
+
+/* Narrow portrait screens keep a slim column, with tools below the finger targets. */
+@media (max-width: 600px) {
+  #home .play-stage--grip .note-entry { width: 112px; top: var(--grip-top, 112px); }
+  #home.is-playing:has(.play-stage--grip) { padding-right: max(8px, env(safe-area-inset-right)); }
+  #home.is-playing:has(.play-stage--grip .note-entry[data-grip-position='left']) { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  #home .play-stage--grip .input-workspace { display: flex; flex-direction: column; gap: 4px; padding: 0; }
+  #home .play-stage--grip .interaction-selector { align-self: stretch; margin: 0 !important; }
+  #home .play-stage--grip .interaction-body { flex: 1; min-height: 0; padding: 4px; }
+  #home .play-stage--grip .fingering-panel { display: flex; flex-direction: column; gap: 0; }
+  #home .play-stage--grip .fingering-input { flex: 1; align-items: center; gap: 2px; }
+  #home .play-stage--grip .fingering-input .fingering-valve { width: 88px; min-height: 48px; }
+  #home .play-stage--grip .fingering-actions { flex: none; align-self: center; margin: 0 !important; gap: 0; }
+  #home .play-stage--grip .fingering-input[data-instrument='horn-f'] .fingering-trigger { position: static; flex: 0 0 48px; height: 48px; }
+  #home .play-stage--grip .fingering-input[data-flipped='true'] .fingering-trigger { order: -1; }
+  #home .play-stage--grip .practice-play > .control-row { flex-wrap: wrap; }
+  #home.is-playing:has(.play-stage--grip) > .app-header { flex-wrap: wrap; }
+  #home.is-playing:has(.play-stage--grip) .area-navigation { flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+  #home.is-playing:has(.play-stage--grip) { grid-template-columns: minmax(0, 1fr); }
+  #home.is-playing:has(.play-stage--grip) .notes-workspace > .play-viewport { width: calc(100% - 120px); }
+  #home.is-playing:has(.play-stage--grip .note-entry[data-grip-position='left']) .notes-workspace > .play-viewport { margin-left: 120px; }
+}
+/* Bottom means below the music, including short landscape screens. */
+#home.is-playing:has(.play-stage--bottom) { padding-bottom: calc(120px + env(safe-area-inset-bottom)); grid-template-rows: auto minmax(0, 1fr); }
+#home.is-playing:has(.play-stage--bottom) .brand,
+#home.is-playing:has(.play-stage--bottom) > footer { display: none; }
+#home .play-stage--bottom .practice-play { grid-template-columns: minmax(0, 1fr); }
+#home .play-stage--bottom .practice-play > :is(h2,.counts,.staff-panel,.feedback,.control-row,.challenge-scene) { grid-column: 1; }
+#home .play-stage--bottom .note-entry { position: fixed; bottom: max(4px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); height: 112px; z-index: 2; }
+#home .play-stage--bottom .input-workspace { height: 100%; grid-template-columns: 120px minmax(0, 1fr); gap: 6px; }
+#home .play-stage--bottom .interaction-selector { grid-auto-flow: row; align-self: center; }
+#home .play-stage--bottom .interaction-body { padding: 0 4px; min-height: 0; }
+#home .play-stage--bottom .fingering-panel { max-width: none; display: flex; height: 100%; align-items: center; gap: 6px; }
+#home .play-stage--bottom .fingering-actions { flex: 0 0 96px; flex-direction: column; gap: 0; margin: 0; }
+#home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; flex-wrap: nowrap; }
+#home .play-stage--bottom .fingering-input .fingering-valve { height: 64px; min-height: 48px; }
+#home .play-stage--bottom .fingering-input .fingering-trigger { flex: 1; }
+#home .play-stage--bottom :is(.fingering-help,.horn-side,.fingering-valve kbd) { display: none; }
+#home .play-stage--bottom .valve-outline { flex: none; height: 40px; }
+#home .play-stage--bottom .fingering-input[data-control='finger'] .valve-outline { height: 56px; }
+#home .play-stage--bottom .fingering-open { min-height: 44px; padding: 4px; font-size: 13px; white-space: nowrap; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > .staff-panel { grid-column: 2; grid-row: 1 / 4; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > .control-row { grid-column: 1; grid-row: 3; align-self: end; }
+@media (max-width: 360px) {
+  #home.is-playing:has(.play-stage--grip) .notes-workspace-header .focus-navigation { flex-basis: 100%; }
+}
+#home .play-stage.challenge-active:not(.play-stage--short):has(.note-entry[data-input-method='fingering']) .challenge-scene[data-phase='playing'] { min-height: 160px; }
+
+@media (max-height: 800px) {
+  #home .play-stage.challenge-active:not(.play-stage--short):has(.note-entry[data-input-method='fingering']) .challenge-scene[data-phase='playing'] .challenge-dog { top: 40px; width: 120px; }
+  #home .play-stage.challenge-active:not(.play-stage--short):has(.note-entry[data-input-method='fingering']) .challenge-scene[data-phase='playing'] .challenge-dog .uno { width: 64px; margin-inline: auto; }
+}

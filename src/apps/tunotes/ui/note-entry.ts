@@ -113,7 +113,50 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     });
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
-  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open);
+  const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
+  const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip);
+  type Position = 'left' | 'bottom' | 'right';
+  let position: Position = 'bottom', flipped = false;
+  const layouts = new Map<string, { position: Position; flipped: boolean }>();
+  const orientation = matchMedia('(orientation: landscape)');
+  const layoutKey = () => `tunotes:grip:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  function applyLayout() {
+    node.dataset.gripPosition = position;
+    fingers.node.dataset.flipped = String(flipped);
+    const next = positions[(positions.indexOf(position) + 1) % positions.length]!;
+    move.setAttribute('aria-label', `Move input: ${position}. Move to ${next}`);
+    move.title = `Input on ${position}; move to ${next}`;
+    flip.setAttribute('aria-label', 'Flip finger order');
+    flip.setAttribute('aria-pressed', String(flipped));
+    flip.title = 'Reverse finger order';
+  }
+  const positions: readonly Position[] = ['left', 'bottom', 'right'];
+  function loadLayout() {
+    fingers.reset(); policy.cancel();
+    const key = layoutKey();
+    let saved = layouts.get(key);
+    if (!saved) try {
+      const value = JSON.parse(localStorage.getItem(key) ?? 'null');
+      if (value && positions.includes(value.position) && typeof value.flipped === 'boolean') saved = value;
+    } catch { /* Session-only layout if storage is unavailable. */ }
+    position = saved?.position ?? (orientation.matches && matchMedia('(pointer: coarse)').matches
+      ? configuration?.instrument === 'horn-f' ? 'left' : 'right' : 'bottom');
+    flipped = saved?.flipped ?? false;
+    applyLayout();
+  }
+  function saveLayout() {
+    const value = { position, flipped }; layouts.set(layoutKey(), value);
+    try { localStorage.setItem(layoutKey(), JSON.stringify(value)); } catch { /* Session-only preference. */ }
+    applyLayout();
+  }
+  move.addEventListener('click', () => {
+    reset(); position = positions[(positions.indexOf(position) + 1) % positions.length]!; saveLayout();
+  });
+  flip.addEventListener('click', () => { reset(); flipped = !flipped; saveLayout(); });
+  for (const button of [move, flip]) button.addEventListener('pointerdown', () => reset());
+  if (options.fingering) orientation.addEventListener('change', loadLayout);
+  const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
@@ -159,6 +202,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
       fingers.node.dataset.control = config?.control ?? 'valve';
+      loadLayout();
       side.hidden = config?.instrument !== 'horn-f';
       fingeringHelp.textContent = config?.control === 'finger'
         ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
@@ -182,6 +226,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   node.append(feedback.node);
   return {
     ...answers, node, feedback, status, reset,
+    dispose() { reset(); orientation.removeEventListener('change', loadLayout); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) {
@@ -189,7 +234,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       // Space is the flashcard Open action even when a valve has focus.
       // Leave unrelated buttons (Pause, Finish, etc.) their native activation.
       const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
-      if (event.key === ' ' && (!button || fingeringPanel.contains(button))) {
+      if (event.key === ' ' && (!button || button === open || fingers.node.contains(button))) {
         event.preventDefault();
         if (!event.repeat) policy.open();
         return true;

@@ -4,7 +4,7 @@ import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
 import { hostBuild } from './test-host.mjs';
 import { viewportProfiles } from './viewport-profiles.mjs';
-import { choosePreset, startPractice } from './notes-setup-helpers.mjs';
+import { choosePreset, startPractice, notesMode } from './notes-setup-helpers.mjs';
 
 const strings = ['violin','viola','cello','double-bass'];
 const name = process.env.TUNO_BROWSER || 'chromium';
@@ -65,6 +65,7 @@ try {
     await instrumentPill(page).blur();
   }
   await page.setViewportSize({width:1280,height:800});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.keyboard.down('j'); await page.waitForTimeout(260);
   assert.match(await page.locator('#practice-counts').textContent(), /1 attempts/);
   await page.waitForTimeout(500);
@@ -105,7 +106,7 @@ try {
 
   // Phones rotate into an edge-mounted valve column, mirrored for the horn.
   for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium',...strings]) {
-    const left = instrument==='horn-f' || strings.includes(instrument);
+    const left = instrument==='horn-f';
     const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
     const phone=await context.newPage(); phone.on('pageerror',e=>errors.push(e.message));
     await phone.goto(new URL('/notes/',host.url).href);
@@ -130,7 +131,7 @@ try {
         assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
         assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');
         assert.ok(v.w>=40 && v.h>=40, 'Valve targets remain usable after fitting the stage');
-        if(i) assert.ok(v.y<valves[i-1].y && Math.abs(v.x-valves[0].x)<1,'Valves run bottom to top');
+        if(i) assert.ok((strings.includes(instrument) ? v.y>valves[i-1].y : v.y<valves[i-1].y) && Math.abs(v.x-valves[0].x)<1,'Finger order follows the instrument default');
         assert.ok(left ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
       }
       if(instrument==='horn-f') {
@@ -167,6 +168,38 @@ try {
     await choosePreset(screen,`${instrument}-starter`);
     await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-setup-${name}.png`,fullPage:true});
     await startPractice(screen); await chooseMethod(screen,'fingering');
+    // Compact layout tools work in every position without submitting an answer.
+    const move = screen.getByRole('button', {name:/^Move input:/});
+    const flip = screen.getByRole('button', {name:'Flip finger order',exact:true});
+    const originalPosition = await screen.locator('.note-entry').getAttribute('data-grip-position');
+    for (let step = 0; step < 3; step++) {
+      await move.click();
+      await screen.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const position = await screen.locator('.note-entry').getAttribute('data-grip-position');
+      await flip.focus(); await screen.keyboard.press('Space');
+      assert.equal(await flip.getAttribute('aria-pressed'),'true');
+      assert.match(await screen.locator('#practice-counts').textContent(), /0 attempts/);
+      await screen.screenshot({path:`dist/validation/grip-controls-${instrument}-${profile.id}-${position}-${name}.png`});
+      const bounds = await screen.locator('.fingering-panel').boundingBox();
+      for (const control of await screen.locator('.fingering-panel button').all()) {
+        const r = await control.boundingBox();
+        assert.ok(r && r.x >= 0 && r.y >= 0 && r.x+r.width <= profile.viewport.width+1 && r.y+r.height <= profile.viewport.height+1,
+          `${instrument} ${profile.id} ${position}: control offscreen ${JSON.stringify(r)}`);
+        assert.ok(r.x >= bounds.x-1 && r.y >= bounds.y-1 && r.x+r.width <= bounds.x+bounds.width+1 && r.y+r.height <= bounds.y+bounds.height+1,
+          `${instrument} ${profile.id} ${position}: control outside panel ${JSON.stringify({r,bounds})}`);
+      }
+      assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${instrument} ${profile.id} ${position}: overflow ${JSON.stringify(await screen.locator('body *').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.width && r.right>innerWidth+1}).map(e=>({tag:e.tagName,cls:e.className,x:e.getBoundingClientRect().x,w:e.getBoundingClientRect().width})).slice(0,12)))}`);
+      await flip.click();
+    }
+    assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition);
+    if (instrument === 'horn-f' && profile.id === 'classroom') {
+      await flip.click();
+      await screen.reload(); await choosePreset(screen,'horn-f-starter'); await startPractice(screen); await chooseMethod(screen,'fingering');
+      assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
+      assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition,'Saved position survives reload');
+      await flip.click();
+    }
+    await flip.blur();
     const keys=instrument==='horn-f' ? ['q','w','v'] : ['f','d'];
     for(const key of keys) await screen.keyboard.down(key);
     assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : '11000000');
@@ -181,6 +214,24 @@ try {
     await screen.keyboard.press('Escape');
     await screen.getByRole('button',{name:'Finish',exact:true}).click();
     await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-results-${name}.png`,fullPage:true});
+    if (instrument === 'horn-f') {
+      await notesMode(screen,'Challenge');
+      await screen.getByRole('button',{name:'Start Challenge',exact:true}).click();
+      await screen.clock.install();
+      await screen.getByRole('button',{name:'Ready',exact:true}).click();
+      await screen.clock.runFor(3100);
+      await chooseMethod(screen,'fingering');
+      for (let step = 0; step < 3; step++) {
+        await move.click(); await screen.clock.runFor(100);
+        const position = await screen.locator('.note-entry').getAttribute('data-grip-position');
+        await screen.screenshot({path:`dist/validation/grip-challenge-${profile.id}-${position}-${name}.png`});
+        const scene = await screen.locator('.challenge-scene').boundingBox();
+        const finish = await screen.getByRole('button',{name:'Finish',exact:true}).boundingBox();
+        assert.ok(scene.width >= 100 && scene.height >= 80,`Challenge notation needs room: ${profile.id} ${position} ${JSON.stringify(scene)}`);
+        assert.ok(finish.y + finish.height <= profile.viewport.height + 1, `Challenge Finish offscreen: ${profile.id} ${position} ${JSON.stringify(finish)}`);
+      }
+      await screen.getByRole('button',{name:'Finish',exact:true}).click();
+    }
     await context.close();
   }
 
@@ -214,6 +265,13 @@ try {
   const correct = () => page.evaluate(()=>window.fixture.session.correct);
   const mask = () => page.locator('.fingering-input').getAttribute('data-mask');
   const settle = () => page.waitForTimeout(260);
+  // Moving or flipping during the settling window cancels held state and grading.
+  for (const label of [/^Move input:/, 'Flip finger order']) {
+    await page.keyboard.down('j');
+    await page.getByRole('button',{name:label}).dispatchEvent('pointerdown');
+    await settle(); assert.equal(await attempts(),0); assert.equal(await mask(),'00000000');
+    await page.keyboard.up('j');
+  }
   await page.keyboard.down('j'); await page.waitForTimeout(90); await page.keyboard.down('k');
   assert.equal(await mask(),'00001100'); assert.equal(await attempts(),0);
   await settle(); assert.equal(await correct(),1);
