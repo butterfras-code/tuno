@@ -256,10 +256,11 @@ export function createSettingsPage(callbacks: {
   }
   const teachingField = el('div', 'level-configuration');
   const presetTrigger = button('Choose preset…'); presetTrigger.classList.add('rhythm-preset-trigger');
-  const triggerField = el('div', 'field'); triggerField.append(el('span', 'field-label', 'Rhythm preset'), presetTrigger);
+  const triggerField = el('div', 'field'); triggerField.append(presetTrigger);
   teachingField.append(triggerField);
   teachingDetails.append(teachingStatus, applyPreset, el('p', 'setting-hint', 'Uno levels are practice configurations. UIL levels retain their qualified scope; they are not complete composition validators or UIL endorsements. Meters remain editable. No requirement that every allowed figure appear.'));
   teachingAttribution.id = 'pending-level';
+  teachingAttribution.hidden = true;
   presetTrigger.setAttribute('aria-describedby', teachingAttribution.id);
   teachingField.append(teachingAttribution);
   teachingDetails.dataset.levelDetails = '';

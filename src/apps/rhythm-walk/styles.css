@@ -492,12 +492,13 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 }
 
 /* Keep next-exercise actions with the preset they configure. */
-.exercise-overview-row .level-configuration { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0 8px; align-items: end; }
+.exercise-overview-row .level-configuration { display: grid; grid-template-columns: repeat(2, minmax(0, 180px)); justify-content: space-between; gap: 8px; align-items: stretch; padding-bottom: 12px; border-bottom: 1px solid var(--color-line); }
 .level-configuration > .field { grid-column: 1; grid-row: 1; min-width: 0; gap: 2px; }
 .level-configuration > .level-customize { grid-column: 2; grid-row: 1; padding-inline: 12px; }
 .level-configuration > #pending-level { grid-column: 1 / -1; grid-row: 2; }
-.level-configuration > .setup-actions { grid-column: 3; grid-row: 1; margin: 0; }
-.level-configuration .setup-actions .control { width: 100%; min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+.level-configuration > .setup-actions { grid-column: 2; grid-row: 1; margin: 0; align-items: stretch; }
+.rhythm-app .level-configuration .control { width: 100%; min-height: 48px; margin: 0; padding: 10px; justify-content: center; text-align: center; }
+.rhythm-app .level-configuration .rhythm-preset-trigger { color: var(--color-accent); border-color: var(--color-accent); }
 .customize-icon { display: none; width: 20px; height: 20px; }
 @media (max-width: 1100px) {
   .level-customize .customize-label { display: none; }
@@ -506,8 +507,6 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 }
 @media (max-width: 768px) {
   .exercise-overview-row { grid-template-columns: minmax(0, 1fr); }
-  .exercise-overview-row .level-configuration { column-gap: 4px; }
-  .level-configuration .setup-actions .control { font-size: 12px; }
 }
 
 .exercise-overview-row .level-configuration select,
@@ -548,7 +547,6 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .performance-surface > .pad { border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); padding: 12px; }
 .pad-tools { position: static; flex-direction: row; justify-content: flex-start; margin-top: 8px; }
 /* Lifecycle emphasis never changes target geometry during entry. */
-#practice-view[data-phase='setup'] .level-configuration { background: var(--color-tint); border-radius: 12px; }
 #practice-view[data-phase='input'] .interaction-body { border-color: var(--color-teal); }
 #practice-view[data-phase='review'] .interaction-body { background: var(--color-surface); }
 #practice-view[data-phase='review'] .feedback-snapshot { border-color: var(--color-accent); }
@@ -582,7 +580,6 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .custom-exercise-dialog::backdrop { background: color-mix(in srgb, var(--color-ink) 18%, transparent); }
 .custom-exercise-header h2 { font-size: 24px; }
 .custom-exercise-header > .control { font-size: 24px; padding: 8px; }
-.rhythm-preset-trigger { width: 100%; justify-content: space-between; text-align: left; }
 .rhythm-preset-tabs { display: flex; padding: 4px; gap: 4px; background: var(--color-canvas); border: 1px solid var(--color-line); border-radius: 999px; }
 .rhythm-preset-tabs > .control { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--color-ink); font-size: 14px; white-space: normal; }
 .rhythm-preset-tabs > .control[aria-selected=true] { color: var(--color-surface); background: var(--color-accent); }
@@ -612,7 +609,5 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
   .rhythm-preset-select.control { padding: 10px 12px; }
   .rhythm-preset-symbols { gap: 4px 6px; padding-right: 0; }
 }
-.exercise-overview-row .level-configuration { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.level-configuration > .setup-actions { grid-column: 2; }
 .rhythm-preset-footer { position: sticky; bottom: -24px; padding-bottom: 12px; background: var(--color-surface); z-index: 2; }
 @media (max-width: 440px) { .rhythm-preset-footer { bottom: -16px; } }
