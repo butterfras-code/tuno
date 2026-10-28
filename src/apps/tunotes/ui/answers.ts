@@ -50,6 +50,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       const value = target.answer;
       const { letter, accidental } = value;
       const b = el('button', `control answer answer-${accidental === 1 ? 'sharp' : accidental === -1 ? 'flat' : 'natural'}`, spelling(value));
+      if (accidental) b.replaceChildren(document.createTextNode(letter), el('span', 'answer-accidental', accidental === 1 ? '♯' : '♭'));
       b.style.gridColumn = `${target.column} / span 2`; b.style.gridRow = String(target.row);
       // Compact layouts stack spellings by letter, starting at the same tonic.
       b.style.setProperty('--answer-compact-column', String((letters.indexOf(letter) - letters.indexOf(next.key.tonic.letter) + letters.length) % letters.length + 1));

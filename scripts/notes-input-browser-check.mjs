@@ -109,6 +109,8 @@ try {
   await page.mouse.move(to.x,to.y); await page.mouse.up(); await count(page,n);
   for(const width of [360,768,1280]) {
     await page.setViewportSize({width,height:950});
+    // The play surface fits itself on the next animation frame after a resize.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     const sizes = await page.locator('.answer:visible').evaluateAll(bs => bs.map(b => { const r=b.getBoundingClientRect(); return [r.width,r.height]; }));
     assert.ok(sizes.every(([w,h])=>w>=44 && h>=44), JSON.stringify({width,sizes}));
@@ -171,6 +173,7 @@ try {
     const c=await button(preview,'C').boundingBox(),d=await button(preview,'D').boundingBox(),cs=await button(preview,'C',1).boundingBox(),df=await button(preview,'D',-1).boundingBox();
     assert.ok(Math.abs(cs.x-(c.x+d.x)/2)<1); assert.ok(Math.abs(cs.x-df.x)<1);
     await preview.screenshot({path:`dist/validation/notes-input-${name}-${preset}.png`,fullPage:true});
+    await preview.locator('.note-entry').screenshot({path:`dist/validation/notes-answer-panel-${name}-${preset}.png`});
     await preview.close();
   }
   results.push('C, B-flat and G tonic-to-tonic layouts; duplicate tonic accepts answers; rendered sharp/flat half-key alignment and octave width');
