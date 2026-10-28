@@ -35,6 +35,7 @@ export function readCountingLink(search: string): { counting?: CountingPreferenc
 export function countingPreferencesUrl(currentUrl: string, preferences: CountingPreferences): string {
   const url = new URL(currentUrl);
   if (!['/prototypes/rhythm-walk/', '/prototypes/count-writing/'].includes(url.pathname)) url.pathname = '/prototypes/rhythm-walk/';
+  url.searchParams.delete('activity');
   url.searchParams.delete('testing');
   url.searchParams.delete('fixture');
   for (const key of [...url.searchParams.keys()]) if (isCountingParameter(key)) url.searchParams.delete(key);

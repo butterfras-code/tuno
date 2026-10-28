@@ -158,12 +158,13 @@ export function presetSetup(store: NotesStore, idPrefix = '', copyPlayers?: Copy
     if (!currentSource || !current || editing) return false;
     if (!presets.some(p => p.id === current!.id)) {
       const source = currentSource;
+      store.automaticPreset(source.id);
       store.update(data => { const index = data.customPresets.findIndex(p => p.id === source.id); if (index < 0) data.customPresets.push(source); else data.customPresets[index] = source; });
     }
     return true;
   }
   refresh();
-  return { node,picker,rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
+  return { node,picker,loadRange: (preset: Preset) => { const {pool,version,...source} = preset; currentSource = source; current = preset; selectionError = ''; closeEditor(false); renderOverview(); },rangeTrigger: rangePickerUI.trigger,rangeContext: rangePickerUI.forContext,refresh,refreshNotation: renderOverview,companion, setupPresentation: (enabled: boolean) => {
     pickerUI.separateName(enabled); companion.hidden = !enabled;
     adjustRange.textContent = enabled ? 'Customize…' : 'Adjust range';
     if (enabled) {
@@ -214,7 +215,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
   const nameLabel = el('label','setting','Name'); nameLabel.append(name);
   const profilePreset = presetPicker(() => store.data.customPresets,id => {
     const p = selectedProfile(); if (!p) return;
-    store.update(data => { data.profiles.find(v => v.id === p.id)!.defaultPresetId = id; if (data.configuration.remember) data.configuration.presetId = id; }); refresh();
+    store.saveProfileDefault(p.id,id); refresh();
     saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.';
   },'profile-',false,'Default preset');
   const status = el('p'); status.setAttribute('role','status'); status.id = 'storage-status';
@@ -267,7 +268,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     const control = delta < 0 ? previous : next; if (control.disabled) profiles.input.focus(); else control.focus();
   }
   const erase = button('Delete all tuNotes data',() => {
-    if (!window.confirm('Delete all tuNotes profiles, presets, settings and progress in this storage context? Other browsers, files and tUno data are unaffected.')) return;
+    if (!window.confirm(store.canDeleteSavedData ? 'Delete all tuNotes profiles, presets, settings and progress in this storage context? Other browsers, files and tUno data are unaffected.' : 'Delete only this tab’s in-memory tuNotes data? Saved data will stay unchanged.')) return;
     store.clear(); refresh(); reload();
   });
   const backupLink = el('a','control','Save backup JSON'); backupLink.hidden = true; backupLink.download = 'tunotes-backup.json'; let url = '';
@@ -293,5 +294,6 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     } catch (error) { if (own === generation) preview.textContent = (error as Error).message; }
   });
   node.append(rememberLabel,profiles.node,create,card,status,erase,exportButton,backupLink,fileLabel,preview,replace); refresh();
-  return { node,refresh,dispose: () => { generation++; if (url) URL.revokeObjectURL(url); } };
+  const stopStatus = store.onStatusChange(() => { status.textContent = store.message; });
+  return { node,refresh,dispose: () => { stopStatus(); generation++; if (url) URL.revokeObjectURL(url); } };
 }

@@ -1,9 +1,11 @@
 import type { NoteAnswer } from '../domain/fingering.ts';
+import { captureRange, resolveSharedPreset } from '../sharing.ts';
+import type { NotesActivity } from '../sharing.ts';
 import { resultReward } from './result-reward.ts';
 import { resultMetric, scoreHint as resultScoreHint } from './results.ts';
 import { activitySetup } from './activity-setup.ts';
 import { challengeScene } from './challenge-scene.ts';
-import { Challenge } from '../engine/challenge.ts';
+import { defaultTimed, Challenge } from '../engine/challenge.ts';
 import { challengeSetup } from './challenge-setup.ts';
 import { activePool, recommendation } from '../engine/adaptive.ts';
 import { notePreview } from './note-preview.ts';
@@ -14,7 +16,7 @@ import type { Context } from '../persistence/store.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { animatedUno } from '../../../shared/ui/uno.ts';
 import { onUnmount } from '../../../shared/ui/unmount.ts';
-import { NotesStore } from '../persistence/store.ts';
+import type { NotesStore } from '../persistence/store.ts';
 import { presetSetup, localData } from './setup.ts';
 import { clefForPitch } from '../domain/presets.ts';
 import { pitchLabel } from '../domain/notation.ts';
@@ -27,7 +29,7 @@ import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
 }
-export function practiceView() {
+export function practiceView(store: NotesStore, shared = false) {
   let activity: 'practice' | 'challenge' = 'practice';
   const rulesUI = challengeSetup('Challenge Mode',true);
   const node = el('section', 'practice-view');
@@ -36,9 +38,8 @@ export function practiceView() {
   node.setAttribute('aria-label', 'Note reading Practice');
   const dog = animatedUno(); dog.pose('rest');
   const stage = el('div', 'practice-stage');
-  const storageNotice = el('p', 'muted'); storageNotice.setAttribute('role', 'status');
   let storage: Storage | undefined; try { storage = window.localStorage; } catch { /* usable without storage */ }
-  const store = new NotesStore(storage);
+  if (shared) store.beginSharedSession();
   const presetsUI = presetSetup(store); const picker = presetsUI.rangeTrigger;
   presetsUI.setupPresentation(true);
   presetsUI.rangeContext('Practice');
@@ -80,22 +81,23 @@ export function practiceView() {
   const setGuidance = (enabled: boolean) => {
     answerNotice.clear();
     keyboardGuidance = enabled; guidanceSetting.checked = enabled;
-    try { storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
+    try { if (!shared) storage?.setItem(guidanceKey, String(enabled)); } catch { /* Still works without storage. */ }
   };
   guidanceSetting.addEventListener('change', () => setGuidance(guidanceSetting.checked));
   let guestAdaptive = false;
   const guestContexts = new Map<string, Context>();
   let useAdaptation = false, showIntro = false;
+  let linkedIntro: boolean | undefined;
   const setAdaptation = (enabled: boolean) => {
     useAdaptation = enabled;
     const p = store.profile();
-    if (p) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
+    if (p && !shared) store.update(data => { data.profiles.find(v => v.id === p.id)!.adaptive = useAdaptation; }); else guestAdaptive = useAdaptation;
     refreshPreferences(); refreshSettingsSummary();
   };
   presetsUI.onAdaptiveChoice(setAdaptation);
   const refreshPreferences = () => {
-    const p = store.profile(); useAdaptation = p ? p.adaptive ?? false : guestAdaptive;
-    showIntro = selected() ? beginnerPreview(selected()!) : false;
+    const p = store.profile(); useAdaptation = p && !shared ? p.adaptive ?? false : guestAdaptive;
+    showIntro = linkedIntro ?? (selected() ? beginnerPreview(selected()!) : false);
   };
   const settings = el('section','practice-settings');
   const setupUI = activitySetup(presetsUI.node,settings,'activity',presetsUI.rangeTrigger);
@@ -200,8 +202,6 @@ export function practiceView() {
   const continueButton = button('Continue', () => { if (session?.advance(session.token, true)) { render(); answers.focus(); } });
   const render = () => {
     if (!session || session.state === 'finished') return;
-    const storageMessage = store.durable ? '' : store.message;
-    if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
     const paused = session.state === 'paused';
     const waiting = session instanceof Challenge && session.phase !== 'playing';
     const isChallenge = session instanceof Challenge;
@@ -302,7 +302,7 @@ export function practiceView() {
   resultDetails.append(el('summary','','Session details'),resultTiming);
   resultOverview.append(resultStats,rewardSummary.node);
   result.append(resultHeading, resultOverview, resultSummary, coaching, resultControls, resultDetails);
-  stage.append(setup, play, result, storageNotice); node.append(stage, dogHome);
+  stage.append(setup, play, result); node.append(stage, dogHome);
   presetsUI.companion.append(dog.node);
   const keydown = (event: KeyboardEvent) => {
     const fresh = gate.down(event.code || event.key, event.repeat);
@@ -326,8 +326,6 @@ export function practiceView() {
   window.addEventListener('blur', resetInput);
   document.addEventListener('keydown', keydown); document.addEventListener('keyup', keyup); document.addEventListener('visibilitychange', visibility);
   const timer = setInterval(() => {
-    const storageMessage = store.durable ? '' : store.message;
-    if (storageNotice.textContent !== storageMessage) storageNotice.textContent = storageMessage;
     if (treatUntil && performance.now() >= treatUntil) { dog.pose(session?.state === 'finished' && progress.treats ? 'happy' : progress.pose); treatUntil = 0; }
     if (session?.state === 'finished') finish();
     if (!session || session.state === 'finished' || session.state === 'paused') return;
@@ -339,7 +337,23 @@ export function practiceView() {
     window.removeEventListener('blur', resetInput);
   };
   const stopWatching = onUnmount(node, dispose);
-  return { node, options, store, dispose, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
+  return { node, options, store, dispose,
+    captureActivity: (): NotesActivity => {
+      const preset = setup.hidden && session ? session.preset : selected();
+      if (!preset) throw new Error('Apply a valid note range before sharing.');
+      const rules = activity === 'practice' ? defaultTimed : setup.hidden && session instanceof Challenge ? session.rules : rulesUI.read();
+      if (!rules) throw new Error('Fix the challenge rules before sharing.');
+      return {mode:activity,ranges:[captureRange(preset,session && setup.hidden ? session.adaptive : useAdaptation,store.data.configuration.showKeySignature ?? false)],pace:(setup.hidden && session ? session.continueAfter : pace) === 'correct' ? 'correct' : 'instant',intro:showIntro,rules,format:'turns'};
+    },
+    loadActivity: (value: NotesActivity) => {
+      const range = value.ranges[0]!;
+      const source = {...range.source,id: range.source.id === 'custom-shared' ? 'custom-shared-solo' : range.source.id};
+      if (source.id.startsWith('custom-shared')) store.transientPreset(source.id);
+      presetsUI.loadRange(resolveSharedPreset(source));
+      store.data.configuration.showKeySignature = range.showKeySignature;
+      guestAdaptive = range.adaptive; linkedIntro = value.intro; pace = value.pace;
+      rulesUI.load(value.rules); refreshPreferences(); refreshPacing(); refreshSettingsSummary();
+    }, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; presetsUI.rangeContext(next === 'challenge' ? 'Challenge' : 'Practice'); showSetup();

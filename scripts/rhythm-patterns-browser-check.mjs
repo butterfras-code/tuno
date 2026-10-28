@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-const host = await hostBuild(), browser = await chromium.launch();
-const output = 'dist/validation/rhythm-patterns';
+const engine = process.env.TUNO_BROWSER || 'chromium';
+const host = await hostBuild(), browser = await ({ chromium, firefox })[engine].launch();
+const output = `dist/validation/rhythm-patterns-${engine}`;
 await mkdir(output, { recursive: true });
 const results = [];
 try {
@@ -35,7 +36,7 @@ try {
     await page.getByRole('button', { name: 'Use preset', exact: true }).click();
     assert.deepEqual((await read()).sixteenthPatterns, ['16-8-16']);
     assert.equal((await read()).teachingPreset.customized, true);
-    assert.equal(await page.locator('.passage').getAttribute('data-exercise-id'), identity);
+    assert.notEqual(await page.locator('.passage').getAttribute('data-exercise-id'), identity, 'custom settings immediately replace the exercise');
     await page.getByRole('button', { name: 'Choose rhythms', exact: true }).click();
     assert.equal(await dialog.evaluate(d => d.scrollWidth <= d.clientWidth + 1), true);
     await page.screenshot({ path: `${output}/${width}.png`, fullPage: true });
@@ -48,7 +49,6 @@ try {
     await dialog.getByRole('button', { name: 'Customize Uno1', exact: true }).click();
     await page.locator('#custom-exercise [name="exercise-length"][value="1"]').check();
     await page.getByRole('button', { name: 'Use preset', exact: true }).click();
-    await page.getByRole('button', { name: /^(New exercise|Next Exercise)$/ }).filter({ visible: true }).click();
     const events = await page.locator('.passage g[data-event]').evaluateAll(nodes => nodes.map(n => [n.dataset.value, n.dataset.kind]));
     assert.deepEqual(events, Array.from({ length: 4 }, () => ['quarter', 'note']));
     assert.deepEqual(errors, []);

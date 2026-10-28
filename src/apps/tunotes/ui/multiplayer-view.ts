@@ -1,4 +1,6 @@
 import type { NoteAnswer } from '../domain/fingering.ts';
+import { captureRange, resolveSharedPreset } from '../sharing.ts';
+import type { NotesActivity } from '../sharing.ts';
 import { resultReward } from './result-reward.ts';
 import { resultMetric, scoreHint } from './results.ts';
 import headToHeadIcon from '../../../assets/uno-head-to-head.svg';
@@ -61,6 +63,7 @@ export function multiplayerView(store: NotesStore) {
   editor.append(presetUI.node);
   const rules = challengeSetup('Multi Player Mode',true); rules.node.hidden = false;
   const format = segments<Format>('Play Style',[['turns','Pass and Play'],['pairs','Side by Side'],['head-to-head','Head to Head']],value => { selectedFormat = value; refreshFormat(); refreshSetupInfo(); });
+  let linkedStyle = false;
   let selectedFormat: Format = 'pairs';
   format.node.className = 'practice-mode-choices';
   format.buttons.forEach(control => control.classList.add('range-content-button'));
@@ -343,7 +346,7 @@ export function multiplayerView(store: NotesStore) {
       } else playerMenu.append(slot);
     });
     add.disabled = players.length >= 8; roster.append(add);
-    presetUI.selectPreset(current.preset.id);
+    presetUI.loadRange(current.preset);
     refreshSetupInfo();
   }
   playerMenu.addEventListener('beforetoggle',event => {
@@ -386,7 +389,7 @@ export function multiplayerView(store: NotesStore) {
     const profiles = players.map(p => p.profileId).filter(Boolean);
     if (new Set(profiles).size !== profiles.length) { setupError.textContent = 'Use each saved profile for one player in a round.'; return; }
     const nextRules = rules.read(); if (!nextRules) return;
-    if (chooseStyle) {
+    if (chooseStyle && !linkedStyle) {
       styleDialog.showModal();
       format.buttons.find(control => control.dataset.value === selectedFormat)?.focus();
       return;
@@ -621,7 +624,23 @@ export function multiplayerView(store: NotesStore) {
   window.addEventListener('orientationchange',resize);
   const surfaceResize = new ResizeObserver(resize); surfaceResize.observe(node);
   renderSetup();
-  return { node, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
+  return { node,
+    captureActivity: (): NotesActivity => {
+      if (!presetUI.selected()) throw new Error('Apply a valid note range before sharing.');
+      const roundRules = setup.hidden ? rulesValue : rules.read();
+      if (!roundRules) throw new Error('Fix the round rules before sharing.');
+      return {mode:'multiplayer',ranges:players.map(player => captureRange(player.preset,adaptive,store.data.configuration.showKeySignature ?? false)),pace:'instant',intro:false,rules:roundRules,format:selectedFormat};
+    },
+    loadActivity: (value: NotesActivity) => {
+      players = value.ranges.map((range,index) => {
+        const source = {...range.source,id:range.source.id === 'custom-shared' ? `custom-shared-player-${index+1}` : range.source.id};
+        if (source.id.startsWith('custom-shared')) store.transientPreset(source.id);
+        return {id:crypto.randomUUID(),name:`Player ${index+1}`,preset:resolveSharedPreset(source),notesChosen:true};
+      });
+      selectedId = players[0]!.id; adaptive = value.ranges[0]!.adaptive;
+      store.data.configuration.showKeySignature = value.ranges[0]!.showKeySignature;
+      selectedFormat = value.format; linkedStyle = true; rules.load(value.rules); refreshFormat(); renderSetup();
+    }, enter: () => { node.hidden = false; renderSetup(); renderRound(); }, leave: (pauseOnly = false) => {
     styleDialog.close(); closePlayerEditor(); leaveFullscreen(); resetInput(); if (pauseOnly) { active.forEach(l => l.session.pause()); renderRound(); } else if (!round.hidden) finishRound(); store.flush(); node.hidden = true;
   }, dispose: () => {
     if (disposed) return; disposed = true; surfaceResize.disconnect(); styleDialog.close(); closePlayerEditor(); setupDog.dispose(); leaveFullscreen(); clearInterval(timer); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); });

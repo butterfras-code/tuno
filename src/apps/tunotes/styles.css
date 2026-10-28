@@ -19,6 +19,8 @@ a { color: var(--color-accent); }
 .activities { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .activities article { padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .control-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.notes-saving-notice { flex: 1 0 100%; grid-column: 1 / -1; order: 3; width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); font-size: 14px; }
+.notes-saving-notice p { margin: 0 0 8px; }
 .control { touch-action: manipulation; display: inline-flex; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font-size: inherit; cursor: pointer; }
 summary { padding: 12px 0; cursor: pointer; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
@@ -850,6 +852,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #notes-practice .preview-scene > .uno { max-height: 100%; }
 #home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) { grid-template-rows: minmax(0,1fr); padding: 0; gap: 0; }
 #home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) > :is(.app-header,footer) { display: none; }
+#home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])):has(.notes-saving-notice:not([hidden])) { grid-template-rows: auto minmax(0,1fr); }
+#home.is-playing:has(.multiplayer-round--head-to-head:not([hidden])) > .app-header:has(.notes-saving-notice:not([hidden])) { display: flex; }
 
 /* Advice remains readable even when small split-screen lanes need scaling. */
 #home .play-viewport .multiplayer-fit-warning { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 8px 12px; font-size: 14px; }

@@ -4,6 +4,10 @@ Use Node 24.22.1 from `.nvmrc` and the pinned lockfile. Confirm `node --version`
 
 Run `npm run verify` from the repository root. It type-checks, runs unit tests, builds once, verifies checksums/manifest/icon dimensions, and runs Chromium and Firefox integration, offline/update, audio-render, performance, HTTPS and installation-lifecycle checks. A failure stops the command and is recorded in `dist/validation/summary.json`. Physical acceptance is always recorded separately. See [release validation](release-validation.md) for thresholds, measurements and gaps.
 
+## Responsive acceptance
+
+Follow [the responsive design standard](responsive-design.md). Review the shared viewport screenshots and affected activity states. Record physical Chromebook, phone, Galaxy Z Fold8 cover/inner transition, and classroom viewing-distance checks against the candidate build. Automated viewport passes do not complete physical acceptance; unmeasured Fold8 dimensions remain provisional.
+
 ## Outputs
 
 | Path | Purpose |
@@ -31,3 +35,11 @@ After deployment, repeat production-HTTPS, offline-reopening and installation ch
 `release.json.apps.tuno`, `.tunotes` and `.rhythm` contain per-app build IDs, hosted-relative checksums, hosted directory, and common revision/dirty metadata. Legacy top-level tUno fields remain available. Release checks validate all three entries; cross-app browser checks cover separate workers and caches under root and nested test prefixes. Physical-device acceptance remains required before publication.
 
 Uno234 uses `/rhythm/manifest.webmanifest` and `/rhythm/sw.js`, with its own relative manifest identity, directory scope and integrity cache. Tuner/Tone/Tempo retain the shared tUno installation. The launcher links the root tUno manifest. Verify each installation and offline reopening separately.
+
+## Browser check registration
+
+[`scripts/browser-checks.mjs`](../scripts/browser-checks.mjs) is the shared inventory for `npm run test:browser` and `npm run verify`. Both run every active check in Chromium and Firefox; `TUNO_BROWSER=firefox npm run test:browser` selects one engine for local iteration. `verify` always uses both engines. `node scripts/browser-suite.mjs` runs the browser matrix against an existing build without rebuilding. Browser-only results are written to `dist/validation/browser-summary.json`; release verification retains `dist/validation/summary.json`. Both stop on the first failure.
+
+When adding a `*browser-check.mjs`, register its filename, active/retired status and supported engines. The inventory also includes `offline-check.mjs`, `audio-render-check.mjs` and `performance-check.mjs`. Unit validation rejects unclassified files, missing files, duplicates, unknown engines and unexplained retirement or engine limitations. Registration is explicit so a new file cannot silently disappear from release verification. The registry classifies executable check entry points, not helper/scenario modules. A new scenario must be called by an active registered runner to enter verification.
+
+Four `count-writing-*` endpoint-editor runners are historical; the current editor is covered by counting-plan and counting-corrections. `ui-refinements-browser-check.mjs` is a historical before/after visual audit tied to removed setup tabs and previous layouts. Current note entry, practice/mobile layouts and responsive rhythm workflows supersede it. These files stay in the inventory with retirement reasons; failures in an active workflow are repaired rather than retired.

@@ -1,3 +1,4 @@
+// Historical before/after layout audit. See browser-checks.mjs for current replacements.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
