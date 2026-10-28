@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { chromium, firefox } from 'playwright';
 import { build } from 'esbuild';
 import { hostBuild } from './test-host.mjs';
+import { viewportProfiles } from './viewport-profiles.mjs';
 import { choosePreset, startPractice } from './notes-setup-helpers.mjs';
 
 const name = process.env.TUNO_BROWSER || 'chromium';
@@ -157,6 +158,29 @@ try {
     await context.close();
   }
 
+  for (const profile of viewportProfiles) {
+    const context=await browser.newContext({viewport:profile.viewport,hasTouch:profile.hasTouch});
+    const screen=await context.newPage();
+    await screen.goto(new URL('/notes/',host.url).href);
+    await choosePreset(screen,'horn-f-starter');
+    await screen.screenshot({path:`dist/validation/horn-${profile.id}-setup-${name}.png`,fullPage:true});
+    await startPractice(screen); await chooseMethod(screen,'fingering');
+    await screen.keyboard.down('q'); await screen.keyboard.down('w'); await screen.keyboard.down('v');
+    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),'11010000');
+    await screen.waitForTimeout(250);
+    for(const key of ['q','w','v']) await screen.keyboard.up(key);
+    assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await screen.screenshot({path:`dist/validation/horn-${profile.id}-input-${name}.png`,fullPage:true});
+    await instrumentPill(screen).click();
+    const menu=await screen.getByRole('dialog',{name:'Choose instrument',exact:true}).boundingBox();
+    assert.ok(menu.x>=0 && menu.y>=0 && menu.x+menu.width<=profile.viewport.width && menu.y+menu.height<=profile.viewport.height);
+    await screen.screenshot({path:`dist/validation/horn-${profile.id}-menu-${name}.png`,fullPage:true});
+    await screen.keyboard.press('Escape');
+    await screen.getByRole('button',{name:'Finish',exact:true}).click();
+    await screen.screenshot({path:`dist/validation/horn-${profile.id}-results-${name}.png`,fullPage:true});
+    await context.close();
+  }
+
   // Deterministic fixture uses the production entry surface and scoring engine.
   // Fixed pitches expose repeated-card, held-state, and correct-only edge cases.
   const fixture = await build({stdin:{contents:`
@@ -250,19 +274,19 @@ try {
   await page.evaluate(()=>window.fixture.start('C4','instant','horn-f'));
   await chooseMethod(page,'fingering');
   assert.equal(await page.locator('.fingering-valve').count(),4);
-  await page.keyboard.down('n'); assert.equal(await mask(),'00010000');
+  await page.keyboard.down('v'); assert.equal(await mask(),'00010000');
   await settle(); assert.equal(await correct(),1);
   assert.match(await page.locator('.horn-side').textContent(),/B♭ side/);
   await settle(); assert.equal(await attempts(),1);
-  await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
+  await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),1);
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
   // All horn key chords reach the held state, regardless of trigger press order.
   for (const triggerFirst of [true,false]) {
     for (let bits=0;bits<8;bits++) {
       await page.evaluate(()=>window.fixture.start('C4','correct','horn-f'));
-      const valves=['i','o','p'].filter((_,i)=>bits & (1<<i));
-      const keys=triggerFirst ? ['n',...valves] : [...valves,'n'];
+      const valves=['q','w','e'].filter((_,i)=>bits & (1<<i));
+      const keys=triggerFirst ? ['v',...valves] : [...valves,'v'];
       for (const key of keys) await page.keyboard.down(key);
       const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
       assert.equal(await mask(),expected,keys.join('+'));
@@ -270,7 +294,7 @@ try {
       assert.equal(await mask(),'00000000');
     }
   }
-  for (const [pitch,keys] of [['D4',['n','i','o']],['Db4',['n','o','p']],['C3',['n','i','p']]]) {
+  for (const [pitch,keys] of [['D4',['v','q','w']],['Db4',['v','w','e']],['C3',['v','q','e']]]) {
     await page.evaluate(p=>window.fixture.start(p,'instant','horn-f'),pitch);
     for (const key of keys) await page.keyboard.down(key);
     await settle(); assert.equal(await correct(),1,pitch+': '+keys.join('+'));
@@ -341,11 +365,11 @@ try {
   await chooseMethod(page,'keyboard'); await page.keyboard.up('j'); await settle(); assert.equal(await attempts(),1);
   await start('C4');
   await selectInstrument(page,'horn-f');
-  await page.keyboard.down('n'); await settle(); assert.equal(await correct(),1);
+  await page.keyboard.down('v'); await settle(); assert.equal(await correct(),1);
   assert.equal(await page.evaluate(()=>window.fixture.session.last.answer.instrument),'horn-f');
   await selectInstrument(page,'trumpet-bb');
   assert.equal(await mask(),'00000000');
-  await page.keyboard.up('n'); await settle(); assert.equal(await attempts(),1);
+  await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),1);
   assert.deepEqual(errors,[]);
   console.log(`${name}: fingering keyboard, touch, scoring, repeated notes, open, cancellation, and method switching passed`);
 } finally { await browser.close(); await host.close(); }
