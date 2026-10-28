@@ -259,3 +259,71 @@ test('string answers grade through the existing activity and survive backup expo
   assert.deepEqual(parseBackup(store.export()).profiles[0]!.contexts,store.data.profiles[0]!.contexts);
   store.flush();
 });
+
+test('a submitted held answer releases into the next primary-open card once', t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const seen: string[] = [];
+  const policy = new FingeringPolicy((mask, token) => {
+    seen.push(`${token.prompt}:${mask}`);
+    // Match synchronous instant advancement in the real entry component.
+    policy.update({session:1,prompt:token.prompt+1},false,true);
+  });
+  policy.update({session:1,prompt:1},false);
+  policy.change('00001100'); t.mock.timers.tick(200);
+  policy.change('00000100'); t.mock.timers.tick(50);
+  policy.change(OPEN_FINGERING); t.mock.timers.tick(199);
+  assert.deepEqual(seen,['1:00001100']);
+  t.mock.timers.tick(1);
+  assert.deepEqual(seen,['1:00001100','2:00000000']);
+  t.mock.timers.tick(1000); policy.change(OPEN_FINGERING); t.mock.timers.tick(200);
+  assert.equal(seen.length,2,'remaining open cannot answer another card');
+  policy.open(); assert.equal(seen.at(-1),'3:00000000');
+});
+
+test('release-to-open requires the immediately previous submitted hold and primary-open target', t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  for (const scenario of ['first','unsubmitted','same-card','non-open','skipped','new-session','released-before-next'] as const) {
+    const seen: string[] = [];
+    const policy = new FingeringPolicy(mask => seen.push(mask));
+    policy.update({session:1,prompt:1},false,true);
+    if (scenario !== 'first') policy.change('00001000');
+    if (!['first','unsubmitted'].includes(scenario)) t.mock.timers.tick(200);
+    if (scenario === 'released-before-next') policy.change(OPEN_FINGERING);
+    policy.update({session:scenario === 'new-session' ? 2 : 1,prompt:scenario === 'same-card' ? 1 : scenario === 'skipped' ? 3 : 2},false,scenario !== 'non-open');
+    const before = seen.length;
+    policy.change(OPEN_FINGERING); t.mock.timers.tick(500);
+    assert.equal(seen.length,before,scenario);
+  }
+});
+
+test('release-to-open cancels on interruption, a new press, explicit Open, and stale prompts', t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  for (const scenario of ['reset','partial-cancel','press','lock','prompt','explicit','cancel'] as const) {
+    const seen: string[] = [];
+    const policy = new FingeringPolicy(mask => seen.push(mask));
+    policy.update({session:1,prompt:1},false);
+    policy.change('00001100'); t.mock.timers.tick(200);
+    policy.update({session:1,prompt:2},false,true);
+    if (scenario === 'partial-cancel') policy.change('00000100',false);
+    policy.change(OPEN_FINGERING,scenario !== 'reset'); t.mock.timers.tick(100);
+    if (scenario === 'press') { policy.change('00001000'); policy.change(OPEN_FINGERING); }
+    if (scenario === 'lock') { policy.update({session:1,prompt:2},true,true); policy.update({session:1,prompt:2},false,true); }
+    if (scenario === 'prompt') policy.update({session:1,prompt:3},false,true);
+    if (scenario === 'explicit') policy.open();
+    if (scenario === 'cancel') policy.cancel();
+    t.mock.timers.tick(500);
+    assert.deepEqual(seen,scenario === 'explicit' ? ['00001100',OPEN_FINGERING] : ['00001100'],scenario);
+  }
+});
+
+test('a hold retained through feedback can release after delayed advancement', t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const seen: string[] = [];
+  const policy = new FingeringPolicy(mask => seen.push(mask));
+  policy.update({session:1,prompt:1},false);
+  policy.change('00001000'); t.mock.timers.tick(200);
+  policy.update({session:1,prompt:1},true); t.mock.timers.tick(500);
+  policy.update({session:1,prompt:2},false,true);
+  policy.change(OPEN_FINGERING); t.mock.timers.tick(200);
+  assert.deepEqual(seen,['00001000',OPEN_FINGERING]);
+});

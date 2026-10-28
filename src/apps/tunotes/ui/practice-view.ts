@@ -121,6 +121,7 @@ export function practiceView(store: NotesStore, shared = false) {
   const staff = el('div', 'staff-panel');
   const answers = noteEntry((answer, token) => submit(answer, token), {
     fingering: true, onMethodChange: () => resetInput(),
+    currentPitch: () => session?.pitch,
     guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
     disableGuidance: () => setGuidance(false),
   });

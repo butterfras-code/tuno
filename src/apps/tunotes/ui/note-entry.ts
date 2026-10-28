@@ -1,13 +1,13 @@
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { FingeringPolicy } from '../engine/fingering-policy.ts';
-import { fingeringFor } from '../domain/fingering.ts';
+import { fingeringFor, OPEN_FINGERING } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { chromatic } from '../domain/notation.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
 import { spelling } from '../domain/notation.ts';
-import type { Accidental, Letter } from '../domain/notation.ts';
+import type { Accidental, Letter, WrittenPitch } from '../domain/notation.ts';
 import type { Practice, PromptToken } from '../engine/practice.ts';
 import { answerControls } from './answers.ts';
 import { answerFeedback } from './answer-feedback.ts';
@@ -18,6 +18,7 @@ export const keyboardGuidanceKey = 'tunotes:keyboard-accidental-guidance';
 export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => void, options: {
   concurrentPointers?: boolean;
   fingering?: boolean;
+  currentPitch?: () => WrittenPitch | undefined;
   onMethodChange?: () => void;
   guidance: () => boolean;
   showKeySignature: () => boolean | undefined;
@@ -213,7 +214,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     }
     if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);
-    policy.update(token, locked);
+    const pitch = options.currentPitch?.();
+    policy.update(token, locked, Boolean(pitch && config?.pitches[chromatic(pitch)]?.[0] === OPEN_FINGERING));
     open.disabled = locked;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;

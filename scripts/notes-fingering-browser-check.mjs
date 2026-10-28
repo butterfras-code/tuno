@@ -247,9 +247,11 @@ try {
     const entry = noteEntry((answer,token)=>{
       if (!session.answer(token,answer)) return;
       entry.respond(session,{treat:false,text:''}); render();
-    },{fingering:true,guidance:()=>false,showKeySignature:()=>false,disableGuidance:()=>{}});
+    },{fingering:true,currentPitch:()=>session?.pitch,guidance:()=>false,showKeySignature:()=>false,disableGuidance:()=>{}});
     function render(){entry.update(session.preset,session.token,session.state!=='running');}
-    window.fixture = {entry, get session(){return session;}, start(pitch='E4',pace='instant',instrument='trumpet-bb'){
+    window.fixture = {entry, get session(){return session;}, sequence(){
+      entry.reset(); session = new Practice({...preset,range:['C4','E4'],pool:[parsePitch('C4'),parsePitch('E4')]},false,()=>performance.now(),()=>0.999,{continueAfter:'instant'}); render();
+    }, start(pitch='E4',pace='instant',instrument='trumpet-bb'){
       entry.reset(); session = new Practice({...preset,instrument,pool:[parsePitch(pitch)]},false,()=>performance.now(),Math.random,{continueAfter:pace}); render();
     }};
     document.body.replaceChildren(entry.node,entry.status);
@@ -265,6 +267,25 @@ try {
   const correct = () => page.evaluate(()=>window.fixture.session.correct);
   const mask = () => page.locator('.fingering-input').getAttribute('data-mask');
   const settle = () => page.waitForTimeout(260);
+  // A held answer can intentionally release into the next primary-open card.
+  await page.evaluate(()=>window.fixture.sequence());
+  await page.keyboard.down('j'); await page.keyboard.down('k'); await settle();
+  assert.equal(await correct(),1);
+  await page.keyboard.up('j'); await page.waitForTimeout(50); await page.keyboard.up('k');
+  await settle(); assert.equal(await correct(),2); assert.equal(await attempts(),2);
+  await settle(); assert.equal(await attempts(),2);
+  // Real pointer release works too; pointer cancellation and layout reset do not.
+  for (const action of ['release','cancel','move']) {
+    await page.evaluate(()=>window.fixture.sequence());
+    const valve=page.getByRole('button',{name:'Valve 3',exact:true});
+    await valve.evaluate(el=>el.addEventListener('pointerdown',event=>{ window.fixture.pointerId=event.pointerId; },{once:true}));
+    await valve.hover(); await page.mouse.down(); await settle(); assert.equal(await correct(),1);
+    if (action==='cancel') await valve.dispatchEvent('pointercancel',{pointerId:await page.evaluate(()=>window.fixture.pointerId)});
+    if (action==='move') await page.getByRole('button',{name:/^Move input:/}).dispatchEvent('pointerdown');
+    await page.mouse.up(); await settle();
+    assert.equal(await attempts(),action==='release' ? 2 : 1,action);
+  }
+  await start();
   // Moving or flipping during the settling window cancels held state and grading.
   for (const label of [/^Move input:/, 'Flip finger order']) {
     await page.keyboard.down('j');
@@ -339,8 +360,8 @@ try {
   await settle(); assert.equal(await correct(),1);
   assert.match(await page.locator('.horn-side').textContent(),/B♭ side/);
   await settle(); assert.equal(await attempts(),1);
-  await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),1);
-  await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
+  await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),2); assert.equal(await correct(),2);
+  await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),3);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
   // All horn key chords reach the held state, regardless of trigger press order.
   for (const triggerFirst of [true,false]) {

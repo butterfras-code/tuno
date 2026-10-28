@@ -13,7 +13,7 @@ The lower answer area uses Uno234’s pill selector and rounded input panel, wit
 - `src/shared/input/piano-keyboard.ts` and `piano-keyboard.css`: shared keyboard geometry, interaction handlers, and responsive styling; `src/ui/views/tone.ts` and `src/styles.css` consume this extraction. Tone retains its audio and sustain behavior.
 - `src/apps/tunotes/ui/keyboard-answers.ts`: written-pitch answers and input gating.
 - `src/apps/tunotes/ui/play-surface.ts`: reserves sufficient compact-layout height for the additional input methods.
-- `src/apps/tunotes/engine/fingering-policy.ts`: isolated 200 ms flashcard settling policy. It cancels stale timers on prompt changes and locks. Zero state never submits automatically. Prompt changes do not trigger a submission.
+- `src/apps/tunotes/engine/fingering-policy.ts`: isolated 200 ms flashcard settling policy. It cancels stale timers on prompt changes and locks. An intentional release can submit open only after a held answer advances to the immediately next primary-open card. Prompt changes and input cleanup do not trigger a submission.
 - `src/apps/tunotes/ui/note-entry.ts` and `practice-view.ts`: compact method selection, Open action, keyboard routing, lifecycle cleanup, and the existing shared feedback surface.
 - `src/apps/tunotes/engine/practice.ts` and `challenge.ts`: accept a fingering answer through existing scoring and advancement. Held physical state survives advancement; a new intentional input change is necessary to answer again.
 - `src/apps/tunotes/engine/adaptive.ts`: continues observing accuracy, but does not invent a guessed pitch from a valve mask for spelling contrast exercises.
@@ -67,3 +67,14 @@ Preferences are device-local, per instrument/valve configuration and portrait/la
 The fingering browser check exercises all three placements and Flip across the primary and secondary viewport profiles, including panel containment, no horizontal overflow, keyboard activation without scoring, preference reload, and cancellation during the settling window. Screenshot review supplements these checks. Physical grip comfort, Safari, real browser zoom, and the provisional Fold8 dimensions still require device review.
 
 Validation for the compact controls: Node 24.22.1; `npm run check` (514 tests, typecheck, build); expanded fingering checks in Chromium and Firefox; viewport smoke checks in both engines; existing Chromium note-input checks; and `git diff --check` passed. After final landscape spacing changes, focused Practice/Challenge checks at 844 × 390, 667 × 375, 1280 × 600, and 1280 × 720 passed in both engines, including count/control separation and companion containment. Reviewed screenshots are under `dist/validation/grip-*` (generated, not committed).
+
+
+## Release to open
+
+After a held fingering submits an answer, releasing all fingers on the immediately next card submits Open after the normal 200 ms settling window, provided that card's primary fingering in the selected chart is the all-zero mask. Primary means the first chart entry; an open alternate alone does not enable this shortcut. Partial releases may roll into the full release within the settling window. Adding a finger cancels the release shortcut.
+
+The first card, repeated open cards, and release before the next card appears still need Open or Space. Both explicit controls remain available. Cancelled pointers, lost focus, rotation, Move/Flip, instrument changes, pauses, and stale prompts cannot submit open. A hold retained through feedback can release once the next card is active; a release during feedback is not queued.
+
+Policy tests cover the settling boundary, synchronous advancement, delayed advancement, interrupted releases, stale sessions/prompts, explicit Open, and repeated open cards. The browser fixture exercises keyboard and pointer releases through the production note-entry and scoring engine, plus pointer cancellation and layout cleanup.
+
+Release-to-open validation: Node 24.22.1 with `npm ci`; `npm run check` passed (518 tests, typecheck, build). Chromium and Firefox completed the existing viewport/activity sections and the new keyboard/pointer release cases. After updating the horn test's former release-does-nothing expectation, the complete deterministic input-fixture section passed in both engines. `git diff --check` passed. No visual layout changes were made for this behavior.
