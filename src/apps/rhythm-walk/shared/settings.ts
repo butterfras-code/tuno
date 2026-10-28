@@ -235,7 +235,7 @@ export function createSettingsPage(callbacks: {
     applyPreset.disabled = !result.supported;
     if (!result.supported) teachingDetails.open = true;
     const unavailable = result.supported ? [] : [...new Set(result.reasons.map(unavailableReason))];
-    teachingStatus.textContent = result.supported ? 'Available: verified note-only figures for the selected instrument scope. Rest/tie permissions remain unresolved; customization retains source attribution. Use preset starts a new exercise when these settings change.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
+    teachingStatus.textContent = result.supported ? 'Available: figures and rests for the selected instrument scope. I–II allow quarter rests except on beat 1; III–IV also allow eighth rests and rests on beat 1. Exercise rest limits apply. Ties require customization. Use preset starts a new exercise when these settings change.' : `Unavailable: ${unavailable.slice(0, 2).join(' ')} See all requirements below.`;
     if (!definition.source) {
       teachingStatus.textContent = result.supported ? 'Available: Uno practice configuration. Use preset starts a new exercise when these settings change.' : `Unavailable: ${unavailable.join(' ')}`;
       const settings = definition.recommended;

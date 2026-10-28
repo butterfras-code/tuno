@@ -1,6 +1,6 @@
 # UIL teaching levels
 
-Levels I–IV offer **General / Percussion · note-only practice** in Write Counts,
+Levels I–IV offer **General / Percussion · figure practice** in Write Counts,
 Tap Rhythms and Both. These are short rhythm teaching configurations informed by
 UIL criteria, not full contest-composition validators or claims of UIL endorsement.
 The shared Level selector changes pending settings; New exercise replaces the
@@ -21,7 +21,7 @@ Source: [official band criteria](https://www.uiltexas.org/music/concert-sight-re
 | V | IV figures; E E E (3:2); S S E | Same as winds | IV meters, 6/8, cut time; two changes |
 | VI | Same as V | Same as winds | Same meters; three changes |
 
-Each row maps the corresponding section of the [official criteria](https://www.uiltexas.org/music/concert-sight-reading/band-sight-reading-criteria). The Level III 4/4→3/4 exception concerns the **2023 composition**, with reading stopped before 3/4; it is not a permanent permission. Ties, other tuplets, triplet rests and broader rest permissions are not specified sufficiently for this implementation. No extra permutations are inferred from note names.
+Each row maps the corresponding section of the [official criteria](https://www.uiltexas.org/music/concert-sight-reading/band-sight-reading-criteria). The Level III 4/4→3/4 exception concerns the **2023 composition**, with reading stopped before 3/4; it is not a permanent permission. The source does not enumerate an exhaustive rest vocabulary or specify general tie, other-tuplet or triplet-rest permissions. The approved rest interpretation is recorded below. No extra sounded permutations are inferred from note names.
 
 ## Direct visual evidence
 
@@ -78,16 +78,22 @@ Existing Uno/Custom 6/8 and simple-meter triplets remain available. The six numb
 6/8 counts and dotted-quarter performance pulses are unchanged; counting preferences
 determine exposed inputs through the shared counting plan.
 
-## Unresolved source policy and customization
+## Rest policy and customization
 
-Broader rest vocabulary and tie permissions remain unresolved at every level.
-The lower-level quarter-rest-on-count-1 and eighth-rest prohibitions remain recorded
-as source facts. They do not establish an exhaustive official rest vocabulary.
-These uncertainties do not block the verified note-only profile. Enabling existing
-rest/tie controls or editing musical ingredients/constraints retains attribution
-as **customized**, removes the exact figure profile, and uses the existing Custom
-generator. That is teacher-selected practice, not verified UIL coverage. Reapplying
-the level restores its note-only figure profile. No rest or tie rule is invented.
+The owner-approved teaching interpretation (2026-10-28) includes quarter rests
+in I–II except on beat 1 of any measure, and quarter/eighth rests in III–IV,
+including beat 1 of later measures. This follows the explicit lower-level
+prohibitions and the source's guidance to use familiar educational scoring;
+it is a teaching interpretation, not an exhaustive official rest inventory.
+Eighth rests pair with a sounded eighth within one quarter beat (rest–note or
+note–rest), preserving conventional grouping and the existing sounded figures.
+No half, whole, dotted or sixteenth rests are added. All exercises begin sounded,
+contain at least four sounded attacks, and devote at most 15% of their duration
+to rests. Short exercises can therefore omit otherwise eligible rests.
+
+Tie permissions remain unresolved. Editing musical ingredients/constraints marks
+the preset customized and uses the Custom generator; reapplying restores the
+level's figure and rest policy.
 
 ## Implementation and persistence
 
@@ -101,20 +107,20 @@ catalogue, not a separate generator.
 The [capability query](../../src/apps/rhythm-walk/shared/capabilities.ts) describes
 Custom ingredient support separately from reachable atomic figures in each meter.
 Resolution checks required meters, ingredients, atomic figures and complete-bar
-feasibility. Unresolved rest/tie source questions do not globally block practice.
+feasibility. Unresolved tie permissions do not block figure and rest practice.
 
-UIL definitions are version **3**; `figureProfile` retains version **1**, level and
+UIL definitions are version **4**; `figureProfile` retains version **1**, level and
 instrument scope. Generation constructs the handoff branch's immutable `RhythmScore`
 directly with stable note IDs. CountingPlan, notation and capture share that score;
 there is no legacy tuple adapter. The new editor, correction cycle, counting links
 and session/default preference behavior remain authoritative.
 
-Saved UIL versions 1–2 retain supported ingredient selections but become customized.
+Saved UIL versions 1–3 retain supported ingredient selections but become customized.
 Retired V–VI identities retain customized source attribution. Unsupported 2/2 is
 removed from saved pools (4/4 is used if no supported meter remains), and old change
 budgets are removed. The UI identifies migrated UIL configurations as customized,
-single-meter practice; reapply I–IV to restore verified figure generation. No new
-vocabulary is added. Uno definitions remain version 1 and unchanged.
+single-meter practice; reapply I–IV to restore figure generation with the approved
+rest policy. Migration itself adds no vocabulary. Uno definitions are unchanged.
 
 Length, tempo, counting system, response mode and Tap/Tap + Hold stay independent.
 Fixtures remain explicitly enabled testing tools, never saved practice modes.
@@ -146,3 +152,18 @@ suite passed in Chromium; counting correction and responsive workspace/completed
 performance suites passed in Chromium and Firefox. Those performance checks use
 synthetic timestamps and do not validate device latency. Documentation links and
 `git diff --check` passed. No physical-device or release-preview validation was run.
+
+### Rest policy validation (2026-10-28)
+
+Node 24.22.1, `npm ci`, and `npm run check` passed (501 tests, TypeScript,
+and hosted builds). Focused acceptance tests also passed after adding explicit
+rest-answer grading assertions. Coverage includes both scopes, all supported
+meters and lengths, rest reachability/placement, sounded openings, the 15% cap,
+four-attack minimum, counting, synthetic completed performance, and version-3
+migration without silently adding vocabulary.
+
+The UIL browser workflow passed 32 level/scope/length combinations at each of
+1920×1080, 1366×650, 390×844, 400×650, 320×568 and 1280×900 in Chromium and
+Firefox. The workflow now checks immediate generation on changed preset
+application and the new rest ingredients. Preset screenshots were reviewed;
+physical-device and release-preview checks were not performed.

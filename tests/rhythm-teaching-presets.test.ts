@@ -25,7 +25,7 @@ const expectedGeneral = [
 test('I–IV definitions preserve independently inspected figures and source restrictions', () => {
   assert.deepEqual(teachingPresets.map(p => p.id), ['uil-1', 'uil-2', 'uil-3', 'uil-4']);
   for (const [index, definition] of teachingPresets.entries()) {
-    assert.equal(definition.version, 3); assert.deepEqual(definition.source, criteriaSource);
+    assert.equal(definition.version, 4); assert.deepEqual(definition.source, criteriaSource);
     assert.deepEqual(definition.figures.filter(f => f.scope === 'general').map(f => f.events.join(' ')), expectedGeneral[index]);
     assert.deepEqual(definition.figures.filter(f => f.scope === 'percussion').map(f => f.events.join(' ')), index < 2 ? ['E S S', 'S S S S'] : index === 2 ? ['E S S', 'S S S S', 'E. S'] : []);
     assert.ok(resolveTeachingPreset(definition).supported);
@@ -133,7 +133,7 @@ test('preference migration validates attribution separately and never trusts a s
   const preferences = defaultPreferences(); preferences.bpm = 117; preferences.generation.measures = 3;
   preferences.generation.teachingPreset = { id: 'uil-1', version: 1, customized: false };
   const restored = readPreferences(JSON.stringify(preferences));
-  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 3, customized: true, scope: 'general' });
+  assert.deepEqual(restored.generation.teachingPreset, { id: 'uil-1', version: 4, customized: true, scope: 'general' });
   assert.equal(restored.bpm, 117); assert.equal(restored.generation.measures, 3);
   for (const malformed of [null, {}, { id: 'uil-9', version: 1, customized: false }, { id: 'uil-1', version: 99, customized: false }, { id: 'uil-1', version: 1, customized: 'no' }]) {
     assert.equal(readPreferences(JSON.stringify({ ...preferences, generation: { ...preferences.generation, teachingPreset: malformed } })).generation.teachingPreset, undefined);

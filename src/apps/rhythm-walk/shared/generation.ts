@@ -172,7 +172,7 @@ export function generationIssue(settings: GenerationSettings): string | null {
       if (!Number.isInteger(settings.measures) || settings.measures < 1 || settings.measures > 4) throw new Error('Choose an exercise length from 1 to 4 measures.');
       if (JSON.stringify([...settings.ingredients].sort()) !== JSON.stringify(figureIngredients(settings.figureProfile).sort())) throw new Error('Figure profile ingredients do not match. Customize to edit vocabulary.');
       if (settings.allowUnintuitiveNotation || Boolean(settings.syncopation) !== (settings.figureProfile.level >= 4) || settings.restrictions) throw new Error('Figure profile constraints do not match. Customize to change notation or syncopation.');
-      if (settings.ties) throw new Error('Verified figure practice is note-only. Customize to enable rests or ties.');
+      if (settings.ties) throw new Error('UIL figure practice does not include ties. Customize to enable ties.');
       for (const meter of selectedMeters(settings)) figurePlan(settings.figureProfile, meter);
     } else for (const meter of selectedMeters(settings)) plan(settings, meter);
     return null;
@@ -182,7 +182,7 @@ export function generationIssue(settings: GenerationSettings): string | null {
 export function generateExercise(settings: GenerationSettings, random = Math.random) {
   const pool = selectedMeters(settings);
   const issue = generationIssue(settings); if (issue) throw new Error(issue);
-  if (settings.figureProfile) return generateFigures(settings.figureProfile, pool, settings.measures, random, minimumExerciseAttacks);
+  if (settings.figureProfile) return generateFigures(settings.figureProfile, pool, settings.measures, random, minimumExerciseAttacks, restDensityCap);
   // generationIssue validated every selected meter before this draw.
   const draw = pool.length > 1 ? random() : 0;
   if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random source must return a number in [0, 1).');

@@ -45,7 +45,7 @@ export function rhythmPresetPicker(options: {
     buttons.forEach((tab, index) => { tab.setAttribute('aria-selected', String(index === category)); tab.tabIndex = index === category ? 0 : -1; });
     panel.setAttribute('aria-labelledby', buttons[category]!.id);
     list.hidden = category === 2; custom.hidden = category !== 2; scopeField.hidden = category !== 1;
-    context.textContent = category === 1 ? 'Allowed figures · note-only practice' : category === 2 ? (current.teachingPreset ? `Based on ${generationLevels.find(p => p.id === current.teachingPreset?.id)?.label ?? 'your settings'}` : 'Choose the rhythms for your next exercise.') : '';
+    context.textContent = category === 1 ? 'Allowed figures and rests' : category === 2 ? (current.teachingPreset ? `Based on ${generationLevels.find(p => p.id === current.teachingPreset?.id)?.label ?? 'your settings'}` : 'Choose the rhythms for your next exercise.') : '';
     context.hidden = !context.textContent;
     list.replaceChildren();
     if (category === 2) return;

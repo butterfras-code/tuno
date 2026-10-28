@@ -36,7 +36,7 @@ export const teachingPresets: readonly (TeachingPresetDefinition & { source: typ
   const suggested: CountMeter[] = number < 3 ? ['4/4'] : ['2/4', '3/4', '4/4'];
   const figures = number < 3 ? [...basic, ...percussion] : number === 3 ? [...basic, dottedQuarter, ...percussion, { ...dottedEighth, scope: 'percussion' as const }] : [...basic, dottedQuarter, syncopated, dottedEighth, figure('R4-16', ['S', 'S', 'S', 'S']), figure('R8-16-16', ['E', 'S', 'S'])];
   return {
-    id: `uil-${number}`, version: 3, label: `UIL ${level}`, source: criteriaSource,
+    id: `uil-${number}`, version: 4, label: `UIL ${level}`, source: criteriaSource,
     figures, officialMeters: suggested,
     meterChanges: number < 4 ? 0 : number - 3,
     restrictions: [
@@ -44,7 +44,7 @@ export const teachingPresets: readonly (TeachingPresetDefinition & { source: typ
       ...(number < 3 ? ['No quarter rest on beat 1; no eighth rests.', 'Sixteenth figures are percussion-only.'] : number === 3 ? ['Sixteenth and dotted-eighth figures are percussion-only.', 'The 2023 meter-change exception is not a standing rule.'] : []),
       'No general permission for ties, tuplet rests or other tuplets is stated in these criteria.',
     ],
-    unresolved: ['Rest vocabulary beyond the explicit Level I prohibitions and tie permissions require clarification.'],
+    unresolved: ['Tie permissions require clarification.'],
     recommended: { meters: suggested, measures: 2,
       figureProfile: { version: 1, level: number, scope: 'general' },
       ingredients: figureIngredients({ version: 1, level: number, scope: 'general' }),
@@ -72,7 +72,7 @@ export const unoPresets: readonly TeachingPresetDefinition[] = unoConfigurations
 export const generationLevels = [...unoPresets, ...teachingPresets];
 export function teachingPresetLabel(identity?: TeachingPresetIdentity): string {
   const definition = generationLevels.find(p => p.id === identity?.id);
-  return definition ? `${definition.label}${identity?.customized ? ' · customized' : definition.source ? ` · ${identity?.scope ?? 'general'} · note-only practice` : ''}` : identity && ['uil-5', 'uil-6'].includes(identity.id) ? `UIL ${identity.id === 'uil-5' ? 'V' : 'VI'} · customized · deferred level` : 'Custom';
+  return definition ? `${definition.label}${identity?.customized ? ' · customized' : definition.source ? ` · ${identity?.scope ?? 'general'} · figure practice` : ''}` : identity && ['uil-5', 'uil-6'].includes(identity.id) ? `UIL ${identity.id === 'uil-5' ? 'V' : 'VI'} · customized · deferred level` : 'Custom';
 }
 export type PresetResolution = { supported: true; settings: GenerationSettings } | { supported: false; reasons: string[] };
 export function matchesTeachingPreset(settings: GenerationSettings, definition: TeachingPresetDefinition): boolean {
