@@ -61,6 +61,8 @@ Build outputs are ignored by Git. The build script owns and replaces `dist/`; st
 
 Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the application. The build pipeline is in `scripts/build.mjs`. There are no runtime dependencies or remote assets. See [dependency provenance](docs/dependencies.md) before adding upstream code or assets.
 
+See [responsive design standards](docs/responsive-design.md) for classroom, Chromebook, phone, and Galaxy Z Fold8 targets. Run `npm run test:responsive` for the shared viewport smoke check.
+
 ## UI structure
 
 - `src/tokens.css`: global Figma colors, typography, spacing, and radii; `src/styles.css` defines shared controls and responsive layouts.

@@ -22,6 +22,10 @@ See [hosting setup](docs/hosting.md) for deployment settings and preview behavio
 
 Use the Node.js 24 version pinned in `.nvmrc` (minimum 24.22.1) and install dependencies with `npm ci`. Run checks appropriate to the change; documentation-only edits need link/content review and `git diff --check`, not an application rebuild. For application changes, use `npm run check` and the relevant browser checks. Follow [release instructions](docs/releasing.md) for full candidate verification with `npm run verify` and required physical-device checks.
 
+## Responsive UI
+
+Follow [the responsive design standard](docs/responsive-design.md) for UI changes. Validate affected screens at all four primary profiles from `scripts/viewport-profiles.mjs`, plus applicable secondary/stress profiles, and run the relevant activity checks. Review viewport screenshots; preserve existing regression sizes. Treat the Galaxy Z Fold8 sizes as provisional until physically measured.
+
 ## Rhythm activities
 
 Before changing rhythm notation, generation, counting or performance logic, read [the canonical rhythm model](docs/rhythm/music-model.md) and [current rhythm direction](docs/rhythm/README.md). Use the shared written-event model and derived time; keep counting conventions and UI support limits separate from the music domain.
