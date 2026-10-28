@@ -18,7 +18,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
   let stage: HTMLElement | undefined, viewport: HTMLElement | undefined;
   let frame = 0, disposed = false;
   const clear = () => {
-    stage?.classList.remove('play-stage','play-stage--compact','play-stage--short');
+    stage?.classList.remove('play-stage','play-stage--compact','play-stage--short','play-stage--grip');
     stage?.style.removeProperty('width'); stage?.style.removeProperty('height'); stage?.style.removeProperty('transform'); stage?.style.removeProperty('top');
     viewport?.classList.remove('play-viewport');
   };
@@ -46,15 +46,18 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     const multiplayer = stage.classList.contains('multiplayer-round');
     const pairs = multiplayer && stage.querySelectorAll('.multiplayer-seat').length > 1;
     const portrait = width < height;
-    const compact = !pairs && width < 700;
-    const short = !multiplayer && width >= 700 && height < 500;
+    const grip = !multiplayer && Boolean(stage.querySelector('.note-entry[data-input-method="fingering"]'))
+      && matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 600px)').matches;
+    const compact = !grip && !pairs && width < 700;
+    const short = !multiplayer && (grip || width >= 700 && height < 500);
+    stage.classList.toggle('play-stage--grip',grip);
     stage.classList.toggle('play-stage--short',short);
     stage.classList.toggle('play-stage--compact',compact);
     // The staff flexes above the reserved answer rows. Below these sizes the
     // entire surface still fits, with the multiplayer warning left actionable.
-    const minWidth = head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
+    const minWidth = grip ? 560 : head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
     const physicalInput = Boolean(stage.querySelector('.note-entry[data-input-method="fingering"], .note-entry[data-input-method="keyboard"]'));
-    const minHeight = head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 710 : multiplayer ? 540 : 580 : stage.classList.contains('challenge-active') ? 600 : 560;
+    const minHeight = grip ? 240 : head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 710 : multiplayer ? 540 : 580 : stage.classList.contains('challenge-active') ? 600 : 560;
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));

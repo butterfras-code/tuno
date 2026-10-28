@@ -1369,3 +1369,34 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .answer-input .answer:is(.answer-sharp, .answer-flat):is(:hover, :focus-visible, .answer-modifier, .answer-pending) {
   --bone-fill: color-mix(in srgb, var(--color-accent) 80%, var(--color-ink));
 }
+
+/* A phone held like a brass instrument: valve 1 nearest the bottom finger. */
+#home .play-stage--grip .practice-play { grid-template-columns: minmax(0, 1fr) 220px; }
+#home .play-stage--grip .note-entry { grid-column: 2; grid-row: 1 / -1; align-self: stretch; min-height: 0; }
+#home .play-stage--grip .practice-play > .control-row { grid-column: 1; }
+#home .play-stage--grip .input-workspace { height: 100%; min-height: 0; }
+#home .play-stage--grip .interaction-selector .control { font-size: 12px; padding: 6px; }
+#home .play-stage--grip .interaction-body { min-height: 0; padding: 6px; }
+#home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) 88px; height: 100%; gap: 6px; }
+#home .play-stage--grip .fingering-input { position: relative; grid-column: 2; grid-row: 1; flex-direction: column-reverse; flex-wrap: nowrap; gap: 4px; min-height: 0; }
+#home .play-stage--grip .fingering-input .fingering-valve { flex: 1; width: 88px; height: auto; min-height: 44px; padding: 2px; }
+#home .play-stage--grip .valve-outline { flex: none; width: 64px; height: 40px; }
+#home .play-stage--grip .fingering-valve kbd,
+#home .play-stage--grip .fingering-help { display: none; }
+#home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 1; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
+#home .play-stage--grip .fingering-open { font-size: 13px; padding: 8px; }
+#home .play-stage--grip .horn-side { display: none; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .practice-play { grid-template-columns: 220px minmax(0, 1fr); }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .practice-play > :is(h2, .counts, .staff-panel, .feedback, .control-row, .challenge-scene) { grid-column: 2; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .note-entry { grid-column: 1; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .fingering-panel { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip .fingering-input[data-instrument='horn-f'] { grid-column: 1; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .fingering-actions { grid-column: 2; align-self: end; margin-bottom: 64px; }
+#home .play-stage--grip .fingering-input[data-instrument='horn-f'] .fingering-trigger { position: absolute; left: calc(100% + 6px); bottom: 0; width: 72px; height: 60px; }
+#home .play-stage--grip .fingering-trigger .valve-outline { height: 28px; width: 56px; }
+/* Let four valves use the full height; keep the selector beside the column. */
+#home .play-stage--grip .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-rows: minmax(0, 1fr); gap: 6px; }
+#home .play-stage--grip .interaction-selector { grid-column: 1; grid-row: 1; grid-auto-flow: row; grid-auto-columns: auto; align-self: start; margin: 6px 0 0 6px; z-index: 1; }
+#home .play-stage--grip .interaction-body { grid-column: 1 / -1; grid-row: 1; }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .input-workspace { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .interaction-selector { grid-column: 2; margin: 6px 6px 0 0; }

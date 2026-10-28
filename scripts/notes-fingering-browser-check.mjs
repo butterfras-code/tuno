@@ -101,6 +101,57 @@ try {
     await presetPage.close();
   }
 
+  // Phones rotate into an edge-mounted valve column, mirrored for the horn.
+  for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium']) {
+    const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
+    const phone=await context.newPage(); phone.on('pageerror',e=>errors.push(e.message));
+    await phone.goto(new URL('/notes/',host.url).href);
+    await choosePreset(phone,`${instrument}-starter`); await startPractice(phone);
+    await chooseMethod(phone,'fingering');
+    if (['tuba','euphonium'].includes(instrument)) await selectInstrument(phone,`${instrument}-4`);
+    for (const viewport of [{width:844,height:390},{width:667,height:375}]) {
+      await phone.setViewportSize(viewport);
+      await phone.waitForFunction(()=>document.querySelector('.play-stage--grip'));
+      await phone.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const valves=await phone.locator('.fingering-valve:not(.fingering-trigger)').evaluateAll(bs=>bs.map(b=>{
+        const r=b.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height};
+      }));
+      const staff=await phone.locator('.practice-play > .staff-panel').boundingBox();
+      const panel=await phone.locator('.interaction-body').boundingBox();
+      for (const [i,v] of valves.entries()) {
+        assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
+        assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');
+        assert.ok(v.w>=40 && v.h>=40, 'Valve targets remain usable after fitting the stage');
+        if(i) assert.ok(v.y<valves[i-1].y && Math.abs(v.x-valves[0].x)<1,'Valves run bottom to top');
+        assert.ok(instrument==='horn-f' ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
+      }
+      if(instrument==='horn-f') {
+        const trigger=await phone.locator('.fingering-trigger').boundingBox();
+        assert.ok(trigger.x>valves[0].x+valves[0].w && trigger.x+trigger.width<staff.x);
+      }
+      await phone.screenshot({path:`dist/validation/notes-grip-${instrument}-${viewport.width}-${name}.png`});
+    }
+    if(name==='chromium') {
+      const cdp=await context.newCDPSession(phone), points=[];
+      for(const n of [1,2]) {
+        const r=await phone.getByRole('button',{name:`Valve ${n}`,exact:true}).boundingBox();
+        points.push({x:r.x+r.width/2,y:r.y+r.height/2,id:n});
+      }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
+      assert.equal(await phone.locator('.fingering-valve[aria-pressed="true"]').count(),2);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+      assert.equal(await phone.locator('.fingering-input').getAttribute('data-mask'),'00000000');
+      await cdp.detach();
+    }
+    await phone.setViewportSize({width:390,height:844});
+    await phone.waitForFunction(()=>!document.querySelector('.play-stage--grip'));
+    await phone.setViewportSize({width:844,height:390});
+    await phone.waitForFunction(()=>document.querySelector('.play-stage--grip'));
+    await chooseMethod(phone,'names');
+    await phone.waitForFunction(()=>!document.querySelector('.play-stage--grip'));
+    await context.close();
+  }
+
   // Deterministic fixture uses the production entry surface and scoring engine.
   // Fixed pitches expose repeated-card, held-state, and correct-only edge cases.
   const fixture = await build({stdin:{contents:`
