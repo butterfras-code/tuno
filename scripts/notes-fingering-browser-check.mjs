@@ -118,6 +118,11 @@ try {
       }));
       const staff=await phone.locator('.practice-play > .staff-panel').boundingBox();
       const panel=await phone.locator('.interaction-body').boundingBox();
+      const entry=await phone.locator('.note-entry').boundingBox();
+      assert.ok(entry.y<=8 && entry.y+entry.height>=viewport.height-8,`Hand column spans the app viewport: ${JSON.stringify({entry,viewport})}`);
+      const header=await phone.locator('.app-header').boundingBox();
+      assert.ok(instrument==='horn-f' ? header.x>=entry.x+entry.width : header.x+header.width<=entry.x,'Header moves beside the hand column');
+      assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Landscape has no horizontal overflow');
       for (const [i,v] of valves.entries()) {
         assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
         assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');

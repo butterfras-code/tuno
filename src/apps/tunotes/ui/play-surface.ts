@@ -37,20 +37,21 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       if (stage) window.scrollTo(0,0);
     }
     if (!stage || !viewport) return;
+    const multiplayer = stage.classList.contains('multiplayer-round');
+    const grip = !multiplayer && Boolean(stage.querySelector('.note-entry[data-input-method="fingering"]'))
+      && matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 600px)').matches;
+    // Reserve the full-height hand column before measuring the remaining staff area.
+    stage.classList.toggle('play-stage--grip',grip);
     const warning = viewport.querySelector<HTMLElement>('.multiplayer-fit-warning:not([hidden])');
     const inset = warning ? warning.offsetHeight+16 : 0;
     const width = viewport.clientWidth, height = viewport.clientHeight-inset;
     if (!width || !height) return;
     stage.style.top = `${inset}px`;
     const head = stage.classList.contains('multiplayer-round--head-to-head');
-    const multiplayer = stage.classList.contains('multiplayer-round');
     const pairs = multiplayer && stage.querySelectorAll('.multiplayer-seat').length > 1;
     const portrait = width < height;
-    const grip = !multiplayer && Boolean(stage.querySelector('.note-entry[data-input-method="fingering"]'))
-      && matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 600px)').matches;
     const compact = !grip && !pairs && width < 700;
     const short = !multiplayer && (grip || width >= 700 && height < 500);
-    stage.classList.toggle('play-stage--grip',grip);
     stage.classList.toggle('play-stage--short',short);
     stage.classList.toggle('play-stage--compact',compact);
     // The staff flexes above the reserved answer rows. Below these sizes the
@@ -61,10 +62,10 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));
-    const scale = Math.min(grow,width/minWidth,height/minHeight);
+    const scale = grip ? 1 : Math.min(grow,width/minWidth,height/minHeight);
     stage.style.width = `${width/scale}px`;
     stage.style.height = `${height/scale}px`;
-    stage.style.transform = `scale(${scale})`;
+    stage.style.transform = grip ? 'none' : `scale(${scale})`;
   };
   const schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(fit); };
   setting.addEventListener('change',() => {
