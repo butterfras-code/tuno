@@ -169,9 +169,11 @@ try {
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
     const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();
-    assert.ok(Math.abs(last.x-first.x-first.width*7)<1);
     const c=await button(preview,'C').boundingBox(),d=await button(preview,'D').boundingBox(),cs=await button(preview,'C',1).boundingBox(),df=await button(preview,'D',-1).boundingBox();
-    assert.ok(Math.abs(cs.x-(c.x+d.x)/2)<1); assert.ok(Math.abs(cs.x-df.x)<1);
+    assert.ok(Math.abs(last.x-first.x-c.width*7)<1);
+    assert.ok(Math.abs(cs.x+cs.width/2-(c.x+c.width/2+d.x+d.width/2)/2)<1);
+    assert.ok(Math.abs(cs.x+cs.width/2-df.x-df.width/2)<1);
+    assert.ok(cs.width<c.width && df.width<d.width, 'Accidentals fit their labels within the staggered columns');
     await preview.screenshot({path:`dist/validation/notes-input-${name}-${preset}.png`,fullPage:true});
     await preview.locator('.note-entry').screenshot({path:`dist/validation/notes-answer-panel-${name}-${preset}.png`});
     await preview.close();

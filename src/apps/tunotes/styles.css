@@ -1356,6 +1356,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   --bone-fill: var(--color-accent);
   --bone-stroke: var(--color-accent);
   color: var(--color-surface);
+  width: max-content;
+  min-width: 44px;
+  justify-self: center;
+  padding-inline: 8px;
 }
 .answer-input .answer:is(.answer-sharp, .answer-flat):is(:hover, :focus-visible, .answer-modifier, .answer-pending),
 #home .answer-input .answer:is(.answer-sharp, .answer-flat):is(:hover, :focus-visible, .answer-modifier, .answer-pending) {
