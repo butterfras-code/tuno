@@ -1,6 +1,6 @@
 import { buildCountingPlan } from '../../music/counting/plan.ts';
 import type { CountingPlan } from '../../music/counting/plan.ts';
-import { initializeAnswer } from '../../music/counting/answer.ts';
+import { initializeAnswer, normalizeAnswer } from '../../music/counting/answer.ts';
 import type { CountingAnswer, CountingEvaluation } from '../../music/counting/answer.ts';
 import { defaultCountingPreferences, captureCountingPreferences } from '../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../music/counting/preferences.ts';
@@ -115,6 +115,28 @@ export class Activity {
     return { id: `exercise-${++this.serial}`, label: presets.find(p => p.id === this.preferences.preset)?.label ?? 'Generated practice', description: 'Read the score. Choose how to respond.', score };
   }
   setMode(mode: Mode) { this.preferences.mode = mode; }
+  /** Save counting changes onto the same written score, retaining compatible evidence. */
+  saveCounting(preferences: CountingPreferences) {
+    const previous = this.countingPlan;
+    const plan = buildCountingPlan(this.exercise.score, preferences);
+    const expected = new Map(previous.counts.map(c => [c.id, c.expectedToken]));
+    this.countingAnswer = normalizeAnswer(plan, {
+      ...this.countingAnswer,
+      counts: Object.fromEntries(plan.counts.map(c => [c.id,
+        expected.get(c.id) === c.expectedToken ? this.countingAnswer.counts[c.id] ?? '' : ''])),
+    });
+    // Presentation changes keep confirmed grading when the assessment contract is identical.
+    const requirements = (p: CountingPlan) => JSON.stringify({
+      counts: p.counts.map(c => [c.id, c.expectedToken]),
+      units: p.units.map(u => [u.id, u.restApplicable, u.durationApplicable, u.expectedRest]),
+    });
+    if (requirements(previous) !== requirements(plan)) {
+      this.countingResult = null;
+      this.checkedCountingAnswer = null;
+    }
+    this.preferences.counting = plan.preferences;
+    this.countingPlan = plan;
+  }
   replace(source: RhythmScore) { this.exercise = this.create(source); return this.exercise; }
   next(random = Math.random) {
     const measures = generateExercise(this.preferences.generation, random);

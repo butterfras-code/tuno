@@ -1,13 +1,23 @@
+import { note } from '../../../music/measure.ts';
+import { renderCountingPreview } from './counting-preview.ts';
 import { rhythmPresetPicker } from './preset-picker.ts';
-import { countingPreferencesUrl } from '../../../music/counting/link.ts';
 import { meters, meterPolicy } from './meter.ts';
 import { renderTimeSignature, renderRhythmSymbol, renderRhythmPattern } from './notation.ts';
-import { button, el, field, select, segmentedOption } from '../../../shared/ui/components.ts';
-import { captureCountingPreferences, countingPreferenceOptions } from '../../../music/counting/preferences.ts';
+import { button, el, select, segmentedOption } from '../../../shared/ui/components.ts';
+import { captureCountingPreferences } from '../../../music/counting/preferences.ts';
 import type { CountingPreferences } from '../../../music/counting/preferences.ts';
 import { generationIssue, ingredients, enableMeter, sixteenthPatterns, selectedSixteenthPatterns } from './generation.ts';
 import type { GenerationSettings } from './generation.ts';
 import { generationLevels, teachingPresetLabel, resolveTeachingPreset, applyTeachingPreset, customizeTeachingPreset } from './teaching-presets.ts';
+
+/** Fixed count labels for the compact notation selectors. */
+function addSelectorCounts(example: SVGElement, counts: readonly (readonly [number, string])[]) {
+  for (const [x, token] of counts) {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    for (const [key, attribute] of Object.entries({ x: String(x), y: '142', 'font-size': '36', 'font-family': 'var(--font-body)', 'font-weight': '400', 'text-anchor': 'middle', fill: 'currentColor' })) text.setAttribute(key, attribute);
+    text.textContent = token; example.append(text);
+  }
+}
 
 function unavailableReason(reason: string): string {
   if (/Missing pattern support(?: in [\d/]+)?: uil-\d-figures\./.test(reason)) return 'The exact rhythm figures for this level are not enforced yet.';
@@ -29,75 +39,145 @@ export function createSettingsPage(callbacks: {
   saveCountingDefaults: () => void;
 }) {
   const page = el('section', 'rhythm-settings'); page.id = 'settings-view'; page.setAttribute('aria-label', 'Rhythm settings');
-  const intro = el('p', 'settings-intro', 'Choose a rhythm preset in the exercise header for rhythm ingredients. Tempo, play style and metronome are beside the performance pad. Choose writing preferences here.');
-  const savedNote = el('p', 'setting-hint');
-  const updateSavedNote = () => { savedNote.textContent = `${callbacks.isLinked() ? 'Linked counting preferences and your edits stay in this session until you choose Save as my defaults.' : 'Preferences are saved automatically in this browser.'} Counting changes apply on New exercise. Current music, answers and results are kept.`; };
-  updateSavedNote();
-  const newExercise = button('New exercise', callbacks.newExercise, true);
-  const settingsActions = el('div', 'actions settings-actions'); settingsActions.append(newExercise);
-  const available = el('section', 'card settings-live'); available.setAttribute('aria-labelledby', 'available-settings');
-  const heading = el('h2', '', 'Counting preferences'); heading.id = 'available-settings';
-  const activeHeader = el('div', 'setting-heading'); activeHeader.append(heading);
+  const newExercise = button('New exercise', callbacks.newExercise);
+  const available = el('section', 'card settings-live'); available.setAttribute('aria-label', 'Counting preferences');
   const activeControls = el('div', 'settings-live-controls');
   let counting = callbacks.initialCounting;
-  const countingControls = new Map<keyof CountingPreferences, HTMLInputElement | HTMLSelectElement>();
+  let savedCounting = callbacks.initialCounting;
+  const preview = el('div', 'counting-preview');
+  const previewScroll = el('div', 'counting-preview-scroll');
+  preview.append(previewScroll);
+  const saveStatus = el('p', 'setting-hint'); saveStatus.setAttribute('role', 'status');
+  const save = button('Save', () => {
+    savedCounting = counting;
+    callbacks.counting(counting);
+    refreshChoices();
+    saveStatus.textContent = 'Saved.';
+  }, true);
+  save.dataset.saveCounting = '';
+  const saveActions = el('div', 'actions counting-save'); saveActions.append(save, newExercise, saveStatus);
+  const positionInputs: HTMLInputElement[] = [];
+  const appearances = { above: 'raised', below: 'lowered', beside: 'unchanged' } as const;
+  const restInputs: HTMLInputElement[] = [];
+  const vocabularyInputs: HTMLInputElement[] = [];
+  const dottedInputs: HTMLInputElement[] = [];
   const countingGroup = el('fieldset', 'counting-settings-group'); countingGroup.append(el('legend', '', 'Counting'));
-  const longNotesGroup = el('fieldset', 'counting-settings-group'); longNotesGroup.append(el('legend', '', 'Long Notes'));
-  const longNoteKeys = new Set<keyof CountingPreferences>(['longNotes', 'showDurationLine', 'linePlacement', 'internalAppearance']);
-  const addCountingField = (key: Exclude<keyof CountingPreferences, 'version'>, input: HTMLInputElement | HTMLSelectElement) => {
-    const control = field(labels[key], input);
-    if (key === 'longNotes') {
-      const hint = el('p', 'setting-hint', 'Add counts inside long notes and rests.'); hint.id = 'subdivide-hint';
-      input.setAttribute('aria-describedby', hint.id); control.append(hint);
-    }
-    (longNoteKeys.has(key) ? longNotesGroup : countingGroup).append(control);
-  };
+  const longNotesGroup = el('fieldset', 'counting-settings-group'); longNotesGroup.append(el('legend', '', 'Subdivision'));
   activeControls.append(countingGroup, longNotesGroup);
-  const labels = { longNotes: 'Subdivide', dotted: 'Dotted subdivision', includeRests: 'Include rests', showDurationLine: 'Show connecting line', linePlacement: 'Line placement', internalAppearance: 'Internal count appearance', restAppearance: 'Rest appearance', vocabulary: 'Vocabulary', offbeat: 'Offbeat display' };
-  function change(key: keyof CountingPreferences, value: string | boolean) {
-    counting = captureCountingPreferences({ ...counting, [key]: value }); callbacks.counting(counting);
-    updateSavedNote();
-    shareStatus.textContent = ''; fallback.hidden = true;
+  function change(key: keyof CountingPreferences, value: string | boolean, extra: Partial<CountingPreferences> = {}) {
+    counting = captureCountingPreferences({ ...counting, ...extra, [key]: value });
+    saveStatus.textContent = ''; refreshChoices();
   }
-  for (const key of ['longNotes', 'dotted', 'includeRests', 'showDurationLine'] as const) {
-    const input = el('input'); input.type = 'checkbox'; input.checked = counting[key]; input.dataset.countingPreference = key;
-    input.addEventListener('change', () => change(key, input.checked)); countingControls.set(key, input); addCountingField(key, input);
-  }
-  for (const key of ['linePlacement', 'internalAppearance', 'restAppearance', 'vocabulary', 'offbeat'] as const) {
-    const input = select(countingPreferenceOptions[key].map(value => ({ value, label: value === 'numbers' ? '1 e & a' : value === 'syllables' ? '1 ta-te-ta' : value[0]!.toUpperCase() + value.slice(1) })), value => change(key, value));
-    input.value = counting[key]; input.dataset.countingPreference = key; countingControls.set(key, input); addCountingField(key, input);
-  }
-  const share = el('div', 'counting-share');
-  const shareHint = el('p', 'setting-hint', 'Share the counting preferences currently selected here, including pending changes. The current exercise is unchanged.');
-  const shareStatus = el('p', 'setting-hint'); shareStatus.setAttribute('role', 'status');
-  const fallback = el('div'); fallback.hidden = true;
-  const linkInput = el('input'); linkInput.type = 'text'; linkInput.readOnly = true;
-  linkInput.addEventListener('focus', () => linkInput.select());
-  fallback.append(field('Counting preferences link', linkInput));
-  const copy = button('Copy counting preferences link', async () => {
-    const url = countingPreferencesUrl(location.href, counting);
-    linkInput.value = url; fallback.hidden = true;
-    try {
-      await navigator.clipboard.writeText(url);
-      shareStatus.textContent = 'Counting preferences link copied.';
-    } catch {
-      shareStatus.textContent = 'Could not copy automatically. Select and copy the link below.';
-      fallback.hidden = false; linkInput.focus(); linkInput.select();
+  const dottedGroup = el('fieldset', 'settings-pill-field segmented-field dotted-subdivision-field');
+  dottedGroup.append(el('legend', '', 'Dotted Notes'));
+  const dottedSegments = el('div', 'pill-selector counting-pill-options notation-pill-options dotted-subdivision-options');
+  for (const subdivide of [true, false]) {
+    const example = renderRhythmPattern([note('quarter', { dots: 1 })]);
+    example.setAttribute('viewBox', '0 32 112 120');
+    if (!subdivide) {
+      const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      glyph.setAttribute('transform', 'translate(32 0)'); glyph.append(...example.childNodes); example.append(glyph);
     }
-  });
+    addSelectorCounts(example, subdivide ? [[22, '1'], [54, '+'], [86, '2']] : [[54, '1']]);
+    const { label, input } = segmentedOption({
+      label: subdivide ? 'Subdivide dotted notes: 1 + 2' : 'Do not subdivide dotted notes: 1',
+      content: example, type: 'radio', name: 'dotted-subdivision', value: String(subdivide), checked: counting.dotted === subdivide,
+      changed: () => change('dotted', subdivide),
+    });
+    label.className = 'control pill-option'; input.dataset.countingPreference = 'dotted';
+    dottedInputs.push(input); dottedSegments.append(label);
+  }
+  dottedGroup.append(dottedSegments);
+  const restGroup = el('fieldset', 'settings-pill-field rest-style-field segmented-field');
+  restGroup.append(el('legend', '', 'Rests'));
+  const restSegments = el('div', 'pill-selector counting-pill-options rest-style-options');
+  for (const value of ['parentheses', 'slashes', 'blank'] as const) {
+    const symbol = el('span', `rest-style-symbol${value === 'slashes' ? ' rest-slashed' : value === 'blank' ? ' rest-style-blank' : ''}`, value === 'parentheses' ? '(1)' : value === 'slashes' ? '1' : 'Blank');
+    const { label, input } = segmentedOption({
+      label: value === 'parentheses' ? 'Counts in parentheses' : value === 'slashes' ? 'Counts with slashes' : 'Blank',
+      content: symbol, type: 'radio', name: 'counting-rest-style', value,
+      checked: (counting.includeRests ? counting.restAppearance : 'blank') === value,
+      changed: () => change('includeRests', value !== 'blank', value === 'blank' ? {} : { restAppearance: value }),
+    });
+    label.className = 'control pill-option';
+    input.dataset.restStyle = value;
+    if (value !== 'blank') input.dataset.countingPreference = 'restAppearance';
+    restInputs.push(input); restSegments.append(label);
+  }
+  restGroup.append(restSegments); countingGroup.append(restGroup);
+  const vocabularyGroup = el('fieldset', 'settings-pill-field segmented-field counting-style-field');
+  vocabularyGroup.append(el('legend', '', 'Syllables'));
+  const vocabularySegments = el('div', 'pill-selector counting-pill-options notation-pill-options counting-style-options');
+  for (const value of ['&', '+', 'te'] as const) {
+    const example = renderRhythmPattern([note('eighth'), note('eighth')]);
+    example.setAttribute('viewBox', '0 32 104 120');
+    addSelectorCounts(example, [[22, '1'], [66, value]]);
+    const { label, input } = segmentedOption({
+      label: `1 ${value}`, content: example, type: 'radio', name: 'counting-style', value,
+      checked: (counting.vocabulary === 'syllables' ? 'te' : counting.offbeat) === value,
+      changed: () => change('vocabulary', value === 'te' ? 'syllables' : 'numbers', value === 'te' ? {} : { offbeat: value }),
+    });
+    label.className = 'control pill-option'; input.dataset.countingStyle = value;
+    vocabularyInputs.push(input); vocabularySegments.append(label);
+  }
+  vocabularyGroup.append(vocabularySegments); countingGroup.append(vocabularyGroup, restGroup);
+  for (const kind of ['subdivision', 'connection'] as const) {
+    const group = el('fieldset', `settings-pill-field segmented-field ${kind}-position-field`);
+    group.append(el('legend', '', kind === 'subdivision' ? 'Long Notes' : 'Connecting line'));
+    const options = el('div', `pill-selector counting-pill-options position-pill-options ${kind}-position-options`);
+    for (const position of ['none', 'above', 'below', 'beside'] as const) {
+      const name = position[0]!.toUpperCase() + position.slice(1);
+      const content = el('span', 'position-choice-content');
+      const example = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      example.setAttribute('viewBox', '0 0 112 64'); example.setAttribute('aria-hidden', 'true');
+      const count = (x: number, y: number, text: string, size = 26) => {
+        const node = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        for (const [key, value] of Object.entries({x:String(x),y:String(y),'font-size':String(size),'font-family':'var(--font-body)','text-anchor':'middle',fill:'currentColor'})) node.setAttribute(key,value);
+        node.textContent=text; example.append(node);
+      };
+      count(kind === 'subdivision' && position === 'none' ? 56 : 22, 42, '1');
+      if (kind === 'connection' || position !== 'none') count(86, kind === 'subdivision' && position === 'above' ? 25 : kind === 'subdivision' && position === 'below' ? 56 : 42, '2', kind === 'subdivision' && ['above','below'].includes(position) ? 20 : 26);
+      if (kind === 'connection' && position !== 'none') {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const y = position === 'above' ? 12 : position === 'below' ? 56 : 34;
+        for (const [key,value] of Object.entries({x1:position === 'beside'?'38':'22',x2:position === 'beside'?'72':'86',y1:String(y),y2:String(y),stroke:'currentColor','stroke-width':'2'})) line.setAttribute(key,value);
+        example.append(line);
+      }
+      content.append(example, el('span', '', name));
+      const {label,input} = segmentedOption({ label:name, content, type:'radio', name:`${kind}-position`, value:position, checked:false,
+        changed:() => {
+          if (kind === 'subdivision') change('longNotes', position !== 'none', position === 'none' ? {} : {internalAppearance:appearances[position]});
+          else change('showDurationLine', position !== 'none', position === 'none' ? {} : {linePlacement:position});
+        },
+      });
+      label.className='control pill-option';
+      if (kind === 'subdivision') input.dataset.subdivisionStyle=position; else input.dataset.connectionStyle=position;
+      positionInputs.push(input); options.append(label);
+    }
+    group.append(options);
+    longNotesGroup.append(group);
+  }
+  longNotesGroup.append(dottedGroup);
+  function refreshChoices() {
+    dottedInputs.forEach(input => { input.checked = input.value === String(counting.dotted); });
+    restInputs.forEach(input => { input.checked = (counting.includeRests ? counting.restAppearance : 'blank') === input.value; });
+    vocabularyInputs.forEach(input => { input.checked = (counting.vocabulary === 'syllables' ? 'te' : counting.offbeat) === input.value; });
+    positionInputs.forEach(input => {
+      if (input.dataset.subdivisionStyle) input.checked = counting.longNotes ? input.value !== 'none' && appearances[input.value as keyof typeof appearances] === counting.internalAppearance : input.value === 'none';
+      else input.checked = input.value === (counting.showDurationLine ? counting.linePlacement : 'none');
+    });
+    previewScroll.replaceChildren(renderCountingPreview(counting));
+    save.disabled = JSON.stringify(counting) === JSON.stringify(savedCounting);
+  }
+  refreshChoices();
   const adopt = button('Save as my defaults', () => {
     try {
-      callbacks.saveCountingDefaults(); updateSavedNote(); adopt.hidden = true;
-      shareStatus.textContent = 'Selected counting preferences saved as your browser defaults. Current exercise unchanged.';
-    } catch { shareStatus.textContent = 'Could not save defaults in this browser. Your counting preferences remain session-only.'; }
+      savedCounting = counting; callbacks.counting(counting); callbacks.saveCountingDefaults(); refreshChoices(); adopt.hidden = true;
+      saveStatus.textContent = 'Saved as your defaults.';
+    } catch { saveStatus.textContent = 'Could not save defaults in this browser. Settings remain session-only.'; }
   });
   adopt.hidden = !callbacks.isLinked();
-  share.append(shareHint, copy, adopt, shareStatus, fallback);
-  activeControls.append(share);
-  const countingHelp = el('details', 'counting-help');
-  countingHelp.append(el('summary', '', 'Counting and keyboard help'));
-  countingHelp.append(el('p', 'setting-hint', 'All counting choices apply on New exercise, including vocabulary and appearance. R toggles Rest and C toggles Connect for the selected group. If the connecting line is hidden and internal count appearance is unchanged, Connect is not used or checked. Type t then a/e for ta/te; l and i enter la and li.'));
-  activeControls.append(countingHelp);
+  saveActions.insertBefore(adopt, saveStatus);
   let draft: GenerationSettings | undefined;
   let generation = structuredClone(callbacks.initialGeneration);
   generation.sixteenthPatterns = selectedSixteenthPatterns(generation);
@@ -270,14 +350,12 @@ export function createSettingsPage(callbacks: {
     choose: (id, scope) => { instrumentScope.value = scope; applySelectedLevel(id); },
     customize: () => { generation = customizeTeachingPreset(generation); generationChanged(false); },
   });
-  available.append(activeHeader, activeControls);
-  page.append(intro, savedNote, settingsActions, available);
-  const back = el('a', 'control control--primary', 'Back to Uno234'); back.href = '#practice';
-  const footer = el('div', 'settings-footer'); footer.append(back); page.append(footer);
+  available.append(preview, activeControls, saveActions);
+  page.append(available);
   updateGenerationStatus();
-  let locked = false;
   return {
     page,
+    countingSelection: () => counting,
     exerciseControls,
     presetChooser: presetChooser.node,
     validGeneration: () => !generationIssue(generation),
@@ -294,16 +372,19 @@ export function createSettingsPage(callbacks: {
     levelField: teachingField,
     levelDetails: teachingDetails,
     setLocked: (active: boolean) => {
-      locked = active;
-      page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.settings-live input, .settings-live select, .settings-actions button').forEach(control => { control.disabled = active; });
+      page.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
       presetTrigger.disabled = active;
       applyPreset.disabled = active;
       exerciseControls.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button').forEach(control => { control.disabled = active; });
-      if (!active) { newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
+      save.disabled = active || JSON.stringify(counting) === JSON.stringify(savedCounting);
+      if (!active) { refreshChoices(); newExercise.disabled = Boolean(generationIssue(generation)); renderTeachingPreset(); }
     },
     sync: (value: CountingPreferences) => {
-      counting = value;
-      countingControls.forEach((control, key) => { if (control instanceof HTMLInputElement) control.checked = Boolean(value[key]); else control.value = String(value[key]); control.disabled = locked; });
+      // Keep an unsaved draft across navigation and exercise redraws.
+      if (JSON.stringify(value) !== JSON.stringify(savedCounting)) {
+        counting = value; savedCounting = value;
+        refreshChoices();
+      }
     },
   };
 }

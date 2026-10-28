@@ -97,7 +97,7 @@ try {
       q('[data-preset-id="uno-2"] .rhythm-preset-select').click();
       all('#custom-exercise button').find(b => b.textContent === 'Use preset').click();
       await settle();
-      check(answer === all('[data-count-id]').map(el => el.textContent).join('|') && q('.passage').dataset.exerciseId === identity && q('.exercise-summary').textContent.includes('Pending settings'), 'Level applies to next exercise without replacing responses');
+      check(all('[data-count-id]').every(el => el.textContent === '·') && q('.passage').dataset.exerciseId !== identity && !q('.exercise-summary').textContent.includes('Pending settings'), 'Use preset immediately generates the selected rhythm configuration and clears responses');
       all('.write-actions button').find(b => b.textContent === 'Check').click();
       q('.treat-details').open = true; await settle();
       check(visible(q('.treat-details .counting-problem-link, .treat-details p')) && q('.feedback-snapshot').contains(document.activeElement) && rect('.feedback-snapshot').top >= rect('.passage').bottom, 'Check opens feedback below the score');

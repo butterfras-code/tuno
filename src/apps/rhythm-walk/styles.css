@@ -189,11 +189,7 @@ main.rhythm-app {
 .rhythm-app .score-actions .control { min-height: 44px; padding: 8px 10px; font-size: 13px; }
 
 .rhythm-app .setup-actions { display: flex; align-items: center; gap: 8px; }
-.rhythm-app .setup-actions .practice-help-trigger { width: 44px; flex: 0 0 44px; padding: 8px; }
-.rhythm-app .practice-help-popover { position: fixed; inset: auto; margin: 0; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #302a292e; }
-.practice-help-popover h2 { margin: 0; font: 700 20px var(--font-heading); }
-.practice-help-popover p { margin: 12px 0 0; font-size: 14px; }
-.practice-help-popover .performance-help { margin: 12px 0 0; padding-top: 0; border: 0; }
+
 .performance-surface { position: relative; border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); overflow: hidden; }
 .performance-surface > .pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 144px; min-height: 144px; border: 0; border-radius: 0; padding: 12px 116px 12px 12px; background: transparent; }
 /* Suppress mobile selection/callout only on the held performance input. */
@@ -216,7 +212,6 @@ main.rhythm-app {
 }
 .exercise-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .exercise-meta .exercise-summary { flex: 1; }
-.rhythm-app .exercise-meta .practice-help-trigger { width: 44px; flex: 0 0 44px; min-height: 44px; padding: 8px; margin-top: 4px; }
 .practice-status:empty { display: none; }
 .line-handle.line-delete { color: var(--color-surface); background: var(--color-accent); border-radius: 50%; font: 700 22px var(--font-body); cursor: pointer; width: 44px; height: 44px; top: -22px; right: -22px; }
 .line-handle.line-delete::after { display: none; }
@@ -513,7 +508,7 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .exercise-overview-row .level-customize { min-height: 44px; padding-block: 6px; }
 .exercise-overview-row .level-configuration #pending-level { margin-top: 2px; }
 
-.counting-settings-group { min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); display: grid; align-content: start; gap: 16px; }
+.counting-settings-group { min-width: 0; margin: 0; padding: 16px; border: 0; display: grid; align-content: start; gap: 16px; }
 .counting-settings-group legend { padding: 0 6px; font-weight: 700; }
 .counting-settings-group .setting-hint { margin: 6px 0 0; }
 
@@ -552,7 +547,7 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 #practice-view[data-phase='review'] .feedback-snapshot { border-color: var(--color-accent); }
 .feedback-snapshot[data-scored='false'] .treat-ratings { display: none; }
 .feedback-snapshot[data-scored='false'] .treat-details { display: none; }
-.rhythm-app[data-view='settings'] { max-width: var(--content-width); }
+.rhythm-app[data-view='settings'], .rhythm-app[data-view='help'] { max-width: var(--content-width); }
 .rhythm-settings .settings-live { max-width: 760px; }
 .settings-live-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .counting-settings-group { min-width: 0; }
@@ -609,5 +604,72 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
   .rhythm-preset-select.control { padding: 10px 12px; }
   .rhythm-preset-symbols { gap: 4px 6px; padding-right: 0; }
 }
-.rhythm-preset-footer { position: sticky; bottom: -24px; padding-bottom: 12px; background: var(--color-surface); z-index: 2; }
+.rhythm-preset-footer { position: sticky; bottom: -24px; padding-bottom: 12px; background: var(--color-surface); }
 @media (max-width: 440px) { .rhythm-preset-footer { bottom: -16px; } }
+
+/* Counting settings show the written result before it is saved to the passage. */
+.rhythm-settings .settings-live { max-width: none; border: 0; }
+.counting-preview { min-width: 0; padding-block: 12px; }
+.counting-preview h3, .counting-preview .setting-hint { margin: 0 0 8px; }
+.counting-preview-scroll { min-width: 0; background: var(--color-surface); }
+.counting-preview-strip { display: flex; width: 100%; max-width: 920px; min-width: 0; margin-inline: auto; }
+.counting-preview-notation { display: block; width: 100%; min-width: 0; height: auto; color: inherit; }
+.counting-preview-strip > svg { flex: 1 1 0; width: 0; min-width: 0; }
+.counting-save { padding: 12px 0; margin-top: 16px; background: var(--color-surface); }
+.counting-save .setting-hint { flex: 1 1 220px; margin: 0; }
+.counting-save button { min-width: 120px; }
+
+.settings-pill-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.settings-pill-field legend { margin-bottom: 8px; padding: 0; font-weight: 700; }
+.counting-pill-options .pill-option { position: relative; cursor: pointer; }
+.counting-pill-options .pill-option:has(input:focus-visible) { outline: 3px solid var(--color-teal); outline-offset: -3px; }
+.rhythm-settings .counting-pill-options input[type='radio'] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.rest-style-symbol { position: relative; display: inline-block; min-width: 1.4em; text-align: center; font-size: 20px; line-height: 1; pointer-events: none; }
+.rest-style-blank { font-size: 16px; font-weight: 700; }
+
+.rhythm-settings .notation-pill-options .pill-option { padding: 2px 4px; }
+.notation-pill-options .rhythm-pattern-preview { width: 44px; max-width: 100%; height: auto; pointer-events: none; }
+
+.position-choice-content { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; pointer-events: none; }
+.position-choice-content svg { width: 56px; max-width: 100%; height: auto; }
+.rhythm-settings .position-pill-options .pill-option { padding: 2px; font-size: 14px; }
+@media (max-width: 380px) { .rhythm-settings .position-pill-options .pill-option { font-size: 12px; } }
+
+.rhythm-share-slot { display: flex; flex-shrink: 0; }
+.rhythm-settings .settings-live { padding-top: 12px; }
+.rhythm-settings .counting-preview { padding-top: 0; }
+
+.rhythm-help { max-width: 70ch; padding-block: 8px 24px; font-size: 16px; line-height: 1.65; }
+.rhythm-help > p { margin-top: 0; }
+.rhythm-help section { margin-top: 24px; }
+.rhythm-help h3 { margin: 0 0 8px; font: 700 20px var(--font-heading); }
+.rhythm-help p, .rhythm-help ol { margin-block: 8px; }
+.rhythm-help ol { padding-left: 24px; }
+.rhythm-help li + li { margin-top: 8px; }
+.rhythm-help .performance-help { margin: 8px 0; padding: 0; border: 0; }
+.rhythm-help .performance-help p { font-size: inherit; color: inherit; }
+
+/* Settings keep the example, choices and actions close together. */
+.rhythm-app[data-view='settings'] .activity-surface { padding: 16px; }
+.rhythm-app[data-view='settings'] .activity-toolbar { margin-bottom: 8px; }
+.rhythm-settings .settings-live { padding: 0; }
+.rhythm-settings .counting-preview { padding: 0 0 4px; }
+.rhythm-settings > .settings-live > .settings-live-controls { margin-top: 0; gap: 8px; }
+.rhythm-settings .counting-settings-group { padding: 0; gap: 6px; }
+.rhythm-settings .counting-settings-group > legend { padding: 0; margin-bottom: 4px; }
+.rhythm-settings .settings-pill-field > legend { margin-bottom: 2px; }
+.rhythm-settings .counting-save { margin: 8px 0 0; padding: 0; }
+.rhythm-settings .counting-save .setting-hint { flex: 0 1 auto; font-size: 12px; }
+.rhythm-settings .counting-save .setting-hint:empty { display: none; }
+@media (max-width: 760px) {
+  main.rhythm-app[data-view='settings'] { padding-top: 8px; }
+  .rhythm-app[data-view='settings'] .app-header { margin-bottom: 8px; }
+  .rhythm-app[data-view='settings'] .activity-surface { padding: 8px; }
+  .rhythm-app[data-view='settings'] .activity-toolbar { margin-bottom: 4px; }
+  .rhythm-settings .counting-settings-group { gap: 4px; }
+  .rhythm-settings .counting-settings-group > legend { font-size: 14px; line-height: 1.2; }
+  .rhythm-settings .settings-pill-field > legend { font-size: 14px; line-height: 1.2; }
+  .rhythm-settings .notation-pill-options .rhythm-pattern-preview { width: 36px; }
+  .rhythm-settings .position-choice-content { gap: 0; }
+  .rhythm-settings .position-choice-content svg { width: 40px; }
+}

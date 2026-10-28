@@ -54,7 +54,8 @@ async function writingWorkspaceScenarios(w = window) {
   const actionX = action.getBoundingClientRect().x;
   key(overview, 'End'); assert(action.getBoundingClientRect().x === actionX, 'Check does not drift with the score');
   const exercise = q('.passage').dataset.exerciseId;
-  const setting = q('[data-counting-preference="dotted"]'); setting.checked = !setting.checked; setting.dispatchEvent(new w.Event('change', { bubbles: true }));
+  const selected = q('[data-counting-preference="dotted"]:checked');
+  const setting = q(`[data-counting-preference="dotted"][value="${selected.value === 'true' ? 'false' : 'true'}"]`); setting.checked = true; setting.dispatchEvent(new w.Event('change', { bubbles: true }));
   assert(q('.passage').dataset.exerciseId === exercise && q('.exercise-summary').textContent.includes('Pending settings'), 'Pending settings preserve current exercise');
   await fixture('tie-across-bar');
   assert(q('.passage-ties [data-tie="across-bar"]') && (overview.hidden || overview.querySelector('path')), 'Cross-bar tie stays continuous with overview notation when needed');

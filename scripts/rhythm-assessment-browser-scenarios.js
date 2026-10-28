@@ -118,7 +118,15 @@ window.__assessmentCheck = (async () => {
     if (scenario === 'accepted') assert(document.querySelector('.counting-totals').textContent === countingScore, 'Both retains checked counting score through performance and mode changes');
     button('Perform').click();
     assert(document.querySelector('.timing-timeline') && !document.querySelector('[data-counting-feedback], .counting-rating'),'Perform restores timeline and performance-only feedback');
-    location.hash='#settings';await sleep(40);location.hash='#practice';await sleep(40);assert(panel.textContent===text,'settings navigation retains results');
+    location.hash='#settings';await sleep(40);
+    const placement=document.querySelector('[data-connection-style]:checked').value;
+    const nextPlacement=document.querySelector(`[data-connection-style="${placement==='above'?'below':'above'}"]`);
+    nextPlacement.checked=true;nextPlacement.dispatchEvent(new Event('change',{bubbles:true}));
+    document.querySelector('[data-save-counting]').click();
+    location.hash='#practice';await sleep(40);
+    assert(panel.textContent===text && id()===exercise && written()===answer,'saving counting appearance retains completed performance and written answers');
+    const afterSave=await download();
+    assert(afterSave.status===record.status && JSON.stringify(afterSave.assessment)===JSON.stringify(record.assessment),'counting Save preserves captured performance assessment');
     const meters=[...document.querySelectorAll('[data-meter]')];for(const meter of meters){meter.checked=false;meter.dispatchEvent(new Event('change'));}
     assert(panel.querySelectorAll('button')[1].disabled,'invalid configuration disables results Next');
     meters.find(n=>n.dataset.meter==='4/4').checked=true;meters.find(n=>n.dataset.meter==='4/4').dispatchEvent(new Event('change'));

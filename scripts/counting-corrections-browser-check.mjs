@@ -103,7 +103,8 @@ try {
     await page.getByRole('button',{name:'Next Exercise',exact:true}).click();
     assert.equal(await totals.textContent(),'Not yet checked');
     assert.notEqual(await page.locator('.passage').getAttribute('data-exercise-id'),identity);
-    await page.locator('[data-counting-preference="restAppearance"]').evaluate(el => { el.value='slashes'; el.dispatchEvent(new Event('change',{bubbles:true})); });
+    await page.locator('[data-counting-preference="restAppearance"][value="slashes"]').evaluate(el => { el.checked=true; el.dispatchEvent(new Event('change',{bubbles:true})); });
+    await page.locator('[data-save-counting]').evaluate(el => el.click());
     await page.locator('[data-preset]').evaluate(el => { el.value='half-rest'; el.dispatchEvent(new Event('change',{bubbles:true})); });
     await slots.first().focus(); await page.keyboard.press('r');
     await page.getByRole('button',{name:'Check',exact:true}).click();

@@ -10,16 +10,16 @@ async function countingPlanScenarios(w = window) {
   const all = selector => [...d.querySelectorAll(selector)];
   const click = text => { const b = all('button').find(b => b.textContent === text && !b.closest('[hidden]')); if (!b) throw new Error(`Missing button ${text}`); b.click(); };
   const choose = (selector, value) => { const s = q(selector); s.value = value; s.dispatchEvent(new w.Event('change', { bubbles: true })); };
-  const fixture = async id => { choose('[data-preset]', id); await settle(); for (let i=0;i<40 && !q('.plan-measure').style.getPropertyValue('--count-target-width');i++) await settle(); };
+  const fixture = async id => { q('[data-save-counting]').click(); choose('[data-preset]', id); await settle(); for (let i=0;i<40 && !q('.plan-measure').style.getPropertyValue('--count-target-width');i++) await settle(); };
   const counts = () => all('[data-count-id]');
   const key = value => d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true }));
-  const setting = (name, value) => { const input = q(`[data-counting-preference="${name}"]`); if (input.type === 'checkbox') input.checked = value; else input.value = value; input.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  const setting = (name, value) => { if (['longNotes','internalAppearance','showDurationLine','linePlacement'].includes(name)) { const subdivision=['longNotes','internalAppearance'].includes(name); const position=name==='internalAppearance'?({raised:'above',lowered:'below',unchanged:'beside'})[value]:name==='linePlacement'?value:!value?'none':subdivision?(q('[data-subdivision-style]:checked')?.value !== 'none' ? q('[data-subdivision-style]:checked').value : 'above'):(q('[data-connection-style]:checked')?.value !== 'none' ? q('[data-connection-style]:checked').value : 'beside');const choice=q(`[data-${subdivision?'subdivision':'connection'}-style="${position}"]`);choice.checked=true;choice.dispatchEvent(new w.Event('change',{bubbles:true}));return; } if (name === 'vocabulary' || name === 'offbeat') { const style = name === 'offbeat' ? value : value === 'syllables' ? 'te' : q('[data-counting-style="+"]:checked') ? '+' : '&'; const choice=q(`[data-counting-style="${style}"]`); choice.checked=true; choice.dispatchEvent(new w.Event('change',{bubbles:true})); return; } if (name === 'includeRests') { const choice = q(`[data-rest-style="${value ? (q('[data-rest-style="slashes"]:checked') ? 'slashes' : 'parentheses') : 'blank'}"]`); choice.checked = true; choice.dispatchEvent(new w.Event('change', { bubbles: true })); return; } const input = q(`[data-counting-preference="${name}"][value="${value}"]`) ?? q(`[data-counting-preference="${name}"]`); if (input.type === 'checkbox') input.checked = value; else input.checked = true; input.dispatchEvent(new w.Event('change', { bubbles: true })); };
   const unit = control => q(`[data-unit-control="${control}"]`);
   const activate = i => counts()[i].click();
   const defaults = () => { for (const [k,v] of Object.entries({ longNotes:true,dotted:false,includeRests:true,showDurationLine:true,linePlacement:'beside',internalAppearance:'raised',restAppearance:'parentheses',vocabulary:'numbers',offbeat:'&' })) setting(k,v); };
   all('button').find(b => b.textContent === 'Counts').click();
   defaults();
-  assert(['longNotes','showDurationLine','linePlacement','internalAppearance'].every(key => q(`[data-counting-preference="${key}"]`).closest('fieldset').querySelector('legend').textContent === 'Long Notes'), 'Long Notes groups subdivision and connection appearance');
+  assert(['subdivision','connection'].every(key => q(`[data-${key}-style]`).closest('.counting-settings-group').querySelector('legend').textContent === 'Subdivision'), 'Subdivision groups long notes and connection appearance');
   // Mixed-density bars exposed independently scaled notation and escaping actions.
   for (const id of ['tie-across-bar', 'six-wrap', 'dense-sixteenths', 'triplet-mixed-3']) {
     await fixture(id);
@@ -54,7 +54,7 @@ async function countingPlanScenarios(w = window) {
   click('Perform'); click('Counts');
   assert(d.activeElement === counts()[0] && q('.plan-token-palette button'), 'Completed entry keeps the palette available with the first count selected');
   for (const [vocabulary, offbeat, expected] of [['numbers','&','e & a'], ['numbers','+','e + a'], ['syllables','+','ta te']]) {
-    setting('vocabulary', vocabulary); setting('offbeat', offbeat); await fixture('four-sixteenths');
+    setting('offbeat', offbeat); setting('vocabulary', vocabulary); await fixture('four-sixteenths');
     click('Perform'); click('Counts');
     assert(all('.plan-token-palette button').slice(4).map(b => b.textContent).join(' ') === expected, 'Sixteenth entry order: ' + expected);
   }
@@ -93,13 +93,14 @@ async function countingPlanScenarios(w = window) {
   assert(q('[data-rests="incorrect"]'), 'Rest feedback is independent');
   assert(!q('[data-tokens]'), 'Canonical plus alias grades correctly');
   const before = counts().map(c => c.textContent).join('|'), feedback = q('.counting-totals').textContent;
-  setting('vocabulary','syllables'); setting('offbeat','+'); setting('dotted',true); setting('internalAppearance','lowered');
+  setting('offbeat','+'); setting('vocabulary','syllables'); setting('dotted',true); setting('internalAppearance','lowered');
   assert(counts().map(c => c.textContent).join('|') === before, 'Pending settings preserve tokens');
   assert(q('.counting-totals').textContent === feedback, 'Pending settings preserve results');
-  assert(q('.exercise-summary').textContent.includes('Pending settings'), 'Pending state is explained');
+  assert(!q('[data-save-counting]').disabled, 'Unsaved changes enable Save');
   for (const panel of ['Perform','Counts']) all('button').find(b => b.textContent === panel).click();
   assert(q('.counting-totals').textContent === feedback && counts().map(c => c.textContent).join('|') === before, 'Mode changes retain writing and results');
   click('Check Again'); assert(counts().map(c => c.textContent).join('|') === before && q('.counting-totals').textContent === feedback, 'Reassessment retains evidence and confirmed results');
+  q('[data-save-counting]').click();
   click('Next Exercise');
   assert(counts().every(c => c.textContent === '·'), 'New exercise starts blank');
   assert(q('.answer-area').dataset.appearance === 'lowered', 'New exercise applies pending appearance');

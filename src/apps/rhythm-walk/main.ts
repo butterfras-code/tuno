@@ -1,3 +1,6 @@
+import { captureCountingPreferences } from '../../music/counting/preferences.ts';
+import type { CountingPreferences } from '../../music/counting/preferences.ts';
+import { countingPreferencesUrl } from '../../music/counting/link.ts';
 import { readActivityLink } from '../../shared/sharing/activity-link.ts';
 import { shareControl, sharedActivityNotice } from '../../shared/sharing/share-control.ts';
 import { captureRhythm, hasPendingGeneration, rhythmAdapter } from './sharing.ts';
@@ -16,6 +19,7 @@ import './workspace.css';
 import { button, el, field, select } from '../../shared/ui/components.ts';
 import { Activity, presets as practiceFixtures, preferenceKey, fixtureAccess } from './activity.ts';
 import { createPerformance } from './performance.ts';
+import { createHelpPage } from './help.ts';
 import type { AttemptRecord } from './capture.ts';
 import { timingTimelines, renderTimingTimeline } from './timeline.ts';
 import { evaluateAttempt } from './evaluation.ts';
@@ -61,12 +65,6 @@ prepareOffline(offlineStatus, { id: 'rhythm', name: 'Uno234' }, { worker: '/rhyt
 const pageTitle = el('h2', 'view-title', 'Practice'); pageTitle.id = 'page-title'; pageTitle.tabIndex = -1;
 const practiceView = el('section'); practiceView.id = 'practice-view';
 practiceView.dataset.phase = 'setup';
-const banner = el('p', 'counting-hint');
-banner.append(el('span', '', 'Click a box to add counting symbols or use your keyboard.'));
-const lineShortcut = el('span', 'counting-shortcut');
-lineShortcut.append(el('kbd', '', 'C'), ' — connect counts');
-const restShortcut = el('span', 'counting-shortcut'); restShortcut.append(el('kbd', '', 'R'), ' — toggle rest');
-banner.append(lineShortcut, restShortcut);
 const exerciseSummary = el('p', 'exercise-summary'); exerciseSummary.setAttribute('role', 'status');
 const picker = select([{ value: '', label: 'Choose a testing fixture…' }, ...practiceFixtures.map(f => ({ value: f.id, label: f.label }))], chooseFixture);
 picker.value = fixtureId; picker.dataset.preset = '';
@@ -96,24 +94,7 @@ const passageStrip = el('div', 'passage-strip');
 passageScroll.append(passageStrip);
 passage.append(passageScroll);
 const workspace = createWritingWorkspace(passage, passageScroll, passageStrip, () => currentMeasures);
-const help = el('div', 'practice-help-popover'); help.id = 'practice-help'; help.popover = 'auto';
-help.setAttribute('role', 'dialog'); help.setAttribute('aria-label', 'Practice help');
-const helpButton = button('Help', () => {
-  const bounds = helpButton.getBoundingClientRect();
-  help.style.left = `${Math.max(8, Math.min(bounds.right - 340, innerWidth - 348))}px`;
-  const top = Math.min(bounds.bottom + 8, Math.max(8, innerHeight - 360));
-  help.style.top = `${top}px`; help.style.maxHeight = `${innerHeight - top - 8}px`;
-});
-helpButton.classList.add('practice-help-trigger'); helpButton.setAttribute('aria-label', 'Practice help');
-helpButton.popoverTargetElement = help; helpButton.setAttribute('aria-controls', help.id);
-helpButton.setAttribute('aria-expanded', 'false');
-help.addEventListener('toggle', () => helpButton.setAttribute('aria-expanded', String(help.matches(':popover-open'))));
-help.append(el('h2', '', 'Practice help'),
-  el('p', '', 'Choose Counts to write counts, Perform to tap the same score, or Feedback to review your results. Switching panels keeps both responses. New exercise starts a new score and clears both responses.'),
-  el('p', '', 'In Counts or Perform, scroll the rhythm or use its overview when it does not fit. Counts restart at each barline. Groups follow written notes, rests and ties. Mark each group with Rest or Connect when appropriate.'),
-  el('p', '', 'Select any count in a group. Rest (R) and Connect (C) toggle the entire group. Arrows move between counts; Enter checks. Type t then a/e for ta/te, l for la and i for li.'),
-  el('p', '', 'In 6/8, labels use numbers 1–6. Inputs follow the captured subdivision settings. Performance follows two dotted-quarter pulses.'),
-  el('p', '', 'Linked counting preferences stay in this session until saved as defaults in Settings. Other preferences are saved in this browser. Use preset applies rhythm changes immediately; counting changes apply on a new exercise. Reloading starts with blank responses.'));
+const help = createHelpPage();
 const summary = el('p', 'practice-status'); summary.setAttribute('role', 'status');
 const actions = el('div', 'actions write-actions');
 const writeResponse = el('section', 'write-response'); writeResponse.setAttribute('aria-label', 'Write Counts');
@@ -227,7 +208,7 @@ actions.append(check, eraseActions);
 const sharedActions = el('div', 'setup-actions'); sharedActions.append(next);
 
 writeResponse.append(summary);
-help.append(performance.help);
+help.performanceInstructions.append(performance.help);
 performanceSetup.append(performance.tempoField);
 function placeResponseOptions() {
   const container = mobileInput.matches ? responseOptions : performanceSetup;
@@ -241,7 +222,6 @@ mobileInput.addEventListener('change', () => { placeResponseOptions(); updateRes
 performance.section.prepend(performanceSetup);
 performance.section.id = 'performance-panel'; performButton.setAttribute('aria-controls', performance.section.id);
 interactionBody.append(countPalette, actions, performance.section, feedbackSnapshot, responseOptions); interaction.append(panelSelector, interactionBody);
-help.append(banner);
 const playArea = el('div', 'practice-workspace');
 playArea.append(passage, interaction);
 keepCountingDockClear(playArea, passage, interaction);
@@ -252,7 +232,13 @@ const settings = createSettingsPage({
   initialCounting: preferences.counting,
   isLinked: preferenceSession.isLinked,
   saveCountingDefaults: () => preferenceSession.saveAsDefaults(raw => localStorage.setItem(preferenceKey,raw)),
-  counting: value => { preferences.counting = value; persist(); updateExerciseSummary(); },
+  counting: value => {
+    const scroll = passageScroll.scrollLeft;
+    activity.saveCounting(value);
+    loadExercise(activity.exercise.score, false, false, true);
+    passageScroll.scrollLeft = scroll;
+    practiceView.dataset.phase = activity.countingResult ? 'review' : 'input';
+  },
   generation: value => {
     generation = value; persist();
     const issue = generationIssue(generation); next.disabled = Boolean(issue); performance.syncResults();
@@ -275,23 +261,33 @@ if (testing.enabled) {
 practiceView.append(exerciseSummary);
 const nav = el('nav', 'rhythm-nav'); nav.setAttribute('aria-label', 'Rhythm pages');
 const practiceLink = el('a', 'control', 'Practice'); practiceLink.href = '#practice';
-const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings'; nav.append(practiceLink, settingsLink, helpButton);
+const settingsLink = el('a', 'control', 'Settings'); settingsLink.href = '#settings';
+const helpLink = el('a', 'control', 'Help'); helpLink.href = '#help';
+nav.append(practiceLink, settingsLink, helpLink);
 const sharing = shareControl(rhythmAdapter,() => captureRhythm(activity),() => 'This link opens the displayed exercise with blank responses. Next Exercise continues with the shared preset or custom rhythms.' + (JSON.stringify(preferences.counting) !== JSON.stringify(activity.countingPlan.preferences) ? ' Pending counting changes are not included.' : ''));
 
-const activityToolbar = el('div','activity-toolbar'); activityToolbar.append(nav,sharing);
-activitySurface.append(activityToolbar, sharedActivityNotice(linked,rhythmAdapter), pageTitle, practiceView, settings.page);
+const settingsSharing = shareControl({
+  app: 'rhythm', version: 1, path: () => '/rhythm/',
+  validate: value => captureCountingPreferences(value as CountingPreferences),
+  describe: () => 'Uno234 counting settings',
+}, settings.countingSelection, () => 'Includes the choices shown in Settings, including unsaved changes. The current exercise is unchanged.',
+{ kind: 'settings', url: value => countingPreferencesUrl(location.href, value) });
+const shareSlot = el('div', 'rhythm-share-slot'); shareSlot.append(sharing);
+const activityToolbar = el('div','activity-toolbar'); activityToolbar.append(nav,shareSlot);
+activitySurface.append(activityToolbar, sharedActivityNotice(linked,rhythmAdapter), pageTitle, practiceView, settings.page, help.page);
 const footer = createAppFooter({ app: { id: 'rhythm', name: 'Uno234' }, status: offlineStatus });
-main.append(header, activitySurface, footer, help, customDialog); app.append(main);
+main.append(header, activitySurface, footer, customDialog); app.append(main);
 function chooseFixture(id: string) {
   if (!testing.enabled || !practiceFixtures.some(f => f.id === id)) return;
   fixtureId = id; picker.value = id;
   loadExercise(practiceFixtures.find(f => f.id === id)!.score, !practiceView.hidden);
 }
-function loadExercise(score: RhythmScore, focus: boolean, replace = true) {
-  performance.cancel('Exercise changed');
+function loadExercise(score: RhythmScore, focus: boolean, replace = true, keepPerformance = false) {
+  if (!keepPerformance) performance.cancel('Exercise changed');
   if (replace) { activity.preferences.preset = fixtureId; activity.replace(score); }
   feedbackOpen = false;
-  performance.reset(); persist(); next.disabled = Boolean(generationIssue(generation));
+  if (!keepPerformance) performance.reset();
+  persist(); next.disabled = Boolean(generationIssue(generation));
   passage.dataset.exerciseId = activity.exercise.id;
   tieNotation?.destroy(); tieNotation = null;
   currentMeasures = activity.exercise.score.measures;
@@ -350,21 +346,24 @@ function showPage(focus = true) {
   editors.forEach(editor => editor.suspend());
   performance.cancel('Page changed');
   const isSettings = location.hash === '#settings';
-  main.dataset.view = isSettings ? 'settings' : 'practice';
-  practiceView.hidden = isSettings; settings.page.hidden = !isSettings;
-  practiceLink.removeAttribute('aria-current'); settingsLink.removeAttribute('aria-current');
-  (isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
-  pageTitle.textContent = isSettings ? 'Settings' : 'Practice';
-  pageTitle.classList.toggle('sr-only', !isSettings);
+  const isHelp = location.hash === '#help';
+  main.dataset.view = isHelp ? 'help' : isSettings ? 'settings' : 'practice';
+  practiceView.hidden = isSettings || isHelp; settings.page.hidden = !isSettings; help.page.hidden = !isHelp;
+  for (const link of [practiceLink, settingsLink, helpLink]) link.removeAttribute('aria-current');
+  (isHelp ? helpLink : isSettings ? settingsLink : practiceLink).setAttribute('aria-current', 'page');
+  pageTitle.textContent = isHelp ? 'Help' : isSettings ? 'Settings' : 'Practice';
+  pageTitle.classList.add('sr-only');
+  shareSlot.querySelector<HTMLDialogElement>('dialog[open]')?.close();
+  shareSlot.replaceChildren(isSettings ? settingsSharing : sharing);
   document.title = `${pageTitle.textContent} — Uno234`;
   updateEditors(); updateResponseView(); editors.forEach(editor => editor.resume()); tieNotation?.refresh();
-  if (!isSettings && responsePanel === 'counts') {
+  if (!practiceView.hidden && responsePanel === 'counts') {
     focusCounts();
     if (focus) window.scrollTo(0, 0);
   }
   else if (focus) { pageTitle.focus({ preventScroll: true }); window.scrollTo(0, 0); }
 }
-window.addEventListener('hashchange', () => { if (['', '#settings', '#practice'].includes(location.hash)) showPage(); });
+window.addEventListener('hashchange', () => { if (['', '#settings', '#practice', '#help'].includes(location.hash)) showPage(); });
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey || event.repeat || practiceView.hidden || responsePanel === 'perform' || performing || responseOptionsOpen || feedbackOpen) return;
   if ((event.target as Element).closest('button, a, input, select, textarea, [role="button"], [contenteditable], .count-popover')) return;
@@ -407,7 +406,6 @@ function updateResponseView() {
   countsButton.setAttribute('aria-pressed', String(writing && !responseOptionsOpen)); performButton.setAttribute('aria-pressed', String(showPerformance && !responseOptionsOpen));
   optionsButton.setAttribute('aria-pressed', String(responseOptionsOpen));
   feedbackButton.setAttribute('aria-pressed', String(feedbackOpen && !responseOptionsOpen));
-  banner.hidden = responsePanel === 'perform';
   const hideCounts = responsePanel === 'perform' && !preferences.showCounts;
   passage.classList.toggle('counts-hidden', hideCounts);
   passage.classList.toggle('counts-readonly', !writing || performing);

@@ -200,7 +200,7 @@ Feedback references measures/count labels and source IDs, not DOM geometry. Rewr
 
 ## Settings lifecycle and sharing
 
-Separate pending counting preferences from the active exercise snapshot. All counting changes, including vocabulary and appearance, take effect on New exercise. Show an explicit pending notice. Check continues using the active snapshot; settings changes do not translate or delete current answers and do not invalidate current feedback. New exercise applies pending configuration and clears both responses according to the existing unified lifecycle. Mode switching continues to preserve the current music, answers, and results.
+Updated 2026-10-28: Settings keeps an unsaved counting draft and previews it on one fixed answered passage. Save rebuilds the active counting plan on the same written score. Preserve tokens at matching count IDs with unchanged expected vocabulary, and applicable rest/connection evidence at matching unit IDs. Newly required and incompatible positions start blank. Retain confirmed counting feedback only when count IDs, expected tokens, rest applicability and duration applicability are unchanged. Performance records and exercise identity survive Save. Unsaved changes leave the active snapshot intact. New exercise uses saved counting preferences and clears both responses; panel switching preserves them.
 
 The owner’s readable-URL follow-up replaces the original base64url proposal: `counting=1` identifies the version, with all nine fields in named `counting.*` query parameters (for example `counting.longNotes=true&counting.dotted=false`). No encoded-format compatibility is retained. URLs carry preferences only, not answers, calibration, fixtures, generation levels, or performance settings.
 
@@ -412,3 +412,8 @@ Empty count input names describe measure, counting beat and exact offset only; t
 Dotted subdivision owns the internal count pattern of each eligible written dotted member when both subdivision options are enabled. Long-note subdivision still uses complete sounding length and attack-relative pulses elsewhere. For a dotted eighth tied to a dotted quarter starting on beat 1, the tied unit reads `1 e & a e a`; unrelated `2` and `3` pulse counts are omitted. Turning dotted subdivision off restores `1 2 3` under the long-note rule. This supersedes unconditional rule-union language in historical implementation notes above.
 
 Duration lines and rest enclosures terminate at the final depicted count, including across bars, instead of extending to the end of the musical sound/rest. Exact musical durations and Tap + Hold scoring are unaffected. Count-entry palette keys use a cream fill, contrasting outline and darker cream shadow with visible keyboard focus and pressed states.
+
+
+## Notation settings and in-place Save (2026-10-28)
+
+The current lifecycle in [Settings](settings.md) supersedes the replacement-only behavior recorded in the historical implementation slices above. Counting choices are native notation radio cards and checkboxes, with a fixed three-measure answered preview. Save applies choices to the same exercise; Save as my defaults also adopts them for linked sessions. Copy shares draft choices without applying them. Unsaved choices neither persist as defaults nor affect Next Exercise. The assessment contract, rather than preference-key categories, determines whether confirmed feedback can be retained.

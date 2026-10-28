@@ -47,6 +47,27 @@ try {
             await page.keyboard.press('Escape');
             assert.equal(await dialog.count(), 0, 'Escape closes About dialog');
           }
+          if (route === '/rhythm/') {
+            const count = page.locator('[data-count-id]').first();
+            await count.focus(); await page.keyboard.press('1');
+            const answer = await count.textContent();
+            await page.getByRole('link', { name: 'Help', exact: true }).click();
+            const help = page.locator('#help-view');
+            await help.waitFor({ state: 'visible' });
+            assert.equal(await page.locator('#practice-view').isVisible(), false);
+            assert.equal(await page.locator('#settings-view').isVisible(), false);
+            assert.equal(await page.getByRole('link', { name: 'Help', exact: true }).getAttribute('aria-current'), 'page');
+            assert.equal(await page.title(), 'Help — Uno234');
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Help has no horizontal overflow');
+            await page.screenshot({ path: `${output}/${profile.id}-rhythm-help.png`, fullPage: true });
+            await page.getByRole('link', { name: 'Settings', exact: true }).click();
+            await page.locator('#settings-view').waitFor({ state: 'visible' });
+            assert.equal(await help.isVisible(), false);
+            await page.goBack(); await help.waitFor({ state: 'visible' });
+            await page.getByRole('link', { name: 'Practice', exact: true }).click();
+            await count.waitFor({ state: 'visible' });
+            assert.equal(await count.textContent(), answer, 'Help navigation preserves the answer');
+          }
           assert.deepEqual(errors, [], 'No uncaught page errors');
           result.passed = true;
         } catch (error) {

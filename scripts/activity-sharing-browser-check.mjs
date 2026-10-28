@@ -190,7 +190,17 @@ try {
     const reshared=await share(page,rhythmAdapter);assert.deepEqual(reshared.score,passage);
     assert.equal(reshared.preferences.mode,mode==='write'?'tap':'write');
     await page.getByRole('link',{name:'Settings',exact:true}).click();
-    await page.locator('[data-counting-preference="longNotes"]').click();
+    await page.locator('[data-subdivision-style="none"]').check();
+    assert.equal(await page.getByRole('button',{name:'Share activity',exact:true}).count(),0);
+    await page.getByRole('button',{name:'Share settings',exact:true}).click();
+    const settingsDialog=page.getByRole('dialog',{name:'Share settings',exact:true});
+    await page.waitForFunction(()=>document.querySelector('.activity-share-url')?.value);
+    const settingsUrl=new URL(await settingsDialog.locator('textarea').inputValue());
+    assert.equal(settingsUrl.searchParams.get('counting.longNotes'),'false');
+    assert.equal(settingsUrl.searchParams.has('activity'),false,'settings links omit the shared score');
+    await settingsDialog.getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByRole('link',{name:'Practice',exact:true}).click();
+    await page.getByRole('button',{name:'Share activity',exact:true}).waitFor();
     const pending=await share(page,rhythmAdapter);assert.deepEqual(pending.preferences.counting,value.preferences.counting,'shares captured counting preferences');
     assert.equal(JSON.parse(await page.evaluate(()=>localStorage.getItem('tuno.rhythm-walk.preferences.v1'))).mode,'write');
     await context.close();

@@ -1,7 +1,7 @@
 .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 6px; border-radius: var(--radius-card); background: var(--color-surface); }
-.input-workspace .interaction-selector { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
-.input-workspace .interaction-selector .control { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 32px; padding: 4px; border-radius: 11px; border-color: transparent; background: transparent; color: var(--color-ink); }
-.input-workspace .interaction-selector .control[aria-pressed='true'] { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; }
+.input-workspace .interaction-selector, .pill-selector { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
+.input-workspace .interaction-selector .control, .pill-selector .pill-option { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 32px; padding: 4px; border-radius: 11px; border-color: transparent; background: transparent; color: var(--color-ink); }
+.input-workspace .interaction-selector .control[aria-pressed='true'], .pill-selector .pill-option:has(input:checked), .pill-selector .pill-option:has(input:checked):hover { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; }
 .input-workspace .interaction-selector.has-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .input-workspace .interaction-body { min-width: 0; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
 .input-workspace [hidden] { display: none; }

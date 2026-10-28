@@ -4,19 +4,22 @@ import { activityUrl, ordinaryUrl } from './activity-link.ts';
 import type { ActivityAdapter, ActivityLink } from './activity-link.ts';
 import './sharing.css';
 
-export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, notice: () => string = () => '') {
+export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, notice: () => string = () => '', options: { kind?: 'activity' | 'settings'; url?: (value: T) => string | Promise<string> } = {}) {
+  const noun = options.kind ?? 'activity';
+  const title = `Share ${noun}`;
+  const linkLabel = noun === 'settings' ? 'Settings link' : 'Activity link';
   const node = el('div','activity-share');
   const button = el('button','control activity-share-button'); button.type = 'button';
-  button.setAttribute('aria-label','Share activity'); button.title = 'Share activity';
+  button.setAttribute('aria-label',title); button.title = title;
   const icon = document.createElementNS('http://www.w3.org/2000/svg','svg');
   icon.setAttribute('viewBox','0 0 24 24'); icon.setAttribute('aria-hidden','true'); icon.setAttribute('class','activity-share-icon');
   const path = document.createElementNS('http://www.w3.org/2000/svg','path');
   path.setAttribute('d','M12 16V3m-5 5 5-5 5 5M5 13v7h14v-7');
   path.setAttribute('fill','none'); path.setAttribute('stroke','currentColor'); path.setAttribute('stroke-width','1.8'); path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
-  icon.append(path); button.append(icon,el('span','activity-share-label','Share activity'));
-  const dialog = el('dialog','activity-share-dialog'); dialog.setAttribute('aria-label','Share activity');
+  icon.append(path); button.append(icon,el('span','activity-share-label',title));
+  const dialog = el('dialog','activity-share-dialog'); dialog.setAttribute('aria-label',title);
   const header = el('div','activity-share-header');
-  const heading = el('h2','','Share activity');
+  const heading = el('h2','',title);
   const close = el('button','control activity-share-close','×'); close.type = 'button';
   close.setAttribute('aria-label','Close'); close.addEventListener('click',() => dialog.close());
   header.append(heading,close);
@@ -24,9 +27,9 @@ export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, n
   const hint = el('p','activity-share-hint');
   const body = el('div','activity-share-body');
   const linkSection = el('div','activity-share-link-section');
-  const instructions = el('p','','Paste the link into your LMS or send it to a student. They can open the activity and start.');
-  const link = el('textarea','activity-share-url'); link.readOnly = true; link.rows = 2; link.setAttribute('aria-label','Activity link');
-  const details = el('details','activity-share-details'); details.append(el('summary','','View activity link'),link);
+  const instructions = el('p','',noun === 'settings' ? 'Send this link to open the selected counting settings.' : 'Paste the link into your LMS or send it to a student. They can open the activity and start.');
+  const link = el('textarea','activity-share-url'); link.readOnly = true; link.rows = 2; link.setAttribute('aria-label',linkLabel);
+  const details = el('details','activity-share-details'); details.append(el('summary','',`View ${noun} link`),link);
   const status = el('p','activity-share-status'); status.setAttribute('role','status');
   const actions = el('div','activity-share-actions');
   const copy = el('button','control control--primary','Copy link'); copy.type = 'button';
@@ -40,10 +43,10 @@ export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, n
     system.addEventListener('click',async () => { if (!link.value) return; try { await navigator.share({title:summary.textContent ?? 'Activity',url:link.value}); } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) status.textContent = 'Sharing is unavailable. Use Copy link.'; } }); actions.append(system);
   }
   const qrSection = el('div','activity-share-qr-section');
-  const qr = el('img','activity-share-qr'); qr.alt = 'Scan to open this activity'; qr.hidden = true;
+  const qr = el('img','activity-share-qr'); qr.alt = `Scan to open ${noun === 'settings' ? 'these settings' : 'this activity'}`; qr.hidden = true;
   const qrStatus = el('p','activity-share-qr-status'); qrStatus.setAttribute('role','status');
   const download = el('a','control activity-share-download','Download QR code'); download.hidden = true;
-  download.download = `${adapter.app}-activity-qr.png`;
+  download.download = `${adapter.app}-${noun}-qr.png`;
   qrSection.append(el('h3','','Scan to open'),qr,qrStatus,download);
   linkSection.append(el('h3','','Send a link'),instructions,actions,details,status);
   body.append(linkSection,qrSection); dialog.append(header,summary,body,hint);
@@ -59,7 +62,7 @@ export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, n
       const value = adapter.validate(structuredClone(capture())); summary.textContent = adapter.describe(value); hint.textContent = [notice(),location.hostname !== 'tuno.cc' ? 'This link uses the current preview or local host. Create classroom links on tuno.cc.' : ''].filter(Boolean).join(' ');
       hint.hidden = !hint.textContent;
       dialog.showModal();
-      const url = await activityUrl(location.href,adapter,value);
+      const url = (options.url ? await options.url(value) : await activityUrl(location.href,adapter,value));
       if (current !== generation) return;
       link.value = url; copy.disabled = false; system.disabled = false; body.hidden = false;
       try {
@@ -67,7 +70,7 @@ export function shareControl<T>(adapter: ActivityAdapter<T>, capture: () => T, n
         if (current !== generation) return;
         qr.src = png; qr.hidden = false; download.href = png; download.hidden = false; qrStatus.textContent = '';
       } catch {
-        if (current === generation) qrStatus.textContent = 'A QR code could not be created for this activity. Use Copy link instead.';
+        if (current === generation) qrStatus.textContent = `A QR code could not be created for ${noun === 'settings' ? 'these settings' : 'this activity'}. Use Copy link instead.`;
       }
     } catch (error) {
       if (current !== generation) return;

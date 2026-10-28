@@ -4,7 +4,7 @@ import { TreatBagState } from './rewards.ts';
 import { createResults, renderTreatBag } from './results.ts';
 import { createTimingPanel } from './calibration.ts';
 import { el, button, field, numberInput, select } from '../../shared/ui/components.ts';
-import { playOptions, playInstructions } from './play-policy.ts';
+import { playOptions } from './play-policy.ts';
 import type { PlayStyle } from './play-policy.ts';
 import type { Exercise } from './fixtures.ts';
 import type { Preferences } from './activity.ts';
@@ -67,7 +67,7 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
   }
   function clearCountIn() { countInDisplay.hidden = true; countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
   const pulse = el('span', 'pulse'); pulse.hidden = true; pulse.setAttribute('aria-hidden', 'true');
-  const instructions = el('p', '', 'Start gives four audible quarter-note pulses. Use Space while the pad has focus, or hold the pad. Release before the exercise starts. Ties require one uninterrupted hold.'); instructions.id = 'instructions';
+  const instructions = el('p', '', 'Tap the pad to start. Listen to the count-in, then play the rhythm.'); instructions.id = 'instructions';
   const pad = button(''); pad.className = 'pad'; pad.setAttribute('aria-label', 'Performance pad');
   const padAction = el('span', 'pad-action', 'Tap to start'); pad.append(padAction, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
   const stop = button('Stop', () => cancel('Stopped by learner')); stop.disabled = true;
@@ -266,7 +266,7 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
     const plan = planPassage(options.exercise().score.measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().score.measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
-    instructions.textContent = `Starting the pad gives ${count} audible ${pulseLabel()} pulses. Use Space while the pad has focus, or the pad. Release before the exercise starts. ${playInstructions[options.preferences.playStyle]} ${options.preferences.playStyle === 'hold' ? 'Ties require one uninterrupted hold.' : 'Tied notes need only one tap at the start of the chain.'}`;
+    instructions.textContent = `Tap the pad to start. You will hear ${count} clicks to help you get ready. Lift your finger (or release Space) before the rhythm begins. Then play on the pad, or use Space while the pad is selected.`;
   }
   function cancel(reason: string) {
     timing.cancel();

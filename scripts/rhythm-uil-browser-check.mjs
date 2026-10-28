@@ -24,7 +24,9 @@ try {
    await page.getByRole('button',{name:'Counts',exact:true}).click();
    await page.evaluate(vocabulary=>{
     const choose=(selector,value)=>{const n=document.querySelector(selector);n.value=value;n.dispatchEvent(new Event('change',{bubbles:true}));};
-    choose('[data-counting-preference="vocabulary"]',vocabulary);
+    const radio = document.querySelector(`[data-counting-style="${vocabulary==='syllables'?'te':'&'}"]`);
+    radio.checked=true; radio.dispatchEvent(new Event('change',{bubbles:true}));
+    document.querySelector('[data-save-counting]').click();
     choose('[data-preset]','uil-percussion');
    },vocabulary);
    const tokens=vocabulary==='numbers'?['1','&','a','2','e','&','a','3','4']:['1','te','ta','2','ta','te','ta','3','4'];
