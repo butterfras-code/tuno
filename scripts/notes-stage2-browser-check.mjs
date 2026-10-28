@@ -32,7 +32,7 @@ try {
   await page.getByRole('button',{name:'F♯',exact:true}).first().focus(); await page.keyboard.press('Enter'); assert.match(await page.locator('#practice-counts').textContent(),/2 correct \/ 2 attempts/);
   await readyForAnswer(page);
   assert.equal(await page.getByRole('button',{name:'F♭',exact:true}).count(),0); assert.match(await page.locator('#practice-counts').textContent(),/2 attempts/);
-  await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
+  await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Edit setup',exact:true}).first().click();
   await setKey(page,'F');
   await setEndpoint(page,'Lowest note','C4'); await setEndpoint(page,'Highest note','C4');
   assert.equal(await page.getByRole('button',{name:'Accept',exact:true}).isEnabled(),true);
@@ -44,7 +44,7 @@ try {
   await expandData(page); await page.getByRole('button',{name:'Add profile',exact:true}).first().click(); await page.getByLabel('Profile name',{exact:true}).fill('<Student>'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await startPractice(page);
   for(let i=0;i<20;i++) { await page.getByRole('button',{name:'C',exact:true}).first().click(); if(i<19) await readyForAnswer(page); }
-  await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click();
+  await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Edit setup',exact:true}).first().click();
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   await page.reload(); await expandData(page); assert.match(await page.locator('#profile option:checked').textContent(),/<Student>/); assert.match(await page.locator('#profile-history').textContent(),/20 correct/);
   assert.equal(await page.locator('student').count(),0); assert.equal(await page.getByRole('button',{name:'Start Practice',exact:true}).first().isVisible(),false);
@@ -55,7 +55,7 @@ try {
   await upload(page,backup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor();
   assert.match(await page.locator('#import-preview').textContent(),/1 profiles, 2 custom presets, 1 results/);
   await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
-  await setToggle(page,'remember-progress',false); await startPractice(page); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Home',exact:true}).first().click(); await setToggle(page,'remember-progress',true);
+  await setToggle(page,'remember-progress',false); await startPractice(page); await page.getByRole('button',{name:'C',exact:true}).first().click(); await page.getByRole('button',{name:'Finish',exact:true}).first().click(); await page.getByRole('button',{name:'Edit setup',exact:true}).first().click(); await setToggle(page,'remember-progress',true);
   assert.match(await page.locator('#profile-history').textContent(),/1 recent sessions · 20 correct/);
   assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
   results.push('Profile names render as text; progress/configuration survive reload into setup; export, previewed replacement, malformed/future-schema rejection, Guest isolation and tUno preferences preserved');
@@ -80,7 +80,7 @@ try {
     },mode);
     const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(new URL('/notes/', host.url).href); await expandData(p);
     await p.getByRole('button',{name:'Add profile',exact:true}).first().click(); await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByLabel('Profile name',{exact:true}).press('Enter'); assert.match(await p.locator('#storage-status').textContent(),/memory/i);
-    await startPractice(p); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Home',exact:true}).first().click();
+    await startPractice(p); await p.getByRole('button',{name:'A',exact:true}).first().click(); await p.getByRole('button',{name:'Finish',exact:true}).first().click(); await p.getByRole('button',{name:'Edit setup',exact:true}).first().click();
     await upload(p,backup); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().waitFor(); assert.match(await p.locator('#import-preview').textContent(),/memory-only/); await p.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await ctx.close();
   }
   results.push('Denied/corrupt/quota storage allows play and explicit memory-only import');

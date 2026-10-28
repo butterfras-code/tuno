@@ -154,6 +154,9 @@ export interface StorageAdapter { getItem(key: string): string | null; setItem(k
 export class NotesStore {
   data = emptySnapshot(); message = ''; durable = true;
   private storage: StorageAdapter | undefined;
+  private saved: string | null = null;
+  private writeAllowed = true;
+  private statusListeners = new Set<() => void>();
   private sharedDefaults: Snapshot | undefined;
   private transientPresets = new Set<string>();
   beginSharedSession() { this.sharedDefaults = structuredClone(this.data); }
@@ -189,11 +192,30 @@ export class NotesStore {
     return data;
   }
   private pending: ReturnType<typeof setTimeout> | undefined;
+  /** Shared browser storage must be opened through connectNotesStore, which holds the writer lock. */
   constructor(storage?: StorageAdapter) {
     this.storage = storage;
-    try { if (!storage) throw new Error(); const raw = storage.getItem(STORAGE_KEY); if (raw !== null) this.data = parseBackup(raw); }
+    try { if (!storage) throw new Error(); this.saved = storage.getItem(STORAGE_KEY); if (this.saved !== null) this.data = parseBackup(this.saved); }
     catch { this.durable = false; this.message = 'Saved data could not be read. Using memory only; you can export a backup. Existing saved data has been preserved.'; }
   }
+  onStatusChange(listener: () => void) { this.statusListeners.add(listener); listener(); return () => { this.statusListeners.delete(listener); }; }
+  get canDeleteSavedData() { return this.writeAllowed && Boolean(this.storage); }
+  private statusChanged() { this.statusListeners.forEach(listener => listener()); }
+  /** Revocation is permanent for this snapshot. Reload to acquire a lock and read fresh data. */
+  memoryOnly(message: string) {
+    this.writeAllowed = false; this.durable = false; this.message = message;
+    if (this.pending) clearTimeout(this.pending); this.pending = undefined;
+    this.statusChanged();
+  }
+  private requireCurrent() {
+    if (!this.writeAllowed || !this.storage) throw new Error('This tab cannot save.');
+    // This check detects external/older writers; the browser lock provides mutual exclusion.
+    if (this.storage.getItem(STORAGE_KEY) !== this.saved) {
+      this.memoryOnly('Saved data changed elsewhere. This tab is using memory only. Export your work before reloading saved data.');
+      throw new Error('Saved data changed elsewhere. Export your work before reloading.');
+    }
+  }
+  private write(raw: string) { this.requireCurrent(); this.storage!.setItem(STORAGE_KEY, raw); this.saved = raw; }
   update(change: (data: Snapshot) => void, deferred = false) {
     const next = structuredClone(this.data); change(next); this.data = validateSnapshot(next);
     while (new TextEncoder().encode(JSON.stringify(this.data)).length > MAX_BYTES) {
@@ -210,26 +232,29 @@ export class NotesStore {
   flush() {
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
     if (!this.durable) return;
-    try { this.storage!.setItem(STORAGE_KEY,JSON.stringify(this.durableData())); }
-    catch { this.durable = false; this.message = 'Storage is unavailable or full. Progress is kept in memory; export a backup before closing.'; }
+    try { this.write(JSON.stringify(this.durableData())); }
+    catch { if (this.writeAllowed) { this.durable = false; this.message = 'Storage is unavailable or full. Progress is kept in memory; export a backup before closing.'; this.statusChanged(); } }
   }
   replace(candidate: Snapshot) {
     const next = validateSnapshot(candidate);
     // Keep both the previous memory snapshot and the durable snapshot on a failed import.
     if (this.durable) {
-      try { this.storage!.setItem(STORAGE_KEY,JSON.stringify(next)); }
-      catch { throw new Error('Import was not committed: storage write failed. Existing data is unchanged.'); }
+      try { this.write(JSON.stringify(next)); }
+      catch { throw new Error('Import was not committed: saved data changed or storage write failed. Existing data is unchanged.'); }
     }
     if (this.pending) clearTimeout(this.pending); this.pending = undefined; this.data = next;
     if (this.sharedDefaults) this.sharedDefaults = structuredClone(next); this.transientPresets.clear();
     this.message = this.durable ? 'Backup imported.' : 'Backup replaced in memory only. Export before closing.';
+    this.statusChanged();
   }
   clear() {
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
     this.data = emptySnapshot();
     if (this.sharedDefaults) this.sharedDefaults = emptySnapshot(); this.transientPresets.clear();
-    try { if (!this.storage) throw new Error(); this.storage.removeItem(STORAGE_KEY); this.durable = true; this.message = 'All tuNotes data in this storage context was deleted.'; }
-    catch { this.durable = false; this.message = 'In-memory data was deleted. Browser storage is unavailable, so previously saved data could not be deleted; clear site data in your browser to remove it.'; }
+    if (!this.writeAllowed) { this.message = 'This tab’s in-memory data was deleted. Saved data is unchanged; reload to use it.'; this.statusChanged(); return; }
+    try { this.requireCurrent(); this.storage!.removeItem(STORAGE_KEY); this.saved = null; this.durable = true; this.message = 'All tuNotes data in this storage context was deleted.'; }
+    catch { this.durable = false; this.message = 'In-memory data was deleted. Saved data could not be deleted; reload to review it or clear site data in your browser.'; }
+    this.statusChanged();
   }
   export() { return JSON.stringify(this.data); }
   profile() { return this.data.configuration.remember ? this.data.profiles.find(p => p.id === this.data.configuration.profileId) : undefined; }

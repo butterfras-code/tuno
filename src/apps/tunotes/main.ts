@@ -17,9 +17,26 @@ import { playSurface } from './ui/play-surface.ts';
 import { onUnmount } from '../../shared/ui/unmount.ts';
 import { prepareOffline } from '../../distribution/offline.ts';
 import { tunotes } from '../../distribution/identity.ts';
+import { connectNotesStore } from './persistence/session.ts';
+import type { NotesSession } from './persistence/session.ts';
+import { savingNotice } from './ui/saving-notice.ts';
 
-export function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity> = {kind:'none'}) {
+export async function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity> = {kind:'none'}) {
   if (linked.kind === 'error') { root.append(sharedActivityNotice(linked,notesAdapter)); return () => {}; }
+  let session: NotesSession | undefined;
+  let leftPage = false;
+  const suspend = () => { leftPage = true; session?.close(); };
+  window.addEventListener('pagehide', suspend);
+  document.addEventListener('freeze', suspend);
+  let storage: Storage | undefined;
+  let locks: LockManager | undefined;
+  try { storage = window.localStorage; locks = navigator.locks; } catch { /* Safe memory-only fallback. */ }
+  session = await connectNotesStore(storage, locks);
+  if (leftPage) session.close();
+  if (!root.isConnected) {
+    session.close(); window.removeEventListener('pagehide', suspend); document.removeEventListener('freeze', suspend);
+    return () => {};
+  }
   const home = el('main', 'notes-home');
   home.id = 'home';
   home.tabIndex = -1;
@@ -27,7 +44,9 @@ export function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity
   header.append(createAreaNavigation('tunotes'));
   const workspace = el('div', 'notes-workspace');
   const workspaceHeader = el('div', 'notes-workspace-header');
-  const practice = practiceView(linked.kind === 'loaded');
+  const practice = practiceView(session.store, linked.kind === 'loaded');
+  const saving = savingNotice(session.store);
+  header.append(saving.node);
   const practicePanel = el('section'); practicePanel.append(practice.node);
   const challenge = el('section','notes-challenge'); challenge.hidden = true;
   const multiplayerPanel = el('section'); multiplayerPanel.hidden = true;
@@ -85,7 +104,11 @@ export function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity
   }
   root.append(home);
   const stopFitting = playSurface(home,practice.options);
-  const dispose = () => { stopFitting(); document.removeEventListener('fullscreenchange',updateFullscreen); practice.dispose(); multiplayer?.dispose(); };
+  const dispose = () => {
+    stopFitting(); document.removeEventListener('fullscreenchange',updateFullscreen); practice.dispose(); multiplayer?.dispose();
+    session.close(); saving.dispose();
+    window.removeEventListener('pagehide', suspend); document.removeEventListener('freeze', suspend);
+  };
   const stopWatching = onUnmount(home, dispose);
   return () => { stopWatching(); dispose(); home.remove(); };
 }

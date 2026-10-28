@@ -1,8 +1,11 @@
 /** Cross-browser completed capture checks; not a physical latency/device test.
- * Run dev:walk first, then TUNO_BROWSER=chromium|firefox node this-file. */
+ * Uses the local build; optional COUNT_WRITING_URL overrides the hosted fixture. */
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { hostBuild } from './test-host.mjs';
+const host = process.env.COUNT_WRITING_URL ? null : await hostBuild();
+const url = process.env.COUNT_WRITING_URL || new URL('/prototypes/rhythm-walk/', host.url).href;
 const engine = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({ chromium, firefox })[engine].launch();
 const output = `dist/validation/rhythm-source-${engine}`;
@@ -24,7 +27,7 @@ try {
    URL.createObjectURL = blob => { window.evidence = blob.text().then(JSON.parse); return originalURL(blob); };
    document.addEventListener('click', e => { if (e.target instanceof HTMLAnchorElement && e.target.download) e.preventDefault(); }, true);
   });
-  await page.goto(`${process.env.COUNT_WRITING_URL || 'http://localhost:5173/prototypes/rhythm-walk/'}?fixture=quarters`);
+  await page.goto(`${url}?fixture=quarters`);
   const counts = page.locator('[data-count-id]');
   const labels = await counts.evaluateAll(nodes => nodes.map(n => n.getAttribute('aria-label')));
   assert.ok(labels.length && labels.every(label => /^Measure \d+, beat \d+, empty$/.test(label) && !/\([1-6e&a+]\)/.test(label)));
@@ -50,13 +53,14 @@ try {
     pad.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
    }
   }, style);
-  await page.locator('.performance-results').waitFor();
+  await page.locator('.performance-results').waitFor({ state: 'attached' });
+  await page.locator('#feedback-panel').waitFor({ state: 'visible' });
   const result = await page.locator('.performance-results').textContent();
   assert.equal(await page.locator('.performance-results details').count(), 0, 'input area has no duplicate numerical review');
   assert.equal(await page.locator('.performance-setup .setting-hint').count(), 0, 'instructions live in Practice help');
   assert.equal(await page.locator('.timing-evidence').isVisible(), false, 'diagnostic evidence is not displayed');
   assert.equal(await page.locator('.timing-timeline').count(), 2, 'the graph retains performance evidence');
-  assert.equal(await page.locator('#performance-results-heading').evaluate(n => n === document.activeElement), true);
+  assert.equal(await page.locator('#feedback-panel').evaluate(n => n === document.activeElement), true);
   // Diagnostics remain available to automation without exposing them in the input area.
   await page.locator('.timing-evidence button').evaluate(button => button.click());
   const record = await page.evaluate(() => window.evidence);
@@ -74,7 +78,7 @@ try {
   await page.getByRole('button', { name: 'Perform', exact: true }).click();
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
-  await page.getByRole('heading', { name: 'Interrupted attempt' }).waitFor();
+  await page.getByRole('heading', { name: 'Interrupted attempt' }).waitFor({ state: 'attached' });
   await page.getByRole('button', { name: 'Next exercise', exact: true }).click();
   assert.equal(await page.locator('.performance-results').count(), 0);
   await page.reload();
@@ -86,4 +90,4 @@ try {
   await context.close();
  }
  report.passed = true;
-} finally { await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2)); await browser.close(); }
+} finally { await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2)); await browser.close(); await host?.close(); }

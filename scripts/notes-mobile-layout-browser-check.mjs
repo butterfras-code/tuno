@@ -17,6 +17,7 @@ async function inspect(page,label) {
    if(!visible(n))continue;
    const r=n.getBoundingClientRect();
    if(r.width<3||r.height<3)continue;
+   if(n.matches('.focus-navigation .control') && (r.width<44 || r.height<44))problems.push({text:n.textContent,issue:'Mode navigation target is smaller than 44px',width:r.width,height:r.height});
    // Rosters/keyboards scroll intentionally; ellipsis is explicit truncation.
    // Inputs scroll their value; label scrollWidth may include a child's focus outline.
    if(n.closest('.multiplayer-roster,.answer-scroll') || getComputedStyle(n).textOverflow==='ellipsis')continue;

@@ -46,6 +46,18 @@ The staff’s accessible description identifies clef, C major and position witho
 
 Setup saves configuration and Custom definitions independently of progress. Answer observations update memory immediately and debounce storage writes; Finish, visibility loss and disposal flush pending saves. Import validates before replacement and writes once before changing memory; failure preserves both previous snapshots. Corrupt/blocked/full storage uses memory with an explanation and export. No active game is restored. Export is compact JSON capped at 5 MiB through bounded records and oldest-history pruning. See [Stage 2 validation](validation/tunotes-stage2.md).
 
+### tuNotes writer ownership
+
+`persistence/session.ts` acquires an exclusive Web Lock named `tunotes:data:v1:writer` before loading the writable snapshot. One mounted tab owns saving for that session. Other tabs read the saved snapshot once and can practice with exportable in-memory data; they cannot flush, import into, or delete shared storage. They never automatically take over. The Saving status notice remains available across modes, with export and an explicitly confirmed reload. After closing the saving tab, reload another tab to read fresh saved data and request ownership.
+
+Normal writes, deferred flushes, backup replacement and deletion all occur under that same held lock. `NotesStore` also compares the current stored value with its last observed value before writes/deletion, revoking saving if an external change is detected. This comparison detects stale data; the [Web Lock](https://www.w3.org/TR/web-locks/) supplies mutual exclusion. Direct `NotesStore` adapters are for already-coordinated storage and synchronous unit fixtures; browser code must use `connectNotesStore`.
+
+Page hiding for navigation (`pagehide`), page freezing, and unmount flush pending data before releasing ownership and permanently revoke that snapshot’s write permission. Ordinary visibility loss flushes but retains ownership. A restored page remains memory-only until reload. Missing or rejected lock support also uses memory-only mode; there is no localStorage lock flag or uncoordinated fallback. Corrupt data may still be explicitly deleted by the owner. A tab without ownership can delete only its own in-memory copy. Abrupt browser termination can still lose the existing 400 ms of deferred work; this change does not promise crash-proof storage.
+
+The storage key and schema-4 backup format are unchanged; existing supported backups load without a new migration. Coordination applies to tabs running this implementation. Older already-open builds do not honor its lock: close those tabs when adopting the update. The external-value check cannot make writes by old code atomic, and old code may still overwrite data after a new tab’s save.
+
+Regression checks: `tests/tunotes-storage.test.ts` and `scripts/notes-storage-browser-check.mjs` (Chromium and Firefox, included in `verify`). Browser scenarios use real same-origin tabs and include simultaneous startup, stale edits, import/deletion, export/reload, lifecycle handlers, and storage/coordination failure. Synthetic lifecycle events do not establish physical mobile suspension or BFCache support.
+
 ### Graphical preset configuration
 
 `ui/preset-picker.ts` owns the modal Clef/Instrument → selection → level flow. `ui/range-editor.ts` maps SVG coordinates and keyboard steps to explicit written endpoints; `ui/custom-configurator.ts` coordinates linked endpoint clefs, explicit available clefs, independent modifiers and derived ledger descriptions. These controls use the existing staff renderer and theme tokens.
