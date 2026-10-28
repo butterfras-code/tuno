@@ -34,7 +34,7 @@ test('shared plan schedules active checks only on their supported engines', () =
   assert.throws(() => browserPlan(['typo']), /Unsupported browser/);
   for (const engine of ['chromium', 'firefox']) {
     const files = browserPlan([engine]).map(entry => entry.file);
-    for (const name of ['activity-sharing', 'counting-corrections', 'rhythm-uil', 'rhythm-preset-picker', 'responsive-workspace', 'performance-follow', 'rhythm-source', 'notes-storage', 'notes-entry', 'notes-results']) {
+    for (const name of ['viewport', 'activity-sharing', 'counting-corrections', 'rhythm-uil', 'rhythm-preset-picker', 'responsive-workspace', 'performance-follow', 'rhythm-source', 'notes-storage', 'notes-entry', 'notes-results']) {
       assert.ok(files.includes(`${name}-browser-check.mjs`), `${name} required in ${engine}`);
     }
     assert.equal(files.length, browserChecks.filter(entry => entry.status === 'active').length);

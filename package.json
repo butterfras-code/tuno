@@ -20,7 +20,8 @@
     "test:counts:browser": "node scripts/counting-plan-browser-check.mjs",
     "dev:counts": "node scripts/build.mjs --dev --counts",
     "dev:notes": "node scripts/build.mjs --dev --notes",
-    "dev:walk": "node scripts/build.mjs --dev --walk"
+    "dev:walk": "node scripts/build.mjs --dev --walk",
+    "test:responsive": "npm run build && node scripts/viewport-browser-check.mjs"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

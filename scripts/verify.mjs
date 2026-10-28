@@ -39,7 +39,7 @@ try {
     build: release.build, revision: release.revision, dirty: release.dirty,
     checkedAt: new Date().toISOString(), automatedChecksPassed: passed,
     physicalAcceptance: 'pending', results,
-    untested: ['Managed Chromebook', 'Physical Safari', 'Real microphone/speakers/headphones', 'OS installation', 'Production HTTPS deployment', 'Classroom projection'],
+    untested: ['Managed Chromebook', 'Physical Safari', 'Real microphone/speakers/headphones', 'OS installation', 'Production HTTPS deployment', 'Classroom projection', 'Galaxy Z Fold8 measured viewports and physical fold/unfold transition'],
     unavailable: ['Automated WebKit: required system libraries absent on this host'],
   }, null, 2));
 }
