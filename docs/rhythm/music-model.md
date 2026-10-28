@@ -73,4 +73,4 @@ Duration lines and rest enclosures end at the last depicted count of their unit,
 
 ## UIL scope reconciliation (2026-10-22)
 
-UIL I–IV use atomic note-only figures and one meter per exercise (I–II: 4/4; III–IV: 2/4, 3/4, 4/4). IV teaches figures without claiming the composition-level meter-change requirement. V–VI, 2/2 and within-exercise changes are deferred. Existing Uno/Custom 6/8 and triplets are unchanged. Generation, counting, engraving and capture share the immutable typed score. See [UIL scope](uil-presets.md).
+UIL I–IV use atomic figures and one meter per exercise (I–II: 4/4; III–IV: 2/4, 3/4, 4/4). IV teaches figures without claiming the composition-level meter-change requirement. V–VI, 2/2 and within-exercise changes are deferred. Existing Uno/Custom 6/8 and triplets are unchanged. Generation, counting, engraving and capture share the immutable typed score. See [UIL scope](uil-presets.md).

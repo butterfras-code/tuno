@@ -1,6 +1,6 @@
 import type { RhythmEvent, RhythmMeasure } from '../../../music/measure.ts';
 import { duration, score, note } from '../../../music/measure.ts';
-import { add, compare, divide, fraction } from '../../../music/fraction.ts';
+import { add, compare, divide, fraction, multiply, subtract } from '../../../music/fraction.ts';
 import type { Fraction } from '../../../music/fraction.ts';
 import { meterPolicy } from './meter.ts';
 import type { CountMeter } from './meter.ts';
@@ -8,6 +8,9 @@ import type { CountMeter } from './meter.ts';
 export type InstrumentScope = 'general' | 'percussion';
 export interface FigureProfile { version: 1; level: number; scope: InstrumentScope }
 const events = {
+  QR: [note('quarter', { kind: 'rest' })],
+  RE: [note('eighth', { kind: 'rest' }), note('eighth')],
+  ER: [note('eighth'), note('eighth', { kind: 'rest' })],
   Q: [note('quarter')], H: [note('half')], 'H.': [note('half', { dots: 1 })], W: [note('whole')],
   EE: [note('eighth'), note('eighth')], 'Q.E': [note('quarter', { dots: 1 }), note('eighth')],
   EQE: [note('eighth'), note('quarter'), note('eighth')], 'E.S': [note('eighth', { dots: 1 }), note('16th')],
@@ -20,7 +23,7 @@ export const rhythmFigures = Object.fromEntries(Object.entries(events).map(([id,
 }])) as Record<FigureId, { id: FigureId; events: readonly RhythmEvent[]; duration: Fraction }>;
 export function profileFigures(profile: FigureProfile): FigureId[] {
   if (profile.version !== 1 || !Number.isInteger(profile.level) || profile.level < 1 || profile.level > 4 || !['general', 'percussion'].includes(profile.scope)) throw new Error('Invalid UIL figure profile.');
-  return ['Q', 'H', 'H.', 'W', 'EE', ...(profile.level >= 3 ? ['Q.E'] : []),
+  return ['QR', ...(profile.level >= 3 ? ['RE', 'ER'] : []), 'Q', 'H', 'H.', 'W', 'EE', ...(profile.level >= 3 ? ['Q.E'] : []),
     ...(profile.level >= 4 ? ['EQE', 'E.S', 'ESS', 'SSSS'] : profile.scope === 'percussion' ? ['ESS', 'SSSS', ...(profile.level === 3 ? ['E.S'] : [])] : [])] as FigureId[];
 }
 /** Conservative teaching placements, separate from the source's figure inventory. */
@@ -34,13 +37,15 @@ export function figurePlan(profile: FigureProfile, meter: CountMeter) {
   const pool = profileFigures(profile).map(id => rhythmFigures[id]);
   if (profile.level < 3 && meter !== '4/4' || meter === '6/8') throw new Error(`Meter ${meter} is outside this UIL profile. Customize to use another meter.`);
   const policy = meterPolicy(meter), memo = new Map<string, boolean>();
+  const allowedAt = (id: FigureId, position: Fraction) => figureAllowedAt(id, meter, position) &&
+    !(profile.level < 3 && id === 'QR' && compare(position, fraction(0)) === 0);
   function fills(position: Fraction): boolean {
     if (!compare(position, policy.length)) return true;
     const key = position.join('/');
-    if (!memo.has(key)) memo.set(key, pool.some(f => figureAllowedAt(f.id, meter, position) && fills(add(position, f.duration))));
+    if (!memo.has(key)) memo.set(key, pool.some(f => allowedAt(f.id, position) && fills(add(position, f.duration))));
     return memo.get(key)!;
   }
-  const choicesAt = (position: Fraction) => pool.filter(f => figureAllowedAt(f.id, meter, position) && fills(add(position, f.duration)));
+  const choicesAt = (position: Fraction) => pool.filter(f => allowedAt(f.id, position) && fills(add(position, f.duration)));
   if (!fills(fraction(0))) throw new Error(`UIL figures cannot fill ${meter}.`);
   return { choicesAt, policy };
 }
@@ -58,15 +63,18 @@ export function drawIndex(length: number, random: () => number): number {
   if (!Number.isFinite(value) || value < 0 || value >= 1) throw new Error('Random source must return a number in [0, 1).');
   return Math.floor(value * length);
 }
-export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, random: () => number, minimumAttacks = 4) {
+export function generateFigures(profile: FigureProfile, pool: CountMeter[], measures: number, random: () => number, minimumAttacks = 4, restCap: Fraction = fraction(15, 100)) {
   const plans = new Map(pool.map(m => [m, figurePlan(profile, m)]));
   const meter = pool[pool.length === 1 ? 0 : drawIndex(pool.length, random)]!;
   const plan = plans.get(meter)!;
+  const attackCount = (f: typeof rhythmFigures[FigureId]) => f.events.filter(e => e.kind !== 'rest').length;
+  const restCost = (f: typeof rhythmFigures[FigureId]) => f.events.reduce((sum, e) => e.kind === 'rest' ? add(sum, duration(e)) : sum, fraction(0));
+  let remaining = multiply(multiply(plan.policy.length, fraction(measures)), restCap);
   const capacity = new Map<string, number>();
   function maxAttacks(position: Fraction): number {
     if (compare(position, plan.policy.length) === 0) return 0;
     const key = position.join('/');
-    if (!capacity.has(key)) capacity.set(key, Math.max(...plan.choicesAt(position).map(f => f.events.length + maxAttacks(add(position, f.duration)))));
+    if (!capacity.has(key)) capacity.set(key, Math.max(...plan.choicesAt(position).map(f => attackCount(f) + maxAttacks(add(position, f.duration)))));
     return capacity.get(key)!;
   }
   const perBar = maxAttacks(fraction(0));
@@ -75,8 +83,11 @@ export function generateFigures(profile: FigureProfile, pool: CountMeter[], meas
   const passage = Array.from({ length: measures }, (_, bar): RhythmMeasure => {
     const plan = plans.get(meter)!, written: RhythmEvent[] = [];
     for (let position = fraction(0); compare(position, plan.policy.length) < 0;) {
-      const choices = plan.choicesAt(position).filter(f => attacks + f.events.length + maxAttacks(add(position, f.duration)) + (measures - bar - 1) * perBar >= minimumAttacks), choice = choices[drawIndex(choices.length, random)]!;
-      attacks += choice.events.length;
+      const choices = plan.choicesAt(position).filter(f =>
+        !(bar === 0 && compare(position, fraction(0)) === 0 && f.events[0]!.kind === 'rest') &&
+        compare(restCost(f), remaining) <= 0 && attacks + attackCount(f) + maxAttacks(add(position, f.duration)) + (measures - bar - 1) * perBar >= minimumAttacks), choice = choices[drawIndex(choices.length, random)]!;
+      attacks += attackCount(choice);
+      remaining = subtract(remaining, restCost(choice));
       written.push(...structuredClone(choice.events)); position = add(position, choice.duration);
     }
     return { meter: plan.policy.meter, notes: written };
