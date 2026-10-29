@@ -234,7 +234,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingeringHelp.textContent = config?.control === 'finger'
         ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
         : config?.instrument === 'horn-f'
-        ? 'Q W E = valves · V = B♭ trigger. Space = F-side open.'
+        ? 'E W Q = valves · V = B♭ trigger. Space = F-side open.'
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';
     }

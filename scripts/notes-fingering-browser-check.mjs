@@ -265,7 +265,7 @@ async function checkLayouts(page) {
       await flip.click();
     }
     await flip.blur();
-    const keys=instrument==='horn-f' ? ['q','w','v'] : strings.includes(instrument) ? ['f','d'] : ['j','k'];
+    const keys=instrument==='horn-f' ? ['e','w','v'] : strings.includes(instrument) ? ['f','d'] : ['j','k'];
     for(const key of keys) await screen.keyboard.down(key);
     assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : strings.includes(instrument) ? '11000000' : '00001100');
     await screen.waitForTimeout(410);
@@ -513,11 +513,18 @@ try {
     }
     await cdp.detach();
   }
-  // All horn key chords reach the held state, regardless of trigger press order.
+  for (const [label,key] of [['Valve 1','E'],['Valve 2','W'],['Valve 3','Q'],['Thumb trigger — B♭ side','V']]) {
+    const control = page.getByRole('button',{name:label,exact:true});
+    assert.equal(await control.locator('kbd').textContent(),key,`${label}: visible shortcut matches the mirrored keyboard`);
+    assert.equal(await control.getAttribute('aria-keyshortcuts'),key);
+  }
+  assert.match(await page.locator('.fingering-help').textContent(),/E W Q/);
+  // All horn key chords reach the held state, regardless of trigger press order or Flip.
   for (const triggerFirst of [true,false]) {
+    await page.getByRole('button',{name:'Flip finger order',exact:true}).click();
     for (let bits=0;bits<8;bits++) {
       await page.evaluate(()=>window.fixture.start('C4','correct','horn-f'));
-      const valves=['q','w','e'].filter((_,i)=>bits & (1<<i));
+      const valves=['e','w','q'].filter((_,i)=>bits & (1<<i));
       const keys=triggerFirst ? ['v',...valves] : [...valves,'v'];
       for (const key of keys) await page.keyboard.down(key);
       const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
@@ -526,7 +533,7 @@ try {
       assert.equal(await mask(),'00000000');
     }
   }
-  for (const [pitch,keys] of [['D4',['v','q','w']],['Db4',['v','w','e']],['C3',['v','q','e']]]) {
+  for (const [pitch,keys] of [['D4',['v','e','w']],['Db4',['v','w','q']],['C3',['v','e','q']]]) {
     await page.evaluate(p=>window.fixture.start(p,'instant','horn-f'),pitch);
     for (const key of keys) await page.keyboard.down(key);
     await settle(); assert.equal(await correct(),1,pitch+': '+keys.join('+'));

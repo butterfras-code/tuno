@@ -293,7 +293,7 @@ export function practiceView(store: NotesStore, shared = false) {
   startButton.classList.add('control--primary'); setupUI.action(startButton);
   const controls = el('div', 'control-row'); controls.append(pause, continueButton, button('Finish', finish));
   const keyboardHelp = el('details', 'practice-help');
-  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Strings: F/D/S/A = fingers 1–4 (index to little finger). Fingering: hold J/K/L (horn: Q/W/E) for valves 1/2/3, Space = Open, V = horn trigger. Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
+  keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Strings: F/D/S/A = fingers 1–4 (index to little finger). Fingering: hold J/K/L (horn: E/W/Q) for valves 1/2/3, Space = Open, V = horn trigger. Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
   play.append(heading, counts, scene.node, staff, feedback, answers.node, controls);
   const resultControls = el('div', 'control-row result-controls');
