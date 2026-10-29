@@ -29,7 +29,7 @@
 .shared-activity-notice p { flex: 1 1 200px; margin: 0; }
 .shared-activity-notice[hidden] { display: none; }
 @media (max-width: 760px) {
-  .activity-share-button { width: 44px; padding: 10px; }
+  .control.activity-share-button { width: 44px; padding: 10px; }
   .activity-share-label { display: none; }
   .activity-share-dialog { padding: 16px; }
 }

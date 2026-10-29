@@ -16,7 +16,6 @@ const selectInstrument = async (page, value) => {
   await instrumentPill(page).click();
   const picker=page.getByRole('dialog',{name:'Choose instrument',exact:true});
   await picker.locator(`[data-instrument="${value}"]`).click();
-  await instrumentPill(page).blur();
 };
 const chooseMethod = async (page, value) => {
   if (value==='names') {
@@ -28,7 +27,6 @@ const chooseMethod = async (page, value) => {
   const picker=page.getByRole('dialog',{name:'Choose instrument',exact:true});
   const current=await picker.locator('[aria-pressed="true"]').getAttribute('data-instrument');
   await picker.locator(`[data-instrument="${current==='piano' ? 'trumpet-bb' : current}"]`).click();
-  await instrumentPill(page).blur();
 };
 try {
   const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
@@ -313,6 +311,11 @@ try {
   await settle(); assert.equal(await correct(),2); assert.equal(await mask(),'00000010');
   await page.keyboard.up('l'); await settle(); assert.equal(await attempts(),2);
   // Open answers are explicit, including repeated open notes.
+  await start('C4');
+  await selectInstrument(page,'trumpet-bb');
+  await page.keyboard.press('Space');
+  assert.equal(await correct(),1);
+  assert.equal(await instrumentPill(page).getAttribute('aria-expanded'),'false');
   await start('C4'); await settle(); assert.equal(await attempts(),0);
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click();
   assert.equal(await correct(),1); await settle(); assert.equal(await attempts(),1);

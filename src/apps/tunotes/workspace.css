@@ -24,8 +24,10 @@
   #home.is-playing .notes-workspace-header { padding: 4px; gap: 4px; }
   #home.is-playing .notes-workspace-header:has(.notes-fullscreen:not([hidden])) .focus-navigation .control { font-size: 11px; }
 }
+@media (max-width: 400px) {
+  #home .notes-workspace-header .focus-navigation { flex-basis: 208px; min-width: 208px; grid-template-columns: repeat(4, minmax(min-content, auto)); gap: 2px; }
+  #home .notes-workspace-header .focus-navigation .control { min-width: 44px; padding-inline: 2px; }
+}
 @media (max-width: 360px) {
   #home.is-playing .notes-fullscreen { max-width: 72px; padding-inline: 4px; font-size: 12px; }
-  #home .notes-workspace-header .focus-navigation { grid-template-columns: repeat(4, minmax(min-content, 1fr)); gap: 2px; }
-  #home .notes-workspace-header .focus-navigation .control { min-width: 44px; }
 }

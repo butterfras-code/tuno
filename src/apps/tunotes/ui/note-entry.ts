@@ -110,7 +110,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       options.onMethodChange?.();
       instrumentPicker.hidePopover();
       if (lastUpdate) update(...lastUpdate);
-      instrumentButton.focus();
+      // Resume playing without Space reactivating the instrument menu.
+      if (method === 'keyboard') keyboard.focus();
+      else fingers.node.querySelector('button')?.focus();
     });
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }

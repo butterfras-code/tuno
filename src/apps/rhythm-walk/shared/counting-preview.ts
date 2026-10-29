@@ -67,4 +67,3 @@ export function renderCountingPreview(preferences: CountingPreferences) {
   });
   return strip;
 }
-

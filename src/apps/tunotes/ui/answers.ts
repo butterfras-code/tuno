@@ -50,6 +50,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       const value = target.answer;
       const { letter, accidental } = value;
       const b = el('button', `control answer answer-${accidental === 1 ? 'sharp' : accidental === -1 ? 'flat' : 'natural'}`, spelling(value));
+      b.setAttribute('aria-label', spelling(value));
       if (accidental) b.replaceChildren(document.createTextNode(letter), el('span', 'answer-accidental', accidental === 1 ? '♯' : '♭'));
       const bone = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       bone.setAttribute('viewBox', '0 0 100 52'); bone.setAttribute('preserveAspectRatio', 'none');

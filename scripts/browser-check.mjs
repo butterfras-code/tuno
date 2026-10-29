@@ -234,10 +234,13 @@ try {
     // Fonts and exact Figma vectors must decode inside both distributions.
     const assets = await page.evaluate(async () => {
       await document.fonts.ready;
-      await Promise.all([...document.images].map((image) => image.decode()));
+      // Sharing creates its QR source only when the dialog opens. The hidden,
+      // source-less placeholder is not an asset; all other images must decode.
+      const images = [...document.images].filter(image => !(image.matches('.activity-share-qr') && image.hidden && !image.hasAttribute('src')));
+      await Promise.all(images.map((image) => image.decode()));
       return {
         fonts: [...document.fonts].map((font) => [font.family, font.status]),
-        images: [...document.images].every((image) => image.naturalWidth > 0 && image.src.startsWith('data:')),
+        images: images.every((image) => image.naturalWidth > 0 && image.src.startsWith('data:')),
       };
     });
     assert.equal(assets.images, true);

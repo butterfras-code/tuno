@@ -4,6 +4,7 @@ import { chromium, firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import { hostBuild } from './test-host.mjs';
 import { setToggle } from './notes-setup-helpers.mjs';
+import { viewportProfiles } from './viewport-profiles.mjs';
 
 const engine = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[engine].launch();
@@ -46,7 +47,10 @@ async function check(page,label) {
 }
 try {
   // 2560×1440 is the CSS viewport of a fullscreen 4K display at 150% zoom.
-  for (const [width,height] of [[3840,2160],[2560,1440],[1920,1080],[1184,1104],[1366,768],[1024,768],[960,600],[390,844],[844,390]]) {
+  const sizes = new Map([...viewportProfiles.map(({ viewport }) => [viewport.width, viewport.height]),
+    [3840,2160],[2560,1440],[1920,1080],[1184,1104],[1366,768],[1024,768],[960,600],[390,844],[844,390]]
+    .map(size => [size.join('x'), size]));
+  for (const [width,height] of sizes.values()) {
     for (const mode of ['Practice','Challenge','Pass and Play','Side by Side','Head to Head']) {
       const page = await browser.newPage({viewport:{width,height},hasTouch:engine==='chromium'});
       const errors=[]; page.on('pageerror',error=>errors.push(error.message));

@@ -29,7 +29,9 @@ try {
     const endpoints = page.locator(`.answer[data-letter="${tonic.letter}"][data-accidental="${tonic.accidental}"]`);
     assert.equal(await endpoints.count(), 2);
     const first = await endpoints.first().boundingBox(), last = await endpoints.last().boundingBox();
-    assert.ok(Math.abs(last.x - first.x - first.width * 7) < 1, key);
+    // Accidentals fit their labels; octave spacing follows the natural-key grid.
+    const natural = await page.locator('.answer-natural').first().boundingBox();
+    assert.ok(Math.abs((last.x + last.width / 2) - (first.x + first.width / 2) - natural.width * 7) < 1, key);
     for (const layout of ['home','notes-practice']) {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.evaluate(layout => {

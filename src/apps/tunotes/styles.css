@@ -254,7 +254,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .focus-navigation { display: flex; gap: var(--space-2); }
 .control { font: 700 16px/1.3 var(--font-heading); background: var(--color-tint); border-color: transparent; }
 .control:hover:not(:disabled) { border-color: var(--color-accent); }
-.control--primary, .control[aria-pressed='true']:not(.segments .control, .input-workspace .interaction-selector .control) { background: var(--color-accent); color: var(--color-surface); }
+.control--primary, .control[aria-pressed='true']:not(.segments .control, :where(.input-workspace .interaction-selector .control)) { background: var(--color-accent); color: var(--color-surface); }
 .practice-toggles { margin-top: 20px; }
 .adaptive-control { position: relative; display: inline-flex; border-radius: var(--radius-control); background: var(--color-tint); }
 .adaptive-control.selected { background: var(--color-accent); color: var(--color-surface); }
@@ -834,6 +834,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--short .practice-play > .staff-panel { grid-column: 1; grid-row: 3; min-height: 0; }
 #home .play-stage--short .practice-play > .feedback { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
 #home .play-stage--short .note-entry { grid-column: 2; grid-row: 3; align-self: center; }
+#home .play-stage--short .note-entry[data-input-method='names'] .answer-preview { display: none; }
+#home .play-stage--short .note-entry[data-input-method='names'] .input-workspace { gap: 4px; padding-block: 4px; }
 #home .play-stage--short .answer-rows { display: block; }
 #home .play-stage--short .answer-key-hints { display: none; }
 #home .play-stage--short .practice-play > .control-row { grid-column: 1 / -1; grid-row: 4; }
@@ -1356,7 +1358,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   outline: none;
 }
 .answer-input .answer:is(.answer-pending, :focus-visible) .answer-bone path { stroke-width: 2px; }
-.answer-input .answer:is(.answer-sharp, .answer-flat), #home .answer-input .answer:is(.answer-sharp, .answer-flat) {
+.answer-input .answer:is(.answer-sharp, .answer-flat), :is(#home, #notes-practice) .answer-input .answer:is(.answer-sharp, .answer-flat) {
   --bone-fill: var(--color-accent);
   --bone-stroke: var(--color-accent);
   color: var(--color-surface);
