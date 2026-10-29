@@ -1,36 +1,42 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { browserPlan, validateBrowserChecks } from './browser-checks.mjs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { selectedBrowserPlan, browserJobs } from './verification-browser.mjs';
+import { createRun, runJobs, VerificationPool, withCheckoutLock, writeReport, GLOBAL_RUNNERS, TASK_RUNNERS } from './verification-runner.mjs';
 
-// test:browser builds once before entering here. verify uses the same plan.
-let plan = [];
-const results = [];
-let passed = false;
-let failure;
-try {
-  validateBrowserChecks();
-  plan = browserPlan(process.env.TUNO_BROWSER ? [process.env.TUNO_BROWSER] : undefined);
-  for (const { engine, file } of plan) {
-    console.log(`\n${engine}: ${file}`);
-    const started = Date.now();
-    try {
-      execFileSync(process.execPath, [`scripts/${file}`], { stdio: 'inherit', env: { ...process.env, TUNO_BROWSER: engine } });
-      results.push({ engine, file, result: 'passed', elapsedMs: Date.now() - started });
-    } catch (error) {
-      results.push({ engine, file, result: 'failed', elapsedMs: Date.now() - started, exitCode: error.status });
-      throw error;
+await withCheckoutLock(async signal => {
+  const { plan, build, focused } = selectedBrowserPlan(process.argv.slice(2));
+  const directory = createRun('browser');
+  const started = Date.now();
+  const pool = new VerificationPool({ signal });
+  let results = [], passed = false, failure;
+  const save = () => {
+    let release = {};
+    try { release = JSON.parse(readFileSync('dist/release.json', 'utf8')); } catch { /* Retain preflight failures. */ }
+    const report = {
+      build: release.build, revision: release.revision, dirty: release.dirty, checkedAt: new Date().toISOString(),
+      elapsedMs: Date.now() - started, passed, focused, failure, results,
+      runners: { global: GLOBAL_RUNNERS, perTask: TASK_RUNNERS }, runDirectory: directory,
+      pending: plan.filter(job => !results.some(r => r.engine === job.engine && r.file === job.file && !['pending', 'queued'].includes(r.result))),
+    };
+    writeReport(join(directory, 'browser-summary.json'), report);
+    mkdirSync('dist/validation', { recursive: true });
+    writeReport('dist/validation/browser-summary.json', report);
+  };
+  console.log(`Browser verification (${focused ? 'focused' : 'full'}): reports ${directory}`);
+  try {
+    if (build) {
+      const built = await runJobs([{ check: 'build', command: 'npm', args: ['run', 'build'], exclusive: true }], { directory: join(directory, 'build'), pool });
+      if (built[0].result !== 'passed') { results = built; throw Error(`Build failed. See ${built[0].log}`); }
     }
+    // Fail before scheduling browser checks when there is no build to serve.
+    JSON.parse(readFileSync('dist/release.json', 'utf8'));
+    await runJobs(browserJobs(plan), { directory: join(directory, 'browser'), pool, onUpdate: current => { results = current.map(item => ({ ...item })); save(); } });
+    passed = results.length === plan.length && results.every(item => item.result === 'passed');
+    if (!passed) failure = 'One or more checks failed or were cancelled. See individual logs.';
+  } catch (error) { failure = error.message; }
+  finally {
+    save(); console.log(`Browser verification ${passed ? 'passed' : 'FAILED'} in ${((Date.now() - started) / 60000).toFixed(1)} minutes. ${join(directory, 'browser-summary.json')}`);
+    if (failure) console.error(failure);
+    if (!passed) process.exitCode = 1;
   }
-  passed = true;
-} catch (error) {
-  failure = error.message;
-  throw error;
-} finally {
-  mkdirSync('dist/validation', { recursive: true });
-  let release = {};
-  try { release = JSON.parse(readFileSync('dist/release.json', 'utf8')); } catch { /* Preflight can fail before a build exists. */ }
-  writeFileSync('dist/validation/browser-summary.json', JSON.stringify({
-    build: release.build, revision: release.revision, dirty: release.dirty,
-    checkedAt: new Date().toISOString(), passed, failure, results, pending: plan.slice(results.length),
-  }, null, 2));
-}
+});
