@@ -1274,12 +1274,27 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }
 
 /* Held instrument controls retain fixed touch targets while the valve caps move. */
-.fingering-panel { max-width: 480px; margin: 0 auto; text-align: center; }
-.fingering-input { display: flex; gap: 10px; }
-.fingering-input .fingering-valve { flex: 1; min-width: 0; height: clamp(96px, 16vh, 144px); display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 4px; border: 0; border-radius: 12px; background: transparent; touch-action: none; }
+.fingering-panel { width: 100%; max-width: 480px; margin: 0 auto; text-align: center; }
+/* Coordinates use finger-local axes; only this mapping changes for a hand column.
+   Container bounds cap spacing. Targets never grow with spacing or display size. */
+.fingering-input {
+  position: relative; container-type: size; width: 100%; height: calc(112px / var(--play-scale, 1));
+  --direction: 1; --flip: 1; --thumb-side: 1;
+  --layout-width: var(--span-along); --layout-height: var(--span-across);
+  --target: calc(56px / var(--play-scale, 1));
+}
+.fingering-input .fingering-valve {
+  --step: min(calc(var(--finger-spacing, 72px) / var(--play-scale, 1)), calc((100cqw - var(--target)) / max(0.001, var(--layout-width))), calc((100cqh - var(--target)) / max(0.001, var(--layout-height))));
+  --x: calc(var(--along) * var(--direction) * var(--flip)); --y: var(--across);
+  position: absolute; left: calc(50% + var(--x) * var(--step)); top: calc(50% + var(--y) * var(--step));
+  transform: translate(-50%, -50%) scale(calc(1 / var(--play-scale, 1)));
+  flex: none; min-width: 0; width: 56px; height: 56px; min-height: 56px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 2px;
+  border: 0; border-radius: 12px; background: transparent; touch-action: none;
+}
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
-.valve-outline { position: relative; display: block; flex: 1; width: min(90%, 86px); min-height: 0; color: var(--color-teal); pointer-events: none; }
+.valve-outline { position: relative; display: block; flex: none; width: 48px; height: 34px; min-height: 0; color: var(--color-teal); pointer-events: none; }
 .valve-moving { position: absolute; inset: 0; transition: transform 90ms ease-out; }
 .valve-cap { position: absolute; top: 0; left: 0; width: 100%; height: 28px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; background: var(--color-surface); font: 800 20px/1 var(--font-heading); }
 .valve-stem { position: absolute; top: 26px; bottom: 8px; left: calc(50% - 5px); width: 10px; border: 2px solid currentColor; background: var(--color-surface); }
@@ -1287,7 +1302,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(12px); }
 .fingering-valve[aria-pressed=true] .valve-cap { background: var(--color-tint); }
 .fingering-input[data-instrument='horn-f'] .fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(6px); }
-.fingering-trigger .valve-outline { flex: none; width: min(70%, 200px); height: 28px; }
+.fingering-trigger .valve-outline { width: 48px; height: 28px; }
 .fingering-trigger .valve-cap { border-radius: 14px; height: 24px; }
 .fingering-trigger .valve-stem, .fingering-trigger .valve-casing { display: none; }
 @media (prefers-reduced-motion: reduce) { .valve-moving { transition: none; } }
@@ -1296,13 +1311,9 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-help { font-size: 12px; margin: 6px 0; }
 .keyboard-answers { max-width: 760px; margin: auto; min-width: 0; }
 .keyboard-answers .piano { min-width: 512px; height: 136px; }
-.fingering-input[data-instrument='horn-f'] { flex-wrap: wrap; }
-.fingering-input[data-instrument='horn-f'] .fingering-valve:last-child { flex: 0 0 100%; height: 64px; flex-direction: row; }
 .horn-side { font-size: 12px; margin: 6px 0; }
 .fingering-actions { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 6px; }
 .fingering-actions .fingering-open { margin-top: 0; }
-.fingering-input[data-instrument='horn-f'] .fingering-valve { height: 80px; }
-.fingering-input[data-instrument='horn-f'] .fingering-valve:last-child { height: 44px; }
 
 .note-entry .input-workspace .interaction-selector .control { min-height: 44px; font-size: 14px; }
 /* The note-name grid needs the full width to retain 44px touch targets. */
@@ -1379,27 +1390,29 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .input-workspace { height: 100%; min-height: 0; }
 #home .play-stage--grip .interaction-selector .control { font-size: 12px; padding: 6px; }
 #home .play-stage--grip .interaction-body { min-height: 0; padding: 6px; }
-#home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) 88px; height: 100%; gap: 6px; }
-#home .play-stage--grip .fingering-input { position: relative; grid-column: 2; grid-row: 1; flex-direction: column-reverse; flex-wrap: nowrap; gap: 4px; min-height: 0; }
-#home .play-stage--grip .fingering-input .fingering-valve { flex: 1; width: 88px; height: auto; min-height: 44px; padding: 2px; }
-#home .play-stage--grip .valve-outline { flex: none; width: 64px; height: 40px; }
-#home .play-stage--grip .fingering-valve kbd,
+#home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) 100px; height: 100%; gap: 6px; }
+#home .play-stage--grip .fingering-input {
+  grid-column: 2; grid-row: 1; min-height: 0; height: 100%; --direction: -1;
+  --layout-width: var(--span-across); --layout-height: var(--span-along);
+}
+#home .play-stage--grip .fingering-input .fingering-valve {
+  --x: calc(var(--across) * var(--thumb-side)); --y: calc(var(--along) * var(--direction) * var(--flip));
+}
+#home .play-stage--grip .fingering-input:is([data-control='finger'], [data-instrument='horn-f']) { --direction: 1; }
+#home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-input { --thumb-side: -1; }
 #home .play-stage--grip .fingering-help { display: none; }
 #home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 1; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
 #home .play-stage--grip .fingering-open { min-height: 44px; font-size: 12px; padding: 4px; white-space: nowrap; }
 #home .play-stage--grip .horn-side { display: none; }
 #home .play-stage--grip .practice-play > :is(h2, .counts, .staff-panel, .feedback, .control-row, .challenge-scene) { grid-column: 1; }
 #home .play-stage--grip:has(.note-entry[data-grip-position='left']) .note-entry { right: auto; left: max(8px, env(safe-area-inset-left)); }
-#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .fingering-panel { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .fingering-panel { grid-template-columns: 100px minmax(0, 1fr); }
 #home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-input { grid-column: 1; }
-#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f']) .fingering-actions { grid-column: 2; align-self: end; margin-bottom: 64px; }
-#home .play-stage--grip .fingering-input[data-instrument='horn-f'] .fingering-trigger { position: absolute; left: calc(100% + 6px); bottom: 0; width: 72px; height: 60px; }
-#home .play-stage--grip .fingering-trigger .valve-outline { height: 28px; width: 56px; }
 /* Let four valves use the full height; keep the selector beside the column. */
-#home .play-stage--grip .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-rows: minmax(0, 1fr); gap: 6px; }
+#home .play-stage--grip .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 100px; grid-template-rows: minmax(0, 1fr); gap: 6px; }
 #home .play-stage--grip .interaction-selector { grid-column: 1; grid-row: 1; grid-auto-flow: row; grid-auto-columns: auto; align-self: start; margin: 6px 0 0 6px; z-index: 1; }
 #home .play-stage--grip .interaction-body { grid-column: 1 / -1; grid-row: 1; }
-#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .input-workspace { grid-template-columns: 88px minmax(0, 1fr); }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .input-workspace { grid-template-columns: 100px minmax(0, 1fr); }
 #home .play-stage--grip:has(.note-entry[data-grip-position='left']) .interaction-selector { grid-column: 2; margin: 6px 6px 0 0; }
 
 /* Reserve the hand column beside the entire app, including its compact header. */
@@ -1415,30 +1428,20 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .area-navigation img { flex-basis: 28px; width: 28px; height: 28px; }
 
 /* String fingers use simple fingertip pads, sharing the held-input interactions. */
-.fingering-input[data-control='finger'] { flex-direction: row-reverse; }
-.fingering-input[data-control='finger'] .valve-outline { flex: none; width: 56px; height: 56px; }
-.fingering-input[data-control='finger'] .valve-cap { height: 56px; border-radius: 50%; }
+.fingering-input[data-control='finger'] { --direction: -1; }
+.fingering-input[data-flipped='true'] { --flip: -1; }
+.fingering-input[data-control='finger'] .valve-outline { width: 40px; height: 40px; }
+.fingering-input[data-control='finger'] .valve-cap { height: 40px; border-radius: 50%; }
 .fingering-input[data-control='finger'] :is(.valve-stem,.valve-casing) { display: none; }
 .fingering-input[data-control='finger'] .fingering-valve[aria-pressed='true'] .valve-moving { transform: translateY(4px); }
-#home .play-stage--grip .fingering-input[data-control='finger'] .valve-outline { width: 48px; height: 48px; }
-#home .play-stage--grip .fingering-input[data-control='finger'] .valve-cap { height: 48px; }
 
 
 /* Grip controls share the Open action row; visual order never changes finger identity. */
-.fingering-layout-tools { display: flex; gap: 2px; }
+.fingering-layout-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
 .fingering-layout-tools .control { min-width: 44px; min-height: 44px; padding: 4px 6px; font-size: 12px; border-color: transparent; background: transparent; box-shadow: none; }
 .fingering-actions { flex-wrap: wrap; gap: 4px 8px; }
-.fingering-input[data-flipped='true'] { flex-direction: row-reverse; }
-.fingering-input[data-control='finger'][data-flipped='true'] { flex-direction: row; }
-#home .play-stage--grip .fingering-input[data-control='finger'] { flex-direction: column; }
-#home .play-stage--grip .fingering-input[data-flipped='true'] { flex-direction: column; }
-#home .play-stage--grip .fingering-input[data-control='finger'][data-flipped='true'] { flex-direction: column-reverse; }
 #home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-actions { grid-column: 2; }
 #home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-actions { grid-column: 1; }
-#home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-trigger { left: auto; right: calc(100% + 6px); }
-#home .play-stage--grip .fingering-input[data-flipped='true'] .fingering-trigger { bottom: auto; top: 0; }
-#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f'][data-flipped='true']) .interaction-selector { margin-top: 70px; }
-#home .play-stage--grip:has(.fingering-input[data-instrument='horn-f'][data-flipped='true']) .fingering-actions { margin-bottom: 0; }
 
 /* Narrow portrait screens keep a slim column, with tools below the finger targets. */
 @media (max-width: 600px) {
@@ -1446,14 +1449,14 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #home.is-playing:has(.play-stage--grip) { padding-right: max(8px, env(safe-area-inset-right)); }
   #home.is-playing:has(.play-stage--grip .note-entry[data-grip-position='left']) { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
   #home .play-stage--grip .input-workspace { display: flex; flex-direction: column; gap: 4px; padding: 0; }
-  #home .play-stage--grip .interaction-selector { align-self: stretch; margin: 0 !important; }
+  #home .play-stage--grip .interaction-selector { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-self: stretch; margin: 0; }
+  #home .play-stage--grip .interaction-selector .control { padding: 2px; }
   #home .play-stage--grip .interaction-body { flex: 1; min-height: 0; padding: 4px; }
   #home .play-stage--grip .fingering-panel { display: flex; flex-direction: column; gap: 0; }
-  #home .play-stage--grip .fingering-input { flex: 1; align-items: center; gap: 2px; }
-  #home .play-stage--grip .fingering-input .fingering-valve { width: 88px; min-height: 48px; }
-  #home .play-stage--grip .fingering-actions { flex: none; align-self: center; margin: 0 !important; gap: 0; }
-  #home .play-stage--grip .fingering-input[data-instrument='horn-f'] .fingering-trigger { position: static; flex: 0 0 48px; height: 48px; }
-  #home .play-stage--grip .fingering-input[data-flipped='true'] .fingering-trigger { order: -1; }
+  #home .play-stage--grip .fingering-input { flex: 1; height: auto; }
+  #home .play-stage--grip .fingering-actions { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; align-self: center; margin: 0; gap: 0; }
+  #home .play-stage--grip .fingering-layout-tools { display: contents; }
+  #home .play-stage--grip .fingering-open { white-space: normal; }
   #home .play-stage--grip .practice-play > .control-row { flex-wrap: wrap; }
   #home.is-playing:has(.play-stage--grip) > .app-header { flex-wrap: wrap; }
   #home.is-playing:has(.play-stage--grip) .area-navigation { flex-wrap: wrap; }
@@ -1474,13 +1477,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--bottom .interaction-selector { grid-auto-flow: row; align-self: center; }
 #home .play-stage--bottom .interaction-body { padding: 0 4px; min-height: 0; }
 #home .play-stage--bottom .fingering-panel { max-width: none; display: flex; height: 100%; align-items: center; gap: 6px; }
-#home .play-stage--bottom .fingering-actions { flex: 0 0 96px; flex-direction: column; gap: 0; margin: 0; }
-#home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; flex-wrap: nowrap; }
-#home .play-stage--bottom .fingering-input .fingering-valve { height: 64px; min-height: 48px; }
-#home .play-stage--bottom .fingering-input .fingering-trigger { flex: 1; }
-#home .play-stage--bottom :is(.fingering-help,.horn-side,.fingering-valve kbd) { display: none; }
-#home .play-stage--bottom .valve-outline { flex: none; height: 40px; }
-#home .play-stage--bottom .fingering-input[data-control='finger'] .valve-outline { height: 56px; }
+#home .play-stage--bottom .fingering-actions { flex: 0 0 160px; flex-direction: column; gap: 0; margin: 0; }
+#home .play-stage--bottom .fingering-layout-tools { flex-wrap: nowrap; }
+#home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; height: 100%; }
+#home .play-stage--bottom :is(.fingering-help,.horn-side) { display: none; }
 #home .play-stage--bottom .fingering-open { min-height: 44px; padding: 4px; font-size: 13px; white-space: nowrap; }
 #home .play-stage--bottom:not(.challenge-active) .practice-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
 #home .play-stage--bottom:not(.challenge-active) .practice-play > .staff-panel { grid-column: 2; grid-row: 1 / 4; }
