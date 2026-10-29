@@ -1285,13 +1285,16 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 .fingering-input .fingering-valve {
   --step: min(calc(var(--finger-spacing, 72px) / var(--play-scale, 1)), calc((100cqw - var(--target)) / max(0.001, var(--layout-width))), calc((100cqh - var(--target)) / max(0.001, var(--layout-height))));
-  --x: calc(var(--along) * var(--direction) * var(--flip)); --y: var(--across);
+  --x: calc(var(--along) * var(--direction) * var(--flip));
+  --y: calc(var(--across) * var(--direction) * var(--thumb-side) * var(--flip));
   position: absolute; left: calc(50% + var(--x) * var(--step)); top: calc(50% + var(--y) * var(--step));
   transform: translate(-50%, -50%) scale(calc(1 / var(--play-scale, 1)));
   flex: none; min-width: 0; width: 56px; height: 56px; min-height: 56px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 2px;
   border: 0; border-radius: 12px; background: transparent; touch-action: none;
 }
+/* Handedness belongs to the instrument, independent of the panel's placement. */
+.fingering-input[data-hand='left'] { --thumb-side: -1; }
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
 .valve-outline { position: relative; display: block; flex: none; width: 48px; height: 34px; min-height: 0; color: var(--color-teal); pointer-events: none; }
@@ -1396,10 +1399,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   --layout-width: var(--span-across); --layout-height: var(--span-along);
 }
 #home .play-stage--grip .fingering-input .fingering-valve {
-  --x: calc(var(--across) * var(--thumb-side)); --y: calc(var(--along) * var(--direction) * var(--flip));
+  /* Rotate the same hand coordinates; Flip turns both axes together. */
+  --x: calc(-1 * var(--across) * var(--direction) * var(--thumb-side) * var(--flip));
+  --y: calc(var(--along) * var(--direction) * var(--flip));
 }
 #home .play-stage--grip .fingering-input:is([data-control='finger'], [data-instrument='horn-f']) { --direction: 1; }
-#home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-input { --thumb-side: -1; }
 #home .play-stage--grip .fingering-help { display: none; }
 #home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 1; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
 #home .play-stage--grip .fingering-open { min-height: 44px; font-size: 12px; padding: 4px; white-space: nowrap; }

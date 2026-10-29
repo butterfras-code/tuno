@@ -7,6 +7,9 @@ import { viewportProfiles } from './viewport-profiles.mjs';
 import { choosePreset, startPractice, notesMode } from './notes-setup-helpers.mjs';
 
 const strings = ['violin','viola','cello','double-bass'];
+const layoutInstruments = ['horn-f','trumpet-bb','tuba','euphonium',...strings];
+const selectedLayouts = process.env.TUNO_FINGERING_INSTRUMENTS?.split(',') ?? layoutInstruments;
+assert.ok(selectedLayouts.every(instrument => layoutInstruments.includes(instrument)), 'Unknown fingering layout instrument');
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
@@ -53,8 +56,13 @@ async function checkHand(page, context) {
     const [one,two,,thumb] = fingers;
     assert.ok((thumb[axis]-one[axis])*(two[axis]-one[axis]) < 0, `${context}: trigger follows valve 1`);
     assert.ok(Math.abs(thumb[cross]-one[cross]) > 1, `${context}: thumb offset is preserved`);
+    // The left-hand 3–2–1 reference has the thumb below and left of valve 1.
+    // This sign must survive Move, rotation, and Flip; reversing just one axis
+    // silently changes the layout into a right hand.
+    const handedness = (two.x-one.x)*(thumb.y-one.y) - (two.y-one.y)*(thumb.x-one.x);
+    assert.ok(handedness < 0, `${context}: horn retains left-hand geometry`);
     assert.ok(Math.hypot(thumb.x-one.x,thumb.y-one.y) <= 99.5, `${context}: thumb reach stays bounded`);
-    if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y, `${context}: flipped hand geometry`);
+    if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y && thumb.x < one.x, `${context}: flipped left-hand thumb is below and left of valve 1`);
     assert.equal(await page.locator('.fingering-trigger kbd').textContent(),'V');
     assert.equal(await page.locator('.fingering-trigger kbd').isVisible(),true);
     assert.equal(await page.locator('.fingering-trigger').getAttribute('aria-keyshortcuts'),'V');
@@ -149,7 +157,7 @@ async function checkLayouts(page) {
   }
 
   // Phones rotate into an edge-mounted valve column, mirrored for the horn.
-  for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium',...strings]) {
+  for (const instrument of selectedLayouts) {
     const left = instrument==='horn-f';
     const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
     const phone=await context.newPage(); phone.on('pageerror',e=>errors.push(e.message));
@@ -205,7 +213,7 @@ async function checkLayouts(page) {
     await context.close();
   }
 
-  for (const instrument of ['horn-f','trumpet-bb','tuba','euphonium',...strings]) for (const profile of viewportProfiles) {
+  for (const instrument of selectedLayouts) for (const profile of viewportProfiles) {
     const context=await browser.newContext({viewport:profile.viewport,hasTouch:profile.hasTouch});
     const screen=await context.newPage();
     await screen.goto(new URL('/notes/',host.url).href);
