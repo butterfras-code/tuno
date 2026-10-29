@@ -224,7 +224,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
         policy.change(mask,intentional);
         side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
-      }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -1, across: 0.5 } : undefined);
+      }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';

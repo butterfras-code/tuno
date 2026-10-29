@@ -10,13 +10,13 @@ import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import { fingerLayout, fingerSpacing } from '../src/shared/input/fingering-layout.ts';
 
 test('hand layouts keep thumb offsets relative to their anchor for every spacing', () => {
-  const horn = fingerLayout(4, { index: 3, anchor: 0, along: -1, across: 0.5 });
+  const horn = fingerLayout(4, { index: 3, anchor: 0, along: -0.75, across: 1 });
   for (const distance of Object.values(fingerSpacing)) {
     const [one, two, three, thumb] = horn.points;
-    assert.equal((thumb!.along - one!.along) * distance, -distance);
-    assert.equal((thumb!.across - one!.across) * distance, distance / 2);
+    assert.equal((thumb!.along - one!.along) * distance, -distance * 0.75);
+    assert.ok(Math.abs((thumb!.across - one!.across) * distance - distance) < 1e-9);
     assert.equal(two!.along - one!.along, three!.along - two!.along);
-    assert.ok(distance >= 60 && distance <= 88);
+    assert.ok(distance >= 68 && distance <= 100);
   }
   for (const count of [3, 4]) {
     const layout = fingerLayout(count);

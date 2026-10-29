@@ -1,5 +1,5 @@
 /** Distances in CSS pixels, independent of display size and touch-target size. */
-export const fingerSpacing = { compact: 60, regular: 72, wide: 88 } as const;
+export const fingerSpacing = { compact: 68, regular: 84, wide: 100 } as const;
 export type FingerSpacing = keyof typeof fingerSpacing;
 export const spacingPresets = Object.keys(fingerSpacing) as FingerSpacing[];
 

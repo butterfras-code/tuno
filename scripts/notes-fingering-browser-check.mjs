@@ -42,7 +42,7 @@ async function checkHand(page, context) {
   });
   const { controls, fingers, vertical, flipped } = geometry;
   for (const [i,a] of controls.entries()) {
-    assert.ok(!a.finger || a.w >= 55 && a.h >= 55, `${context}: touch target ${JSON.stringify(a)}`);
+    assert.ok(!a.finger || a.w >= 63 && a.h >= 63, `${context}: touch target ${JSON.stringify(a)}`);
     for (const b of controls.slice(i+1)) {
       const overlapX = Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
       const overlapY = Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y);
@@ -51,7 +51,7 @@ async function checkHand(page, context) {
   }
   const axis = vertical ? 'y' : 'x', cross = vertical ? 'x' : 'y';
   const distance = Math.abs(fingers[1][axis]-fingers[0][axis]);
-  assert.ok(distance <= 88.75, `${context}: spacing must stay bounded, got ${distance}`);
+  assert.ok(distance <= 100.75, `${context}: spacing must stay bounded, got ${distance}`);
   if (await page.locator('.fingering-trigger').count()) {
     const [one,two,,thumb] = fingers;
     assert.ok((thumb[axis]-one[axis])*(two[axis]-one[axis]) < 0, `${context}: trigger follows valve 1`);
@@ -61,7 +61,7 @@ async function checkHand(page, context) {
     // silently changes the layout into a right hand.
     const handedness = (two.x-one.x)*(thumb.y-one.y) - (two.y-one.y)*(thumb.x-one.x);
     assert.ok(handedness < 0, `${context}: horn retains left-hand geometry`);
-    assert.ok(Math.hypot(thumb.x-one.x,thumb.y-one.y) <= 99.5, `${context}: thumb reach stays bounded`);
+    assert.ok(Math.hypot(thumb.x-one.x,thumb.y-one.y) <= 129, `${context}: thumb reach stays bounded`);
     if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y && thumb.x < one.x, `${context}: flipped left-hand thumb is below and left of valve 1`);
     assert.equal(await page.locator('.fingering-trigger kbd').textContent(),'V');
     assert.equal(await page.locator('.fingering-trigger kbd').isVisible(),true);
