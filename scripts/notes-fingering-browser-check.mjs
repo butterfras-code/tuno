@@ -457,18 +457,52 @@ try {
   await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),2); assert.equal(await correct(),2);
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),3);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
+  assert.equal(await page.locator('.fingering-input').evaluate(root=>getComputedStyle(root).touchAction),'none','Gaps in the fingering surface also block pinch/pan');
+  for (const type of ['touchstart','touchmove','gesturestart','gesturechange']) {
+    const canceled = await page.evaluate(type=>{
+      const inside = new Event(type,{bubbles:true,cancelable:true});
+      const outside = new Event(type,{bubbles:true,cancelable:true});
+      document.querySelector('.fingering-input').dispatchEvent(inside);
+      document.body.dispatchEvent(outside);
+      return {inside:inside.defaultPrevented,outside:outside.defaultPrevented};
+    },type);
+    assert.deepEqual(canceled,{inside:true,outside:false},`${type}: gesture guard stays within the fingering surface`);
+  }
   if (name === 'chromium') {
     const cdp = await page.context().newCDPSession(page);
-    for (let preset = 0; preset < 3; preset++) {
+    for (const viewport of [{width:1366,height:650},{width:360,height:740}]) for (let preset = 0; preset < 3; preset++) {
+      await page.setViewportSize(viewport);
       await page.evaluate(()=>window.fixture.start('D4','correct','horn-f'));
       const points = [];
       for (const [id,label] of ['Valve 1','Valve 2','Thumb trigger — B♭ side'].entries()) {
         const r = await page.getByRole('button',{name:label,exact:true}).boundingBox();
         points.push({x:r.x+r.width/2,y:r.y+r.height/2,id:id+1});
       }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[2]]});
+      await page.waitForTimeout(40);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[2],points[0]]});
+      await page.waitForTimeout(40);
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
       assert.equal(await mask(),'11010000');
       await settle(); assert.equal(await correct(),1,'Held valves and trigger still evaluate automatically');
+      const initialScale = await page.evaluate(()=>visualViewport.scale);
+      const moved = points.map((point,index)=>({...point,x:point.x+(index===2 ? -10 : 10),y:point.y+(index===2 ? 10 : -10)}));
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:moved});
+      await page.waitForTimeout(80);
+      assert.equal(await mask(),'11010000','Pinch-like finger movement must retain T+1+2');
+      assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale,'Playing fingers must not zoom the page');
+      const gap = await page.locator('.fingering-input').evaluate(root=>{
+        const r=root.getBoundingClientRect(),x=r.left+2,y=r.top+2;
+        return {x,y,isGap:document.elementFromPoint(x,y)===root};
+      });
+      assert.ok(gap.isGap,'Extra contact starts on the surface between targets');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[...moved,{x:gap.x,y:gap.y,id:4}]});
+      assert.equal(await mask(),'11010000','A contact in the gap does not release or add a valve');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[...moved,{x:gap.x+1,y:gap.y+1,id:4}]});
+      await page.waitForTimeout(80);
+      assert.equal(await mask(),'11010000','A moving gap contact cannot steal held fingers');
+      assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[{x:gap.x+1,y:gap.y+1,id:4}]});
       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[points[0]]});
       assert.equal(await mask(),'01010000','Partial release retains valve 2 and trigger');
       await page.keyboard.down('v'); await page.keyboard.up('v');

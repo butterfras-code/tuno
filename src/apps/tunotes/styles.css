@@ -1279,6 +1279,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
    Container bounds cap spacing. Targets never grow with spacing or display size. */
 .fingering-input {
   position: relative; container-type: size; width: 100%; height: calc(112px / var(--play-scale, 1));
+  touch-action: none;
   --direction: 1; --flip: 1; --thumb-side: 1;
   --layout-width: var(--span-along); --layout-height: var(--span-across);
   --target: calc(56px / var(--play-scale, 1));

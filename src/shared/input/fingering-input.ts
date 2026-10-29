@@ -12,6 +12,12 @@ export function fingeringInput(fingers: readonly FingerPosition[], change: (mask
   node.style.setProperty('--span-across', String(layout.across));
   const held = new HeldFingers();
   let enabled = false;
+  // Fingers may land in the gaps or shift while held. Keep browser gestures
+  // out of this whole playing surface, without disabling zoom elsewhere.
+  const preventGesture = (event: Event) => { if (enabled && event.cancelable) event.preventDefault(); };
+  for (const type of ['touchstart', 'touchmove', 'gesturestart', 'gesturechange']) {
+    node.addEventListener(type, preventGesture, { passive: false });
+  }
   const pointers = new Map<number, HTMLButtonElement>();
   const buttons = fingers.map((finger, index) => {
     const button = el('button', 'control fingering-valve'); button.type = 'button';
@@ -26,7 +32,6 @@ export function fingeringInput(fingers: readonly FingerPosition[], change: (mask
     button.classList.toggle('fingering-trigger', index === thumb?.index);
     button.append(shape, el('kbd', '', finger.key.toUpperCase()));
     button.addEventListener('contextmenu', e => e.preventDefault());
-    button.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
     button.addEventListener('pointerdown', e => {
       if (!enabled || e.button !== 0) return;
       e.preventDefault(); pointers.set(e.pointerId, button); button.setPointerCapture(e.pointerId);
