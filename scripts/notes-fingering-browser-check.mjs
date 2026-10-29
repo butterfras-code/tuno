@@ -86,9 +86,12 @@ async function checkSpacings(page, context) {
   assert.ok(Math.abs(sizes.compact.target-sizes.wide.target) < 0.1,'Spacing keeps target sizes fixed');
 }
 async function checkResize(page, context) {
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const root = page.locator('.fingering-input');
   const before = await root.locator('.fingering-valve').first().boundingBox();
   const counts = await page.locator('#practice-counts').textContent();
+  const panelBefore = await page.locator('.note-entry').boundingBox();
+  const staffBefore = await page.locator('.staff-panel').boundingBox();
   await page.getByRole('button', {name:'Resize',exact:true}).click();
   const handle = page.getByRole('slider', {name:'Finger arrangement size'});
   if (context === 'horn-f classroom left') {
@@ -103,6 +106,8 @@ async function checkResize(page, context) {
   await handle.press('End');
   await page.waitForTimeout(100);
   await checkHand(page, `${context} fill`);
+  assert.deepEqual(await page.locator('.note-entry').boundingBox(), panelBefore, `${context}: resize must not grow the panel`);
+  assert.deepEqual(await page.locator('.staff-panel').boundingBox(), staffBefore, `${context}: resize must not take staff space`);
   const navigationLabels = await page.locator('.focus-navigation > button').evaluateAll(buttons => buttons.map(button => {
     const range = document.createRange(); range.selectNodeContents(button);
     const r = range.getBoundingClientRect(); return {left:r.left, right:r.right, top:r.top, bottom:r.bottom};
@@ -124,7 +129,25 @@ async function checkResize(page, context) {
   const large = await root.locator('.fingering-valve').first().boundingBox();
   assert.ok(large.width >= before.width-1, `${context}: fill never shrinks the hand`);
   await handle.press('Home'); await page.waitForTimeout(100);
+  const placement = page.getByRole('group', {name:'Finger arrangement position',exact:true});
+  const initial = await root.locator('.fingering-valve').first().boundingBox();
+  // Drag to the upper-left edges with real pointer capture, then restore the center.
+  const outline = await placement.boundingBox();
+  await page.mouse.move(outline.x + outline.width/2, outline.y + outline.height/2);
+  await page.mouse.down(); await page.mouse.move(area.x + 1, area.y + 1, {steps:3}); await page.mouse.up();
+  await page.waitForTimeout(50);
+  const moved = await root.locator('.fingering-valve').first().boundingBox();
+  assert.ok(moved.x <= initial.x+1 && moved.y <= initial.y+1, `${context}: drag repositions toward the edge`);
+  const all = await root.locator('.fingering-valve').evaluateAll(buttons => buttons.map(button => {
+    const r=button.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};
+  }));
+  assert.ok(Math.abs(Math.min(...all.map(r=>r.x))-area.x) < 1 && Math.abs(Math.min(...all.map(r=>r.y))-area.y) < 1, `${context}: controls can reach the input edges`);
+  assert.ok(all.every(r=>r.x>=area.x-1 && r.y>=area.y-1 && r.right<=area.x+area.width+1 && r.bottom<=area.y+area.height+1));
+  await page.screenshot({path:`dist/validation/position-${context.replaceAll(' ','-')}-${name}.png`});
+  await placement.press('Home'); await page.waitForTimeout(50);
+  assert.deepEqual(await root.locator('.fingering-valve').first().boundingBox(),initial, `${context}: Home centers the hand`);
   await page.getByRole('button', {name:'Done',exact:true}).click();
+  await handle.waitFor({state:'hidden'});
   assert.equal(await handle.count(), 0, 'Handle is hidden outside resize mode');
   assert.ok(await root.locator('.fingering-valve:enabled').count());
   await checkHand(page, `${context} reset size`);
@@ -300,9 +323,15 @@ async function checkLayouts(page) {
       await screen.getByRole('button',{name:/^Spacing:/}).click();
       await screen.getByRole('button',{name:'Resize',exact:true}).click();
       await screen.getByRole('slider',{name:'Finger arrangement size'}).press('ArrowDown');
+      await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       await screen.reload(); await choosePreset(screen,'horn-f-starter'); await startPractice(screen); await chooseMethod(screen,'fingering');
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Size survives reload');
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.45,y:0.5});
+      await screen.getByRole('button',{name:'Resize',exact:true}).click();
+      await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.4,y:0.5},'Position reloads before the next adjustment');
+      await screen.getByRole('button',{name:'Done',exact:true}).click();
       assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
       assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'wide','Spacing survives reload');
       await screen.setViewportSize({width:1080,height:1920});
@@ -317,6 +346,9 @@ async function checkLayouts(page) {
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Returning to the orientation restores size');
       await screen.getByRole('button',{name:'Resize',exact:true}).click();
       await screen.getByRole('slider',{name:'Finger arrangement size'}).press('Home');
+      await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
+      assert.equal(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape')).x),0.35000000000000003,'Position survives rotation');
+      await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('Home');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       await flip.click();
     }
@@ -705,7 +737,7 @@ try {
     const write = Storage.prototype.setItem;
     window.fixture.restoreStorage = () => { Storage.prototype.setItem = write; };
     Storage.prototype.setItem = function(key,value) {
-      if (key.startsWith('tunotes:finger-spacing:') || key.startsWith('tunotes:finger-scale:')) throw new DOMException('Fixture storage denial','QuotaExceededError');
+      if (key.startsWith('tunotes:finger-spacing:') || key.startsWith('tunotes:finger-scale:') || key.startsWith('tunotes:finger-position:')) throw new DOMException('Fixture storage denial','QuotaExceededError');
       return write.call(this,key,value);
     };
   });

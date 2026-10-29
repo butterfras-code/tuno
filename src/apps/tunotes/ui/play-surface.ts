@@ -37,21 +37,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       // Starting after scrolling setup must not leave the play surface offscreen.
       if (stage) window.scrollTo(0,0);
     }
-    if (!stage || !viewport) { home.style.removeProperty('--requested-hand-scale'); return; }
-    const requestedHandScale = Number(stage.querySelector<HTMLElement>('.note-entry')?.dataset.handScale ?? 1);
-    home.style.setProperty('--requested-hand-scale', String(requestedHandScale));
-    // A vertical hand cannot grow wider than its height allows. Reserve only
-    // that attainable footprint, leaving the remaining width for music/navigation.
-    const hand = stage.querySelector<HTMLElement>('.fingering-input');
-    if (hand) {
-      const style = getComputedStyle(hand);
-      const step = parseFloat(style.getPropertyValue('--finger-spacing')) || 84;
-      const along = Number(style.getPropertyValue('--span-along'));
-      const across = Number(style.getPropertyValue('--span-across'));
-      const limit = (window.innerHeight - 32) * (64 + across * step) / (64 + along * step);
-      home.style.setProperty('--hand-column-limit', `${limit}px`);
-    }
-
+    if (!stage || !viewport) return;
     const multiplayer = stage.classList.contains('multiplayer-round');
     const grip = !multiplayer && Boolean(stage.querySelector('.note-entry:not([hidden])[data-input-method="fingering"]:is([data-grip-position="left"], [data-grip-position="right"])'));
     const bottom = !multiplayer && Boolean(stage.querySelector('.note-entry:not([hidden])[data-input-method="fingering"][data-grip-position="bottom"]'))
@@ -107,7 +93,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
       ? record.target instanceof Element && record.target.matches('.multiplayer-panels')
       : record.oldValue !== (record.target as Element).getAttribute(record.attributeName!))) schedule();
   });
-  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen','data-input-method','data-grip-position','data-hand-scale','data-spacing']});
+  changes.observe(home,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['hidden','data-screen','data-input-method','data-grip-position']});
   window.addEventListener('resize',schedule);
   document.fonts.ready.then(schedule);
   schedule();

@@ -1,5 +1,5 @@
 import { keyboardAnswers } from './keyboard-answers.ts';
-import { fingeringResize } from '../../../shared/input/fingering-resize.ts';
+import { fingeringResize, type FingerPosition } from '../../../shared/input/fingering-resize.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
 import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
@@ -122,20 +122,27 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
   const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
   const spacing = el('button', 'control fingering-spacing', 'Spacing'); spacing.type = 'button';
-  const resize = el('button', 'control fingering-resize', 'Resize'); resize.type = 'button';
+  const resize = el('button', 'control fingering-resize'); resize.type = 'button';
+  const resizeLabel = el('span', '', 'Resize'), doneLabel = el('span', '', 'Done');
+  doneLabel.style.visibility = 'hidden'; resize.append(resizeLabel, doneLabel);
   const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing, resize);
   let resizing = false, selectedScale = 1, activeScaleKey = '';
   const scales = new Map<string, number>();
+  let selectedPosition: FingerPosition = { x: 0.5, y: 0.5 };
+  const handPositions = new Map<string, FingerPosition>();
+  const handPositionKey = () => activeScaleKey.replace('finger-scale:', 'finger-position:');
   const scaleKey = () => `tunotes:finger-scale:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
-  function changeScale(value: number, commit: boolean) {
+  function changeScale(value: number, commit: boolean, position: FingerPosition) {
+    selectedPosition = { ...position }; handPositions.set(handPositionKey(), selectedPosition);
     selectedScale = value; scales.set(activeScaleKey, value);
-    node.dataset.handScale = String(value); node.style.setProperty('--requested-hand-scale', String(value));
-    if (commit) try { localStorage.setItem(activeScaleKey, String(value)); } catch { /* Session-only size. */ }
+    node.dataset.handScale = String(value);
+    if (commit) try { localStorage.setItem(activeScaleKey, String(value)); localStorage.setItem(handPositionKey(), JSON.stringify(position)); } catch { /* Session-only size and position. */ }
   }
   let resizer = fingeringResize(fingers.node, changeScale);
   function editSize(value: boolean) {
     reset(); resizing = value;
-    resize.textContent = value ? 'Done' : 'Resize';
+    resizeLabel.style.visibility = value ? 'hidden' : 'visible';
+    doneLabel.style.visibility = value ? 'visible' : 'hidden';
     resize.setAttribute('aria-pressed', String(value));
     resizer.edit(value);
     fingers.enable(supported && method === 'fingering' && !value);
@@ -156,8 +163,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     fingers.node.dataset.flipped = String(flipped);
     fingers.node.dataset.spacing = selectedSpacing;
     fingers.node.style.setProperty('--finger-spacing', `${fingerSpacing[selectedSpacing]}px`);
-    resizer.update(selectedScale, fingerSpacing[selectedSpacing]);
-    node.dataset.handScale = String(selectedScale); node.style.setProperty('--requested-hand-scale', String(selectedScale));
+    resizer.update(selectedScale, fingerSpacing[selectedSpacing], selectedPosition);
+    node.dataset.handScale = String(selectedScale);
     const nextSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
     const label = selectedSpacing[0]!.toUpperCase() + selectedSpacing.slice(1);
     spacing.setAttribute('aria-label', `Spacing: ${label}. Change to ${nextSpacing}`);
@@ -172,6 +179,11 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const positions: readonly Position[] = ['left', 'bottom', 'right'];
   function loadLayout() {
     editSize(false); activeScaleKey = scaleKey();
+    selectedPosition = handPositions.get(handPositionKey()) ?? { x: 0.5, y: 0.5 };
+    if (!handPositions.has(handPositionKey())) try {
+      const value = JSON.parse(localStorage.getItem(handPositionKey()) ?? 'null');
+      if (value && Number.isFinite(value.x) && Number.isFinite(value.y) && value.x >= 0 && value.x <= 1 && value.y >= 0 && value.y <= 1) selectedPosition = value;
+    } catch { /* Session-only position. */ }
     selectedScale = scales.get(scaleKey()) ?? 1;
     if (!scales.has(scaleKey())) try {
       const value = Number(localStorage.getItem(scaleKey()));

@@ -8,7 +8,7 @@ import { HeldFingers } from '../src/shared/input/held-fingers.ts';
 import { FINGERING_SETTLE_MS, FingeringPolicy } from '../src/apps/tunotes/engine/fingering-policy.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
 import { Challenge, defaultTimed } from '../src/apps/tunotes/engine/challenge.ts';
-import { fitFingerArrangement } from '../src/shared/input/fingering-resize.ts';
+import { fitFingerArrangement, fingerArrangementOffset } from '../src/shared/input/fingering-resize.ts';
 import { fingerLayout, fingerSpacing } from '../src/shared/input/fingering-layout.ts';
 
 test('hand layouts keep thumb offsets relative to their anchor for every spacing', () => {
@@ -437,4 +437,13 @@ test('Challenge avoids shared primary fingerings and Until correct preserves ret
   practice.answer(practice.token,{kind:'fingering',mask:'00001000'}); now += 800;
   assert.ok(practice.advance(practice.token));
   assert.equal(practice.pitch,original);
+});
+
+
+test('hand placement reaches input edges and clamps without changing hand size', () => {
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:0,y:0}),{x:-48,y:-100});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:1,y:1}),{x:48,y:100});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:0.5,y:0.5}),{x:0,y:0});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:-2,y:4}),{x:-48,y:100});
+  assert.deepEqual(fingerArrangementOffset(64,300,64,300,{x:1,y:1}),{x:0,y:0});
 });
