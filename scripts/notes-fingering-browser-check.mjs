@@ -7,6 +7,9 @@ import { viewportProfiles } from './viewport-profiles.mjs';
 import { choosePreset, startPractice, notesMode } from './notes-setup-helpers.mjs';
 
 const strings = ['violin','viola','cello','double-bass'];
+const layoutInstruments = ['horn-f','trumpet-bb','tuba','euphonium',...strings];
+const selectedLayouts = process.env.TUNO_FINGERING_INSTRUMENTS?.split(',') ?? layoutInstruments;
+assert.ok(selectedLayouts.every(instrument => layoutInstruments.includes(instrument)), 'Unknown fingering layout instrument');
 const name = process.env.TUNO_BROWSER || 'chromium';
 const browser = await ({chromium,firefox})[name].launch();
 const host = await hostBuild();
@@ -28,9 +31,60 @@ const chooseMethod = async (page, value) => {
   const current=await picker.locator('[aria-pressed="true"]').getAttribute('data-instrument');
   await picker.locator(`[data-instrument="${current==='piano' ? 'trumpet-bb' : current}"]`).click();
 };
-try {
-  const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
-  await page.goto(new URL('/notes/',host.url).href);
+// Exercise real rendered targets: spacing may compress to fit, never overlap.
+async function checkHand(page, context) {
+  const geometry = await page.locator('.fingering-panel').evaluate(panel => {
+    const root = panel.querySelector('.fingering-input');
+    const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; };
+    return { vertical: !!root.closest('.play-stage--grip'), flipped: root.dataset.flipped === 'true',
+      controls: [...panel.querySelectorAll('button')].map(el => ({...rect(el),label:el.getAttribute('aria-label') || el.textContent, finger:el.classList.contains('fingering-valve')})),
+      fingers: [...root.querySelectorAll('button')].map(rect) };
+  });
+  const { controls, fingers, vertical, flipped } = geometry;
+  for (const [i,a] of controls.entries()) {
+    assert.ok(!a.finger || a.w >= 55 && a.h >= 55, `${context}: touch target ${JSON.stringify(a)}`);
+    for (const b of controls.slice(i+1)) {
+      const overlapX = Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
+      const overlapY = Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y);
+      assert.ok(overlapX < 0.75 || overlapY < 0.75, `${context}: overlapping controls ${JSON.stringify({a,b})}`);
+    }
+  }
+  const axis = vertical ? 'y' : 'x', cross = vertical ? 'x' : 'y';
+  const distance = Math.abs(fingers[1][axis]-fingers[0][axis]);
+  assert.ok(distance <= 88.75, `${context}: spacing must stay bounded, got ${distance}`);
+  if (await page.locator('.fingering-trigger').count()) {
+    const [one,two,,thumb] = fingers;
+    assert.ok((thumb[axis]-one[axis])*(two[axis]-one[axis]) < 0, `${context}: trigger follows valve 1`);
+    assert.ok(Math.abs(thumb[cross]-one[cross]) > 1, `${context}: thumb offset is preserved`);
+    // The left-hand 3–2–1 reference has the thumb below and left of valve 1.
+    // This sign must survive Move, rotation, and Flip; reversing just one axis
+    // silently changes the layout into a right hand.
+    const handedness = (two.x-one.x)*(thumb.y-one.y) - (two.y-one.y)*(thumb.x-one.x);
+    assert.ok(handedness < 0, `${context}: horn retains left-hand geometry`);
+    assert.ok(Math.hypot(thumb.x-one.x,thumb.y-one.y) <= 99.5, `${context}: thumb reach stays bounded`);
+    if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y && thumb.x < one.x, `${context}: flipped left-hand thumb is below and left of valve 1`);
+    assert.equal(await page.locator('.fingering-trigger kbd').textContent(),'V');
+    assert.equal(await page.locator('.fingering-trigger kbd').isVisible(),true);
+    assert.equal(await page.locator('.fingering-trigger').getAttribute('aria-keyshortcuts'),'V');
+  }
+  return {distance, target:fingers[0].w};
+}
+async function checkSpacings(page, context) {
+  const root = page.locator('.fingering-input');
+  const position = await page.locator('.note-entry').getAttribute('data-grip-position');
+  const flipped = await root.getAttribute('data-flipped');
+  const sizes = {};
+  for (let i=0; i<3; i++) {
+    const preset = await root.getAttribute('data-spacing');
+    sizes[preset] = await checkHand(page, `${context} ${preset} flipped=${flipped}`);
+    await page.getByRole('button',{name:/^Spacing:/}).click();
+    assert.equal(await page.locator('.note-entry').getAttribute('data-grip-position'),position);
+    assert.equal(await root.getAttribute('data-flipped'),flipped);
+  }
+  assert.ok(sizes.compact.distance <= sizes.regular.distance+0.1 && sizes.regular.distance <= sizes.wide.distance+0.1);
+  assert.ok(Math.abs(sizes.compact.target-sizes.wide.target) < 0.1,'Spacing keeps target sizes fixed');
+}
+async function checkLayouts(page) {
   await choosePreset(page,'trumpet-bb-starter'); await startPractice(page);
   await chooseMethod(page,'fingering');
   assert.equal(await page.getByRole('button',{name:/^Valve [123]$/}).count(),3);
@@ -64,7 +118,7 @@ try {
   }
   await page.setViewportSize({width:1280,height:800});
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  await page.keyboard.down('j'); await page.waitForTimeout(260);
+  await page.keyboard.down('j'); await page.waitForTimeout(410);
   assert.match(await page.locator('#practice-counts').textContent(), /1 attempts/);
   await page.waitForTimeout(500);
   assert.match(await page.locator('#practice-counts').textContent(), /1 attempts/);
@@ -103,7 +157,7 @@ try {
   }
 
   // Phones rotate into an edge-mounted valve column, mirrored for the horn.
-  for (const instrument of ['trumpet-bb','horn-f','tuba','euphonium',...strings]) {
+  for (const instrument of selectedLayouts) {
     const left = instrument==='horn-f';
     const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
     const phone=await context.newPage(); phone.on('pageerror',e=>errors.push(e.message));
@@ -129,12 +183,12 @@ try {
         assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
         assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');
         assert.ok(v.w>=40 && v.h>=40, 'Valve targets remain usable after fitting the stage');
-        if(i) assert.ok((strings.includes(instrument) ? v.y>valves[i-1].y : v.y<valves[i-1].y) && Math.abs(v.x-valves[0].x)<1,'Finger order follows the instrument default');
+        if(i) assert.ok((strings.includes(instrument) || instrument==='horn-f' ? v.y>valves[i-1].y : v.y<valves[i-1].y) && Math.abs(v.x-valves[0].x)<1,'Finger order follows the instrument default');
         assert.ok(left ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
       }
       if(instrument==='horn-f') {
         const trigger=await phone.locator('.fingering-trigger').boundingBox();
-        assert.ok(trigger.x>valves[0].x+valves[0].w && trigger.x+trigger.width<staff.x);
+        assert.ok(trigger.x>valves[0].x && trigger.y<valves[0].y && trigger.x+trigger.width<staff.x);
       }
       await phone.screenshot({path:`dist/validation/notes-grip-${instrument}-${viewport.width}-${name}.png`});
     }
@@ -159,13 +213,15 @@ try {
     await context.close();
   }
 
-  for (const instrument of ['horn-f',...strings]) for (const profile of viewportProfiles) {
+  for (const instrument of selectedLayouts) for (const profile of viewportProfiles) {
     const context=await browser.newContext({viewport:profile.viewport,hasTouch:profile.hasTouch});
     const screen=await context.newPage();
     await screen.goto(new URL('/notes/',host.url).href);
     await choosePreset(screen,`${instrument}-starter`);
     await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-setup-${name}.png`,fullPage:true});
     await startPractice(screen); await chooseMethod(screen,'fingering');
+    if (['tuba','euphonium'].includes(instrument)) await selectInstrument(screen,`${instrument}-4`);
+    console.log(`Checking ${instrument} ${profile.id}`);
     // Compact layout tools work in every position without submitting an answer.
     const move = screen.getByRole('button', {name:/^Move input:/});
     const flip = screen.getByRole('button', {name:'Flip finger order',exact:true});
@@ -178,6 +234,7 @@ try {
       assert.equal(await flip.getAttribute('aria-pressed'),'true');
       assert.match(await screen.locator('#practice-counts').textContent(), /0 attempts/);
       await screen.screenshot({path:`dist/validation/grip-controls-${instrument}-${profile.id}-${position}-${name}.png`});
+      await checkSpacings(screen,`${instrument} ${profile.id} ${position}`);
       const bounds = await screen.locator('.fingering-panel').boundingBox();
       for (const control of await screen.locator('.fingering-panel button').all()) {
         const r = await control.boundingBox();
@@ -188,20 +245,30 @@ try {
       }
       assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${instrument} ${profile.id} ${position}: overflow ${JSON.stringify(await screen.locator('body *').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.width && r.right>innerWidth+1}).map(e=>({tag:e.tagName,cls:e.className,x:e.getBoundingClientRect().x,w:e.getBoundingClientRect().width})).slice(0,12)))}`);
       await flip.click();
+      await checkSpacings(screen,`${instrument} ${profile.id} ${position}`);
     }
     assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition);
     if (instrument === 'horn-f' && profile.id === 'classroom') {
       await flip.click();
+      await screen.getByRole('button',{name:/^Spacing:/}).click();
       await screen.reload(); await choosePreset(screen,'horn-f-starter'); await startPractice(screen); await chooseMethod(screen,'fingering');
       assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
+      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'wide','Spacing survives reload');
+      await screen.setViewportSize({width:1080,height:1920});
+      await screen.waitForTimeout(100);
+      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'wide','Spacing survives orientation change');
+      await screen.setViewportSize(profile.viewport);
+      await screen.waitForTimeout(100);
+      await screen.getByRole('button',{name:/^Spacing:/}).click();
+      await screen.getByRole('button',{name:/^Spacing:/}).click();
       assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition,'Saved position survives reload');
       await flip.click();
     }
     await flip.blur();
-    const keys=instrument==='horn-f' ? ['q','w','v'] : ['f','d'];
+    const keys=instrument==='horn-f' ? ['e','w','v'] : strings.includes(instrument) ? ['f','d'] : ['j','k'];
     for(const key of keys) await screen.keyboard.down(key);
-    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : '11000000');
-    await screen.waitForTimeout(250);
+    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : strings.includes(instrument) ? '11000000' : '00001100');
+    await screen.waitForTimeout(410);
     for(const key of keys) await screen.keyboard.up(key);
     assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await screen.screenshot({path:`dist/validation/${instrument}-${profile.id}-input-${name}.png`,fullPage:true});
@@ -232,6 +299,14 @@ try {
     }
     await context.close();
   }
+
+}
+
+try {
+  const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
+  await page.goto(new URL('/notes/',host.url).href);
+  await mkdir('dist/validation',{recursive:true});
+  if (!process.env.TUNO_FINGERING_FIXTURE_ONLY) await checkLayouts(page);
 
   // Deterministic fixture uses the production entry surface and scoring engine.
   // Fixed pitches expose repeated-card, held-state, and correct-only edge cases.
@@ -264,7 +339,7 @@ try {
   const attempts = () => page.evaluate(()=>window.fixture.session.attempts);
   const correct = () => page.evaluate(()=>window.fixture.session.correct);
   const mask = () => page.locator('.fingering-input').getAttribute('data-mask');
-  const settle = () => page.waitForTimeout(260);
+  const settle = () => page.waitForTimeout(410);
   // A held answer can intentionally release into the next primary-open card.
   await page.evaluate(()=>window.fixture.sequence());
   await page.keyboard.down('j'); await page.keyboard.down('k'); await settle();
@@ -294,13 +369,19 @@ try {
     assert.equal(await attempts(),action==='release' ? 2 : 1,action);
   }
   await start();
-  // Moving or flipping during the settling window cancels held state and grading.
-  for (const label of [/^Move input:/, 'Flip finger order']) {
+  // Layout actions during the settling window cancel held state and grading.
+  for (const label of [/^Move input:/, 'Flip finger order', /^Spacing:/]) {
     await page.keyboard.down('j');
     await page.getByRole('button',{name:label}).dispatchEvent('pointerdown');
     await settle(); assert.equal(await attempts(),0); assert.equal(await mask(),'00000000');
     await page.keyboard.up('j');
   }
+  const spacingControl = page.getByRole('button',{name:/^Spacing:/});
+  const priorSpacing = await page.locator('.fingering-input').getAttribute('data-spacing');
+  await spacingControl.focus(); await page.keyboard.press('Space');
+  assert.notEqual(await page.locator('.fingering-input').getAttribute('data-spacing'),priorSpacing);
+  await settle(); assert.equal(await attempts(),0,'Space on Spacing must not submit Open');
+  await spacingControl.blur();
   await page.keyboard.down('j'); await page.waitForTimeout(90); await page.keyboard.down('k');
   assert.equal(await mask(),'00001100'); assert.equal(await attempts(),0);
   await settle(); assert.equal(await correct(),1);
@@ -376,11 +457,74 @@ try {
   await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),2); assert.equal(await correct(),2);
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),3);
   await page.screenshot({path:`dist/validation/notes-horn-${name}.png`});
-  // All horn key chords reach the held state, regardless of trigger press order.
+  assert.equal(await page.locator('.fingering-input').evaluate(root=>getComputedStyle(root).touchAction),'none','Gaps in the fingering surface also block pinch/pan');
+  for (const type of ['touchstart','touchmove','gesturestart','gesturechange']) {
+    const canceled = await page.evaluate(type=>{
+      const inside = new Event(type,{bubbles:true,cancelable:true});
+      const outside = new Event(type,{bubbles:true,cancelable:true});
+      document.querySelector('.fingering-input').dispatchEvent(inside);
+      document.body.dispatchEvent(outside);
+      return {inside:inside.defaultPrevented,outside:outside.defaultPrevented};
+    },type);
+    assert.deepEqual(canceled,{inside:true,outside:false},`${type}: gesture guard stays within the fingering surface`);
+  }
+  if (name === 'chromium') {
+    const cdp = await page.context().newCDPSession(page);
+    for (const viewport of [{width:1366,height:650},{width:360,height:740}]) for (let preset = 0; preset < 3; preset++) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(()=>window.fixture.start('D4','correct','horn-f'));
+      const points = [];
+      for (const [id,label] of ['Valve 1','Valve 2','Thumb trigger — B♭ side'].entries()) {
+        const r = await page.getByRole('button',{name:label,exact:true}).boundingBox();
+        points.push({x:r.x+r.width/2,y:r.y+r.height/2,id:id+1});
+      }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[2]]});
+      await page.waitForTimeout(40);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[2],points[0]]});
+      await page.waitForTimeout(40);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
+      assert.equal(await mask(),'11010000');
+      await settle(); assert.equal(await correct(),1,'Held valves and trigger still evaluate automatically');
+      const initialScale = await page.evaluate(()=>visualViewport.scale);
+      const moved = points.map((point,index)=>({...point,x:point.x+(index===2 ? -10 : 10),y:point.y+(index===2 ? 10 : -10)}));
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:moved});
+      await page.waitForTimeout(80);
+      assert.equal(await mask(),'11010000','Pinch-like finger movement must retain T+1+2');
+      assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale,'Playing fingers must not zoom the page');
+      const gap = await page.locator('.fingering-input').evaluate(root=>{
+        const r=root.getBoundingClientRect(),x=r.left+2,y=r.top+2;
+        return {x,y,isGap:document.elementFromPoint(x,y)===root};
+      });
+      assert.ok(gap.isGap,'Extra contact starts on the surface between targets');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[...moved,{x:gap.x,y:gap.y,id:4}]});
+      assert.equal(await mask(),'11010000','A contact in the gap does not release or add a valve');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[...moved,{x:gap.x+1,y:gap.y+1,id:4}]});
+      await page.waitForTimeout(80);
+      assert.equal(await mask(),'11010000','A moving gap contact cannot steal held fingers');
+      assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[{x:gap.x+1,y:gap.y+1,id:4}]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[points[0]]});
+      assert.equal(await mask(),'01010000','Partial release retains valve 2 and trigger');
+      await page.keyboard.down('v'); await page.keyboard.up('v');
+      assert.equal(await mask(),'01010000','Keyboard release cannot release a held thumb touch');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+      assert.equal(await mask(),'00000000');
+      await page.getByRole('button',{name:/^Spacing:/}).click();
+    }
+    await cdp.detach();
+  }
+  for (const [label,key] of [['Valve 1','E'],['Valve 2','W'],['Valve 3','Q'],['Thumb trigger — B♭ side','V']]) {
+    const control = page.getByRole('button',{name:label,exact:true});
+    assert.equal(await control.locator('kbd').textContent(),key,`${label}: visible shortcut matches the mirrored keyboard`);
+    assert.equal(await control.getAttribute('aria-keyshortcuts'),key);
+  }
+  assert.match(await page.locator('.fingering-help').textContent(),/E W Q/);
+  // All horn key chords reach the held state, regardless of trigger press order or Flip.
   for (const triggerFirst of [true,false]) {
+    await page.getByRole('button',{name:'Flip finger order',exact:true}).click();
     for (let bits=0;bits<8;bits++) {
       await page.evaluate(()=>window.fixture.start('C4','correct','horn-f'));
-      const valves=['q','w','e'].filter((_,i)=>bits & (1<<i));
+      const valves=['e','w','q'].filter((_,i)=>bits & (1<<i));
       const keys=triggerFirst ? ['v',...valves] : [...valves,'v'];
       for (const key of keys) await page.keyboard.down(key);
       const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
@@ -389,7 +533,7 @@ try {
       assert.equal(await mask(),'00000000');
     }
   }
-  for (const [pitch,keys] of [['D4',['v','q','w']],['Db4',['v','w','e']],['C3',['v','q','e']]]) {
+  for (const [pitch,keys] of [['D4',['v','e','w']],['Db4',['v','w','q']],['C3',['v','e','q']]]) {
     await page.evaluate(p=>window.fixture.start(p,'instant','horn-f'),pitch);
     for (const key of keys) await page.keyboard.down(key);
     await settle(); assert.equal(await correct(),1,pitch+': '+keys.join('+'));
@@ -487,6 +631,29 @@ try {
   await selectInstrument(page,'trumpet-bb');
   assert.equal(await mask(),'00000000');
   await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),1);
+  // Failed writes retain the chosen session spacing, even if an older value is readable.
+  await selectInstrument(page,'horn-f');
+  const originalViewport = page.viewportSize();
+  await page.evaluate(() => {
+    const key = 'tunotes:finger-spacing:horn-f';
+    localStorage.setItem(key,document.querySelector('.fingering-input').dataset.spacing);
+    const write = Storage.prototype.setItem;
+    window.fixture.restoreStorage = () => { Storage.prototype.setItem = write; };
+    Storage.prototype.setItem = function(key,value) {
+      if (key.startsWith('tunotes:finger-spacing:')) throw new DOMException('Fixture storage denial','QuotaExceededError');
+      return write.call(this,key,value);
+    };
+  });
+  try {
+    await page.getByRole('button',{name:/^Spacing:/}).click();
+    const selected = await page.locator('.fingering-input').getAttribute('data-spacing');
+    await page.setViewportSize({width:800,height:360});
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator('.fingering-input').getAttribute('data-spacing'),selected,'Session spacing survives failed storage writes and rotation');
+    await page.setViewportSize(originalViewport);
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator('.fingering-input').getAttribute('data-spacing'),selected);
+  } finally { await page.evaluate(()=>window.fixture.restoreStorage()); }
   assert.deepEqual(errors,[]);
   console.log(`${name}: fingering keyboard, touch, scoring, repeated notes, open, cancellation, and method switching passed`);
 } finally { await browser.close(); await host.close(); }

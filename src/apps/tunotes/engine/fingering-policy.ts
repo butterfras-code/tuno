@@ -2,7 +2,7 @@ import { OPEN_FINGERING } from '../domain/fingering.ts';
 import type { FingeringMask } from '../domain/fingering.ts';
 import type { PromptToken } from './practice.ts';
 
-export const FINGERING_SETTLE_MS = 200;
+export const FINGERING_SETTLE_MS = 350;
 /** Flashcard timing only. Held input and pitch validation have no dependency on this policy. */
 export class FingeringPolicy {
   private token?: PromptToken;

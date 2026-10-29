@@ -1,25 +1,37 @@
 import { el } from '../ui/components.ts';
 import { HeldFingers } from './held-fingers.ts';
 import type { FingerPosition } from './held-fingers.ts';
+import { fingerLayout } from './fingering-layout.ts';
+import type { ThumbPlacement } from './fingering-layout.ts';
 
 /** Rendering and physical input only: no notes, validation, or submission timers. */
-export function fingeringInput(fingers: readonly FingerPosition[], change: (mask: string, intentional: boolean) => void) {
+export function fingeringInput(fingers: readonly FingerPosition[], change: (mask: string, intentional: boolean) => void, thumb?: ThumbPlacement) {
   const node = el('div', 'fingering-input'); node.setAttribute('role', 'group'); node.setAttribute('aria-label', 'Held fingers');
+  const layout = fingerLayout(fingers.length, thumb);
+  node.style.setProperty('--span-along', String(layout.along));
+  node.style.setProperty('--span-across', String(layout.across));
   const held = new HeldFingers();
   let enabled = false;
+  // Fingers may land in the gaps or shift while held. Keep browser gestures
+  // out of this whole playing surface, without disabling zoom elsewhere.
+  const preventGesture = (event: Event) => { if (enabled && event.cancelable) event.preventDefault(); };
+  for (const type of ['touchstart', 'touchmove', 'gesturestart', 'gesturechange']) {
+    node.addEventListener(type, preventGesture, { passive: false });
+  }
   const pointers = new Map<number, HTMLButtonElement>();
-  const buttons = fingers.map(finger => {
+  const buttons = fingers.map((finger, index) => {
     const button = el('button', 'control fingering-valve'); button.type = 'button';
+    button.style.setProperty('--along', String(layout.points[index]!.along));
+    button.style.setProperty('--across', String(layout.points[index]!.across));
     button.setAttribute('aria-label', finger.accessibleLabel); button.setAttribute('aria-keyshortcuts', finger.key.toUpperCase());
     const shape = el('span', 'valve-outline'); shape.setAttribute('aria-hidden', 'true');
     const moving = el('span', 'valve-moving');
     const cap = el('span', 'valve-cap', finger.label);
     moving.append(el('span', 'valve-stem'), cap);
     shape.append(moving, el('span', 'valve-casing'));
-    button.classList.toggle('fingering-trigger', finger.label === 'T');
+    button.classList.toggle('fingering-trigger', index === thumb?.index);
     button.append(shape, el('kbd', '', finger.key.toUpperCase()));
     button.addEventListener('contextmenu', e => e.preventDefault());
-    button.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
     button.addEventListener('pointerdown', e => {
       if (!enabled || e.button !== 0) return;
       e.preventDefault(); pointers.set(e.pointerId, button); button.setPointerCapture(e.pointerId);

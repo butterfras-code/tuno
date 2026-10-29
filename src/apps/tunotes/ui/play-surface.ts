@@ -20,6 +20,7 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
   const clear = () => {
     stage?.classList.remove('play-stage','play-stage--compact','play-stage--short','play-stage--grip','play-stage--bottom');
     stage?.style.removeProperty('width'); stage?.style.removeProperty('height'); stage?.style.removeProperty('transform'); stage?.style.removeProperty('top');
+    stage?.style.removeProperty('--play-scale');
     viewport?.classList.remove('play-viewport');
   };
   const fit = () => {
@@ -73,6 +74,8 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     stage.style.width = `${width/scale}px`;
     stage.style.height = `${height/scale}px`;
     stage.style.transform = grip || bottom ? 'none' : `scale(${scale})`;
+    // Hand distances and touch targets stay physical even when the notation grows.
+    stage.style.setProperty('--play-scale', String(scale));
   };
   const schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(fit); };
   setting.addEventListener('change',() => {

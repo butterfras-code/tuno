@@ -96,9 +96,9 @@ const hornChart = [
 export const hornFingering: FingeringConfiguration = {
   instrument: 'horn-f', hand: 'left',
   fingers: [
-    { position: 0, label: '1', accessibleLabel: 'Valve 1', key: 'q' },
+    { position: 0, label: '1', accessibleLabel: 'Valve 1', key: 'e' },
     { position: 1, label: '2', accessibleLabel: 'Valve 2', key: 'w' },
-    { position: 2, label: '3', accessibleLabel: 'Valve 3', key: 'e' },
+    { position: 2, label: '3', accessibleLabel: 'Valve 3', key: 'q' },
     { position: 3, label: 'T', accessibleLabel: 'Thumb trigger — B♭ side', key: 'v' },
   ],
   pitches: Object.fromEntries(hornChart.map((choices,i) => [36+i, choices.map(choice =>

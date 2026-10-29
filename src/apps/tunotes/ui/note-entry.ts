@@ -1,5 +1,7 @@
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
+import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
+import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
 import { FingeringPolicy } from '../engine/fingering-policy.ts';
 import { fingeringFor, OPEN_FINGERING } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
@@ -118,15 +120,25 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   }
   const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
   const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
-  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip);
+  const spacing = el('button', 'control fingering-spacing', 'Spacing'); spacing.type = 'button';
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing);
   type Position = 'left' | 'bottom' | 'right';
   let position: Position = 'bottom', flipped = false;
+  let selectedSpacing: FingerSpacing = 'regular';
+  const spacings = new Map<string, FingerSpacing>();
+  const spacingKey = () => `tunotes:finger-spacing:${selectedInstrument.value}`;
   const layouts = new Map<string, { position: Position; flipped: boolean }>();
   const orientation = matchMedia('(orientation: landscape)');
   const layoutKey = () => `tunotes:grip:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
   function applyLayout() {
     node.dataset.gripPosition = position;
     fingers.node.dataset.flipped = String(flipped);
+    fingers.node.dataset.spacing = selectedSpacing;
+    fingers.node.style.setProperty('--finger-spacing', `${fingerSpacing[selectedSpacing]}px`);
+    const nextSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
+    const label = selectedSpacing[0]!.toUpperCase() + selectedSpacing.slice(1);
+    spacing.setAttribute('aria-label', `Spacing: ${label}. Change to ${nextSpacing}`);
+    spacing.title = `Spacing: ${label}`;
     const next = positions[(positions.indexOf(position) + 1) % positions.length]!;
     move.setAttribute('aria-label', `Move input: ${position}. Move to ${next}`);
     move.title = `Input on ${position}; move to ${next}`;
@@ -146,6 +158,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     position = saved?.position ?? (orientation.matches && matchMedia('(pointer: coarse)').matches
       ? configuration?.instrument === 'horn-f' ? 'left' : 'right' : 'bottom');
     flipped = saved?.flipped ?? false;
+    const sessionSpacing = spacings.get(spacingKey());
+    selectedSpacing = sessionSpacing ?? 'regular';
+    if (!sessionSpacing) try {
+      const value = localStorage.getItem(spacingKey());
+      if (spacingPresets.includes(value as FingerSpacing)) selectedSpacing = value as FingerSpacing;
+    } catch { /* Session-only spacing if storage is unavailable. */ }
     applyLayout();
   }
   function saveLayout() {
@@ -157,7 +175,13 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     reset(); position = positions[(positions.indexOf(position) + 1) % positions.length]!; saveLayout();
   });
   flip.addEventListener('click', () => { reset(); flipped = !flipped; saveLayout(); });
-  for (const button of [move, flip]) button.addEventListener('pointerdown', () => reset());
+  spacing.addEventListener('click', () => {
+    reset(); selectedSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
+    spacings.set(spacingKey(), selectedSpacing);
+    try { localStorage.setItem(spacingKey(), selectedSpacing); } catch { /* Session-only preference. */ }
+    applyLayout();
+  });
+  for (const button of [move, flip, spacing]) button.addEventListener('pointerdown', () => reset());
   if (options.fingering) orientation.addEventListener('change', loadLayout);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
@@ -200,7 +224,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
         policy.change(mask,intentional);
         side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
-      });
+      }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -1, across: 0.5 } : undefined);
       previous.replaceWith(fingers.node);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
@@ -210,7 +234,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       fingeringHelp.textContent = config?.control === 'finger'
         ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
         : config?.instrument === 'horn-f'
-        ? 'Q W E = valves · V = B♭ trigger. Space = F-side open.'
+        ? 'E W Q = valves · V = B♭ trigger. Space = F-side open.'
         : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
         : 'Hold valves or J K L. For no valves, press Space.';
     }
