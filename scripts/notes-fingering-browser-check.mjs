@@ -368,7 +368,7 @@ try {
   // Fixed pitches expose repeated-card, held-state, and correct-only edge cases.
   const fixture = await build({stdin:{contents:`
     import { noteEntry } from './src/apps/tunotes/ui/note-entry.ts';
-    import { parsePitch } from './src/apps/tunotes/domain/notation.ts';
+    import { parsePitch, chromatic } from './src/apps/tunotes/domain/notation.ts';
     import { Practice } from './src/apps/tunotes/engine/practice.ts';
     import { normalizePreset } from './src/apps/tunotes/domain/presets.ts';
     const preset = normalizePreset({id:'fixture',name:'E4',instrument:'trumpet-bb',clef:'treble',range:['E4','E4'],content:'lines-and-spaces'});
@@ -378,7 +378,15 @@ try {
       entry.respond(session,{treat:false,text:''}); render();
     },{fingering:true,currentPitch:()=>session?.pitch,guidance:()=>false,showKeySignature:()=>false,disableGuidance:()=>{}});
     function render(){entry.update(session.preset,session.token,session.state!=='running');}
-    window.fixture = {entry, get session(){return session;}, sequence(first='E4',next='C4',instrument='trumpet-bb'){
+    window.fixture = {entry, changingFingerings(){
+      const run = new Practice({...preset,pool:['C4','G4','E5','D4'].map(parsePitch)},false,()=>0,()=>.999,
+        {continueAfter:'instant',inputFingering:()=>entry.inputFingering});
+      const primary = () => entry.inputFingering.pitches[chromatic(run.pitch)][0];
+      for(let i=0;i<20;i++) {
+        const previous=primary(); run.answer(run.token,{kind:'fingering',mask:previous}); run.advance(run.token);
+        if(primary()===previous) throw new Error('Repeated primary fingering');
+      }
+    }, get session(){return session;}, sequence(first='E4',next='C4',instrument='trumpet-bb'){
       entry.reset(); session = new Practice({...preset,instrument,range:[next,first],pool:[parsePitch(next),parsePitch(first)]},false,()=>performance.now(),()=>0.999,{continueAfter:'instant'}); render();
     }, start(pitch='E4',pace='instant',instrument='trumpet-bb'){
       entry.reset(); session = new Practice({...preset,instrument,pool:[parsePitch(pitch)]},false,()=>performance.now(),Math.random,{continueAfter:pace}); render();
@@ -391,6 +399,7 @@ try {
   `,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife'});
   await page.addScriptTag({content:fixture.outputFiles[0].text});
   await chooseMethod(page,'fingering');
+  await page.evaluate(()=>window.fixture.changingFingerings());
   const start = async (pitch='E4',pace='instant') => { await page.evaluate(([p,s])=>window.fixture.start(p,s),[pitch,pace]); };
   const attempts = () => page.evaluate(()=>window.fixture.session.attempts);
   const correct = () => page.evaluate(()=>window.fixture.session.correct);

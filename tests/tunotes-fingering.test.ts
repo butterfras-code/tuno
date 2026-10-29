@@ -7,6 +7,7 @@ import { expansionPlan } from '../src/apps/tunotes/engine/adaptive.ts';
 import { HeldFingers } from '../src/shared/input/held-fingers.ts';
 import { FINGERING_SETTLE_MS, FingeringPolicy } from '../src/apps/tunotes/engine/fingering-policy.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
+import { Challenge, defaultTimed } from '../src/apps/tunotes/engine/challenge.ts';
 import { fitFingerArrangement } from '../src/shared/input/fingering-resize.ts';
 import { fingerLayout, fingerSpacing } from '../src/shared/input/fingering-layout.ts';
 
@@ -380,4 +381,60 @@ test('user resizing scales pads and spacing uniformly within the available hand 
   }
   const full = fitFingerArrangement(900,500,3,0,84,20);
   assert.equal(full.baseWidth * full.scale, 900, 'Fill can use the entire available width');
+});
+
+for (const adaptive of [false, true]) test(`instrument prompts change primary fingering (adaptive=${adaptive})`, () => {
+  const base = normalizePreset({id:'changes',name:'Changes',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  // Three open pitches and one fingered pitch exercise depleted-bag bridging.
+  const preset = {...base, pool: ['C4','E5','G4','D4'].map(parsePitch)};
+  const session = new Practice(preset, false, () => 0, () => .999, {
+    adaptive, continueAfter: 'instant', inputFingering: () => trumpetFingering,
+  });
+  const seen = new Set<number>();
+  for (let i = 0; i < 40; i++) {
+    const previous = trumpetFingering.pitches[chromatic(session.pitch)]![0]!;
+    seen.add(chromatic(session.pitch));
+    assert.ok(session.answer(session.token, {kind:'fingering',mask:previous}));
+    assert.ok(session.advance(session.token));
+    assert.notEqual(trumpetFingering.pitches[chromatic(session.pitch)]![0], previous);
+  }
+  if (!adaptive) assert.equal(seen.size, 4, 'deferred pitches are still presented');
+});
+
+test('single-fingering pools stay playable and changing input method takes effect immediately', () => {
+  const base = normalizePreset({id:'open',name:'Open',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  for (const adaptive of [false, true]) {
+    const session = new Practice({...base,pool:['C4','G4'].map(parsePitch)},false,()=>0,()=>.999,
+      {adaptive,continueAfter:'instant',inputFingering:()=>trumpetFingering});
+    for (let i=0;i<10;i++) {
+      assert.ok(session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}));
+      assert.ok(session.advance(session.token));
+    }
+  }
+  let enabled = false;
+  const session = new Practice({...base,pool:['D4','C4','G4'].map(parsePitch)},false,()=>0,()=>.999,
+    {continueAfter:'instant',inputFingering:()=>enabled ? trumpetFingering : undefined});
+  assert.equal(chromatic(session.pitch),67);
+  session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}); session.advance(session.token);
+  assert.equal(chromatic(session.pitch),60,'note-name selection retains its original order');
+  enabled = true;
+  session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}); session.advance(session.token);
+  assert.equal(chromatic(session.pitch),62);
+});
+
+
+test('Challenge avoids shared primary fingerings and Until correct preserves retries', () => {
+  const base = normalizePreset({id:'transition',name:'Transition',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  const preset = {...base,pool:['D4','C4','G4'].map(parsePitch)};
+  let now = 0;
+  const challenge = new Challenge(preset,defaultTimed,()=>now,()=>.999,{inputFingering:()=>trumpetFingering});
+  challenge.ready(); now = 3000; challenge.tick();
+  assert.ok(challenge.answer(challenge.token,{kind:'fingering',mask:OPEN_FINGERING}));
+  assert.ok(challenge.advance(challenge.token));
+  assert.equal(chromatic(challenge.pitch),62);
+  const practice = new Practice(preset,false,()=>now,()=>.999,{continueAfter:'correct',inputFingering:()=>trumpetFingering});
+  const original = practice.pitch;
+  practice.answer(practice.token,{kind:'fingering',mask:'00001000'}); now += 800;
+  assert.ok(practice.advance(practice.token));
+  assert.equal(practice.pitch,original);
 });

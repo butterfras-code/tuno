@@ -286,6 +286,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     ...answers, node, feedback, status, reset,
     dispose() { reset(); resizer.dispose(); orientation.removeEventListener('change', loadLayout); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
+    get inputFingering() { return supported && method === 'fingering' ? configuration : undefined; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) {
       if (!supported || method !== 'fingering' || instrumentPicker.matches(':popover-open')) return false;

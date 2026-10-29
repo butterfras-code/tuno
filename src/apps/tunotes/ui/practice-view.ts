@@ -270,7 +270,7 @@ export function practiceView(store: NotesStore, shared = false) {
       if (disposed) return;
       closePreview();
       resultRecorded = false;
-      session = rules ? new Challenge(preset, rules, () => performance.now(), Math.random, { adaptive: useAdaptive, notes: context?.notes, learning: context?.learning }) : new Practice(preset, pace === 'click', () => performance.now(), Math.random, { continueAfter: pace, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
+      session = rules ? new Challenge(preset, rules, () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning }) : new Practice(preset, pace === 'click', () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, continueAfter: pace, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
       session.preview = exposure;
       progress = new NotesProgress(rules ? store.challengeBenchmark(preset,useAdaptive,rules) : store.benchmark(preset,useAdaptive)); resetInput(); treatUntil = 0;
       node.classList.toggle('challenge-active', Boolean(rules));
