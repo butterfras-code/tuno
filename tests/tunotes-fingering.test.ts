@@ -7,6 +7,7 @@ import { expansionPlan } from '../src/apps/tunotes/engine/adaptive.ts';
 import { HeldFingers } from '../src/shared/input/held-fingers.ts';
 import { FINGERING_SETTLE_MS, FingeringPolicy } from '../src/apps/tunotes/engine/fingering-policy.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
+import { fitFingerArrangement } from '../src/shared/input/fingering-resize.ts';
 import { fingerLayout, fingerSpacing } from '../src/shared/input/fingering-layout.ts';
 
 test('hand layouts keep thumb offsets relative to their anchor for every spacing', () => {
@@ -361,4 +362,22 @@ test('a hold retained through feedback can release after delayed advancement', t
   policy.update({session:1,prompt:2},false,true);
   policy.change(OPEN_FINGERING); t.mock.timers.tick(FINGERING_SETTLE_MS);
   assert.deepEqual(seen,['00001000',OPEN_FINGERING]);
+});
+
+
+test('user resizing scales pads and spacing uniformly within the available hand area', () => {
+  for (const [width,height,along,across] of [[350,168,2.75,1],[166,480,1,2.75],[138,260,0,3],[900,500,3,0]]) {
+    for (const spacing of Object.values(fingerSpacing)) {
+      for (const requested of [0.75,1,1.5,20]) {
+        const fit = fitFingerArrangement(width!,height!,along!,across!,spacing,requested);
+        assert.ok(fit.baseWidth * fit.scale <= width! + 1e-9);
+        assert.ok(fit.baseHeight * fit.scale <= height! + 1e-9);
+        assert.ok(fit.step >= 64, 'target footprints never overlap');
+        assert.ok(fit.scale <= requested && fit.scale <= fit.maximum);
+        assert.ok(64 * fit.scale >= 48, 'supported areas retain comfortable minimum targets');
+      }
+    }
+  }
+  const full = fitFingerArrangement(900,500,3,0,84,20);
+  assert.equal(full.baseWidth * full.scale, 900, 'Fill can use the entire available width');
 });

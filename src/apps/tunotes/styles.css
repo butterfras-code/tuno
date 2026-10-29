@@ -1273,23 +1273,22 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }
 
-/* Held instrument controls retain fixed touch targets while the valve caps move. */
-.fingering-panel { width: 100%; max-width: calc(480px / var(--play-scale, 1)); margin: 0 auto; text-align: center; }
+/* Resize scales the whole hand; spacing presets retain independent layout distances. */
+.fingering-panel { width: 100%; max-width: none; margin: 0 auto; text-align: center; }
 /* Coordinates use finger-local axes; only this mapping changes for a hand column.
-   Container bounds cap spacing. Targets never grow with spacing or display size. */
+   Container bounds cap the user scale; display size alone never enlarges targets. */
 .fingering-input {
   position: relative; container-type: size; width: 100%; height: calc(var(--hand-depth, 112px) / var(--play-scale, 1));
   touch-action: none;
   --direction: 1; --flip: 1; --thumb-side: 1;
   --layout-width: var(--span-along); --layout-height: var(--span-across);
-  --target: calc(64px / var(--play-scale, 1));
 }
 .fingering-input .fingering-valve {
-  --step: min(calc(var(--finger-spacing, 84px) / var(--play-scale, 1)), calc((100cqw - var(--target)) / max(0.001, var(--layout-width))), calc((100cqh - var(--target)) / max(0.001, var(--layout-height))));
+  --step: calc(var(--finger-step, 84px) * var(--hand-scale, 1) / var(--play-scale, 1));
   --x: calc(var(--along) * var(--direction) * var(--flip));
   --y: calc(var(--across) * var(--direction) * var(--thumb-side) * var(--flip));
   position: absolute; left: calc(50% + var(--x) * var(--step)); top: calc(50% + var(--y) * var(--step));
-  transform: translate(-50%, -50%) scale(calc(1 / var(--play-scale, 1)));
+  transform: translate(-50%, -50%) scale(calc(var(--hand-scale, 1) / var(--play-scale, 1)));
   flex: none; min-width: 0; width: 64px; height: 64px; min-height: 64px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
   border: 0; border-radius: 12px; background: transparent; touch-action: none;
@@ -1388,8 +1387,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 
 /* Reserve the complete hand footprint, including thumb keys, beside the music. */
-#home { --hand-column: 100px; --grip-width: 220px; --hand-depth: 112px; }
-#home:has(.play-stage .note-entry .fingering-trigger) { --hand-column: 168px; --grip-width: 288px; }
+#home { --hand-column: min(max(100px, calc(100px * var(--requested-hand-scale, 1))), max(100px, var(--hand-column-limit, 100px)), 55vw); --grip-width: calc(var(--hand-column) + 120px); --hand-depth: 112px; }
+#home:has(.play-stage .note-entry .fingering-trigger) { --hand-column: min(max(168px, calc(168px * var(--requested-hand-scale, 1))), max(168px, var(--hand-column-limit, 168px)), 55vw); }
 #home:has(.play-stage .note-entry .fingering-trigger), .note-entry:has(.fingering-trigger) { --hand-depth: 168px; }
 /* A phone held like a brass instrument: valve 1 nearest the bottom finger. */
 #home .play-stage--grip .practice-play { grid-template-columns: minmax(0, 1fr); }
@@ -1454,8 +1453,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 /* Narrow portrait screens keep a slim column, with tools below the finger targets. */
 @media (max-width: 600px) {
-  #home { --grip-width: 136px; }
-  #home:has(.play-stage .note-entry .fingering-trigger) { --grip-width: min(176px, calc(100vw - 160px)); }
+  #home { --grip-width: min(max(148px, calc(148px * var(--requested-hand-scale, 1))), calc(100vw - 160px)); }
+  #home:has(.play-stage .note-entry .fingering-trigger) { --grip-width: min(max(176px, calc(176px * var(--requested-hand-scale, 1))), calc(100vw - 160px)); }
   #home .play-stage--grip .note-entry { width: var(--grip-width); top: var(--grip-top, 112px); }
   #home.is-playing:has(.play-stage--grip) { padding-right: max(8px, env(safe-area-inset-right)); }
   #home.is-playing:has(.play-stage--grip .note-entry[data-grip-position='left']) { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
@@ -1465,7 +1464,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   #home .play-stage--grip .interaction-body { flex: 1; min-height: 0; padding: 0 4px; }
   #home .play-stage--grip .fingering-panel { display: flex; flex-direction: column; gap: 0; }
   #home .play-stage--grip .fingering-input { flex: 1; height: auto; }
-  #home .play-stage--grip .fingering-actions { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; align-self: center; margin: 0; gap: 0; }
+  #home .play-stage--grip .fingering-actions { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; align-self: center; margin: 0; gap: 0; }
   #home .play-stage--grip .fingering-layout-tools { display: contents; }
   #home .play-stage--grip .fingering-open { white-space: normal; }
   #home .play-stage--grip .practice-play > .control-row { flex-wrap: wrap; }
@@ -1488,7 +1487,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--bottom .interaction-selector { grid-auto-flow: row; align-self: center; }
 #home .play-stage--bottom .interaction-body { padding: 0 4px; min-height: 0; }
 #home .play-stage--bottom .fingering-panel { max-width: none; display: flex; height: 100%; align-items: center; gap: 6px; }
-#home .play-stage--bottom .fingering-actions { flex: 0 0 160px; flex-direction: column; gap: 0; margin: 0; }
+#home .play-stage--bottom .fingering-actions { flex: 0 0 204px; flex-direction: column; gap: 0; margin: 0; }
 #home .play-stage--bottom .fingering-layout-tools { flex-wrap: nowrap; }
 #home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; height: 100%; }
 #home .play-stage--bottom :is(.fingering-help,.horn-side) { display: none; }
@@ -1510,4 +1509,13 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 @media (max-height: 800px) {
   #home .play-stage.challenge-active:not(.play-stage--short):has(.note-entry[data-input-method='fingering']) .challenge-scene[data-phase='playing'] .challenge-dog { top: 40px; width: 120px; }
   #home .play-stage.challenge-active:not(.play-stage--short):has(.note-entry[data-input-method='fingering']) .challenge-scene[data-phase='playing'] .challenge-dog .uno { width: 64px; margin-inline: auto; }
+}
+
+/* Resize handles are available only in explicit edit mode, with playing disabled. */
+.fingering-resize-outline { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px dashed var(--color-accent); border-radius: 12px; pointer-events: none; }
+.fingering-resize-outline[hidden] { display: none; }
+.fingering-resize-handle { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; display: grid; place-items: center; transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: bottom right; border: 2px solid var(--color-surface); border-radius: 12px; background: var(--color-accent); color: var(--color-surface); font-size: 26px; cursor: nwse-resize; touch-action: none; user-select: none; pointer-events: auto; }
+.fingering-resize-handle:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 2px; }
+@media (min-width: 601px) {
+  #home.is-playing:has(.play-stage--grip) .notes-workspace-header .focus-navigation { min-width: min-content; grid-template-columns: repeat(4, minmax(min-content, 1fr)); }
 }

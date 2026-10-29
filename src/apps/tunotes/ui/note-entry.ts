@@ -1,4 +1,5 @@
 import { keyboardAnswers } from './keyboard-answers.ts';
+import { fingeringResize } from '../../../shared/input/fingering-resize.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
 import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
@@ -121,7 +122,27 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
   const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
   const spacing = el('button', 'control fingering-spacing', 'Spacing'); spacing.type = 'button';
-  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing);
+  const resize = el('button', 'control fingering-resize', 'Resize'); resize.type = 'button';
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing, resize);
+  let resizing = false, selectedScale = 1, activeScaleKey = '';
+  const scales = new Map<string, number>();
+  const scaleKey = () => `tunotes:finger-scale:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  function changeScale(value: number, commit: boolean) {
+    selectedScale = value; scales.set(activeScaleKey, value);
+    node.dataset.handScale = String(value); node.style.setProperty('--requested-hand-scale', String(value));
+    if (commit) try { localStorage.setItem(activeScaleKey, String(value)); } catch { /* Session-only size. */ }
+  }
+  let resizer = fingeringResize(fingers.node, changeScale);
+  function editSize(value: boolean) {
+    reset(); resizing = value;
+    resize.textContent = value ? 'Done' : 'Resize';
+    resize.setAttribute('aria-pressed', String(value));
+    resizer.edit(value);
+    fingers.enable(supported && method === 'fingering' && !value);
+    open.disabled = value || Boolean(lastUpdate?.[2]);
+  }
+  resize.setAttribute('aria-pressed', 'false');
+  resize.addEventListener('click', () => editSize(!resizing));
   type Position = 'left' | 'bottom' | 'right';
   let position: Position = 'bottom', flipped = false;
   let selectedSpacing: FingerSpacing = 'regular';
@@ -135,6 +156,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     fingers.node.dataset.flipped = String(flipped);
     fingers.node.dataset.spacing = selectedSpacing;
     fingers.node.style.setProperty('--finger-spacing', `${fingerSpacing[selectedSpacing]}px`);
+    resizer.update(selectedScale, fingerSpacing[selectedSpacing]);
+    node.dataset.handScale = String(selectedScale); node.style.setProperty('--requested-hand-scale', String(selectedScale));
     const nextSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
     const label = selectedSpacing[0]!.toUpperCase() + selectedSpacing.slice(1);
     spacing.setAttribute('aria-label', `Spacing: ${label}. Change to ${nextSpacing}`);
@@ -148,7 +171,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   }
   const positions: readonly Position[] = ['left', 'bottom', 'right'];
   function loadLayout() {
-    fingers.reset(); policy.cancel();
+    editSize(false); activeScaleKey = scaleKey();
+    selectedScale = scales.get(scaleKey()) ?? 1;
+    if (!scales.has(scaleKey())) try {
+      const value = Number(localStorage.getItem(scaleKey()));
+      if (Number.isFinite(value) && value >= 0.75 && value <= 20) selectedScale = value;
+    } catch { /* Session-only size. */ }
     const key = layoutKey();
     let saved = layouts.get(key);
     if (!saved) try {
@@ -181,7 +209,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     try { localStorage.setItem(spacingKey(), selectedSpacing); } catch { /* Session-only preference. */ }
     applyLayout();
   });
-  for (const button of [move, flip, spacing]) button.addEventListener('pointerdown', () => reset());
+  for (const button of [move, flip, spacing, resize]) button.addEventListener('pointerdown', () => reset());
   if (options.fingering) orientation.addEventListener('change', loadLayout);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
   fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
@@ -193,7 +221,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' ? 'names' : 'instrument')));
     instrumentButton.textContent = instrumentChosen ? selectedInstrument.label : 'Instrument';
     instrumentButton.setAttribute('aria-label', instrumentChosen ? `Choose instrument: ${selectedInstrument.label}` : 'Choose instrument');
-    fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
+    if (!active && resizing) editSize(false);
+    fingers.enable(active && !resizing); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   if (options.fingering) {
     interactionBody.append(answers.node, fingeringPanel, keyboard.node);
@@ -219,13 +248,14 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
     if (configuration !== config) {
-      fingers.reset(); configuration = config;
+      editSize(false); resizer.dispose(); configuration = config;
       const previous = fingers.node;
       fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
         policy.change(mask,intentional);
         side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
       }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
+      resizer = fingeringResize(fingers.node, changeScale);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
       fingers.node.dataset.control = config?.control ?? 'valve';
@@ -242,7 +272,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     policy.update(token, locked, Boolean(pitch && config?.pitches[chromatic(pitch)]?.[0] === OPEN_FINGERING));
-    open.disabled = locked;
+    open.disabled = locked || resizing;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;
     if (identity !== prompt || locked) dismiss.hidden = true;
@@ -254,11 +284,17 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   node.append(feedback.node);
   return {
     ...answers, node, feedback, status, reset,
-    dispose() { reset(); orientation.removeEventListener('change', loadLayout); },
+    dispose() { reset(); resizer.dispose(); orientation.removeEventListener('change', loadLayout); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) {
       if (!supported || method !== 'fingering' || instrumentPicker.matches(':popover-open')) return false;
+      if (resizing) {
+        if (event.key === 'Escape') { event.preventDefault(); editSize(false); resize.focus(); return true; }
+        if (event.target === resize || event.target === move || event.target === flip || event.target === spacing) return false;
+        if (event.key === ' ' || configuration?.fingers.some(f => f.key === event.key.toLowerCase())) { event.preventDefault(); return true; }
+        return false;
+      }
       // Space is the flashcard Open action even when a valve has focus.
       // Leave unrelated buttons (Pause, Finish, etc.) their native activation.
       const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
