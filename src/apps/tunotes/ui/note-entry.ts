@@ -119,13 +119,17 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     });
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
-  const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
-  const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
-  const spacing = el('button', 'control fingering-spacing', 'Spacing'); spacing.type = 'button';
+  const move = el('button', 'control fingering-move', 'Move Panel'); move.type = 'button';
+  const flip = el('button', 'control fingering-flip'); flip.type = 'button';
+  const spacing = el('button', 'control fingering-spacing'); spacing.type = 'button';
+  const flipIcon = el('span', 'fingering-tool-icon', '⇄'), spacingIcon = el('span', 'fingering-tool-icon', '↔');
+  flipIcon.setAttribute('aria-hidden', 'true'); spacingIcon.setAttribute('aria-hidden', 'true');
+  flip.append(flipIcon); spacing.append(spacingIcon);
   const resize = el('button', 'control fingering-resize'); resize.type = 'button';
-  const resizeLabel = el('span', '', 'Resize'), doneLabel = el('span', '', 'Done');
+  const resizeLabel = el('span', '', 'Adjust Input'), doneLabel = el('span', '', 'Done');
   doneLabel.style.visibility = 'hidden'; resize.append(resizeLabel, doneLabel);
-  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing, resize);
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, resize, flip, spacing);
+  flip.style.visibility = spacing.style.visibility = 'hidden';
   let resizing = false, selectedScale = 1, activeScaleKey = '';
   const scales = new Map<string, number>();
   let selectedPosition: FingerPosition = { x: 0.5, y: 0.5 };
@@ -141,6 +145,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let resizer = fingeringResize(fingers.node, changeScale);
   function editSize(value: boolean) {
     reset(); resizing = value;
+    flip.style.visibility = spacing.style.visibility = value ? 'visible' : 'hidden';
     resizeLabel.style.visibility = value ? 'hidden' : 'visible';
     doneLabel.style.visibility = value ? 'visible' : 'hidden';
     resize.setAttribute('aria-pressed', String(value));
@@ -170,7 +175,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     spacing.setAttribute('aria-label', `Spacing: ${label}. Change to ${nextSpacing}`);
     spacing.title = `Spacing: ${label}`;
     const next = positions[(positions.indexOf(position) + 1) % positions.length]!;
-    move.setAttribute('aria-label', `Move input: ${position}. Move to ${next}`);
+    move.setAttribute('aria-label', `Move Panel: ${position}. Move to ${next}`);
     move.title = `Input on ${position}; move to ${next}`;
     flip.setAttribute('aria-label', 'Flip finger order');
     flip.setAttribute('aria-pressed', String(flipped));
