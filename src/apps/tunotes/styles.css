@@ -1299,18 +1299,26 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
 .valve-outline { position: relative; display: block; flex: none; width: 56px; height: 42px; min-height: 0; color: var(--color-teal); pointer-events: none; }
-.valve-moving { position: absolute; inset: 0; transition: transform 90ms ease-out; }
-.valve-cap { position: absolute; top: 0; left: 0; width: 100%; height: 36px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; background: var(--color-surface); font: 800 24px/1 var(--font-heading); }
-.valve-stem { position: absolute; top: 34px; bottom: 8px; left: calc(50% - 5px); width: 10px; border: 2px solid currentColor; background: var(--color-surface); }
-.valve-casing { position: absolute; bottom: 0; left: 25%; width: 50%; height: 42%; border: 2px solid currentColor; border-radius: 5px 5px 12px 12px; background: var(--color-surface); }
-.fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(12px); }
+.valve-moving { position: absolute; inset: 0; }
+.valve-moving > span { transition: transform 90ms ease-out; }
+.valve-cap { position: absolute; z-index: 2; top: 0; left: 0; width: 100%; height: 28px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; background: var(--color-surface); font: 800 24px/1 var(--font-heading); }
+.valve-stem { position: absolute; top: 26px; height: 12px; left: calc(50% - 5px); width: 10px; border: 2px solid currentColor; background: var(--color-surface); }
+.valve-casing { position: absolute; z-index: 1; bottom: 0; left: 25%; width: 50%; height: 42%; border: 2px solid currentColor; border-radius: 5px 5px 12px 12px; background: var(--color-surface); }
+.fingering-valve[aria-pressed=true] .valve-moving > span { transform: translateY(8px); }
 .fingering-valve[aria-pressed=true] .valve-cap { background: var(--color-tint); }
-.fingering-input[data-instrument='horn-f'] .fingering-valve[aria-pressed=true] .valve-moving { transform: translateY(6px); }
+/* The cap stays in front of the casing as the stem descends into it.
+   Clip the moving stem at the base so it cannot cover the keyboard hint. */
+.valve-outline { overflow: hidden; isolation: isolate; }
+/* Rotary horn valves use narrow, rounded paddles on lever arms. */
+.fingering-input[data-instrument='horn-f'] .valve-cap { left: 11px; width: 34px; height: 30px; border-radius: 10px 10px 14px 14px; }
+.fingering-input[data-instrument='horn-f'] .valve-stem { top: 26px; left: 24px; width: 8px; height: 14px; }
+.fingering-input[data-instrument='horn-f'] .valve-casing { left: 22px; width: 12px; height: 10px; border-radius: 50%; }
+.fingering-input[data-instrument='horn-f'] .fingering-valve[aria-pressed=true] .valve-moving > span { transform: translateY(6px); }
 .fingering-trigger .valve-outline { width: 56px; height: 42px; }
-.fingering-trigger .valve-cap { border-radius: 18px; height: 36px; }
+.fingering-input[data-instrument='horn-f'] .fingering-trigger .valve-cap { left: 3px; width: 50px; border-radius: 12px 12px 18px 18px; height: 30px; }
 .fingering-trigger .valve-stem, .fingering-trigger .valve-casing { display: none; }
-@media (prefers-reduced-motion: reduce) { .valve-moving { transition: none; } }
-.fingering-valve kbd { font: 500 12px var(--font-body); }
+@media (prefers-reduced-motion: reduce) { .valve-moving > span { transition: none; } }
+.fingering-valve kbd { color: var(--color-ink); font: 500 12px var(--font-body); }
 .fingering-open { margin-top: 8px; }
 .fingering-help { font-size: 12px; line-height: 16px; margin: 0 0 2px; }
 .keyboard-answers { max-width: 760px; margin: auto; min-width: 0; }
@@ -1439,10 +1447,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 /* String fingers use simple fingertip pads, sharing the held-input interactions. */
 .fingering-input[data-control='finger'] { --direction: -1; }
 .fingering-input[data-flipped='true'] { --flip: -1; }
-.fingering-input[data-control='finger'] .valve-outline { width: 48px; height: 48px; }
+.fingering-input[data-control='finger'] .valve-outline { overflow: visible; width: 48px; height: 48px; }
 .fingering-input[data-control='finger'] .valve-cap { height: 48px; border-radius: 50%; }
 .fingering-input[data-control='finger'] :is(.valve-stem,.valve-casing) { display: none; }
-.fingering-input[data-control='finger'] .fingering-valve[aria-pressed='true'] .valve-moving { transform: translateY(4px); }
+.fingering-input[data-control='finger'] .fingering-valve[aria-pressed='true'] .valve-moving > span { transform: translateY(4px); }
 
 
 /* Grip controls share the Open action row; visual order never changes finger identity. */
