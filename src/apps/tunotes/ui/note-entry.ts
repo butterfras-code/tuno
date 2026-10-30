@@ -1,3 +1,4 @@
+import { microphoneInput } from './microphone-input.ts';
 import { fingerHeld, isOpenFingering } from '../../../shared/input/fingering-code.ts';
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringResize, type FingerPosition, type FingerSize } from '../../../shared/input/fingering-resize.ts';
@@ -28,6 +29,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   showKeySignature: () => boolean | undefined;
   disableGuidance: () => void;
 }) {
+  const microphone = microphoneInput(accept);
   const answers = answerControls(accept, options.concurrentPointers);
   const feedback = answerFeedback();
   const status = el('p', 'feedback'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -61,7 +63,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const methodSelector = el('div', 'interaction-selector');
   methodSelector.setAttribute('role', 'group'); methodSelector.setAttribute('aria-label', 'Answer method');
   const methodButtons = new Map<string, HTMLButtonElement>();
-  for (const [value, title] of [['names', 'Note Names'], ['instrument', 'Instrument']] as const) {
+  for (const [value, title] of [['names', 'Note Names'], ['instrument', 'Instrument'], ['mic', 'Mic']] as const) {
     const button = el('button', 'control', title); button.type = 'button';
     button.addEventListener('click', () => {
       if (value === 'instrument') {
@@ -78,7 +80,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
         }
         return;
       }
-      const next = 'names';
+      const next = value;
       if (method === next) return;
       reset(); feedback.clear(); dismiss.hidden = true; method = next;
       options.onMethodChange?.(); refreshMethod();
@@ -219,22 +221,24 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   });
   flip.addEventListener('click', () => { reset(); flipped = !flipped; saveLayout(); });
   for (const button of [move, flip, resize]) button.addEventListener('pointerdown', () => reset());
-  if (options.fingering) orientation.addEventListener('change', loadLayout);
+  const orientationChanged = () => { if (method !== 'mic') loadLayout(); };
+  if (options.fingering) orientation.addEventListener('change', orientationChanged);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
   fingeringPanel.append(fingeringHelp, fingers.node, fingeringActions);
-  const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
+  const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); microphone.stop(); };
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
-    answers.node.hidden = active || method === 'keyboard'; fingeringPanel.hidden = !active;
+    answers.node.hidden = active || method === 'keyboard' || method === 'mic'; fingeringPanel.hidden = !active;
+    microphone.enable(method === 'mic');
     keyboard.node.hidden = method !== 'keyboard'; keyboard.enable(method === 'keyboard');
-    for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' ? 'names' : 'instrument')));
+    for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' || method === 'mic' ? method : 'instrument')));
     instrumentButton.textContent = instrumentChosen ? selectedInstrument.label : 'Instrument';
     instrumentButton.setAttribute('aria-label', instrumentChosen ? `Choose instrument: ${selectedInstrument.label}` : 'Choose instrument');
     if (!active && resizing) editSize(false);
     fingers.enable(active && !resizing); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   if (options.fingering) {
-    interactionBody.append(answers.node, fingeringPanel, keyboard.node);
+    interactionBody.append(answers.node, fingeringPanel, keyboard.node, microphone.node);
     interaction.append(methodSelector, interactionBody, instrumentPicker); node.append(interaction);
   } else node.append(answers.node);
 
@@ -253,7 +257,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     }
     if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = pianoInstrument;
     for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
-    if (method !== 'names') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    if (method !== 'names' && method !== 'mic') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
     if (configuration !== config) {
@@ -273,6 +277,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       side.hidden = config?.instrument !== 'horn-f';
     }
     if (!supported && method === 'fingering') method = 'names';
+    microphone.update(token, locked);
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     const primary = pitch && config?.pitches[chromatic(pitch)]?.[0];
@@ -289,7 +294,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   node.append(feedback.node);
   return {
     ...answers, node, feedback, status, reset,
-    dispose() { reset(); resizer.dispose(); orientation.removeEventListener('change', loadLayout); },
+    dispose() { reset(); microphone.dispose(); resizer.dispose(); orientation.removeEventListener('change', orientationChanged); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get inputFingering() { return supported && method === 'fingering' ? configuration : undefined; },
     get isFingering() { return supported && method === 'fingering'; },
@@ -312,21 +317,21 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       return fingers.keydown(event);
     },
     heldKeyup(event: KeyboardEvent) { fingers.keyup(event); },
-    focus() { if (method === 'keyboard') keyboard.focus(); else if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
+    focus() { if (method === 'mic') microphone.focus(); else if (method === 'keyboard') keyboard.focus(); else if (supported && method === 'fingering') fingers.node.querySelector('button')?.focus(); else answers.focus(); },
     update,
     paused(paused: boolean) {
       if (paused) reset();
       statusText.textContent = paused ? 'Paused. Resume when you’re ready.' : '';
     },
     focusedKey(event: KeyboardEvent, fresh: boolean) {
-      if (method === 'keyboard' || supported && method === 'fingering') return false;
+      if (method === 'mic' || method === 'keyboard' || supported && method === 'fingering') return false;
       if ((event.key !== 'Enter' && event.key !== ' ') || !answers.buttons.includes(event.target as HTMLButtonElement)) return false;
       event.preventDefault();
       if (fresh) answers.focused(event.target as HTMLButtonElement);
       return true;
     },
     keyboard(letter: Letter, accidental: Accidental, explicit: boolean, session: Practice, shortcut?: (hint: string) => string) {
-      if (instrumentPicker.matches(':popover-open') || method === 'keyboard' || supported && method === 'fingering') return;
+      if (instrumentPicker.matches(':popover-open') || method === 'mic' || method === 'keyboard' || supported && method === 'fingering') return;
       const hint = !explicit && options.guidance() && session.state === 'running'
         ? missingAccidentalHint(letter, session.pitch, session.preset, options.showKeySignature()) : undefined;
       if (hint) {

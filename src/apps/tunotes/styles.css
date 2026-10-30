@@ -1494,7 +1494,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--bottom .practice-play > :is(h2,.counts,.staff-panel,.feedback,.control-row,.challenge-scene) { grid-column: 1; }
 #home .play-stage--bottom .note-entry { position: fixed; bottom: max(4px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); height: var(--hand-depth); z-index: 2; }
 #home .play-stage--bottom .input-workspace { height: 100%; grid-template-columns: 120px minmax(0, 1fr); gap: 6px; }
-#home .play-stage--bottom .interaction-selector { grid-auto-flow: row; align-self: center; }
+#home .play-stage--bottom .interaction-selector { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: center; }
+#home .play-stage--bottom .interaction-selector [aria-haspopup='dialog'] { grid-column: 1 / -1; grid-row: 2; }
 #home .play-stage--bottom .interaction-body { padding: 0 4px; min-height: 0; }
 #home .play-stage--bottom .fingering-panel { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); height: 100%; align-items: center; gap: 2px 6px; }
 #home .play-stage--bottom .fingering-help { grid-column: 1 / -1; }
@@ -1548,3 +1549,19 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .fingering-resize-outline .control { position: absolute; width: min(28px, 30%); min-width: 0; height: 28px; min-height: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--color-accent); box-shadow: none; transform: scale(calc(1 / var(--play-scale, 1))); }
 .fingering-resize-outline .fingering-flip { right: 0; top: 0; transform-origin: top right; }
 .fingering-position-handle { transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: top left; }
+
+/* Compact tuner input: transposition labels wrap without widening the play surface. */
+.notes-mic { display: grid; gap: 6px; width: 100%; min-width: 0; text-align: center; }
+.notes-mic-controls { display: flex; align-items: end; gap: 4px; min-width: 0; }
+.notes-mic-controls > button { flex: 0 0 48px; width: 48px; height: 48px; min-height: 48px; padding: 4px; justify-content: center; }
+.notes-mic-icon { display: block; width: 24px; height: 24px; }
+.notes-mic-controls > button[aria-pressed="true"] .notes-mic-icon { filter: brightness(0) invert(1); }
+.notes-mic-transposition { display: grid; gap: 2px; flex: 1; min-width: 0; text-align: left; font-size: 12px; }
+.notes-mic-transposition select { width: 100%; min-width: 0; height: 32px; min-height: 32px; padding: 4px 8px; font-size: 12px; }
+.notes-mic-pitch { margin: 0; font-size: 24px; font-weight: 700; }
+.notes-mic-meter, .notes-mic-hold { width: 100%; height: 12px; }
+.notes-mic-status { margin: 0; font-size: 12px; }
+.notes-mic-scale { display: flex; justify-content: space-between; font-size: 11px; }
+.notes-mic-meter { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--color-line) calc(50% - var(--mic-tolerance)), #83b8a8 calc(50% - var(--mic-tolerance)) calc(50% + var(--mic-tolerance)), var(--color-line) calc(50% + var(--mic-tolerance))); }
+.notes-mic-meter::after { content: ''; position: absolute; left: 50%; top: -3px; height: 14px; border-left: 1px solid var(--color-ink); }
+.notes-mic-marker { position: absolute; top: -3px; width: 6px; height: 14px; border-radius: 3px; background: var(--color-ink); transform: translateX(-50%); }

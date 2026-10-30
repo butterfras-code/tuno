@@ -23,6 +23,7 @@ export const browserChecks = [
   { file: 'notes-stage2-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'notes-storage-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'notes-fingering-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
+  { file: 'notes-microphone-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'notes-input-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'notes-key-layout-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'notes-guidance-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
