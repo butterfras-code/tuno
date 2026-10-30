@@ -3,28 +3,51 @@ import type { FingerPosition } from '../../../shared/input/held-fingers.ts';
 import { chromatic } from './notation.ts';
 import type { AnswerSpelling, WrittenPitch } from './notation.ts';
 
-/** LLLLRRRR, left to right. Leading zeros are part of the representation. */
-export type FingeringMask = string;
-export const OPEN_FINGERING: FingeringMask = '00000000';
+import { OPEN_FINGERING, parseFingering, handCode } from '../../../shared/input/fingering-code.ts';
+import type { FingeringCode, FingerName } from '../../../shared/input/fingering-code.ts';
+export { OPEN_FINGERING, validFingering } from '../../../shared/input/fingering-code.ts';
+export type { FingeringCode } from '../../../shared/input/fingering-code.ts';
 export interface FingeringConfiguration {
   readonly instrument: string;
   readonly hand?: 'left' | 'right';
   readonly control?: 'valve' | 'finger';
-  /** Array order is the visual arrangement; position indexes the eight-bit mask. */
+  /** Array order is the visual arrangement; position identifies an anatomical finger. */
   readonly fingers: readonly FingerPosition[];
+  /** Defaults to primary control 1 for each displayed finger. */
+  readonly controls?: Partial<Record<FingerName, readonly string[]>>;
+  readonly strings?: readonly string[];
+  readonly combinations?: Partial<Record<FingerName, readonly (readonly string[])[]>>;
   /** Existing written chromatic pitch numbers, never concert/transposed pitch. */
-  readonly pitches: Readonly<Record<number, readonly FingeringMask[]>>;
+  readonly pitches: Readonly<Record<number, readonly FingeringCode[]>>;
 }
-export interface FingeringAnswer { readonly kind: 'fingering'; readonly mask: FingeringMask; readonly instrument?: string }
+export interface FingeringAnswer { readonly kind: 'fingering'; readonly code: FingeringCode; readonly instrument?: string }
 export interface KeyboardAnswer { readonly kind: 'keyboard'; readonly note: number; readonly matchOctave?: boolean }
 export type NoteAnswer = AnswerSpelling | FingeringAnswer | KeyboardAnswer;
-export function validMask(mask: string) { return /^[01]{8}$/.test(mask); }
-export function acceptsFingering(config: FingeringConfiguration, pitch: WrittenPitch, mask: FingeringMask) {
-  return validMask(mask) && Boolean(config.pitches[chromatic(pitch)]?.includes(mask));
+/** Instrument validation is separate from syntax and pitch acceptance. */
+export function validInstrumentFingering(config: FingeringConfiguration, code: FingeringCode): boolean {
+  try {
+    const state = parseFingering(code);
+    if (state.string !== undefined && !config.strings?.includes(state.string)) return false;
+    return Object.entries(state.fingers).every(([name, ids]) => {
+      const finger = name as FingerName;
+      const controls = config.controls?.[finger] ?? (config.fingers.some(f => f.position === finger) ? ['1'] : []);
+      const combinations = config.combinations?.[finger];
+      return ids.every(id => controls.includes(id)) && (!ids.length || !combinations || combinations.some(choice => choice.length === ids.length && choice.every(id => ids.includes(id))));
+    });
+  } catch { return false; }
 }
-const masks: Record<string, FingeringMask> = {
-  '0': OPEN_FINGERING, '1': '00001000', '2': '00000100', '3': '00000010',
-  '12': '00001100', '13': '00001010', '23': '00000110', '123': '00001110',
+export function acceptsFingering(config: FingeringConfiguration, pitch: WrittenPitch, code: FingeringCode, string?: string) {
+  if (!validInstrumentFingering(config, code)) return false;
+  const input = parseFingering(code);
+  if (string !== undefined && input.string !== undefined && input.string !== string) return false;
+  const requiredString = string ?? input.string;
+  return Boolean(config.pitches[chromatic(pitch)]?.some(choice => validInstrumentFingering(config, choice)
+    && (requiredString === undefined || parseFingering(choice).string === requiredString)
+    && handCode(choice) === handCode(code)));
+}
+const codes: Record<string, FingeringCode> = {
+  '0': OPEN_FINGERING, '1': '00000|01000', '2': '00000|00100', '3': '00000|00010',
+  '12': '00000|01100', '13': '00000|01010', '23': '00000|00110', '123': '00000|01110',
 };
 // F♯3 through C6, in semitone order. Includes the alternate fingerings in
 // Yamaha's chart: https://www.yamaha.com/en/musical_instrument_guide/common/images/trumpet/fingering.pdf
@@ -39,11 +62,11 @@ const chart = [
 export const trumpetFingering: FingeringConfiguration = {
   instrument: 'trumpet-bb',
   fingers: [
-    { position: 4, label: '1', accessibleLabel: 'Valve 1', key: 'j' },
-    { position: 5, label: '2', accessibleLabel: 'Valve 2', key: 'k' },
-    { position: 6, label: '3', accessibleLabel: 'Valve 3', key: 'l' },
+    { position: 'rightIndex', label: '1', accessibleLabel: 'Valve 1', key: 'j' },
+    { position: 'rightMiddle', label: '2', accessibleLabel: 'Valve 2', key: 'k' },
+    { position: 'rightRing', label: '3', accessibleLabel: 'Valve 3', key: 'l' },
   ],
-  pitches: Object.fromEntries(chart.map((valves, i) => [54 + i, valves.map(v => masks[v]!)])),
+  pitches: Object.fromEntries(chart.map((valves, i) => [54 + i, valves.map(v => codes[v]!)])),
 };
 export function fingeringFor(instrument?: string, valves: 3 | 4 = 3) {
   if (valves === 4 && instrument === 'euphonium') return euphoniumFourValveFingering;
@@ -58,7 +81,7 @@ export function fingeringFor(instrument?: string, valves: 3 | 4 = 3) {
  */
 function bassBrass(instrument: string, offset: number): FingeringConfiguration {
   return { instrument, fingers: trumpetFingering.fingers,
-    pitches: Object.fromEntries(Object.entries(trumpetFingering.pitches).map(([note, masks]) => [Number(note) - offset, masks])) };
+    pitches: Object.fromEntries(Object.entries(trumpetFingering.pitches).map(([note, codes]) => [Number(note) - offset, codes])) };
 }
 export const euphoniumFingering = bassBrass('euphonium', 14);
 export const tubaFingering = bassBrass('tuba', 26);
@@ -69,13 +92,13 @@ export const tubaFingering = bassBrass('tuba', 26);
  */
 function fourValve(base: FingeringConfiguration, octaveOffset: number): FingeringConfiguration {
   const pitches = Object.fromEntries(Object.entries(base.pitches).map(([pitch, choices]) => {
-    const extra = choices.flatMap(mask => mask === '00001010' ? ['00000001'] : mask === '00001110' ? ['00000101'] : []);
+    const extra = choices.flatMap(code => code === '00000|01010' ? ['00000|00001'] : code === '00000|01110' ? ['00000|00101'] : []);
     const euphoniumPitch = Number(pitch) + octaveOffset;
-    if (euphoniumPitch === 52 || euphoniumPitch === 59) extra.push('00000101');
-    if (euphoniumPitch === 46) extra.push('00001001');
+    if (euphoniumPitch === 52 || euphoniumPitch === 59) extra.push('00000|00101');
+    if (euphoniumPitch === 46) extra.push('00000|01001');
     return [pitch, [...new Set([...choices, ...extra])]];
   }));
-  return { ...base, fingers: [...base.fingers, { position: 7, label: '4', accessibleLabel: 'Valve 4', key: ';' }], pitches };
+  return { ...base, fingers: [...base.fingers, { position: 'rightLittle', label: '4', accessibleLabel: 'Valve 4', key: ';' }], pitches };
 }
 export const euphoniumFourValveFingering = fourValve(euphoniumFingering, 0);
 export const tubaFourValveFingering = fourValve(tubaFingering, 12);
@@ -96,13 +119,13 @@ const hornChart = [
 export const hornFingering: FingeringConfiguration = {
   instrument: 'horn-f', hand: 'left',
   fingers: [
-    { position: 0, label: '1', accessibleLabel: 'Valve 1', key: 'e' },
-    { position: 1, label: '2', accessibleLabel: 'Valve 2', key: 'w' },
-    { position: 2, label: '3', accessibleLabel: 'Valve 3', key: 'q' },
-    { position: 3, label: 'T', accessibleLabel: 'Thumb trigger — B♭ side', key: 'v' },
+    { position: 'leftIndex', label: '1', accessibleLabel: 'Valve 1', key: 'e' },
+    { position: 'leftMiddle', label: '2', accessibleLabel: 'Valve 2', key: 'w' },
+    { position: 'leftRing', label: '3', accessibleLabel: 'Valve 3', key: 'q' },
+    { position: 'leftThumb', label: 'T', accessibleLabel: 'Thumb trigger — B♭ side', key: 'v' },
   ],
   pitches: Object.fromEntries(hornChart.map((choices,i) => [36+i, choices.map(choice =>
-    `${choice.includes('1') ? 1 : 0}${choice.includes('2') ? 1 : 0}${choice.includes('3') ? 1 : 0}${choice.includes('T') ? 1 : 0}0000`)])),
+    `0${choice.includes('3') ? 1 : 0}${choice.includes('2') ? 1 : 0}${choice.includes('1') ? 1 : 0}${choice.includes('T') ? 1 : 0}|00000`)])),
 };
 
 /** Keyboard answers use written pitch class unless octave matching is requested. */

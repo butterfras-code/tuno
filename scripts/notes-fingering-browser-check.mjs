@@ -131,7 +131,7 @@ async function checkResize(page, context) {
 
   assert.equal(await root.locator('.fingering-valve:enabled').count(), 0, 'Resize disables playing');
   await page.keyboard.press('e'); await page.keyboard.press('Space');
-  assert.equal(await root.getAttribute('data-mask'), '00000000');
+  assert.equal(await root.getAttribute('data-code'), '00000|00000');
   assert.equal(await page.locator('#practice-counts').textContent(), counts);
   const area = await root.boundingBox();
   for (const button of await root.locator('.fingering-valve').all()) {
@@ -282,7 +282,7 @@ async function checkLayouts(page) {
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
       assert.equal(await phone.locator('.fingering-valve[aria-pressed="true"]').count(),2);
       await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-      assert.equal(await phone.locator('.fingering-input').getAttribute('data-mask'),'00000000');
+      assert.equal(await phone.locator('.fingering-input').getAttribute('data-code'),'00000|00000');
       await cdp.detach();
     }
     await phone.setViewportSize({width:390,height:844});
@@ -368,7 +368,7 @@ async function checkLayouts(page) {
     await flip.blur();
     const keys=instrument==='horn-f' ? ['e','w','v'] : strings.includes(instrument) ? ['f','d'] : ['j','k'];
     for(const key of keys) await screen.keyboard.down(key);
-    assert.equal(await screen.locator('.fingering-input').getAttribute('data-mask'),instrument==='horn-f' ? '11010000' : strings.includes(instrument) ? '11000000' : '00001100');
+    assert.equal(await screen.locator('.fingering-input').getAttribute('data-code'),instrument==='horn-f' ? '00111|00000' : strings.includes(instrument) ? '00110|00000' : '00000|01100');
     await screen.waitForTimeout(410);
     for(const key of keys) await screen.keyboard.up(key);
     assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -428,7 +428,7 @@ try {
         {continueAfter:'instant',inputFingering:()=>entry.inputFingering});
       const primary = () => entry.inputFingering.pitches[chromatic(run.pitch)][0];
       for(let i=0;i<20;i++) {
-        const previous=primary(); run.answer(run.token,{kind:'fingering',mask:previous}); run.advance(run.token);
+        const previous=primary(); run.answer(run.token,{kind:'fingering',code:previous}); run.advance(run.token);
         if(primary()===previous) throw new Error('Repeated primary fingering');
       }
     }, get session(){return session;}, sequence(first='E4',next='C4',instrument='trumpet-bb'){
@@ -448,7 +448,7 @@ try {
   const start = async (pitch='E4',pace='instant') => { await page.evaluate(([p,s])=>window.fixture.start(p,s),[pitch,pace]); };
   const attempts = () => page.evaluate(()=>window.fixture.session.attempts);
   const correct = () => page.evaluate(()=>window.fixture.session.correct);
-  const mask = () => page.locator('.fingering-input').getAttribute('data-mask');
+  const code = () => page.locator('.fingering-input').getAttribute('data-code');
   const settle = () => page.waitForTimeout(410);
   // A held answer can intentionally release into the next primary-open card.
   await page.evaluate(()=>window.fixture.sequence());
@@ -483,7 +483,7 @@ try {
   for (const label of [/^Move Panel:/, 'Adjust Input']) {
     await page.keyboard.down('j');
     await page.getByRole('button',{name:label}).dispatchEvent('pointerdown');
-    await settle(); assert.equal(await attempts(),0); assert.equal(await mask(),'00000000');
+    await settle(); assert.equal(await attempts(),0); assert.equal(await code(),'00000|00000');
     await page.keyboard.up('j');
   }
   const spacingControl = page.getByRole('button',{name:/^Spacing:/});
@@ -493,13 +493,13 @@ try {
   await settle(); assert.equal(await attempts(),0,'Space on Spacing must not submit Open');
   await page.locator('.fingering-spacing').blur();
   await page.keyboard.down('j'); await page.waitForTimeout(90); await page.keyboard.down('k');
-  assert.equal(await mask(),'00001100'); assert.equal(await attempts(),0);
+  assert.equal(await code(),'00000|01100'); assert.equal(await attempts(),0);
   await settle(); assert.equal(await correct(),1);
   await page.keyboard.down('k'); await settle(); assert.equal(await attempts(),1);
-  assert.equal(await mask(),'00001100');
+  assert.equal(await code(),'00000|01100');
   // A new intentional change can answer the repeated E without releasing all valves.
   await page.keyboard.down('l'); await page.keyboard.up('j'); await page.keyboard.up('k');
-  await settle(); assert.equal(await correct(),2); assert.equal(await mask(),'00000010');
+  await settle(); assert.equal(await correct(),2); assert.equal(await code(),'00000|00010');
   await page.keyboard.up('l'); await settle(); assert.equal(await attempts(),2);
   // Open answers are explicit, including repeated open notes.
   await start('C4');
@@ -513,7 +513,7 @@ try {
   await page.getByRole('button',{name:'Open (Space)',exact:true}).click(); assert.equal(await correct(),2);
   await page.getByRole('button',{name:'Valve 1',exact:true}).focus();
   await page.keyboard.down('Space'); assert.equal(await correct(),3);
-  assert.equal(await mask(),'00000000');
+  assert.equal(await code(),'00000|00000');
   await page.keyboard.down('Space'); await settle(); assert.equal(await attempts(),3);
   await page.keyboard.up('Space'); assert.equal(await attempts(),3);
   await page.keyboard.press('Space'); assert.equal(await correct(),4);
@@ -527,7 +527,7 @@ try {
   // Cancellation and focus loss cancel pending submissions, not just visual state.
   await start(); await page.keyboard.down('j');
   await page.evaluate(()=>window.dispatchEvent(new Event('blur'))); await settle();
-  assert.equal(await attempts(),0); assert.equal(await mask(),'00000000'); await page.keyboard.up('j');
+  assert.equal(await attempts(),0); assert.equal(await code(),'00000|00000'); await page.keyboard.up('j');
   await page.keyboard.down('j'); await chooseMethod(page,'names');
   await chooseMethod(page,'fingering');
   await page.keyboard.down('j'); await settle(); assert.equal(await attempts(),0);
@@ -538,7 +538,7 @@ try {
   const bounds = await valve.boundingBox();
   await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2); await page.mouse.down();
   await valve.dispatchEvent('pointercancel',{pointerId:Number(await valve.getAttribute('data-test-pointer'))}); await settle();
-  assert.equal(await attempts(),0); assert.equal(await mask(),'00000000'); await page.mouse.up();
+  assert.equal(await attempts(),0); assert.equal(await code(),'00000|00000'); await page.mouse.up();
   // Real simultaneous touchscreen contacts, including partial release.
   if (name === 'chromium') {
     await page.setViewportSize({width:360,height:740});
@@ -548,11 +548,11 @@ try {
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});
     await page.waitForTimeout(70);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a,b]});
-    assert.equal(await mask(),'00001100'); await settle(); assert.equal(await correct(),1);
+    assert.equal(await code(),'00000|01100'); await settle(); assert.equal(await correct(),1);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[a]});
-    assert.equal(await mask(),'00000100');
+    assert.equal(await code(),'00000|00100');
     await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-    await settle(); assert.equal(await attempts(),1); assert.equal(await mask(),'00000000');
+    await settle(); assert.equal(await attempts(),1); assert.equal(await code(),'00000|00000');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await cdp.detach();
   }
@@ -560,7 +560,7 @@ try {
   await page.evaluate(()=>window.fixture.start('C4','instant','horn-f'));
   await chooseMethod(page,'fingering');
   assert.equal(await page.locator('.fingering-valve').count(),4);
-  await page.keyboard.down('v'); assert.equal(await mask(),'00010000');
+  await page.keyboard.down('v'); assert.equal(await code(),'00001|00000');
   await settle(); assert.equal(await correct(),1);
   assert.match(await page.locator('.horn-side').textContent(),/B♭ side/);
   await settle(); assert.equal(await attempts(),1);
@@ -593,13 +593,13 @@ try {
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[2],points[0]]});
       await page.waitForTimeout(40);
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
-      assert.equal(await mask(),'11010000');
+      assert.equal(await code(),'00111|00000');
       await settle(); assert.equal(await correct(),1,'Held valves and trigger still evaluate automatically');
       const initialScale = await page.evaluate(()=>visualViewport.scale);
       const moved = points.map((point,index)=>({...point,x:point.x+(index===2 ? -10 : 10),y:point.y+(index===2 ? 10 : -10)}));
       await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:moved});
       await page.waitForTimeout(80);
-      assert.equal(await mask(),'11010000','Pinch-like finger movement must retain T+1+2');
+      assert.equal(await code(),'00111|00000','Pinch-like finger movement must retain T+1+2');
       assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale,'Playing fingers must not zoom the page');
       const gap = await page.locator('.fingering-input').evaluate(root=>{
         const r=root.getBoundingClientRect(),x=r.left+2,y=r.top+2;
@@ -607,18 +607,18 @@ try {
       });
       assert.ok(gap.isGap,'Extra contact starts on the surface between targets');
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[...moved,{x:gap.x,y:gap.y,id:4}]});
-      assert.equal(await mask(),'11010000','A contact in the gap does not release or add a valve');
+      assert.equal(await code(),'00111|00000','A contact in the gap does not release or add a valve');
       await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[...moved,{x:gap.x+1,y:gap.y+1,id:4}]});
       await page.waitForTimeout(80);
-      assert.equal(await mask(),'11010000','A moving gap contact cannot steal held fingers');
+      assert.equal(await code(),'00111|00000','A moving gap contact cannot steal held fingers');
       assert.equal(await page.evaluate(()=>visualViewport.scale),initialScale);
       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[{x:gap.x+1,y:gap.y+1,id:4}]});
       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[points[0]]});
-      assert.equal(await mask(),'01010000','Partial release retains valve 2 and trigger');
+      assert.equal(await code(),'00101|00000','Partial release retains valve 2 and trigger');
       await page.keyboard.down('v'); await page.keyboard.up('v');
-      assert.equal(await mask(),'01010000','Keyboard release cannot release a held thumb touch');
+      assert.equal(await code(),'00101|00000','Keyboard release cannot release a held thumb touch');
       await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-      assert.equal(await mask(),'00000000');
+      assert.equal(await code(),'00000|00000');
       await adjustmentClick(page, /^Spacing:/);
     }
     await cdp.detach();
@@ -637,10 +637,10 @@ try {
       const valves=['e','w','q'].filter((_,i)=>bits & (1<<i));
       const keys=triggerFirst ? ['v',...valves] : [...valves,'v'];
       for (const key of keys) await page.keyboard.down(key);
-      const expected=[0,1,2].map(i=>bits & (1<<i) ? '1' : '0').join('')+'10000';
-      assert.equal(await mask(),expected,keys.join('+'));
+      const expected='0'+[2,1,0].map(i=>bits & (1<<i) ? '1' : '0').join('')+'1|00000';
+      assert.equal(await code(),expected,keys.join('+'));
       for (const key of [...keys].reverse()) await page.keyboard.up(key);
-      assert.equal(await mask(),'00000000');
+      assert.equal(await code(),'00000|00000');
     }
   }
   for (const [pitch,keys] of [['D4',['v','e','w']],['Db4',['v','w','q']],['C3',['v','e','q']]]) {
@@ -660,18 +660,18 @@ try {
     const valves={selectOption: value=>selectInstrument(page,value),blur:()=>instrumentPill(page).blur()};
     await valves.selectOption(`${instrument}-4`); await valves.blur();
     assert.equal(await page.locator('.fingering-valve').count(),4);
-    await page.keyboard.down(';'); assert.equal(await mask(),'00000001');
+    await page.keyboard.down(';'); assert.equal(await code(),'00000|00001');
     await settle(); assert.equal(await correct(),1);
     await page.keyboard.down(';'); await settle(); assert.equal(await attempts(),1);
     await valves.selectOption(`${instrument}-3`); await page.keyboard.up(';'); await settle();
-    assert.equal(await mask(),'00000000'); assert.equal(await attempts(),1);
+    assert.equal(await code(),'00000|00000'); assert.equal(await attempts(),1);
     await valves.selectOption(`${instrument}-4`); await valves.blur();
     await page.keyboard.down(';'); await valves.selectOption(`${instrument}-3`); await settle();
     assert.equal(await attempts(),1); await page.keyboard.up(';');
     await page.evaluate(([i,p])=>window.fixture.start(p,'instant',i),[instrument,combined]);
     await valves.selectOption(`${instrument}-4`); await valves.blur();
     await page.keyboard.down('k'); await page.waitForTimeout(70); await page.keyboard.down(';');
-    assert.equal(await mask(),'00000101'); await settle(); assert.equal(await correct(),1);
+    assert.equal(await code(),'00000|00101'); await settle(); assert.equal(await correct(),1);
     await page.keyboard.up('k'); await page.keyboard.up(';');
     // Real simultaneous touchscreen contacts on valves 2 and 4.
     if (name === 'chromium') {
@@ -683,9 +683,9 @@ try {
         points.push({x:b.x+b.width/2,y:b.y+b.height/2,id:n});
       }
       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
-      assert.equal(await mask(),'00000101'); await settle(); assert.equal(await correct(),1);
+      assert.equal(await code(),'00000|00101'); await settle(); assert.equal(await correct(),1);
       await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-      assert.equal(await mask(),'00000000'); await cdp.detach();
+      assert.equal(await code(),'00000|00000'); await cdp.detach();
     }
     await valves.selectOption(`${instrument}-3`);
   }
@@ -739,7 +739,7 @@ try {
   await page.keyboard.down('v'); await settle(); assert.equal(await correct(),1);
   assert.equal(await page.evaluate(()=>window.fixture.session.last.answer.instrument),'horn-f');
   await selectInstrument(page,'trumpet-bb');
-  assert.equal(await mask(),'00000000');
+  assert.equal(await code(),'00000|00000');
   await page.keyboard.up('v'); await settle(); assert.equal(await attempts(),1);
   // Failed writes retain the chosen session spacing, even if an older value is readable.
   await selectInstrument(page,'horn-f');

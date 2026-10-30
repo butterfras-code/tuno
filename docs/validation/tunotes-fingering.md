@@ -8,20 +8,20 @@ The lower answer area uses Uno234’s pill selector and rounded input panel, wit
 
 ## Implementation
 
-- `src/apps/tunotes/domain/fingering.ts`: instrument configuration, written-pitch validation, answer union, and charts including alternates: trumpet F♯3–C6, euphonium E2–B♭4, B♭ tuba E1–B♭3, and double horn C2–G5. Chart source: [Yamaha trumpet fingering chart](https://www.yamaha.com/en/musical_instrument_guide/common/images/trumpet/fingering.pdf). Low-brass charts are cross-checked against [Micah Everett](https://olemiss.edu/lowbrass/studio/fingeringcharts/euphbcfingering.pdf) and [Yamaha tuba](https://www.yamaha.com/en/musical_instrument_guide/tuba/play/play002.html); horn uses [Colin Dorman’s double-horn chart](https://colindorman.com/french-horn-exercises/fingering_charts/). Chromatic numbers come from the existing written-pitch model; there is no concert-pitch conversion or reverse lookup from masks.
-- `src/shared/input/held-fingers.ts` and `fingering-input.ts`: source-aware held state and instrument-independent controls. Keys and pointer contacts are tracked independently, with pointer capture and cancellation cleanup. The shared `fingering-layout.ts` supplies presentation coordinates; each finger retains its mask position, labels, and key.
+- `src/apps/tunotes/domain/fingering.ts`: instrument configuration, written-pitch validation, answer union, and charts including alternates: trumpet F♯3–C6, euphonium E2–B♭4, B♭ tuba E1–B♭3, and double horn C2–G5. Chart source: [Yamaha trumpet fingering chart](https://www.yamaha.com/en/musical_instrument_guide/common/images/trumpet/fingering.pdf). Low-brass charts are cross-checked against [Micah Everett](https://olemiss.edu/lowbrass/studio/fingeringcharts/euphbcfingering.pdf) and [Yamaha tuba](https://www.yamaha.com/en/musical_instrument_guide/tuba/play/play002.html); horn uses [Colin Dorman’s double-horn chart](https://colindorman.com/french-horn-exercises/fingering_charts/). Chromatic numbers come from the existing written-pitch model; there is no concert-pitch conversion or reverse lookup from fingering codes.
+- `src/shared/input/held-fingers.ts` and `fingering-input.ts`: source-aware held state and instrument-independent controls. Keys and pointer contacts are tracked independently, with pointer capture and cancellation cleanup. The shared `fingering-layout.ts` supplies presentation coordinates; each finger retains its anatomical position, labels, and key.
 - `src/shared/input/piano-keyboard.ts` and `piano-keyboard.css`: shared keyboard geometry, interaction handlers, and responsive styling; `src/ui/views/tone.ts` and `src/styles.css` consume this extraction. Tone retains its audio and sustain behavior.
 - `src/apps/tunotes/ui/keyboard-answers.ts`: written-pitch answers and input gating.
 - `src/apps/tunotes/ui/play-surface.ts`: reserves sufficient compact-layout height for the additional input methods.
 - `src/apps/tunotes/engine/fingering-policy.ts`: isolated 350 ms flashcard settling policy. It cancels stale timers on prompt changes and locks. An intentional release can submit open only after a held answer advances to the immediately next primary-open card. Prompt changes and input cleanup do not trigger a submission.
 - `src/apps/tunotes/ui/note-entry.ts` and `practice-view.ts`: compact method selection, Open action, keyboard routing, lifecycle cleanup, and the existing shared feedback surface.
 - `src/apps/tunotes/engine/practice.ts` and `challenge.ts`: accept a fingering answer through existing scoring and advancement. Held physical state survives advancement; a new intentional input change is necessary to answer again.
-- `src/apps/tunotes/engine/adaptive.ts`: continues observing accuracy, but does not invent a guessed pitch from a valve mask for spelling contrast exercises.
-- `src/apps/tunotes/persistence/store.ts`: snapshot version 5 stores and validates fingering and musical-keyboard observations. Earlier snapshots migrate on read. Older application versions cannot read version 5 backups.
+- `src/apps/tunotes/engine/adaptive.ts`: continues observing accuracy, but does not invent a guessed pitch from a fingering code for spelling contrast exercises.
+- `src/apps/tunotes/persistence/store.ts`: snapshot version 7 stores and validates fingering and musical-keyboard observations. Earlier snapshots migrate on read. Older application versions cannot read version 7 backups.
 - `src/apps/tunotes/ui/multiplayer-view.ts`: accepts the shared answer type; its input behavior remains note names.
 - `src/apps/tunotes/styles.css`: simple outlined valve caps, stems, and casings inside fixed touch-safe targets. Held caps move downward and tint; the casing stays still. Horn’s T control uses a compact outlined lever. Reduced motion removes the transition while preserving the pressed position. Existing shared UI tokens and element helpers are reused.
 - `tests/tunotes-fingering.test.ts`, `scripts/notes-fingering-browser-check.mjs`, and `package.json`: unit and browser coverage, with the new browser script included in `test:browser`.
-- Existing adaptive, challenge, and configurator tests now expect migrated snapshot version 5.
+- Existing adaptive, challenge, and configurator tests now expect migrated snapshot version 7.
 
 ## Validation
 
@@ -151,3 +151,75 @@ Validation: `npm run check` passed on Node 24.22.1 (543 tests, typecheck, hosted
 The panel-placement action is now **Move Panel**, and the edit-mode entry is **Adjust Input** (return with **Done** or Escape). The panel starts with “Hold fingers for best experience.” Open, Move Panel, and Adjust Input sit below the input. While adjusting, the transparent outline places Move at top left, Flip at top right, Spacing at bottom center, and Resize at bottom right. Flip and Spacing retain accessible labels and hover titles. These overlay controls do not change the available hand or staff space. Size/position editing, persistence, and held-input behavior are unchanged.
 
 Validation: Node 24.22.1, `npm run check` (543 tests, typecheck, hosted build), and final typecheck/build passed. Chromium and Firefox checks cover horn and strings at all 12 viewport profiles, including hidden/visible adjustment-tool assertions, keyboard activation, spacing/flip preferences, fixed panel/staff bounds, and the shared held-input fixtures. Primary and narrow/landscape screenshots were reviewed; `git diff --check` passed.
+
+## Ten-position fingering codes
+
+[The fingering model specification](../fingering-model-spec.md) defines
+`left|right[|string]`, with five anatomical positions per hand and thumbs in the
+middle. Shared parsing supports simultaneous control groups and canonical ordering.
+Instrument validation and pitch acceptance remain separate from syntax validation.
+Existing input emits primary-control states only; chart data may express groups
+and optional string identity without adding string-selection controls.
+
+All existing brass and string charts now use this format. Named finger positions
+replace numeric mask offsets in held input and display state, including the horn
+thumb indicator. The horn thumb and string little finger are distinct. Keyboard
+bindings, visual ordering, settling, cancellation, and lower-held-string-finger
+allowances remain unchanged. Primary-fingering avoidance compares hand states,
+ignoring optional string identity for the current finger-only input.
+
+The initial migration used schema 6 with the `mask` field and existing storage key. Supported
+older snapshots and backups migrate on reading, resolve the explicit instrument
+before preset fallback, and retain incorrect answers as well as correct ones.
+No string is inferred from old data. Failed validation preserves existing stored
+data; that initial implementation wrote schema 6. The consumer migration below supersedes
+its field names and output version. Existing string charts remain
+unspecified by string: string-specific exercises need verified per-string entries
+and exercise context in a later change.
+
+Validation: Node 24.22.1, `npm ci`, and `npm run check` passed (549 tests,
+typecheck, hosted build). Regression hashes captured from base commit `374a2e3`
+verify every original pitch and ordered fingering alternative across all ten chart
+configurations. Tests cover all ten positions, grouped controls, malformed codes,
+string-context matching, legacy schemas 0–5, repeated migration, preset fallback,
+incorrect historical answers, and storage failure preservation.
+
+Chromium and Firefox completed the eight-instrument matrix across all 12 viewport
+profiles. The subsequent deterministic fixture exposed one remaining legacy
+expectation in the test's generated horn chords (the application returned the
+correct ten-position code). After updating that expectation, both engines passed
+the complete fixture-only rerun, including keyboard/touch input, horn chords,
+scoring, release-to-open, cancellation, repeated notes, and storage checks.
+Reviewed primary-profile horn and violin screenshots, four-valve layouts, and
+narrow/landscape, menu, and results screenshots. `git diff --check` passed.
+Physical-device touch behavior, native Safari, and real browser zoom remain
+unverified; no visual layout changes are introduced by this migration.
+
+
+## Fingering consumers and schema 7
+
+All active fingering consumers use `FingeringCode` and `code`: chart helpers,
+held-input state, UI callbacks, Practice/Challenge answers, observations, and
+browser fixtures. The input element exposes `data-code`. The legacy `mask` name
+is confined to backward-compatible persistence decoding and its regression tests.
+
+Practice rejects malformed codes before recording an attempt and canonicalizes
+valid codes before scoring and recording them. The settling policy canonicalizes
+groups before comparing states, so equivalent control order does not restart the
+timer. Open-hand checks ignore optional string identity, including release-to-open
+and the UI's primary-fingering check. Current physical input remains finger-only.
+
+Schema 7 writes the `code` field. Versions 0–5 read eight-position `mask` values;
+version 6 reads ten-position `mask` values. Import rejects mixed or wrong-version
+field names, and every successful import/export normalizes to schema 7.
+
+Validation: `npm run check` passed on Node 24.22.1 (554 tests, typecheck,
+hosted build). Both Chromium and Firefox passed the complete deterministic input
+fixture with `TUNO_FINGERING_FIXTURE_ONLY=1`, including the renamed DOM attribute,
+keyboard and touch holds, scoring, cancellation, repeated notes, horn chords,
+release-to-open, and storage checks. New regressions cover canonical settling,
+open-hand string metadata, invalid-attempt rejection, string-independent prompt
+selection, and schema 6-to-7 conversion with strict field validation.
+The earlier 12-profile layout matrix and screenshot review remain applicable:
+this follow-up changes data handling and attribute names, not layout or controls.
+`git diff --check` passed.

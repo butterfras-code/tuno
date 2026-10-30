@@ -1,4 +1,6 @@
-import { acceptsFingering, acceptsKeyboard, fingeringFor, validMask } from '../domain/fingering.ts';
+import { migrateLegacyFingering } from './legacy-fingering.ts';
+import { canonicalFingering } from '../../../shared/input/fingering-code.ts';
+import { acceptsFingering, acceptsKeyboard, fingeringFor, validFingering } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { Challenge, validateRules } from '../engine/challenge.ts';
 import type { ChallengeRules, ChallengeEnd } from '../engine/challenge.ts';
@@ -13,8 +15,8 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; challenge?: { rules: ChallengeRules; end: ChallengeEnd; bestStreak: number }; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]>; learning?: Learning }
 export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean; defaultPresetId: string }
-export interface Snapshot { appId: 'tunotes'; schemaVersion: 5; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
-export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 5, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
+export interface Snapshot { appId: 'tunotes'; schemaVersion: 7; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
+export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 7, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
 function object(v: unknown, keys: string[]): Record<string, unknown> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail('Expected an object.');
@@ -45,21 +47,23 @@ function source(v: unknown): PresetSource {
   // Keep earlier saved configurations/history importable even if their spelling pool is no longer playable.
   normalizePreset(result, { legacySpellings: true }); return result;
 }
-function observation(v: unknown): Observation {
+function observation(v: unknown, version: number): Observation {
   const o = object(v,['pitch','answer','correct','responseMs','activity','preset']);
   const p = object(o.pitch,['letter','accidental','octave']);
   if (!letters.includes(p.letter as never) || !['practice','challenge'].includes(String(o.activity))) fail('Invalid observation.');
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
-  const a = object(o.answer,['letter','accidental','kind','mask','note','matchOctave','instrument']);
+  const a = object(o.answer,['letter','accidental','kind','mask','code','note','matchOctave','instrument']);
   const correct = boolean(o.correct);
   let answer: NoteAnswer;
   if (a.kind === 'fingering') {
-    object(a,['kind','mask','instrument']);
+    const field = version < 7 ? 'mask' : 'code';
+    object(a,['kind',field,'instrument']);
     const instrument = a.instrument === undefined ? undefined : string(a.instrument,40);
     const config = fingeringFor(instrument ?? presets.find(p => p.id === o.preset)?.instrument, 4);
-    const mask = string(a.mask,8);
-    if (!config || !config.pitches[chromatic(pitch)] || !validMask(mask) || correct !== acceptsFingering(config,pitch,mask)) fail('Invalid fingering observation.');
-    answer = { kind: 'fingering', mask, ...(instrument ? {instrument} : {}) };
+    const raw = string(a[field],120);
+    const code = version < 6 ? migrateLegacyFingering(raw, config?.instrument ?? '') : validFingering(raw) ? canonicalFingering(raw) : raw;
+    if (!config || !config.pitches[chromatic(pitch)] || !validFingering(code) || correct !== acceptsFingering(config,pitch,code)) fail('Invalid fingering observation.');
+    answer = { kind: 'fingering', code, ...(instrument ? {instrument} : {}) };
   } else if (a.kind === 'keyboard') {
     object(a,['kind','note','matchOctave']);
     const note = integer(a.note,12,119);
@@ -86,7 +90,7 @@ export function validateSnapshot(input: unknown): Snapshot {
   const o = object(input,['appId','schemaVersion','profiles','customPresets','configuration']);
   if (o.appId !== 'tunotes') fail('This is not a tuNotes backup.');
   const version = integer(o.schemaVersion);
-  if (version > 5) fail('This backup needs a newer version of tuNotes.');
+  if (version > 7) fail('This backup needs a newer version of tuNotes.');
   if (version === 0) {
     if (o.configuration !== undefined) fail('Version 0 backups cannot contain configuration.');
     return validateSnapshot({ ...o, schemaVersion: 5, configuration: emptySnapshot().configuration });
@@ -132,7 +136,7 @@ export function validateSnapshot(input: unknown): Snapshot {
       const entries = Object.entries(c.notes); if (entries.length > 189) fail('Too many tracked pitches.');
       const notes: Record<string,Observation[]> = {};
       for (const [label, records] of entries) {
-        const values = array(records,10).map(observation);
+        const values = array(records,10).map(value => observation(value, version));
         if (!allowed.includes(label) || !values.length || values.some(r => pitchLabel(r.pitch) !== label || r.preset !== parts[0] || r.activity !== parts[6])) fail('Note history references the wrong pitch or preset.');
         notes[label] = values;
       }
@@ -150,7 +154,7 @@ export function validateSnapshot(input: unknown): Snapshot {
   const profileId = c.profileId === null ? null : id(c.profileId);
   if (profileId !== null && !profiles.some(p => p.id === profileId)) fail('Selected profile does not exist.');
   const presetId = id(c.presetId); if (!validPresets.has(presetId)) fail('Selected preset does not exist.');
-  return { appId: 'tunotes', schemaVersion: 5, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
+  return { appId: 'tunotes', schemaVersion: 7, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
 }
 function validateContext(value: string, validPresets: Set<string>) {
   const parts: unknown = JSON.parse(value);

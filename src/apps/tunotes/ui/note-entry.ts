@@ -1,10 +1,11 @@
+import { fingerHeld, isOpenFingering } from '../../../shared/input/fingering-code.ts';
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringResize, type FingerPosition, type FingerSize } from '../../../shared/input/fingering-resize.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
 import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
 import { FingeringPolicy } from '../engine/fingering-policy.ts';
-import { fingeringFor, OPEN_FINGERING } from '../domain/fingering.ts';
+import { fingeringFor } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { chromatic } from '../domain/notation.ts';
 import { el } from '../../../shared/ui/components.ts';
@@ -85,9 +86,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     methodButtons.set(value, button); methodSelector.append(button);
   }
   const interactionBody = el('div', 'interaction-body');
-  const policy = new FingeringPolicy((mask, token) => accept({ kind: 'fingering', mask, instrument: selectedInstrument.instrument }, token));
+  const policy = new FingeringPolicy((code, token) => accept({ kind: 'fingering', code, instrument: selectedInstrument.instrument }, token));
   let configuration: ReturnType<typeof fingeringFor>;
-  let fingers = fingeringInput([], (mask, intentional) => policy.change(mask, intentional));
+  let fingers = fingeringInput([], (code, intentional) => policy.change(code, intentional));
   const keyboard = keyboardAnswers(accept);
   const fingeringPanel = el('div', 'fingering-panel'); fingeringPanel.hidden = true;
   const open = el('button', 'control fingering-open', 'Open (Space)'); open.type = 'button'; open.setAttribute('aria-keyshortcuts','Space');
@@ -258,9 +259,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     if (configuration !== config) {
       editSize(false); resizer.dispose(); configuration = config;
       const previous = fingers.node;
-      fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
-        policy.change(mask,intentional);
-        side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
+      fingers = fingeringInput(config?.fingers ?? [], (code, intentional) => {
+        policy.change(code,intentional);
+        side.textContent = fingerHeld(code, 'leftThumb') ? 'B♭ side — trigger held' : 'F side';
       }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
       resizer = fingeringResize(fingers.node, changeScale);
@@ -274,7 +275,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
-    policy.update(token, locked, Boolean(pitch && config?.pitches[chromatic(pitch)]?.[0] === OPEN_FINGERING));
+    const primary = pitch && config?.pitches[chromatic(pitch)]?.[0];
+    policy.update(token, locked, Boolean(primary && isOpenFingering(primary)));
     open.disabled = locked || resizing;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;

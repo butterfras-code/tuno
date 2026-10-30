@@ -1,3 +1,4 @@
+import { handCode, validFingering, canonicalFingering } from '../../../shared/input/fingering-code.ts';
 import { acceptsFingering, acceptsKeyboard, fingeringFor } from '../domain/fingering.ts';
 import type { FingeringConfiguration, NoteAnswer } from '../domain/fingering.ts';
 import { ALGORITHM_VERSION, activePool, initialAdaptive, learn, observe, selectAdaptive } from './adaptive.ts';
@@ -63,7 +64,10 @@ export class Practice {
   private nextPitch() {
     const config = this.inputFingering();
     const previous = this.pitch && config?.pitches[chromatic(this.pitch)]?.[0];
-    const eligible = (pitch: WrittenPitch) => previous === undefined || config?.pitches[chromatic(pitch)]?.[0] !== previous;
+    const eligible = (pitch: WrittenPitch) => {
+      const next = config?.pitches[chromatic(pitch)]?.[0];
+      return previous === undefined || next === undefined || handCode(next) !== handCode(previous);
+    };
     if (!this.adaptive) return this.bag.next(eligible);
     const pool = this.activePreset.pool;
     const alternatives = pool.filter(eligible);
@@ -106,12 +110,16 @@ export class Practice {
   answer(token: PromptToken, answer: NoteAnswer) {
     if (this.state !== 'running' || !this.matches(token)) return false;
     if ('kind' in answer && answer.kind === 'keyboard' && (!Number.isInteger(answer.note) || answer.note < 12 || answer.note > 119)) return false;
+    if ('kind' in answer && answer.kind === 'fingering') {
+      if (!validFingering(answer.code)) return false;
+      answer = { ...answer, code: canonicalFingering(answer.code) };
+    }
     const now = this.activeMs;
     const config = fingeringFor('kind' in answer && answer.kind === 'fingering' ? answer.instrument ?? this.preset.instrument : this.preset.instrument, 4);
     if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
-    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.mask) : sameAnswer(this.pitch, answer);
+    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.code) : sameAnswer(this.pitch, answer);
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
-    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, mask: answer.mask, ...(answer.instrument ? {instrument: answer.instrument} : {}) } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
+    this.records.push(Object.freeze({ pitch: this.pitch, answer: Object.freeze('kind' in answer ? answer.kind === 'keyboard' ? { kind: answer.kind, note: answer.note, matchOctave: answer.matchOctave ?? false } : { kind: answer.kind, code: answer.code, ...(answer.instrument ? {instrument: answer.instrument} : {}) } : { letter: answer.letter, accidental: answer.accidental }), correct, responseMs: now - this.promptStart, activity: this.activity, preset: this.preset.id }));
     if (this.adaptive) {
       const previousPool = this.activePreset.pool;
       const next = learn(this.learning,this.records.at(-1)!,this.preset); this.learning = next.state;
