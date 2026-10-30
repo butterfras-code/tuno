@@ -21,12 +21,15 @@
     "dev:counts": "node scripts/build.mjs --dev --counts",
     "dev:notes": "node scripts/build.mjs --dev --notes",
     "dev:walk": "node scripts/build.mjs --dev --walk",
-    "test:responsive": "npm run build && node scripts/viewport-browser-check.mjs"
+    "test:responsive": "npm run build && node scripts/viewport-browser-check.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "screenshots:replace": "node scripts/capture-screenshots.mjs --replace"
   },
   "devDependencies": {
     "@types/node": "24.13.6",
     "@types/qrcode": "1.5.6",
     "esbuild": "0.28.2",
+    "fflate": "0.8.3",
     "jsqr": "1.4.0",
     "playwright": "1.63.0",
     "typescript": "7.0.2"
