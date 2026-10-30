@@ -10,7 +10,7 @@ export const microphoneTranspositions = [
   { offset: 21, label: 'E♭ — Baritone Sax' },
 ] as const;
 export const MIC_HOLD_MS = 300;
-export const MIC_TOLERANCE_CENTS = 25;
+export const MIC_TOLERANCE_CENTS = 40;
 
 /** Raw evidence only: smoothing must never bridge a missing or out-of-tune frame. */
 export class MicrophoneHold {
@@ -23,7 +23,8 @@ export class MicrophoneHold {
   update(now: number, frequency: number | null, offset: number, enabled = true) {
     const reading = frequency !== null && Number.isFinite(frequency) && frequency > 0 ? identifyPitch(frequency, 440, offset) : null;
     if (!reading || reading.writtenNote !== this.submitted) this.submitted = undefined;
-    if (!enabled || !reading || Math.abs(reading.cents) > MIC_TOLERANCE_CENTS) {
+    // Allow floating-point roundoff at the inclusive cents boundary.
+    if (!enabled || !reading || Math.abs(reading.cents) > MIC_TOLERANCE_CENTS + 1e-8) {
       this.reset(); return { reading, progress: 0, answer: undefined };
     }
     if (this.note !== reading.writtenNote || now - this.last > 200 || now < this.last) {

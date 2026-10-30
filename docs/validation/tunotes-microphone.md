@@ -1,11 +1,11 @@
 # tuNotes microphone input
 
 Mic is the third answer method in Practice and Challenge. Selecting it does not
-request microphone access: use Start mic inside the panel. Transposition is saved
+request microphone access: use the microphone icon (Start mic) inside the panel. Transposition is saved
 on the device; microphone access is never restarted automatically.
 
 The readout shows written pitch and cents at A4 = 440 Hz. Raw tuner detector
-samples must remain within ±25 cents of the same semitone for at least 300 ms.
+samples must remain within ±40 cents of the same semitone for at least 300 ms.
 Silence, unreliable detection, an out-of-tolerance sample, or a gap longer than
 200 ms restarts the hold. Stable wrong pitches submit wrong answers, just like
 other answer methods. Octaves are checked; enharmonic sounding pitches match.

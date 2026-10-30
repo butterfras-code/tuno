@@ -1,15 +1,18 @@
+import micAsset from '../../../assets/mic.svg';
 import { createAudioController } from '../../../audio/controller.ts';
 import { createPracticeStore } from '../../../practice/state.ts';
 import { noteName } from '../../../music/pitch.ts';
 import { el } from '../../../shared/ui/components.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import type { PromptToken } from '../engine/practice.ts';
-import { MicrophoneHold, microphoneTranspositions } from '../engine/microphone.ts';
+import { MIC_HOLD_MS, MIC_TOLERANCE_CENTS, MicrophoneHold, microphoneTranspositions } from '../engine/microphone.ts';
 
 export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken) => void) {
   const node = el('div', 'notes-mic'); node.hidden = true;
   const controls = el('div', 'notes-mic-controls');
-  const toggle = el('button', 'control', 'Start mic'); toggle.type = 'button'; toggle.setAttribute('aria-pressed', 'false');
+  const toggle = el('button', 'control'); toggle.type = 'button'; toggle.setAttribute('aria-pressed', 'false');
+  const icon = el('img', 'notes-mic-icon');
+  Object.assign(icon, { src: micAsset, alt: '', width: 24, height: 24 }); toggle.append(icon);
   const label = el('label', 'notes-mic-transposition', 'Transposition');
   const select = el('select', 'control'); select.setAttribute('aria-label', 'Microphone transposition');
   for (const item of microphoneTranspositions) {
@@ -20,6 +23,7 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   const pitch = el('p', 'notes-mic-pitch', '—');
   const meter = el('div', 'notes-mic-meter'); meter.setAttribute('role', 'meter');
   meter.setAttribute('aria-valuemin', '-50'); meter.setAttribute('aria-valuemax', '50');
+  meter.style.setProperty('--mic-tolerance', `${MIC_TOLERANCE_CENTS}%`);
   const marker = el('span', 'notes-mic-marker'); meter.append(marker);
   const scale = el('div', 'notes-mic-scale');
   scale.append(el('span', '', 'Flat'), el('span', '', 'In tune'), el('span', '', 'Sharp'));
@@ -27,7 +31,7 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   setCents(null);
   meter.setAttribute('aria-label', 'Pitch deviation in cents');
   const hold = el('progress', 'notes-mic-hold'); hold.max = 1; hold.value = 0; hold.setAttribute('aria-label', 'Stable pitch hold');
-  const status = el('p', 'muted notes-mic-status', 'Start mic, then hold a note for 300 ms within ±25 cents.'); status.setAttribute('role', 'status');
+  const status = el('p', 'muted notes-mic-status', `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`); status.setAttribute('role', 'status');
   node.append(controls, pitch, scale, meter, hold, status);
   const store = createPracticeStore(), audio = createAudioController(store), policy = new MicrophoneHold();
   let active = false, locked = true, token: PromptToken | undefined, identity = '', lastFrame = -1;
@@ -39,9 +43,9 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   });
   const unsubscribe = store.subscribe(state => {
     const live = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
-    toggle.textContent = live ? 'Stop mic' : 'Start mic'; toggle.setAttribute('aria-pressed', String(live));
+    toggle.setAttribute('aria-label', live ? 'Stop mic' : 'Start mic'); toggle.title = live ? 'Stop mic' : 'Start mic'; toggle.setAttribute('aria-pressed', String(live));
     if (!live) { policy.clear(); pitch.textContent = '—'; hold.value = 0; setCents(null); }
-    const message = state.audioError || (state.micStatus === 'requesting' ? 'Allow microphone access to begin.' : live ? 'Hold a note for 300 ms within ±25 cents. A4 = 440 Hz.' : 'Start mic, then hold a note for 300 ms within ±25 cents.');
+    const message = state.audioError || (state.micStatus === 'requesting' ? 'Allow microphone access to begin.' : live ? `Hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents. A4 = 440 Hz.` : `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`);
     if (status.textContent !== message) status.textContent = message;
     if (!live || state.pitchUpdatedAt === lastFrame) return;
     lastFrame = state.pitchUpdatedAt;

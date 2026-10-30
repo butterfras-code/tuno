@@ -25,7 +25,7 @@ test('requires 300 continuous milliseconds; does not repeatedly submit a held no
   assert.equal(hold(policy, 69, 0, 775).answer, 69);
 });
 test('silence, tolerance excursions, pitch changes and stale frames restart the hold', () => {
-  for (const interruption of [null, 440 * 2 ** (26 / 1200), noteFrequency(70), NaN]) {
+  for (const interruption of [null, 440 * 2 ** (41 / 1200), noteFrequency(70), NaN]) {
     const policy = new MicrophoneHold();
     policy.update(0, 440, 0); policy.update(100, 440, 0);
     policy.update(150, interruption, 0);
@@ -39,4 +39,13 @@ test('silence, tolerance excursions, pitch changes and stale frames restart the 
   assert.equal(policy.update(300, 440, 0).progress, 0);
   assert.equal(policy.update(400, 440, 0, false).answer, undefined);
   assert.equal(policy.update(450, 440, 0).progress, 0);
+});
+
+test('beginner tolerance accepts pitches up to 40 cents flat or sharp', () => {
+  for (const cents of [-40, -35, 35, 40, -41, 41]) {
+    const policy = new MicrophoneHold();
+    let result;
+    for (const time of [0, 75, 150, 225, 300]) result = policy.update(time, 440 * 2 ** (cents / 1200), 0);
+    assert.equal(result!.answer, Math.abs(cents) <= 40 ? 69 : undefined, `${cents} cents`);
+  }
 });
