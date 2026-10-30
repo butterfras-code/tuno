@@ -156,7 +156,7 @@ async function checkLayouts(page) {
   await chooseMethod(page,'fingering');
   assert.equal(await page.getByRole('button',{name:/^Valve [123]$/}).count(),3);
   const selector = page.getByRole('group', {name:'Answer method',exact:true});
-  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note Names','B♭ Trumpet']);
+  assert.deepEqual(await selector.getByRole('button').allTextContents(), ['Note Names','B♭ Trumpet','Mic']);
   assert.equal(await instrumentPill(page).getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('.input-workspace .interaction-body .fingering-panel:visible').count(),1);
   await instrumentPill(page).click();
