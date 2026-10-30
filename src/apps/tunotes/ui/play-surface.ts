@@ -66,7 +66,9 @@ export function playSurface(home: HTMLElement, options: HTMLElement) {
     // entire surface still fits, with the multiplayer warning left actionable.
     const minWidth = grip ? 560 : head ? portrait ? 440 : 1120 : pairs ? 960 : compact ? 344 : 700;
     const physicalInput = Boolean(stage.querySelector('.note-entry[data-input-method="fingering"], .note-entry[data-input-method="keyboard"]'));
-    const minHeight = grip ? 240 : head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? 710 : 600 : challenge ? 600 : 560;
+    // Thumb controls need a second row without shrinking their fixed touch targets.
+    const inputMinHeight = stage.querySelector('.note-entry .fingering-trigger') ? 800 : 710;
+    const minHeight = grip ? 240 : head ? portrait ? 1120 : 600 : short ? 280 : compact ? physicalInput ? inputMinHeight : 600 : challenge ? 600 : 560;
     const preferredWidth = classroom ? 1000 : 1280;
     const preferredHeight = classroom ? 650 : 800;
     const grow = Math.max(1,Math.min(width/preferredWidth,height/preferredHeight));

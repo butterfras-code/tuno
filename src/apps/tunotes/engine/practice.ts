@@ -1,5 +1,5 @@
 import { acceptsFingering, acceptsKeyboard, fingeringFor } from '../domain/fingering.ts';
-import type { NoteAnswer } from '../domain/fingering.ts';
+import type { FingeringConfiguration, NoteAnswer } from '../domain/fingering.ts';
 import { ALGORITHM_VERSION, activePool, initialAdaptive, learn, observe, selectAdaptive } from './adaptive.ts';
 import type { Learning, NoteHistory, AdaptiveState } from './adaptive.ts';
 import { chromatic, diatonic, pitchLabel, sameAnswer, spelling } from '../domain/notation.ts';
@@ -14,7 +14,7 @@ export class ShuffledBag {
     if (!pool.length || new Set(pool.map(pitchLabel)).size !== pool.length) throw new Error('Bag requires a nonempty, unique pool.');
     this.pool = [...pool]; this.random = random;
   }
-  next() {
+  next(eligible: (pitch: WrittenPitch) => boolean = () => true): WrittenPitch {
     if (!this.bag.length) {
       this.bag = [...this.pool];
       for (let i = this.bag.length - 1; i > 0; i--) {
@@ -26,7 +26,19 @@ export class ShuffledBag {
       const last = this.bag.length - 1;
       if (last > 0 && pitchLabel(this.bag[last]!) === this.previous) [this.bag[0], this.bag[last]] = [this.bag[last]!, this.bag[0]!];
     }
-    const pitch = this.bag.pop()!; this.previous = pitchLabel(pitch); return pitch;
+    let index = this.bag.length - 1;
+    while (index >= 0 && !eligible(this.bag[index]!)) index--;
+    if (index < 0) {
+      // Keep deferred cards in the bag; bridge with a different fingering when
+      // only the previous fingering remains in this cycle.
+      const alternatives = this.pool.filter(eligible);
+      if (alternatives.length) {
+        const pitch = new ShuffledBag(alternatives, this.random).next();
+        this.previous = pitchLabel(pitch); return pitch;
+      }
+      index = this.bag.length - 1;
+    }
+    const [pitch] = this.bag.splice(index, 1); this.previous = pitchLabel(pitch!); return pitch!;
   }
 }
 export interface PromptToken { readonly session: number; readonly prompt: number }
@@ -47,9 +59,15 @@ export class Practice {
   private readonly random: () => number;
   get activePreset(): Preset { return this.adaptive ? { ...this.preset, pool: activePool(this.preset,this.savedLearning) } : this.preset; }
   get savedLearning(): Learning { return { algorithmVersion: ALGORITHM_VERSION, expansionCount: this.learning.expansionCount }; }
+  private readonly inputFingering: () => FingeringConfiguration | undefined;
   private nextPitch() {
-    if (!this.adaptive) return this.bag.next();
-    const next = selectAdaptive(this.learning,this.activePreset.pool,this.random); this.learning = next.state; return next.pitch;
+    const config = this.inputFingering();
+    const previous = this.pitch && config?.pitches[chromatic(this.pitch)]?.[0];
+    const eligible = (pitch: WrittenPitch) => previous === undefined || config?.pitches[chromatic(pitch)]?.[0] !== previous;
+    if (!this.adaptive) return this.bag.next(eligible);
+    const pool = this.activePreset.pool;
+    const alternatives = pool.filter(eligible);
+    const next = selectAdaptive(this.learning,alternatives.length ? alternatives : pool,this.random); this.learning = next.state; return next.pitch;
   }
   private readonly clock: () => number;
   private readonly bag: ShuffledBag;
@@ -71,7 +89,8 @@ export class Practice {
   bestStreak = 0;
   interrupted = false;
   private endTime: number | undefined;
-  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random, options: { activity?: 'practice' | 'challenge'; continueAfter?: ContinueAfter; adaptive?: boolean; notes?: NoteHistory; learning?: Learning } = {}) {
+  constructor(preset: Preset, selfPaced = false, clock = () => performance.now(), random = Math.random, options: { inputFingering?: () => FingeringConfiguration | undefined; activity?: 'practice' | 'challenge'; continueAfter?: ContinueAfter; adaptive?: boolean; notes?: NoteHistory; learning?: Learning } = {}) {
+    this.inputFingering = options.inputFingering ?? (() => undefined);
     this.activity = options.activity ?? 'practice'; this.adaptive = options.adaptive ?? false; this.random = random; this.learning = initialAdaptive(options.notes,options.learning);
     this.continueAfter = options.continueAfter ?? (selfPaced ? 'click' : 'delay');
     this.preset = preset; this.selfPaced = this.continueAfter === 'click'; this.clock = clock; this.origin = clock();

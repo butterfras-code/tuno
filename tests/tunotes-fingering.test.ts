@@ -7,16 +7,18 @@ import { expansionPlan } from '../src/apps/tunotes/engine/adaptive.ts';
 import { HeldFingers } from '../src/shared/input/held-fingers.ts';
 import { FINGERING_SETTLE_MS, FingeringPolicy } from '../src/apps/tunotes/engine/fingering-policy.ts';
 import { Practice } from '../src/apps/tunotes/engine/practice.ts';
+import { Challenge, defaultTimed } from '../src/apps/tunotes/engine/challenge.ts';
+import { fitFingerArrangement, fingerArrangementOffset } from '../src/shared/input/fingering-resize.ts';
 import { fingerLayout, fingerSpacing } from '../src/shared/input/fingering-layout.ts';
 
 test('hand layouts keep thumb offsets relative to their anchor for every spacing', () => {
-  const horn = fingerLayout(4, { index: 3, anchor: 0, along: -1, across: 0.5 });
+  const horn = fingerLayout(4, { index: 3, anchor: 0, along: -0.75, across: 1 });
   for (const distance of Object.values(fingerSpacing)) {
     const [one, two, three, thumb] = horn.points;
-    assert.equal((thumb!.along - one!.along) * distance, -distance);
-    assert.equal((thumb!.across - one!.across) * distance, distance / 2);
+    assert.equal((thumb!.along - one!.along) * distance, -distance * 0.75);
+    assert.ok(Math.abs((thumb!.across - one!.across) * distance - distance) < 1e-9);
     assert.equal(two!.along - one!.along, three!.along - two!.along);
-    assert.ok(distance >= 60 && distance <= 88);
+    assert.ok(distance >= 68 && distance <= 100);
   }
   for (const count of [3, 4]) {
     const layout = fingerLayout(count);
@@ -361,4 +363,96 @@ test('a hold retained through feedback can release after delayed advancement', t
   policy.update({session:1,prompt:2},false,true);
   policy.change(OPEN_FINGERING); t.mock.timers.tick(FINGERING_SETTLE_MS);
   assert.deepEqual(seen,['00001000',OPEN_FINGERING]);
+});
+
+
+test('independent resizing fits each axis without limiting it to the other axis', () => {
+  const fit = fitFingerArrangement(900, 120, 2, 0, 84, { x: 3, y: 1 });
+  assert.equal(fit.scaleX, 3);
+  assert.equal(fit.scaleY, 1);
+  const bounded = fitFingerArrangement(300, 120, 2, 0, 84, { x: 20, y: 20 });
+  assert.equal(bounded.baseWidth * bounded.scaleX, 300);
+  assert.equal(bounded.baseHeight * bounded.scaleY, 120);
+});
+
+test('legacy proportional sizes fit within the available hand area', () => {
+  for (const [width,height,along,across] of [[350,168,2.75,1],[166,480,1,2.75],[138,260,0,3],[900,500,3,0]]) {
+    for (const spacing of Object.values(fingerSpacing)) {
+      for (const requested of [0.75,1,1.5,20]) {
+        const fit = fitFingerArrangement(width!,height!,along!,across!,spacing,requested);
+        assert.ok(fit.baseWidth * fit.scale <= width! + 1e-9);
+        assert.ok(fit.baseHeight * fit.scale <= height! + 1e-9);
+        assert.ok(fit.step >= 64, 'target footprints never overlap');
+        assert.ok(fit.scale <= requested && fit.scale <= fit.maximum);
+        assert.ok(64 * fit.scale >= 48, 'supported areas retain comfortable minimum targets');
+      }
+    }
+  }
+  const full = fitFingerArrangement(900,500,3,0,84,20);
+  assert.equal(full.baseWidth * full.scale, 900, 'Fill can use the entire available width');
+});
+
+for (const adaptive of [false, true]) test(`instrument prompts change primary fingering (adaptive=${adaptive})`, () => {
+  const base = normalizePreset({id:'changes',name:'Changes',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  // Three open pitches and one fingered pitch exercise depleted-bag bridging.
+  const preset = {...base, pool: ['C4','E5','G4','D4'].map(parsePitch)};
+  const session = new Practice(preset, false, () => 0, () => .999, {
+    adaptive, continueAfter: 'instant', inputFingering: () => trumpetFingering,
+  });
+  const seen = new Set<number>();
+  for (let i = 0; i < 40; i++) {
+    const previous = trumpetFingering.pitches[chromatic(session.pitch)]![0]!;
+    seen.add(chromatic(session.pitch));
+    assert.ok(session.answer(session.token, {kind:'fingering',mask:previous}));
+    assert.ok(session.advance(session.token));
+    assert.notEqual(trumpetFingering.pitches[chromatic(session.pitch)]![0], previous);
+  }
+  if (!adaptive) assert.equal(seen.size, 4, 'deferred pitches are still presented');
+});
+
+test('single-fingering pools stay playable and changing input method takes effect immediately', () => {
+  const base = normalizePreset({id:'open',name:'Open',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  for (const adaptive of [false, true]) {
+    const session = new Practice({...base,pool:['C4','G4'].map(parsePitch)},false,()=>0,()=>.999,
+      {adaptive,continueAfter:'instant',inputFingering:()=>trumpetFingering});
+    for (let i=0;i<10;i++) {
+      assert.ok(session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}));
+      assert.ok(session.advance(session.token));
+    }
+  }
+  let enabled = false;
+  const session = new Practice({...base,pool:['D4','C4','G4'].map(parsePitch)},false,()=>0,()=>.999,
+    {continueAfter:'instant',inputFingering:()=>enabled ? trumpetFingering : undefined});
+  assert.equal(chromatic(session.pitch),67);
+  session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}); session.advance(session.token);
+  assert.equal(chromatic(session.pitch),60,'note-name selection retains its original order');
+  enabled = true;
+  session.answer(session.token,{kind:'fingering',mask:OPEN_FINGERING}); session.advance(session.token);
+  assert.equal(chromatic(session.pitch),62);
+});
+
+
+test('Challenge avoids shared primary fingerings and Until correct preserves retries', () => {
+  const base = normalizePreset({id:'transition',name:'Transition',instrument:'trumpet-bb',clef:'treble',range:['C4','G4'],content:'lines-and-spaces'});
+  const preset = {...base,pool:['D4','C4','G4'].map(parsePitch)};
+  let now = 0;
+  const challenge = new Challenge(preset,defaultTimed,()=>now,()=>.999,{inputFingering:()=>trumpetFingering});
+  challenge.ready(); now = 3000; challenge.tick();
+  assert.ok(challenge.answer(challenge.token,{kind:'fingering',mask:OPEN_FINGERING}));
+  assert.ok(challenge.advance(challenge.token));
+  assert.equal(chromatic(challenge.pitch),62);
+  const practice = new Practice(preset,false,()=>now,()=>.999,{continueAfter:'correct',inputFingering:()=>trumpetFingering});
+  const original = practice.pitch;
+  practice.answer(practice.token,{kind:'fingering',mask:'00001000'}); now += 800;
+  assert.ok(practice.advance(practice.token));
+  assert.equal(practice.pitch,original);
+});
+
+
+test('hand placement reaches input edges and clamps without changing hand size', () => {
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:0,y:0}),{x:-48,y:-100});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:1,y:1}),{x:48,y:100});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:0.5,y:0.5}),{x:0,y:0});
+  assert.deepEqual(fingerArrangementOffset(160,500,64,300,{x:-2,y:4}),{x:-48,y:100});
+  assert.deepEqual(fingerArrangementOffset(64,300,64,300,{x:1,y:1}),{x:0,y:0});
 });

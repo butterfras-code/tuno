@@ -1,4 +1,5 @@
 import { keyboardAnswers } from './keyboard-answers.ts';
+import { fingeringResize, type FingerPosition, type FingerSize } from '../../../shared/input/fingering-resize.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
 import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
 import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
@@ -92,7 +93,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const open = el('button', 'control fingering-open', 'Open (Space)'); open.type = 'button'; open.setAttribute('aria-keyshortcuts','Space');
   open.addEventListener('click', () => policy.open());
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
-  const fingeringHelp = el('p', 'muted fingering-help');
+  const fingeringHelp = el('p', 'muted fingering-help', 'Hold fingers for best experience');
   const side = el('p','muted horn-side','F side'); side.hidden = true;
   const instrumentPicker = el('div', 'instrument-picker');
   instrumentPicker.setAttribute('popover', 'auto');
@@ -118,14 +119,46 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     });
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
-  const move = el('button', 'control fingering-move', 'Move'); move.type = 'button';
-  const flip = el('button', 'control fingering-flip', 'Flip'); flip.type = 'button';
-  const spacing = el('button', 'control fingering-spacing', 'Spacing'); spacing.type = 'button';
-  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, flip, spacing);
+  const move = el('button', 'control fingering-move', 'Move Panel'); move.type = 'button';
+  const flip = el('button', 'control fingering-flip'); flip.type = 'button';
+  const flipIcon = el('span', 'fingering-tool-icon', '⇄');
+  flipIcon.setAttribute('aria-hidden', 'true');
+  flip.append(flipIcon);
+  const resize = el('button', 'control fingering-resize'); resize.type = 'button';
+  const resizeLabel = el('span', '', 'Adjust Input'), doneLabel = el('span', '', 'Done');
+  doneLabel.hidden = true; resize.append(resizeLabel, doneLabel);
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, resize);
+  flip.style.visibility = 'hidden';
+  let resizing = false, activeScaleKey = '';
+  let selectedScale: FingerSize = { x: 1, y: 1 };
+  const scales = new Map<string, FingerSize>();
+  let selectedPosition: FingerPosition = { x: 0.5, y: 0.5 };
+  const handPositions = new Map<string, FingerPosition>();
+  const handPositionKey = () => activeScaleKey.replace('finger-scale:', 'finger-position:');
+  const scaleKey = () => `tunotes:finger-scale:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  function changeScale(value: FingerSize, commit: boolean, position: FingerPosition) {
+    selectedPosition = { ...position }; handPositions.set(handPositionKey(), selectedPosition);
+    selectedScale = value; scales.set(activeScaleKey, value);
+    node.dataset.handScale = String(Math.min(value.x, value.y));
+    if (commit) try { localStorage.setItem(activeScaleKey, JSON.stringify(value)); localStorage.setItem(handPositionKey(), JSON.stringify(position)); } catch { /* Session-only size and position. */ }
+  }
+  let resizer = fingeringResize(fingers.node, changeScale);
+  resizer.outline.append(flip);
+  function editSize(value: boolean) {
+    reset(); resizing = value;
+    flip.style.visibility = value ? 'visible' : 'hidden';
+    resizeLabel.hidden = value;
+    doneLabel.hidden = !value;
+    resize.setAttribute('aria-pressed', String(value));
+    resizer.edit(value);
+    fingers.enable(supported && method === 'fingering' && !value);
+    open.disabled = value || Boolean(lastUpdate?.[2]);
+  }
+  resize.setAttribute('aria-pressed', 'false');
+  resize.addEventListener('click', () => editSize(!resizing));
   type Position = 'left' | 'bottom' | 'right';
   let position: Position = 'bottom', flipped = false;
   let selectedSpacing: FingerSpacing = 'regular';
-  const spacings = new Map<string, FingerSpacing>();
   const spacingKey = () => `tunotes:finger-spacing:${selectedInstrument.value}`;
   const layouts = new Map<string, { position: Position; flipped: boolean }>();
   const orientation = matchMedia('(orientation: landscape)');
@@ -135,12 +168,10 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     fingers.node.dataset.flipped = String(flipped);
     fingers.node.dataset.spacing = selectedSpacing;
     fingers.node.style.setProperty('--finger-spacing', `${fingerSpacing[selectedSpacing]}px`);
-    const nextSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
-    const label = selectedSpacing[0]!.toUpperCase() + selectedSpacing.slice(1);
-    spacing.setAttribute('aria-label', `Spacing: ${label}. Change to ${nextSpacing}`);
-    spacing.title = `Spacing: ${label}`;
+    resizer.update(selectedScale, fingerSpacing[selectedSpacing], selectedPosition);
+    node.dataset.handScale = String(Math.min(selectedScale.x, selectedScale.y));
     const next = positions[(positions.indexOf(position) + 1) % positions.length]!;
-    move.setAttribute('aria-label', `Move input: ${position}. Move to ${next}`);
+    move.setAttribute('aria-label', `Move Panel: ${position}. Move to ${next}`);
     move.title = `Input on ${position}; move to ${next}`;
     flip.setAttribute('aria-label', 'Flip finger order');
     flip.setAttribute('aria-pressed', String(flipped));
@@ -148,7 +179,18 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   }
   const positions: readonly Position[] = ['left', 'bottom', 'right'];
   function loadLayout() {
-    fingers.reset(); policy.cancel();
+    editSize(false); activeScaleKey = scaleKey();
+    selectedPosition = handPositions.get(handPositionKey()) ?? { x: 0.5, y: 0.5 };
+    if (!handPositions.has(handPositionKey())) try {
+      const value = JSON.parse(localStorage.getItem(handPositionKey()) ?? 'null');
+      if (value && Number.isFinite(value.x) && Number.isFinite(value.y) && value.x >= 0 && value.x <= 1 && value.y >= 0 && value.y <= 1) selectedPosition = value;
+    } catch { /* Session-only position. */ }
+    selectedScale = scales.get(scaleKey()) ?? { x: 1, y: 1 };
+    if (!scales.has(scaleKey())) try {
+      const saved = JSON.parse(localStorage.getItem(scaleKey()) ?? 'null');
+      const value = typeof saved === 'number' ? { x: saved, y: saved } : saved;
+      if (value && [value.x, value.y].every(axis => Number.isFinite(axis) && axis >= 0.75 && axis <= 20)) selectedScale = value;
+    } catch { /* Session-only size. */ }
     const key = layoutKey();
     let saved = layouts.get(key);
     if (!saved) try {
@@ -158,9 +200,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     position = saved?.position ?? (orientation.matches && matchMedia('(pointer: coarse)').matches
       ? configuration?.instrument === 'horn-f' ? 'left' : 'right' : 'bottom');
     flipped = saved?.flipped ?? false;
-    const sessionSpacing = spacings.get(spacingKey());
-    selectedSpacing = sessionSpacing ?? 'regular';
-    if (!sessionSpacing) try {
+    // Preserve the baseline of existing saved arrangements after removing the spacing tool.
+    selectedSpacing = 'regular';
+    try {
       const value = localStorage.getItem(spacingKey());
       if (spacingPresets.includes(value as FingerSpacing)) selectedSpacing = value as FingerSpacing;
     } catch { /* Session-only spacing if storage is unavailable. */ }
@@ -175,16 +217,10 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     reset(); position = positions[(positions.indexOf(position) + 1) % positions.length]!; saveLayout();
   });
   flip.addEventListener('click', () => { reset(); flipped = !flipped; saveLayout(); });
-  spacing.addEventListener('click', () => {
-    reset(); selectedSpacing = spacingPresets[(spacingPresets.indexOf(selectedSpacing) + 1) % spacingPresets.length]!;
-    spacings.set(spacingKey(), selectedSpacing);
-    try { localStorage.setItem(spacingKey(), selectedSpacing); } catch { /* Session-only preference. */ }
-    applyLayout();
-  });
-  for (const button of [move, flip, spacing]) button.addEventListener('pointerdown', () => reset());
+  for (const button of [move, flip, resize]) button.addEventListener('pointerdown', () => reset());
   if (options.fingering) orientation.addEventListener('change', loadLayout);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
-  fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
+  fingeringPanel.append(fingeringHelp, fingers.node, fingeringActions);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
@@ -193,7 +229,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     for (const [value, button] of methodButtons) button.setAttribute('aria-pressed', String(value === (method === 'names' ? 'names' : 'instrument')));
     instrumentButton.textContent = instrumentChosen ? selectedInstrument.label : 'Instrument';
     instrumentButton.setAttribute('aria-label', instrumentChosen ? `Choose instrument: ${selectedInstrument.label}` : 'Choose instrument');
-    fingers.enable(active); node.dataset.inputMethod = active ? 'fingering' : method;
+    if (!active && resizing) editSize(false);
+    fingers.enable(active && !resizing); node.dataset.inputMethod = active ? 'fingering' : method;
   };
   if (options.fingering) {
     interactionBody.append(answers.node, fingeringPanel, keyboard.node);
@@ -219,30 +256,26 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
     if (configuration !== config) {
-      fingers.reset(); configuration = config;
+      editSize(false); resizer.dispose(); configuration = config;
       const previous = fingers.node;
       fingers = fingeringInput(config?.fingers ?? [], (mask, intentional) => {
         policy.change(mask,intentional);
         side.textContent = mask[3] === '1' ? 'B♭ side — trigger held' : 'F side';
-      }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -1, across: 0.5 } : undefined);
+      }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
+      resizer = fingeringResize(fingers.node, changeScale);
+      resizer.outline.append(flip);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
       fingers.node.dataset.control = config?.control ?? 'valve';
       loadLayout();
       side.hidden = config?.instrument !== 'horn-f';
-      fingeringHelp.textContent = config?.control === 'finger'
-        ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
-        : config?.instrument === 'horn-f'
-        ? 'E W Q = valves · V = B♭ trigger. Space = F-side open.'
-        : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
-        : 'Hold valves or J K L. For no valves, press Space.';
     }
     if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     policy.update(token, locked, Boolean(pitch && config?.pitches[chromatic(pitch)]?.[0] === OPEN_FINGERING));
-    open.disabled = locked;
+    open.disabled = locked || resizing;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;
     if (identity !== prompt || locked) dismiss.hidden = true;
@@ -254,11 +287,18 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   node.append(feedback.node);
   return {
     ...answers, node, feedback, status, reset,
-    dispose() { reset(); orientation.removeEventListener('change', loadLayout); },
+    dispose() { reset(); resizer.dispose(); orientation.removeEventListener('change', loadLayout); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
+    get inputFingering() { return supported && method === 'fingering' ? configuration : undefined; },
     get isFingering() { return supported && method === 'fingering'; },
     heldKeydown(event: KeyboardEvent) {
       if (!supported || method !== 'fingering' || instrumentPicker.matches(':popover-open')) return false;
+      if (resizing) {
+        if (event.key === 'Escape') { event.preventDefault(); editSize(false); resize.focus(); return true; }
+        if (event.target === resize || event.target === move || event.target === flip) return false;
+        if (event.key === ' ' || configuration?.fingers.some(f => f.key === event.key.toLowerCase())) { event.preventDefault(); return true; }
+        return false;
+      }
       // Space is the flashcard Open action even when a valve has focus.
       // Leave unrelated buttons (Pause, Finish, etc.) their native activation.
       const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
