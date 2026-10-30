@@ -93,7 +93,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const open = el('button', 'control fingering-open', 'Open (Space)'); open.type = 'button'; open.setAttribute('aria-keyshortcuts','Space');
   open.addEventListener('click', () => policy.open());
   open.addEventListener('keydown', e => { if (e.repeat && (e.key === ' ' || e.key === 'Enter')) e.preventDefault(); });
-  const fingeringHelp = el('p', 'muted fingering-help');
+  const fingeringHelp = el('p', 'muted fingering-help', 'Hold fingers for best experience');
   const side = el('p','muted horn-side','F side'); side.hidden = true;
   const instrumentPicker = el('div', 'instrument-picker');
   instrumentPicker.setAttribute('popover', 'auto');
@@ -128,7 +128,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const resize = el('button', 'control fingering-resize'); resize.type = 'button';
   const resizeLabel = el('span', '', 'Adjust Input'), doneLabel = el('span', '', 'Done');
   doneLabel.style.visibility = 'hidden'; resize.append(resizeLabel, doneLabel);
-  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, resize, flip, spacing);
+  const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, resize);
   flip.style.visibility = spacing.style.visibility = 'hidden';
   let resizing = false, selectedScale = 1, activeScaleKey = '';
   const scales = new Map<string, number>();
@@ -143,6 +143,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     if (commit) try { localStorage.setItem(activeScaleKey, String(value)); localStorage.setItem(handPositionKey(), JSON.stringify(position)); } catch { /* Session-only size and position. */ }
   }
   let resizer = fingeringResize(fingers.node, changeScale);
+  resizer.outline.append(flip, spacing);
   function editSize(value: boolean) {
     reset(); resizing = value;
     flip.style.visibility = spacing.style.visibility = value ? 'visible' : 'hidden';
@@ -229,7 +230,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   for (const button of [move, flip, spacing, resize]) button.addEventListener('pointerdown', () => reset());
   if (options.fingering) orientation.addEventListener('change', loadLayout);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
-  fingeringPanel.append(fingers.node, fingeringActions, fingeringHelp);
+  fingeringPanel.append(fingeringHelp, fingers.node, fingeringActions);
   const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); };
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
@@ -273,17 +274,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
       resizer = fingeringResize(fingers.node, changeScale);
+      resizer.outline.append(flip, spacing);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
       fingers.node.dataset.control = config?.control ?? 'valve';
       loadLayout();
       side.hidden = config?.instrument !== 'horn-f';
-      fingeringHelp.textContent = config?.control === 'finger'
-        ? 'F D S A = fingers 1–4 · Space = Open. Lower fingers may stay held.'
-        : config?.instrument === 'horn-f'
-        ? 'E W Q = valves · V = B♭ trigger. Space = F-side open.'
-        : config?.fingers.length === 4 ? 'Hold J K L ; for valves 1–4. For no valves, press Space.'
-        : 'Hold valves or J K L. For no valves, press Space.';
     }
     if (!supported && method === 'fingering') method = 'names';
     keyboard.update(token,locked,preset.pool[0]!.octave);

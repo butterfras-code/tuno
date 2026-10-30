@@ -1311,7 +1311,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 @media (prefers-reduced-motion: reduce) { .valve-moving { transition: none; } }
 .fingering-valve kbd { font: 500 12px var(--font-body); }
 .fingering-open { margin-top: 8px; }
-.fingering-help { font-size: 12px; margin: 6px 0; }
+.fingering-help { font-size: 12px; line-height: 16px; margin: 0 0 2px; }
 .keyboard-answers { max-width: 760px; margin: auto; min-width: 0; }
 .keyboard-answers .piano { min-width: 512px; height: 136px; }
 .horn-side { font-size: 12px; margin: 6px 0; }
@@ -1397,9 +1397,9 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .input-workspace { height: 100%; min-height: 0; }
 #home .play-stage--grip .interaction-selector .control { font-size: 12px; padding: 6px; }
 #home .play-stage--grip .interaction-body { min-height: 0; padding: 6px; }
-#home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) var(--hand-column); height: 100%; gap: 6px; }
+#home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) var(--hand-column); grid-template-rows: auto minmax(0, 1fr); height: 100%; gap: 2px 6px; }
 #home .play-stage--grip .fingering-input {
-  grid-column: 2; grid-row: 1; min-height: 0; height: 100%; --direction: -1;
+  grid-column: 2; grid-row: 2; min-height: 0; height: 100%; --direction: -1;
   --layout-width: var(--span-across); --layout-height: var(--span-along);
 }
 #home .play-stage--grip .fingering-input .fingering-valve {
@@ -1408,8 +1408,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   --y: calc(var(--along) * var(--direction) * var(--flip));
 }
 #home .play-stage--grip .fingering-input:is([data-control='finger'], [data-instrument='horn-f']) { --direction: 1; }
-#home .play-stage--grip .fingering-help { display: none; }
-#home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 1; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
+#home .play-stage--grip .fingering-help { grid-column: 1 / -1; grid-row: 1; }
+#home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 2; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
 #home .play-stage--grip .fingering-open { min-height: 44px; font-size: 12px; padding: 4px; white-space: nowrap; }
 #home .play-stage--grip .horn-side { display: none; }
 #home .play-stage--grip .practice-play > :is(h2, .counts, .staff-panel, .feedback, .control-row, .challenge-scene) { grid-column: 1; }
@@ -1418,10 +1418,10 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-input { grid-column: 1; }
 /* Let four valves use the full height; keep the selector beside the column. */
 #home .play-stage--grip .input-workspace { display: grid; grid-template-columns: minmax(0, 1fr) var(--hand-column); grid-template-rows: minmax(0, 1fr); gap: 6px; }
-#home .play-stage--grip .interaction-selector { grid-column: 1; grid-row: 1; grid-auto-flow: row; grid-auto-columns: auto; align-self: start; margin: 6px 0 0 6px; z-index: 1; }
+#home .play-stage--grip .interaction-selector { grid-column: 1; grid-row: 1; grid-auto-flow: row; grid-auto-columns: auto; align-self: start; margin: 22px 0 0 6px; z-index: 1; }
 #home .play-stage--grip .interaction-body { grid-column: 1 / -1; grid-row: 1; }
 #home .play-stage--grip:has(.note-entry[data-grip-position='left']) .input-workspace { grid-template-columns: var(--hand-column) minmax(0, 1fr); }
-#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .interaction-selector { grid-column: 2; margin: 6px 6px 0 0; }
+#home .play-stage--grip:has(.note-entry[data-grip-position='left']) .interaction-selector { grid-column: 2; margin: 22px 6px 0 0; }
 
 /* Reserve the hand column beside the entire app, including its compact header. */
 #home.is-playing:has(.play-stage--grip) { padding-right: calc(var(--grip-width) + 8px + max(8px, env(safe-area-inset-right))); grid-template-rows: auto minmax(0, 1fr); padding-top: 4px; gap: 4px; }
@@ -1487,11 +1487,14 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--bottom .input-workspace { height: 100%; grid-template-columns: 120px minmax(0, 1fr); gap: 6px; }
 #home .play-stage--bottom .interaction-selector { grid-auto-flow: row; align-self: center; }
 #home .play-stage--bottom .interaction-body { padding: 0 4px; min-height: 0; }
-#home .play-stage--bottom .fingering-panel { max-width: none; display: flex; height: 100%; align-items: center; gap: 6px; }
-#home .play-stage--bottom .fingering-actions { flex: 0 0 204px; flex-direction: column; gap: 0; margin: 0; }
+#home .play-stage--bottom .fingering-panel { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); height: 100%; align-items: center; gap: 2px 6px; }
+#home .play-stage--bottom .fingering-help { grid-column: 1 / -1; }
+#home .play-stage--bottom .fingering-input { grid-column: 1; grid-row: 2; }
+#home .play-stage--bottom .fingering-actions { grid-column: 2; grid-row: 2; }
+#home .play-stage--bottom .fingering-actions { flex-wrap: nowrap; flex-direction: row; gap: 0; margin: 0; }
 #home .play-stage--bottom .fingering-layout-tools { flex-wrap: nowrap; }
 #home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; height: 100%; }
-#home .play-stage--bottom :is(.fingering-help,.horn-side) { display: none; }
+#home .play-stage--bottom .horn-side { display: none; }
 #home .play-stage--bottom .fingering-open { min-height: 44px; padding: 4px; font-size: 13px; white-space: nowrap; }
 #home .play-stage--bottom:not(.challenge-active) .practice-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
 #home .play-stage--bottom:not(.challenge-active) .practice-play > .staff-panel { grid-column: 2; grid-row: 1 / 4; }
@@ -1515,13 +1518,13 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 /* Resize handles are available only in explicit edit mode, with playing disabled. */
 .fingering-resize-outline { position: absolute; left: calc(50% + var(--hand-offset-x, 0px)); top: calc(50% + var(--hand-offset-y, 0px)); transform: translate(-50%, -50%); border: 2px dashed var(--color-accent); border-radius: 12px; pointer-events: auto; touch-action: none; cursor: move; user-select: none; }
 .fingering-resize-outline[hidden] { display: none; }
-.fingering-resize-handle { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; display: grid; place-items: center; transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: bottom right; border: 2px solid var(--color-surface); border-radius: 12px; background: var(--color-accent); color: var(--color-surface); font-size: 26px; cursor: nwse-resize; touch-action: none; user-select: none; pointer-events: auto; }
+.fingering-resize-handle { position: absolute; right: 0; bottom: 0; width: min(28px, 30%); height: 28px; display: grid; place-items: center; transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: bottom right; border: 0; border-radius: 4px; background: transparent; color: var(--color-accent); font-size: 24px; cursor: nwse-resize; touch-action: none; user-select: none; pointer-events: auto; }
 .fingering-resize-handle:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 2px; }
 @media (min-width: 601px) {
   #home.is-playing:has(.play-stage--grip) .notes-workspace-header .focus-navigation { min-width: min-content; grid-template-columns: repeat(4, minmax(min-content, 1fr)); }
 }
 
-.fingering-position-handle { position: absolute; left: 0; top: 0; padding: 2px 6px; border-radius: 8px; background: var(--color-accent); color: var(--color-surface); pointer-events: none; }
+.fingering-position-handle { position: absolute; left: 0; top: 0; width: 28px; height: 28px; display: grid; place-items: center; font-size: 22px; color: var(--color-accent); background: transparent; pointer-events: none; }
 .fingering-resize-outline:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 2px; }
 
 .fingering-resize { display: grid; place-items: center; }
@@ -1529,3 +1532,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .fingering-tool-icon { font-size: 24px; line-height: 1; }
 .fingering-resize > span { min-width: 0; white-space: normal; }
+
+/* Keep edit actions on the transparent arrangement boundary. */
+#home .note-entry[data-input-method='fingering'] .interaction-body { padding-top: 2px; padding-bottom: 2px; }
+.fingering-resize-outline { background: transparent; }
+#home .fingering-resize-outline .control { position: absolute; width: min(28px, 30%); min-width: 0; height: 28px; min-height: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--color-accent); box-shadow: none; transform: scale(calc(1 / var(--play-scale, 1))); }
+.fingering-resize-outline .fingering-flip { right: 0; top: 0; transform-origin: top right; }
+#home .fingering-resize-outline .fingering-spacing { left: 50%; bottom: 0; transform: translateX(-50%) scale(calc(1 / var(--play-scale, 1))); transform-origin: bottom center; }
+.fingering-position-handle { transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: top left; }

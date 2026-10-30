@@ -67,7 +67,7 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
     target.focus({ preventScroll: true }); target.setPointerCapture(event.pointerId);
   };
   handle.addEventListener('pointerdown', event => begin(event, handle, 'resize'));
-  outline.addEventListener('pointerdown', event => { if (event.target !== handle) begin(event, outline, 'move'); });
+  outline.addEventListener('pointerdown', event => { if (event.target === outline || event.target === positionHandle) begin(event, outline, 'move'); });
   outline.addEventListener('pointermove', event => {
     if (!drag || drag.id !== event.pointerId) return;
     event.preventDefault();
@@ -102,6 +102,7 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
     resize(event.key === 'Home' ? 1 : event.key === 'End' ? 20 : geometry.scale + direction * 0.1, true);
   });
   return {
+    outline,
     update(scale: number, step: number, placement: FingerPosition = { x: 0.5, y: 0.5 }) { requested = scale; spacing = step; position = { ...placement }; cancelAnimationFrame(frame); frame = 0; fit(); schedule(); },
     edit(value: boolean) {
       editing = value; outline.hidden = !value;

@@ -46,8 +46,8 @@ async function checkHand(page, context) {
     const root = panel.querySelector('.fingering-input');
     const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; };
     return { scale: Number(getComputedStyle(root).getPropertyValue('--hand-scale') || 1), vertical: !!root.closest('.play-stage--grip'), flipped: root.dataset.flipped === 'true',
-      controls: [...panel.querySelectorAll('button')].map(el => ({...rect(el),label:el.getAttribute('aria-label') || el.textContent, finger:el.classList.contains('fingering-valve')})),
-      fingers: [...root.querySelectorAll('button')].map(rect) };
+      controls: [...panel.querySelectorAll('button')].filter(el => el.checkVisibility() && !(el.classList.contains('fingering-valve') && panel.querySelector('.fingering-resize-outline:not([hidden])'))).map(el => ({...rect(el),label:el.getAttribute('aria-label') || el.textContent, finger:el.classList.contains('fingering-valve')})),
+      fingers: [...root.querySelectorAll('.fingering-valve')].map(rect) };
   });
   const { controls, fingers, vertical, flipped, scale } = geometry;
   for (const [i,a] of controls.entries()) {
@@ -145,8 +145,8 @@ async function checkResize(page, context) {
   const placement = page.getByRole('group', {name:'Finger arrangement position',exact:true});
   const initial = await root.locator('.fingering-valve').first().boundingBox();
   // Drag to the upper-left edges with real pointer capture, then restore the center.
-  const outline = await placement.boundingBox();
-  await page.mouse.move(outline.x + outline.width/2, outline.y + outline.height/2);
+  const moveHandle = await root.locator('.fingering-position-handle').boundingBox();
+  await page.mouse.move(moveHandle.x + moveHandle.width/2, moveHandle.y + moveHandle.height/2);
   await page.mouse.down(); await page.mouse.move(area.x + 1, area.y + 1, {steps:3}); await page.mouse.up();
   await page.waitForTimeout(50);
   const moved = await root.locator('.fingering-valve').first().boundingBox();
@@ -628,7 +628,7 @@ try {
     assert.equal(await control.locator('kbd').textContent(),key,`${label}: visible shortcut matches the mirrored keyboard`);
     assert.equal(await control.getAttribute('aria-keyshortcuts'),key);
   }
-  assert.match(await page.locator('.fingering-help').textContent(),/E W Q/);
+  assert.equal(await page.locator('.fingering-help').textContent(), 'Hold fingers for best experience');
   // All horn key chords reach the held state, regardless of trigger press order or Flip.
   for (const triggerFirst of [true,false]) {
     await adjustmentClick(page, 'Flip finger order');
