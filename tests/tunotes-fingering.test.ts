@@ -366,7 +366,16 @@ test('a hold retained through feedback can release after delayed advancement', t
 });
 
 
-test('user resizing scales pads and spacing uniformly within the available hand area', () => {
+test('independent resizing fits each axis without limiting it to the other axis', () => {
+  const fit = fitFingerArrangement(900, 120, 2, 0, 84, { x: 3, y: 1 });
+  assert.equal(fit.scaleX, 3);
+  assert.equal(fit.scaleY, 1);
+  const bounded = fitFingerArrangement(300, 120, 2, 0, 84, { x: 20, y: 20 });
+  assert.equal(bounded.baseWidth * bounded.scaleX, 300);
+  assert.equal(bounded.baseHeight * bounded.scaleY, 120);
+});
+
+test('legacy proportional sizes fit within the available hand area', () => {
   for (const [width,height,along,across] of [[350,168,2.75,1],[166,480,1,2.75],[138,260,0,3],[900,500,3,0]]) {
     for (const spacing of Object.values(fingerSpacing)) {
       for (const requested of [0.75,1,1.5,20]) {

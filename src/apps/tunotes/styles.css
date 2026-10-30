@@ -1273,7 +1273,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 .range-picker-step { margin: 12px 0 0; font-size: 16px; overflow-wrap: anywhere; }
 
-/* Resize scales the whole hand; spacing presets retain independent layout distances. */
+/* Resize adjusts both hand axes independently while keeping the graphics proportional. */
 .fingering-panel { width: 100%; max-width: none; margin: 0 auto; text-align: center; }
 /* Coordinates use finger-local axes; only this mapping changes for a hand column.
    Container bounds cap the user scale; display size alone never enlarges targets. */
@@ -1284,10 +1284,11 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   --layout-width: var(--span-along); --layout-height: var(--span-across);
 }
 .fingering-input .fingering-valve {
-  --step: calc(var(--finger-step, 84px) * var(--hand-scale, 1) / var(--play-scale, 1));
+  --step-x: calc(var(--finger-step-x, 84px) / var(--play-scale, 1));
+  --step-y: calc(var(--finger-step-y, 84px) / var(--play-scale, 1));
   --x: calc(var(--along) * var(--direction) * var(--flip));
   --y: calc(var(--across) * var(--direction) * var(--thumb-side) * var(--flip));
-  position: absolute; left: calc(50% + var(--hand-offset-x, 0px) + var(--x) * var(--step)); top: calc(50% + var(--hand-offset-y, 0px) + var(--y) * var(--step));
+  position: absolute; left: calc(50% + var(--hand-offset-x, 0px) + var(--x) * var(--step-x)); top: calc(50% + var(--hand-offset-y, 0px) + var(--y) * var(--step-y));
   transform: translate(-50%, -50%) scale(calc(var(--hand-scale, 1) / var(--play-scale, 1)));
   flex: none; min-width: 0; width: 64px; height: 64px; min-height: 64px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
@@ -1446,7 +1447,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 
 /* Grip controls share the Open action row; visual order never changes finger identity. */
 .fingering-layout-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
-.fingering-layout-tools .control { min-width: 44px; min-height: 44px; padding: 4px 6px; font-size: 12px; border-color: transparent; background: transparent; box-shadow: none; }
+.fingering-layout-tools .control { min-width: 0; min-height: 24px; padding: 2px 4px; font-size: 12px; border-color: transparent; background: transparent; box-shadow: none; }
 .fingering-actions { flex-wrap: wrap; gap: 4px 8px; }
 #home .play-stage--grip .note-entry[data-grip-position='left'] .fingering-actions { grid-column: 2; }
 #home .play-stage--grip .note-entry[data-grip-position='right'] .fingering-actions { grid-column: 1; }
@@ -1538,5 +1539,4 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .fingering-resize-outline { background: transparent; }
 #home .fingering-resize-outline .control { position: absolute; width: min(28px, 30%); min-width: 0; height: 28px; min-height: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--color-accent); box-shadow: none; transform: scale(calc(1 / var(--play-scale, 1))); }
 .fingering-resize-outline .fingering-flip { right: 0; top: 0; transform-origin: top right; }
-#home .fingering-resize-outline .fingering-spacing { left: 50%; bottom: 0; transform: translateX(-50%) scale(calc(1 / var(--play-scale, 1))); transform-origin: bottom center; }
 .fingering-position-handle { transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: top left; }

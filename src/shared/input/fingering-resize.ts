@@ -1,11 +1,17 @@
 import { el } from '../ui/components.ts';
 
-export function fitFingerArrangement(width: number, height: number, along: number, across: number, spacing: number, requested: number) {
+export type FingerSize = { x: number; y: number };
+
+export function fitFingerArrangement(width: number, height: number, along: number, across: number, spacing: number, requested: number | FingerSize) {
   // Retain full-size pads before compressing the preset spacing on small screens.
   const step = Math.max(64, Math.min(spacing, along ? (width - 64) / along : Infinity, across ? (height - 64) / across : Infinity));
   const baseWidth = 64 + along * step, baseHeight = 64 + across * step;
   const maximum = Math.max(0, Math.min(width / baseWidth, height / baseHeight));
-  return { step, scale: Math.min(requested, maximum), maximum, baseWidth, baseHeight };
+  const size = typeof requested === 'number' ? { x: requested, y: requested } : requested;
+  const scaleX = Math.min(size.x, width / baseWidth), scaleY = Math.min(size.y, height / baseHeight);
+  // Numeric callers retain the original proportional fit.
+  const scale = Math.min(size.x, size.y, maximum);
+  return { step, scale, scaleX: typeof requested === 'number' ? scale : scaleX, scaleY: typeof requested === 'number' ? scale : scaleY, maximum, baseWidth, baseHeight };
 }
 
 export type FingerPosition = { x: number; y: number };
@@ -15,7 +21,7 @@ export function fingerArrangementOffset(width: number, height: number, handWidth
 }
 
 /** Presentation-only size/position editing. Input gating and persistence belong to the caller. */
-export function fingeringResize(node: HTMLElement, change: (scale: number, commit: boolean, position: FingerPosition) => void) {
+export function fingeringResize(node: HTMLElement, change: (scale: FingerSize, commit: boolean, position: FingerPosition) => void) {
   const outline = el('div', 'fingering-resize-outline'); outline.hidden = true; outline.tabIndex = 0;
   outline.setAttribute('role', 'group'); outline.setAttribute('aria-label', 'Finger arrangement position');
   outline.setAttribute('aria-description', 'Drag to reposition. Arrow keys move the controls. Home centers them.');
@@ -23,13 +29,14 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
   const positionHandle = el('span', 'fingering-position-handle', '✥'); positionHandle.setAttribute('aria-hidden', 'true');
   const handle = el('div', 'fingering-resize-handle', '↘'); handle.tabIndex = 0;
   handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', 'Finger arrangement size');
-  handle.setAttribute('aria-description', 'Drag to resize. Arrow keys adjust size. Home resets size. End fills available space.');
-  handle.title = 'Drag to resize · Arrow keys adjust · Home resets · End fills available space';
+  handle.setAttribute('aria-description', 'Drag to resize. Left/Right adjust width. Up/Down adjust height. Home resets size. End fills available space.');
+  handle.title = 'Drag to resize · Arrows adjust width/height · Home resets · End fills available space';
   outline.append(positionHandle, handle); node.append(outline);
-  let requested = 1, spacing = 84, editing = false, frame = 0;
+  let requested: FingerSize = { x: 1, y: 1 };
+  let spacing = 84, editing = false, frame = 0;
   let position: FingerPosition = { x: 0.5, y: 0.5 };
   let geometry = fitFingerArrangement(0, 0, 0, 0, spacing, requested);
-  let drag: { id: number; target: HTMLElement; mode: 'resize' | 'move'; distance: number; scale: number; x: number; y: number; position: FingerPosition; freeWidth: number; freeHeight: number } | undefined;
+  let drag: { id: number; target: HTMLElement; mode: 'resize' | 'move'; width: number; height: number; scale: FingerSize; x: number; y: number; position: FingerPosition; freeWidth: number; freeHeight: number } | undefined;
   const fit = () => {
     frame = 0;
     if (!node.isConnected) return;
@@ -41,29 +48,32 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
     geometry = fitFingerArrangement(rect.width, rect.height, widthSpan, heightSpan, spacing, requested);
     node.style.setProperty('--hand-scale', String(geometry.scale));
     node.style.setProperty('--finger-step', `${geometry.step}px`);
-    const offset = fingerArrangementOffset(rect.width, rect.height, geometry.baseWidth * geometry.scale, geometry.baseHeight * geometry.scale, position);
+    // Keep each graphic proportional; the remaining extent becomes space between pads.
+    const padSize = 64 * geometry.scale;
+    node.style.setProperty('--finger-step-x', `${widthSpan ? (geometry.baseWidth * geometry.scaleX - padSize) / widthSpan : 0}px`);
+    node.style.setProperty('--finger-step-y', `${heightSpan ? (geometry.baseHeight * geometry.scaleY - padSize) / heightSpan : 0}px`);
+    const offset = fingerArrangementOffset(rect.width, rect.height, geometry.baseWidth * geometry.scaleX, geometry.baseHeight * geometry.scaleY, position);
     node.style.setProperty('--hand-offset-x', `calc(${offset.x}px / var(--play-scale, 1))`);
     node.style.setProperty('--hand-offset-y', `calc(${offset.y}px / var(--play-scale, 1))`);
-    outline.style.width = `calc(${geometry.baseWidth * geometry.scale}px / var(--play-scale, 1))`;
-    outline.style.height = `calc(${geometry.baseHeight * geometry.scale}px / var(--play-scale, 1))`;
+    outline.style.width = `calc(${geometry.baseWidth * geometry.scaleX}px / var(--play-scale, 1))`;
+    outline.style.height = `calc(${geometry.baseHeight * geometry.scaleY}px / var(--play-scale, 1))`;
     handle.setAttribute('aria-valuemin', '75');
     handle.setAttribute('aria-valuemax', String(Math.max(100, Math.round(geometry.maximum * 100))));
     handle.setAttribute('aria-valuenow', String(Math.round(geometry.scale * 100)));
-    handle.setAttribute('aria-valuetext', `${Math.round(geometry.scale * 100)} percent`);
+    handle.setAttribute('aria-valuetext', `${Math.round(geometry.scaleX * 100)} percent width, ${Math.round(geometry.scaleY * 100)} percent height`);
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(fit); };
   const observer = new ResizeObserver(schedule); observer.observe(node);
-  const resize = (value: number, commit: boolean) => {
-    requested = Math.max(0.75, Math.min(20, value));
+  const resize = (value: FingerSize, commit: boolean) => {
+    requested = { x: Math.max(0.75, Math.min(20, value.x)), y: Math.max(0.75, Math.min(20, value.y)) };
     change(requested, commit, { ...position }); schedule();
   };
   const begin = (event: PointerEvent, target: HTMLElement, mode: 'resize' | 'move') => {
     if (!editing || event.button !== 0 || drag) return;
     event.preventDefault(); event.stopPropagation();
     const rect = outline.getBoundingClientRect(), area = node.getBoundingClientRect();
-    const x = mode === 'resize' ? rect.x + rect.width / 2 : event.clientX;
-    const y = mode === 'resize' ? rect.y + rect.height / 2 : event.clientY;
-    drag = { id: event.pointerId, target, mode, distance: Math.max(1, Math.hypot(event.clientX - x, event.clientY - y)), scale: geometry.scale, x, y, position: { ...position }, freeWidth: Math.max(0, area.width - rect.width), freeHeight: Math.max(0, area.height - rect.height) };
+    const x = event.clientX, y = event.clientY;
+    drag = { id: event.pointerId, target, mode, width: rect.width, height: rect.height, scale: { x: geometry.scaleX, y: geometry.scaleY }, x, y, position: { ...position }, freeWidth: Math.max(0, area.width - rect.width), freeHeight: Math.max(0, area.height - rect.height) };
     target.focus({ preventScroll: true }); target.setPointerCapture(event.pointerId);
   };
   handle.addEventListener('pointerdown', event => begin(event, handle, 'resize'));
@@ -71,7 +81,7 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
   outline.addEventListener('pointermove', event => {
     if (!drag || drag.id !== event.pointerId) return;
     event.preventDefault();
-    if (drag.mode === 'resize') resize(drag.scale * Math.hypot(event.clientX - drag.x, event.clientY - drag.y) / drag.distance, false);
+    if (drag.mode === 'resize') resize({ x: drag.scale.x * (1 + 2 * (event.clientX - drag.x) / drag.width), y: drag.scale.y * (1 + 2 * (event.clientY - drag.y) / drag.height) }, false);
     else {
       position = { x: drag.freeWidth > 0.5 ? bounded(drag.position.x + (event.clientX - drag.x) / drag.freeWidth) : drag.position.x, y: drag.freeHeight > 0.5 ? bounded(drag.position.y + (event.clientY - drag.y) / drag.freeHeight) : drag.position.y };
       change(requested, false, { ...position }); schedule();
@@ -96,14 +106,18 @@ export function fingeringResize(node: HTMLElement, change: (scale: number, commi
     change(requested, true, { ...position }); schedule();
   });
   handle.addEventListener('keydown', event => {
-    const direction = ['ArrowRight', 'ArrowUp', '+', '='].includes(event.key) ? 1 : ['ArrowLeft', 'ArrowDown', '-'].includes(event.key) ? -1 : 0;
+    const direction = ['ArrowRight', 'ArrowDown', '+', '='].includes(event.key) ? 1 : ['ArrowLeft', 'ArrowUp', '-'].includes(event.key) ? -1 : 0;
     if (!direction && event.key !== 'Home' && event.key !== 'End') return;
     event.preventDefault(); event.stopPropagation();
-    resize(event.key === 'Home' ? 1 : event.key === 'End' ? 20 : geometry.scale + direction * 0.1, true);
+    const both = ['+', '=', '-'].includes(event.key);
+    resize(event.key === 'Home' ? { x: 1, y: 1 } : event.key === 'End' ? { x: 20, y: 20 } : {
+      x: geometry.scaleX + (both || event.key === 'ArrowLeft' || event.key === 'ArrowRight' ? direction * 0.1 : 0),
+      y: geometry.scaleY + (both || event.key === 'ArrowUp' || event.key === 'ArrowDown' ? direction * 0.1 : 0),
+    }, true);
   });
   return {
     outline,
-    update(scale: number, step: number, placement: FingerPosition = { x: 0.5, y: 0.5 }) { requested = scale; spacing = step; position = { ...placement }; cancelAnimationFrame(frame); frame = 0; fit(); schedule(); },
+    update(scale: FingerSize, step: number, placement: FingerPosition = { x: 0.5, y: 0.5 }) { requested = scale; spacing = step; position = { ...placement }; cancelAnimationFrame(frame); frame = 0; fit(); schedule(); },
     edit(value: boolean) {
       editing = value; outline.hidden = !value;
       if (!value) finish();
