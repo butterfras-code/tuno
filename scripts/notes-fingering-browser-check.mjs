@@ -45,7 +45,7 @@ async function checkHand(page, context) {
   const geometry = await page.locator('.fingering-panel').evaluate(panel => {
     const root = panel.querySelector('.fingering-input');
     const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; };
-    return { scale: Number(getComputedStyle(root).getPropertyValue('--hand-scale') || 1), vertical: !!root.closest('.play-stage--grip'), flipped: root.dataset.flipped === 'true',
+    return { stepX: parseFloat(getComputedStyle(root).getPropertyValue('--finger-step-x')), stepY: parseFloat(getComputedStyle(root).getPropertyValue('--finger-step-y')), scale: Number(getComputedStyle(root).getPropertyValue('--hand-scale') || 1), vertical: !!root.closest('.play-stage--grip'), flipped: root.dataset.flipped === 'true',
       controls: [...panel.querySelectorAll('button')].filter(el => el.checkVisibility() && !(el.classList.contains('fingering-valve') && panel.querySelector('.fingering-resize-outline:not([hidden])'))).map(el => ({...rect(el),label:el.getAttribute('aria-label') || el.textContent, finger:el.classList.contains('fingering-valve')})),
       fingers: [...root.querySelectorAll('.fingering-valve')].map(rect) };
   });
@@ -60,7 +60,7 @@ async function checkHand(page, context) {
   }
   const axis = vertical ? 'y' : 'x', cross = vertical ? 'x' : 'y';
   const distance = Math.abs(fingers[1][axis]-fingers[0][axis]);
-  assert.ok(distance <= 100.75 * scale, `${context}: spacing must stay bounded, got ${distance}`);
+  assert.ok(Math.abs(distance - (vertical ? geometry.stepY : geometry.stepX)) < 0.75, `${context}: spacing follows the resized arrangement, got ${distance}`);
   if (await page.locator('.fingering-trigger').count()) {
     const [one,two,,thumb] = fingers;
     assert.ok((thumb[axis]-one[axis])*(two[axis]-one[axis]) < 0, `${context}: trigger follows valve 1`);
@@ -70,29 +70,14 @@ async function checkHand(page, context) {
     // silently changes the layout into a right hand.
     const handedness = (two.x-one.x)*(thumb.y-one.y) - (two.y-one.y)*(thumb.x-one.x);
     assert.ok(handedness < 0, `${context}: horn retains left-hand geometry`);
-    assert.ok(Math.hypot(thumb.x-one.x,thumb.y-one.y) <= 129 * scale, `${context}: thumb reach stays bounded`);
+    const thumbReach = vertical ? Math.hypot(geometry.stepX, 0.75 * geometry.stepY) : Math.hypot(0.75 * geometry.stepX, geometry.stepY);
+    assert.ok(Math.abs(Math.hypot(thumb.x-one.x,thumb.y-one.y) - thumbReach) < 0.75, `${context}: thumb reach follows the resized arrangement`);
     if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y && thumb.x < one.x, `${context}: flipped left-hand thumb is below and left of valve 1`);
     assert.equal(await page.locator('.fingering-trigger kbd').textContent(),'V');
     assert.equal(await page.locator('.fingering-trigger kbd').isVisible(),true);
     assert.equal(await page.locator('.fingering-trigger').getAttribute('aria-keyshortcuts'),'V');
   }
   return {distance, target:fingers[0].w};
-}
-async function checkSpacings(page, context) {
-  const root = page.locator('.fingering-input');
-  const position = await page.locator('.note-entry').getAttribute('data-grip-position');
-  const flipped = await root.getAttribute('data-flipped');
-  const sizes = {};
-  for (let i=0; i<3; i++) {
-    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    const preset = await root.getAttribute('data-spacing');
-    sizes[preset] = await checkHand(page, `${context} ${preset} flipped=${flipped}`);
-    await adjustmentClick(page, /^Spacing:/);
-    assert.equal(await page.locator('.note-entry').getAttribute('data-grip-position'),position);
-    assert.equal(await root.getAttribute('data-flipped'),flipped);
-  }
-  assert.ok(sizes.compact.distance <= sizes.regular.distance+0.1 && sizes.regular.distance <= sizes.wide.distance+0.1);
-  assert.ok(Math.abs(sizes.compact.target-sizes.wide.target) < 0.1,'Spacing keeps target sizes fixed');
 }
 async function checkResize(page, context) {
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -105,7 +90,7 @@ async function checkResize(page, context) {
   const staffBefore = await page.locator('.staff-panel').boundingBox();
   await page.getByRole('button', {name:'Adjust Input',exact:true}).click();
   assert.ok(await page.getByRole('button',{name:'Flip finger order',exact:true}).isVisible());
-  assert.ok(await page.getByRole('button',{name:/^Spacing:/}).isVisible());
+  assert.equal(await page.getByRole('button',{name:/^Spacing:/}).count(),0, 'Free resize replaces the spacing button');
   const handle = page.getByRole('slider', {name:'Finger arrangement size'});
   if (context === 'horn-f classroom left') {
     const grip = await handle.boundingBox();
@@ -114,7 +99,8 @@ async function checkResize(page, context) {
     await page.mouse.move(grip.x + grip.width/2 + 40, grip.y + grip.height/2 + 40, {steps:8});
     await page.mouse.up(); await page.waitForTimeout(100);
     assert.ok(Number(await page.locator('.note-entry').getAttribute('data-hand-scale')) > 1, 'Dragging enlarges the arrangement');
-    assert.equal(await page.evaluate(()=>localStorage.getItem('tunotes:finger-scale:horn-f:landscape')), await page.locator('.note-entry').getAttribute('data-hand-scale'), 'Drag completion saves size');
+    const savedSize = await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:horn-f:landscape')));
+    assert.equal(Math.min(savedSize.x, savedSize.y), Number(await page.locator('.note-entry').getAttribute('data-hand-scale')), 'Drag completion saves both axes');
   }
   await handle.press('End');
   await page.waitForTimeout(100);
@@ -315,7 +301,7 @@ async function checkLayouts(page) {
       assert.equal(await flip.getAttribute('aria-pressed'),'true');
       assert.match(await screen.locator('#practice-counts').textContent(), /0 attempts/);
       await screen.screenshot({path:`dist/validation/grip-controls-${instrument}-${profile.id}-${position}-${name}.png`});
-      await checkSpacings(screen,`${instrument} ${profile.id} ${position}`);
+      await checkHand(screen,`${instrument} ${profile.id} ${position}`);
       const bounds = await screen.locator('.fingering-panel').boundingBox();
       for (const control of await screen.locator('.fingering-panel button:visible').all()) {
         const r = await control.boundingBox();
@@ -326,35 +312,33 @@ async function checkLayouts(page) {
       }
       assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${instrument} ${profile.id} ${position}: overflow ${JSON.stringify(await screen.locator('body *').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.width && r.right>innerWidth+1}).map(e=>({tag:e.tagName,cls:e.className,x:e.getBoundingClientRect().x,w:e.getBoundingClientRect().width})).slice(0,12)))}`);
       await adjustmentClick(screen, 'Flip finger order');
-      await checkSpacings(screen,`${instrument} ${profile.id} ${position}`);
+      await checkHand(screen,`${instrument} ${profile.id} ${position}`);
       if (['horn-f','violin'].includes(instrument)) await checkResize(screen, `${instrument} ${profile.id} ${position}`);
     }
     assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition);
     await checkResize(screen, `${instrument} ${profile.id}`);
     if (instrument === 'horn-f' && profile.id === 'classroom') {
       await adjustmentClick(screen, 'Flip finger order');
-      await adjustmentClick(screen, /^Spacing:/);
       await screen.getByRole('button',{name:'Adjust Input',exact:true}).click();
-      await screen.getByRole('slider',{name:'Finger arrangement size'}).press('ArrowDown');
+      await screen.getByRole('slider',{name:'Finger arrangement size'}).press('ArrowUp');
       await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       await screen.reload(); await choosePreset(screen,'horn-f-starter'); await startPractice(screen); await chooseMethod(screen,'fingering');
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Size survives reload');
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:horn-f:landscape'))), {x:1,y:0.9}, 'Independent axes survive reload');
       assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.45,y:0.5});
       await screen.getByRole('button',{name:'Adjust Input',exact:true}).click();
       await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
       assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.4,y:0.5},'Position reloads before the next adjustment');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
-      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'wide','Spacing survives reload');
+      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'regular','Spacing survives reload');
       await screen.setViewportSize({width:1080,height:1920});
       await screen.waitForTimeout(100);
-      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'wide','Spacing survives orientation change');
+      assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'regular','Spacing survives orientation change');
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),1,'New orientation has its own size');
       await screen.setViewportSize(profile.viewport);
       await screen.waitForTimeout(100);
-      await adjustmentClick(screen, /^Spacing:/);
-      await adjustmentClick(screen, /^Spacing:/);
       assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition,'Saved position survives reload');
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Returning to the orientation restores size');
       await screen.getByRole('button',{name:'Adjust Input',exact:true}).click();
@@ -486,12 +470,12 @@ try {
     await settle(); assert.equal(await attempts(),0); assert.equal(await code(),'00000|00000');
     await page.keyboard.up('j');
   }
-  const spacingControl = page.getByRole('button',{name:/^Spacing:/});
-  const priorSpacing = await page.locator('.fingering-input').getAttribute('data-spacing');
-  await withAdjustment(page, async () => { await spacingControl.focus(); await page.keyboard.press('Space'); });
-  assert.notEqual(await page.locator('.fingering-input').getAttribute('data-spacing'),priorSpacing);
-  await settle(); assert.equal(await attempts(),0,'Space on Spacing must not submit Open');
-  await page.locator('.fingering-spacing').blur();
+  const flipControl = page.getByRole('button',{name:'Flip finger order',exact:true});
+  const priorFlip = await page.locator('.fingering-input').getAttribute('data-flipped');
+  await withAdjustment(page, async () => { await flipControl.focus(); await page.keyboard.press('Space'); });
+  assert.notEqual(await page.locator('.fingering-input').getAttribute('data-flipped'),priorFlip);
+  await settle(); assert.equal(await attempts(),0,'Space on Flip must not submit Open');
+  await page.locator('.fingering-flip').blur();
   await page.keyboard.down('j'); await page.waitForTimeout(90); await page.keyboard.down('k');
   assert.equal(await code(),'00000|01100'); assert.equal(await attempts(),0);
   await settle(); assert.equal(await correct(),1);
@@ -580,9 +564,10 @@ try {
   }
   if (name === 'chromium') {
     const cdp = await page.context().newCDPSession(page);
-    for (const viewport of [{width:1366,height:650},{width:360,height:740}]) for (let preset = 0; preset < 3; preset++) {
+    for (const viewport of [{width:1366,height:650},{width:360,height:740}]) for (const sizeKey of ['Home','ArrowDown','ArrowRight']) {
       await page.setViewportSize(viewport);
       await page.evaluate(()=>window.fixture.start('D4','correct','horn-f'));
+      await withAdjustment(page, () => page.getByRole('slider',{name:'Finger arrangement size'}).press(sizeKey));
       const points = [];
       for (const [id,label] of ['Valve 1','Valve 2','Thumb trigger — B♭ side'].entries()) {
         const r = await page.getByRole('button',{name:label,exact:true}).boundingBox();
@@ -619,7 +604,6 @@ try {
       assert.equal(await code(),'00101|00000','Keyboard release cannot release a held thumb touch');
       await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
       assert.equal(await code(),'00000|00000');
-      await adjustmentClick(page, /^Spacing:/);
     }
     await cdp.detach();
   }
@@ -755,7 +739,6 @@ try {
     };
   });
   try {
-    await adjustmentClick(page, /^Spacing:/);
     const selected = await page.locator('.fingering-input').getAttribute('data-spacing');
     await page.getByRole('button',{name:'Adjust Input',exact:true}).click();
     await page.getByRole('slider',{name:'Finger arrangement size'}).press('ArrowDown');
