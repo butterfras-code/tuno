@@ -63,6 +63,8 @@ Musical calculations live in `src/music/pitch.ts`; `src/main.ts` mounts the appl
 
 See [responsive design standards](docs/responsive-design.md) for classroom, Chromebook, phone, and Galaxy Z Fold8 targets. Run `npm run test:responsive` for the shared viewport smoke check.
 
+Run `npm run screenshots -- --replace` for a reusable showcase ZIP at `screenshots/latest.zip`, or use `--new` to keep a timestamped archive. See [screenshot capture](docs/screenshots.md) for scenarios, viewport filters, and output options.
+
 ## UI structure
 
 - `src/tokens.css`: global Figma colors, typography, spacing, and radii; `src/styles.css` defines shared controls and responsive layouts.

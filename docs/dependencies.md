@@ -11,6 +11,7 @@ Development dependencies are pinned in `package.json`; exact transitive versions
 | @types/node | 24.13.6 | MIT | Types for the Node test runner |
 | Playwright | 1.63.0 | Apache-2.0 | Automated browser checks |
 | playwright-core | 1.63.0 | Apache-2.0 | Transitive browser automation implementation |
+| fflate | 0.8.3 | MIT | Development-only screenshot ZIP packaging |
 | undici-types | 7.18.2 | MIT | Transitive Node type definitions |
 
 Platform-specific tool binaries are development tooling as well. Browser binaries downloaded for Playwright are test infrastructure and are not shipped in either app artifact. Retain upstream licenses if redistributing tools or their binaries.
