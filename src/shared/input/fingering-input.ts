@@ -1,3 +1,5 @@
+import type { FingeringCode } from './fingering-code.ts';
+import { fingerHeld } from './fingering-code.ts';
 import { el } from '../ui/components.ts';
 import { HeldFingers } from './held-fingers.ts';
 import type { FingerPosition } from './held-fingers.ts';
@@ -5,7 +7,7 @@ import { fingerLayout } from './fingering-layout.ts';
 import type { ThumbPlacement } from './fingering-layout.ts';
 
 /** Rendering and physical input only: no notes, validation, or submission timers. */
-export function fingeringInput(fingers: readonly FingerPosition[], change: (mask: string, intentional: boolean) => void, thumb?: ThumbPlacement) {
+export function fingeringInput(fingers: readonly FingerPosition[], change: (code: FingeringCode, intentional: boolean) => void, thumb?: ThumbPlacement) {
   const node = el('div', 'fingering-input'); node.setAttribute('role', 'group'); node.setAttribute('aria-label', 'Held fingers');
   const layout = fingerLayout(fingers.length, thumb);
   node.style.setProperty('--span-along', String(layout.along));
@@ -48,8 +50,8 @@ export function fingeringInput(fingers: readonly FingerPosition[], change: (mask
     node.append(button); return button;
   });
   function notify(intentional: boolean) {
-    buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(held.mask[fingers[i]!.position] === '1')));
-    node.dataset.mask = held.mask; change(held.mask, intentional);
+    buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(fingerHeld(held.code, fingers[i]!.position))));
+    node.dataset.code = held.code; change(held.code, intentional);
   }
   function reset() {
     const captured = [...pointers]; pointers.clear(); held.reset(); notify(false);
@@ -57,7 +59,7 @@ export function fingeringInput(fingers: readonly FingerPosition[], change: (mask
   }
   notify(false);
   return {
-    node, reset, get mask() { return held.mask; },
+    node, reset, get code() { return held.code; },
     enable(value: boolean) { if (enabled && !value) reset(); enabled = value; buttons.forEach(b => { b.disabled = !value; }); },
     keydown(event: KeyboardEvent) {
       const focused = buttons.indexOf(event.target as HTMLButtonElement);

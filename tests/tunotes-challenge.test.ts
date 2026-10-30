@@ -73,5 +73,5 @@ test('Challenge backups retain zero-attempt results, isolate learning and benchm
   const empty=fixture();empty.round.finish();store.record('p',empty.round);assert.equal(store.profile()!.results.length,2);
   assert.deepEqual(parseBackup(store.export()),store.data);
   const bad=JSON.parse(store.export());bad.profiles[0].results[0].activeMs=1;assert.throws(()=>parseBackup(JSON.stringify(bad)));
-  for(const version of [0,1,2,3]) { const old={...JSON.parse(store.export()),schemaVersion:version,profiles:[],configuration:{remember:false,profileId:null,presetId:defaultPreset.id,selfPaced:false}};if(version===0)delete old.configuration;assert.equal(parseBackup(JSON.stringify(old)).schemaVersion,5); }
+  for(const version of [0,1,2,3]) { const old={...JSON.parse(store.export()),schemaVersion:version,profiles:[],configuration:{remember:false,profileId:null,presetId:defaultPreset.id,selfPaced:false}};if(version===0)delete old.configuration;assert.equal(parseBackup(JSON.stringify(old)).schemaVersion,7); }
 });
