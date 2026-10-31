@@ -1296,6 +1296,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 /* Handedness belongs to the instrument, independent of the panel's placement. */
 .fingering-input[data-hand='left'] { --thumb-side: -1; }
+/* Left-hand horn: 3–2–1 across the screen, with T below and right of valve 1. */
+.fingering-input[data-instrument='horn-f'] { --direction: -1; }
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
 .valve-outline { position: relative; display: block; flex: none; width: 56px; height: 42px; min-height: 0; color: var(--color-teal); pointer-events: none; }
@@ -1490,7 +1492,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home.is-playing:has(.play-stage--bottom) { padding-bottom: calc(var(--hand-depth) + 8px + env(safe-area-inset-bottom)); grid-template-rows: auto minmax(0, 1fr); }
 #home.is-playing:has(.play-stage--bottom) .brand,
 #home.is-playing:has(.play-stage--bottom) > footer { display: none; }
-#home .play-stage--bottom .practice-play { grid-template-columns: minmax(0, 1fr); }
+#home .play-stage--bottom .practice-play { display: grid; grid-template-columns: minmax(0, 1fr); }
 #home .play-stage--bottom .practice-play > :is(h2,.counts,.staff-panel,.feedback,.control-row,.challenge-scene) { grid-column: 1; }
 #home .play-stage--bottom .note-entry { position: fixed; bottom: max(4px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); height: var(--hand-depth); z-index: 2; }
 #home .play-stage--bottom .input-workspace { height: 100%; grid-template-columns: 120px minmax(0, 1fr); gap: 6px; }
@@ -1506,9 +1508,14 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--bottom .fingering-input { flex: 1; min-width: 0; height: 100%; }
 #home .play-stage--bottom .horn-side { display: none; }
 #home .play-stage--bottom .fingering-open { min-height: 44px; padding: 4px; font-size: 13px; white-space: nowrap; }
-#home .play-stage--bottom:not(.challenge-active) .practice-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
-#home .play-stage--bottom:not(.challenge-active) .practice-play > .staff-panel { grid-column: 2; grid-row: 1 / 4; }
-#home .play-stage--bottom:not(.challenge-active) .practice-play > .control-row { grid-column: 1; grid-row: 3; align-self: end; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr); }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > :is(h2,.counts) { min-height: 0; padding-right: 0; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > h2 { font-size: 16px; }
+#home .play-stage--bottom:not(.challenge-active) .counts { font-size: 12px; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > .staff-panel { grid-column: 2; grid-row: 1 / 4; min-height: 0; }
+#home .play-stage--bottom:not(.challenge-active) .practice-play > .control-row { grid-column: 3; grid-row: 1 / 4; align-self: end; max-width: 200px; }
+#home .play-stage--bottom:not(.challenge-active) .practice-help summary { min-height: 24px; padding: 0; font-size: 12px; }
+#home .play-stage--bottom.practice-view:not(.challenge-active):not(.previewing) > .practice-companion { display: none; }
 /* Keep Challenge actions beside the scene when the thumb row needs more height. */
 #home .play-stage--bottom .challenge-scene[data-phase='playing'] .challenge-notation { top: 28px; right: 64px; }
 #home .play-stage--bottom .challenge-scene[data-phase='playing'] .challenge-dog { top: 28px; width: 48px; right: 8px; }
