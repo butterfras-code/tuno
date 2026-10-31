@@ -138,7 +138,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let selectedPosition: FingerPosition = { x: 0.5, y: 0.5 };
   const handPositions = new Map<string, FingerPosition>();
   const handPositionKey = () => activeScaleKey.replace('finger-scale:', 'finger-position:');
-  const scaleKey = () => `tunotes:finger-scale:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  const scaleKey = () => `tunotes:finger-scale:${orientation.matches ? 'landscape' : 'portrait'}`;
   function changeScale(value: FingerSize, commit: boolean, position: FingerPosition) {
     selectedPosition = { ...position }; handPositions.set(handPositionKey(), selectedPosition);
     selectedScale = value; scales.set(activeScaleKey, value);
@@ -162,10 +162,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   type Position = 'left' | 'bottom' | 'right';
   let position: Position = 'bottom', flipped = false;
   let selectedSpacing: FingerSpacing = 'regular';
-  const spacingKey = () => `tunotes:finger-spacing:${selectedInstrument.value}`;
+  const spacingKey = 'tunotes:finger-spacing';
+  let spacingLoaded = false;
   const layouts = new Map<string, { position: Position; flipped: boolean }>();
   const orientation = matchMedia('(orientation: landscape)');
-  const layoutKey = () => `tunotes:grip:${selectedInstrument.value}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  const layoutKey = () => `tunotes:grip:${orientation.matches ? 'landscape' : 'portrait'}`;
+  const legacyKey = (key: string) => key.replace(/:(portrait|landscape)$/, `:${selectedInstrument.value}:$1`);
   function applyLayout() {
     node.dataset.gripPosition = position;
     fingers.node.dataset.flipped = String(flipped);
@@ -185,30 +187,45 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     editSize(false); activeScaleKey = scaleKey();
     selectedPosition = handPositions.get(handPositionKey()) ?? { x: 0.5, y: 0.5 };
     if (!handPositions.has(handPositionKey())) try {
-      const value = JSON.parse(localStorage.getItem(handPositionKey()) ?? 'null');
+      const value = JSON.parse(localStorage.getItem(handPositionKey()) ?? localStorage.getItem(legacyKey(handPositionKey())) ?? 'null');
       if (value && Number.isFinite(value.x) && Number.isFinite(value.y) && value.x >= 0 && value.x <= 1 && value.y >= 0 && value.y <= 1) selectedPosition = value;
     } catch { /* Session-only position. */ }
     selectedScale = scales.get(scaleKey()) ?? { x: 1, y: 1 };
     if (!scales.has(scaleKey())) try {
-      const saved = JSON.parse(localStorage.getItem(scaleKey()) ?? 'null');
+      const saved = JSON.parse(localStorage.getItem(scaleKey()) ?? localStorage.getItem(legacyKey(scaleKey())) ?? 'null');
       const value = typeof saved === 'number' ? { x: saved, y: saved } : saved;
       if (value && [value.x, value.y].every(axis => Number.isFinite(axis) && axis >= 0.75 && axis <= 20)) selectedScale = value;
     } catch { /* Session-only size. */ }
     const key = layoutKey();
     let saved = layouts.get(key);
     if (!saved) try {
-      const value = JSON.parse(localStorage.getItem(key) ?? 'null');
-      if (value && positions.includes(value.position) && typeof value.flipped === 'boolean') saved = value;
+      const shared = localStorage.getItem(key);
+      const value = JSON.parse(shared ?? localStorage.getItem(legacyKey(key)) ?? 'null');
+      if (value && positions.includes(value.position) && typeof value.flipped === 'boolean') {
+        // The corrected horn baseline reverses both axes in the bottom panel.
+        // Keep an existing user's physical arrangement when adopting it.
+        saved = { position: value.position, flipped: shared === null && configuration?.instrument === 'horn-f' && value.position === 'bottom' ? !value.flipped : value.flipped };
+      }
     } catch { /* Session-only layout if storage is unavailable. */ }
-    position = saved?.position ?? (orientation.matches && matchMedia('(pointer: coarse)').matches
-      ? configuration?.instrument === 'horn-f' ? 'left' : 'right' : 'bottom');
+    position = saved?.position ?? 'bottom';
     flipped = saved?.flipped ?? false;
     // Preserve the baseline of existing saved arrangements after removing the spacing tool.
-    selectedSpacing = 'regular';
-    try {
-      const value = localStorage.getItem(spacingKey());
+    if (!spacingLoaded) try {
+      const value = localStorage.getItem(spacingKey) ?? localStorage.getItem(`${spacingKey}:${selectedInstrument.value}`);
       if (spacingPresets.includes(value as FingerSpacing)) selectedSpacing = value as FingerSpacing;
     } catch { /* Session-only spacing if storage is unavailable. */ }
+    spacingLoaded = true;
+    // Adopt the first loaded arrangement, then share it across instrument changes.
+    // Cache defaults too, so unavailable storage cannot restore instrument-specific layouts.
+    handPositions.set(handPositionKey(), selectedPosition);
+    scales.set(activeScaleKey, selectedScale);
+    layouts.set(key, { position, flipped });
+    try {
+      localStorage.setItem(handPositionKey(), JSON.stringify(selectedPosition));
+      localStorage.setItem(activeScaleKey, JSON.stringify(selectedScale));
+      localStorage.setItem(key, JSON.stringify({ position, flipped }));
+      localStorage.setItem(spacingKey, selectedSpacing);
+    } catch { /* Session-only preferences. */ }
     applyLayout();
   }
   function saveLayout() {
