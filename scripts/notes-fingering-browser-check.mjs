@@ -40,6 +40,20 @@ async function withAdjustment(page, action) {
 async function adjustmentClick(page, name) {
   await withAdjustment(page, () => page.getByRole('button',{name,exact:typeof name === 'string'}).click());
 }
+async function checkBottomMusic(page, context) {
+  if (!await page.locator('.play-stage--bottom').count()) return;
+  const regions = await page.locator('.practice-play > :is(h2,.counts,.staff-panel,.control-row)').evaluateAll(elements => elements.map(element => {
+    const r = element.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};
+  }));
+  const header = await page.locator('.notes-workspace-header').boundingBox();
+  for (const [index,a] of regions.entries()) {
+    assert.ok(a.y >= header.y + header.height - 1, `${context}: music/actions stay below navigation`);
+    for (const b of regions.slice(index+1)) {
+      assert.ok(Math.min(a.right,b.right)-Math.max(a.x,b.x) < 1 || Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y) < 1, `${context}: score, notation and actions do not overlap`);
+    }
+  }
+  assert.ok(regions[2].bottom-regions[2].y >= 60, `${context}: landscape notation retains room`);
+}
 // Exercise real rendered targets: spacing may compress to fit, never overlap.
 async function checkHand(page, context) {
   const geometry = await page.locator('.fingering-panel').evaluate(panel => {
@@ -65,7 +79,7 @@ async function checkHand(page, context) {
     const [one,two,,thumb] = fingers;
     assert.ok((thumb[axis]-one[axis])*(two[axis]-one[axis]) < 0, `${context}: trigger follows valve 1`);
     assert.ok(Math.abs(thumb[cross]-one[cross]) > 1, `${context}: thumb offset is preserved`);
-    // The left-hand 3–2–1 reference has the thumb below and left of valve 1.
+    // The left-hand 3–2–1 reference has the thumb below and right of valve 1.
     // This sign must survive Move, rotation, and Flip; reversing just one axis
     // silently changes the layout into a right hand.
     const handedness = (two.x-one.x)*(thumb.y-one.y) - (two.y-one.y)*(thumb.x-one.x);
@@ -99,7 +113,7 @@ async function checkResize(page, context) {
     await page.mouse.move(grip.x + grip.width/2 + 40, grip.y + grip.height/2 + 40, {steps:8});
     await page.mouse.up(); await page.waitForTimeout(100);
     assert.ok(Number(await page.locator('.note-entry').getAttribute('data-hand-scale')) > 1, 'Dragging enlarges the arrangement');
-    const savedSize = await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:horn-f:landscape')));
+    const savedSize = await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:landscape')));
     assert.equal(Math.min(savedSize.x, savedSize.y), Number(await page.locator('.note-entry').getAttribute('data-hand-scale')), 'Drag completion saves both axes');
   }
   await handle.press('End');
@@ -223,7 +237,7 @@ async function checkLayouts(page) {
     await presetPage.close();
   }
 
-  // Phones rotate into an edge-mounted valve column, mirrored for the horn.
+  // Panel placement is user-controlled, including after phone rotation.
   for (const instrument of selectedLayouts) {
     const left = instrument==='horn-f';
     const context=await browser.newContext({hasTouch:true,viewport:{width:390,height:844}});
@@ -234,6 +248,21 @@ async function checkLayouts(page) {
     if (['tuba','euphonium'].includes(instrument)) await selectInstrument(phone,`${instrument}-4`);
     for (const viewport of [{width:844,height:390},{width:667,height:375}]) {
       await phone.setViewportSize(viewport);
+      await phone.waitForTimeout(100);
+      await checkBottomMusic(phone, `${instrument} default ${viewport.width}`);
+      await phone.screenshot({path:`dist/validation/notes-bottom-${instrument}-${viewport.width}-${name}.png`});
+    }
+    await phone.setViewportSize({width:390,height:844});
+    await phone.waitForTimeout(100);
+    for (const viewport of [{width:844,height:390},{width:667,height:375}]) {
+      await phone.setViewportSize(viewport);
+      await phone.waitForTimeout(100);
+      if (viewport.width === 844) {
+        assert.equal(await phone.locator('.note-entry').getAttribute('data-grip-position'),'bottom','Rotation does not choose an instrument-specific panel side');
+        const move = phone.getByRole('button',{name:/^Move Panel:/});
+        await move.click();
+        if (left) await move.click();
+      }
       await phone.waitForFunction(()=>document.querySelector('.play-stage--grip'));
       await phone.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const valves=await phone.locator('.fingering-valve:not(.fingering-trigger)').evaluateAll(bs=>bs.map(b=>{
@@ -289,6 +318,15 @@ async function checkLayouts(page) {
     await startPractice(screen); await chooseMethod(screen,'fingering');
     if (['tuba','euphonium'].includes(instrument)) await selectInstrument(screen,`${instrument}-4`);
     console.log(`Checking ${instrument} ${profile.id}`);
+    assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),'bottom','Every instrument starts with a bottom panel');
+    await checkBottomMusic(screen, `${instrument} ${profile.id} default`);
+    if (instrument === 'horn-f') {
+      const [one,two,three,trigger] = await screen.locator('.fingering-valve').evaluateAll(buttons => buttons.map(button => {
+        const r = button.getBoundingClientRect(); return {x:r.x,y:r.y};
+      }));
+      assert.ok(three.x < two.x && two.x < one.x && trigger.x > one.x && trigger.y > one.y, `${profile.id}: horn opens as 3–2–1 with the trigger at bottom right`);
+      await screen.screenshot({path:`dist/validation/horn-default-${profile.id}-${name}.png`});
+    }
     // Compact layout tools work in every position without submitting an answer.
     const move = screen.getByRole('button', {name:/^Move Panel:/});
     const flip = screen.locator('.fingering-flip');
@@ -325,14 +363,22 @@ async function checkLayouts(page) {
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       await screen.reload(); await choosePreset(screen,'horn-f-starter'); await startPractice(screen); await chooseMethod(screen,'fingering');
       assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Size survives reload');
-      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:horn-f:landscape'))), {x:1,y:0.9}, 'Independent axes survive reload');
-      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.45,y:0.5});
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-scale:landscape'))), {x:1,y:0.9}, 'Independent axes survive reload');
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:landscape'))),{x:0.45,y:0.5});
       await screen.getByRole('button',{name:'Adjust Input',exact:true}).click();
       await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
-      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape'))),{x:0.4,y:0.5},'Position reloads before the next adjustment');
+      assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:landscape'))),{x:0.4,y:0.5},'Position reloads before the next adjustment');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
       assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'regular','Spacing survives reload');
+      const shared = await screen.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /tunotes:(grip|finger-)/.test(key))));
+      for (const instrument of ['trumpet-bb','horn-f']) {
+        await selectInstrument(screen,instrument);
+        assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition,'Changing instruments preserves panel placement');
+        assert.equal(await flip.getAttribute('aria-pressed'),'true','Changing instruments preserves flip');
+        assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Changing instruments preserves size');
+        assert.deepEqual(await screen.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /tunotes:(grip|finger-)/.test(key)))),shared,'Changing instruments preserves all shared preferences');
+      }
       await screen.setViewportSize({width:1080,height:1920});
       await screen.waitForTimeout(100);
       assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'regular','Spacing survives orientation change');
@@ -344,7 +390,7 @@ async function checkLayouts(page) {
       await screen.getByRole('button',{name:'Adjust Input',exact:true}).click();
       await screen.getByRole('slider',{name:'Finger arrangement size'}).press('Home');
       await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('ArrowLeft');
-      assert.equal(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:horn-f:landscape')).x),0.35000000000000003,'Position survives rotation');
+      assert.equal(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:landscape')).x),0.35000000000000003,'Position survives rotation');
       await screen.getByRole('group',{name:'Finger arrangement position',exact:true}).press('Home');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       await adjustmentClick(screen, 'Flip finger order');
@@ -424,8 +470,52 @@ try {
     document.addEventListener('keydown',e=>{if(!e.target.closest('select')) entry.heldKeydown(e);});
     document.addEventListener('keyup',e=>entry.heldKeyup(e));
     window.addEventListener('blur',entry.reset);
-    window.fixture.start();
-  `,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife'});
+    window.fixture.start('E4','instant',window.fixtureInstrument ?? 'trumpet-bb');
+  `,resolveDir:process.cwd(),loader:'ts'},loader:{'.svg':'dataurl'},bundle:true,write:false,format:'iife'});
+  // Adopt an existing arrangement once, including the old horn baseline. A
+  // different instrument's legacy preferences must never replace the shared fit.
+  for (const denied of [false,true]) for (const legacyFlip of [false,true]) {
+    const context = await browser.newContext({viewport:{width:1000,height:800}});
+    const migration = await context.newPage();
+    await migration.goto(new URL('/notes/',host.url).href);
+    await migration.evaluate(({denied,legacyFlip}) => {
+      localStorage.clear();
+      localStorage.setItem('tunotes:grip:horn-f:landscape',JSON.stringify({position:'bottom',flipped:legacyFlip}));
+      localStorage.setItem('tunotes:finger-scale:horn-f:landscape',JSON.stringify({x:0.85,y:0.9}));
+      localStorage.setItem('tunotes:finger-position:horn-f:landscape',JSON.stringify({x:0.3,y:0.7}));
+      localStorage.setItem('tunotes:finger-spacing:horn-f','wide');
+      localStorage.setItem('tunotes:grip:trumpet-bb:landscape',JSON.stringify({position:'right',flipped:legacyFlip}));
+      if (denied) Storage.prototype.setItem = () => { throw new DOMException('Fixture storage denial','QuotaExceededError'); };
+      window.fixtureInstrument = 'horn-f';
+    },{denied,legacyFlip});
+    await migration.addScriptTag({content:fixture.outputFiles[0].text});
+    await chooseMethod(migration,'fingering');
+    await migration.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip),'Migration preserves the previous physical horn order');
+    const previous = await migration.getByRole('button',{name:'Valve 1',exact:true}).boundingBox();
+    const thumb = await migration.locator('.fingering-trigger').boundingBox();
+    assert.equal(thumb.y > previous.y,legacyFlip,'Migration preserves the previous trigger side');
+    for (const instrument of ['trumpet-bb','violin','horn-f']) {
+      await selectInstrument(migration,instrument);
+      assert.equal(await migration.locator('.note-entry').getAttribute('data-grip-position'),'bottom','Legacy per-instrument placement cannot replace shared placement');
+      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip));
+      assert.equal(await migration.locator('.note-entry').getAttribute('data-hand-scale'),'0.85');
+      assert.equal(await migration.locator('.fingering-input').getAttribute('data-spacing'),'wide');
+    }
+    await migration.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.deepEqual(await migration.getByRole('button',{name:'Valve 1',exact:true}).boundingBox(),previous,'Returning to the horn keeps the physical fit');
+    if (!denied) {
+      assert.deepEqual(await migration.evaluate(() => JSON.parse(localStorage.getItem('tunotes:finger-position:landscape'))),{x:0.3,y:0.7});
+      // Reload under a different instrument and restore the same shared values.
+      await migration.reload();
+      await migration.addScriptTag({content:fixture.outputFiles[0].text});
+      await chooseMethod(migration,'fingering');
+      assert.equal(await migration.locator('.note-entry').getAttribute('data-grip-position'),'bottom');
+      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip));
+      assert.equal(await migration.locator('.note-entry').getAttribute('data-hand-scale'),'0.85');
+    }
+    await context.close();
+  }
   await page.addScriptTag({content:fixture.outputFiles[0].text});
   await chooseMethod(page,'fingering');
   await page.evaluate(()=>window.fixture.changingFingerings());
@@ -729,12 +819,12 @@ try {
   await selectInstrument(page,'horn-f');
   const originalViewport = page.viewportSize();
   await page.evaluate(() => {
-    const key = 'tunotes:finger-spacing:horn-f';
+    const key = 'tunotes:finger-spacing';
     localStorage.setItem(key,document.querySelector('.fingering-input').dataset.spacing);
     const write = Storage.prototype.setItem;
     window.fixture.restoreStorage = () => { Storage.prototype.setItem = write; };
     Storage.prototype.setItem = function(key,value) {
-      if (key.startsWith('tunotes:finger-spacing:') || key.startsWith('tunotes:finger-scale:') || key.startsWith('tunotes:finger-position:')) throw new DOMException('Fixture storage denial','QuotaExceededError');
+      if (key.startsWith('tunotes:finger-spacing') || key.startsWith('tunotes:finger-scale:') || key.startsWith('tunotes:finger-position:')) throw new DOMException('Fixture storage denial','QuotaExceededError');
       return write.call(this,key,value);
     };
   });

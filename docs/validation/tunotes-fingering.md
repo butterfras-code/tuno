@@ -223,3 +223,37 @@ selection, and schema 6-to-7 conversion with strict field validation.
 The earlier 12-profile layout matrix and screenshot review remain applicable:
 this follow-up changes data handling and attribute names, not layout or controls.
 `git diff --check` passed.
+
+## Shared input layout and horn default
+
+New layouts start with a bottom panel for every instrument, including landscape.
+The horn's horizontal baseline is 3–2–1 from left to right, with T below and to
+the right of valve 1, matching the left hand. Move Panel and Adjust Input remain
+available; switching instruments keeps panel placement, Flip, size, and hand
+position. Portrait and landscape retain separate fits. Instrument anatomy and
+keyboard shortcuts remain part of the instrument configuration.
+
+Short landscape puts the score, notation, and Practice actions in separate
+columns, including the 667 × 375 regression size, so the bottom panel does not
+force the score and Pause/Finish controls to overlap.
+
+The shared keys are `tunotes:grip:<orientation>`,
+`tunotes:finger-scale:<orientation>`, `tunotes:finger-position:<orientation>`,
+and `tunotes:finger-spacing`. When a shared preference is first loaded, the
+current instrument's older preference is adopted if available. Later instrument
+changes use the shared fit. Migrating a bottom horn layout reverses its saved
+Flip flag to preserve the user's physical arrangement under the corrected
+baseline. Session caches also retain the shared fit when storage writes fail.
+
+Browser regressions cover the fresh horn default at all 12 viewport profiles,
+shared preferences across brass and strings, reload, rotation, legacy migration
+in both Flip states, and unavailable storage.
+
+Validation: Node 24.22.1, `npm ci`, and `npm run check` passed (559 tests,
+typecheck, hosted build). Chromium and Firefox passed the complete eight-instrument
+matrix across all 12 profiles, the 844 × 390 and 667 × 375 bottom-panel checks,
+and the deterministic input/scoring and preference fixtures. Chromium viewport
+smoke checks passed all 12 profiles. Reviewed primary-profile horn screenshots,
+short landscape Practice/Challenge, and four-valve layouts. `git diff --check`
+passed. Physical-device comfort, native Safari, and real browser zoom remain
+unverified.
