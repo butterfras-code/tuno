@@ -6,5 +6,5 @@ export function prepareSuiteOffline(container?: HTMLElement) {
   prepared = true;
   const status = document.createElement('p');
   if (container) { status.id = 'offline-status'; container.append(status); }
-  prepareOffline(status, { id: 'suite', name: 'Practice Tools' }, { worker: '/suite-sw.js', scope: '/' });
+  prepareOffline(status, { id: 'suite', name: 'Practice Tools' }, { worker: '/suite-sw.js', scope: '/' }, Boolean(container));
 }

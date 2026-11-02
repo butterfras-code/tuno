@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
       throw error;
     }
   })());
-  // Never skipWaiting: updates activate only after every existing app tab closes.
+  // Updates wait for tabs to close unless the user explicitly applies one below.
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -51,6 +51,31 @@ self.addEventListener('fetch', (event) => {
   })());
 });
 self.addEventListener('message', (event) => {
+  if (['CHECK_UPDATE_CLIENTS', 'APPLY_UPDATE'].includes(event.data?.type) && event.ports[0] && event.source?.id) {
+    event.waitUntil((async () => {
+      const waiting = self.registration.waiting;
+      if (!waiting) { event.ports[0].postMessage({ status: 'not-ready' }); return; }
+      // Ask the ACTIVE worker: its default client list includes only windows it
+      // controls, so sibling apps with more-specific registrations do not block.
+      const windows = await self.clients.matchAll({ type: 'window' });
+      if (windows.some(client => client.id !== event.source.id)) {
+        event.ports[0].postMessage({ status: 'other-tabs' }); return;
+      }
+      if (event.data.type === 'CHECK_UPDATE_CLIENTS') {
+        event.ports[0].postMessage({ status: 'allowed' }); return;
+      }
+      waiting.postMessage({ type: 'ACTIVATE_UPDATE' }, [event.ports[0]]);
+    })());
+    return;
+  }
+  // Only the active worker can authorize activation after checking its clients.
+  if (event.data?.type === 'ACTIVATE_UPDATE' && event.ports[0]
+    && event.source?.scriptURL === self.registration.active?.scriptURL
+    && event.source?.state === 'activated') {
+    event.ports[0].postMessage({ status: 'activating' });
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   if (event.data?.type !== 'CHECK_OFFLINE' || !event.ports[0]) return;
   event.waitUntil((async () => {
     try {

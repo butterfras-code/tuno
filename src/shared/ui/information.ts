@@ -6,6 +6,7 @@ import { button, el } from './components.ts';
 
 import type { AppIdentity } from '../../distribution/identity.ts';
 import { tuno } from '../../distribution/identity.ts';
+import { createUpdateControls } from '../../distribution/updates.ts';
 import nunitoLicense from '../../assets/fonts/nunito-OFL.txt';
 import sansLicense from '../../assets/fonts/nunito-sans-OFL.txt';
 
@@ -50,6 +51,7 @@ export function createInformationControls(app: AppIdentity = tuno) {
   sourceParagraph.append(source);
   const about = createDialog('about-information', `About ${app.name}`, [
     el('p', '', 'Uno’s Practice Tools: tuning, reference tones, tempo, note reading, and rhythm practice with a friend. Free to use, with no ads.'),
+    createUpdateControls(app),
     el('p', '', 'Copyright © 2026 Justin Butterfras. tUno’s code and original artwork are licensed under the GNU General Public License, version 3 (GPLv3). You can share and change them under that license. There is no warranty.'),
     sourceParagraph, projectTerms,
     el('p', '', 'Bundled fonts include their complete license notices below.'), fontSources, licenses,
