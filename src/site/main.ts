@@ -5,6 +5,7 @@ import notesArtwork from '../assets/launcher/notes.svg';
 import rhythmArtwork from '../assets/launcher/rhythm.svg';
 import { el } from '../shared/ui/components.ts';
 import { prepareSuiteOffline } from '../distribution/suite-offline.ts';
+import { createUpdateNotice } from '../distribution/updates.ts';
 const main = document.querySelector('main')!;
 const brand = el('header', 'launcher-brand');
 brand.append(el('h1', '', 'tUno'), el('p', '', "Uno's Practice Tools"));
@@ -21,5 +22,5 @@ for (const [name, subtitle, href, artwork] of [
 }
 const status = el('div');
 const footer = createAppFooter({ status });
-main.append(brand, cards, footer);
+main.append(brand, createUpdateNotice(), cards, footer);
 prepareSuiteOffline(status);

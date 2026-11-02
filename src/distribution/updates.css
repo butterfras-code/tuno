@@ -1,0 +1,33 @@
+.update-notice[hidden], .update-controls [hidden] { display: none !important; }
+.app-header.suite-header .update-notice { grid-column: 1 / -1; }
+/* Keep the fitted tuNotes play area intact; offer the update on results/setup. */
+#home.is-playing .update-notice { display: none !important; }
+.update-notice {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  flex: 1 0 100%; order: 10; width: 100%; min-width: 0;
+  padding: 16px; margin: 0 0 16px; box-sizing: border-box;
+  border: 1px solid var(--color-accent); border-radius: var(--radius-control);
+  background: var(--color-tint); color: var(--color-ink); text-align: left;
+  font: 14px/1.5 var(--font-body); overflow-wrap: anywhere;
+}
+.update-copy { flex: 1 1 300px; min-width: 0; }
+.update-copy strong { font: 700 18px/1.4 var(--font-heading); }
+.update-notice .update-copy p { margin: 4px 0 0; font: inherit; }
+.update-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.update-notice .update-actions .control, .update-controls .update-actions .control {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; height: auto; min-width: 0; max-width: 100%; padding: 10px 16px;
+  border: 1px solid var(--color-accent); border-radius: 12px; box-shadow: none;
+  background: var(--color-surface); color: var(--color-accent);
+  font: 700 15px/1.4 var(--font-heading); cursor: pointer;
+}
+.update-notice .update-actions .control:first-child { background: var(--color-accent); color: var(--color-surface); }
+.update-actions .control:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+.update-actions .control:disabled { cursor: wait; opacity: .65; }
+.update-controls { min-width: 0; }
+.update-controls .update-build { font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 450px) {
+  .update-notice { padding: 12px; }
+  .update-notice .update-actions { width: 100%; }
+  .update-notice .update-actions .control:first-child { flex: 1 1 170px; }
+}

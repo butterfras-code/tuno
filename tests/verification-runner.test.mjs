@@ -151,7 +151,7 @@ test('same-checkout guard refuses a second verification before it writes artifac
 });
 
 test('focused selection is explicit, validates typos, and keeps sensitive checks isolated', () => {
-  assert.equal(selectedBrowserPlan([], {}).plan.length, 94);
+  assert.equal(selectedBrowserPlan([], {}).plan.length, 96);
   const selection = selectedBrowserPlan(['--check', 'notes-fingering-browser-check.mjs', '--engine', 'firefox'], {});
   assert.equal(selection.focused, true); assert.equal(selection.plan.length, 1);
   assert.throws(() => selectedBrowserPlan(['--check', 'typo'], {}), /Unknown/);

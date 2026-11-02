@@ -37,7 +37,17 @@ The hosting build runs `npm run build`, not the full test suite. Follow [release
 
 ## Offline updates
 
-The first visit requires connectivity. The app reports **Offline ready** after verifying its essential cached resources. A newly downloaded service worker waits until all existing tUno tabs close before activating, so deployment does not interrupt an active practice session. An offline device must reconnect to obtain an update.
+The first visit requires connectivity. The app reports **Offline ready** after verifying its essential cached resources. Updates download and verify in the background. A visible notice offers **Update and reload** or **Later**, and **About → Check for updates** shows the current build and checks manually. Automatic checks run on opening, returning to the page and every five minutes while visible; reconnecting triggers another check. An offline device must reconnect to download an update, but an already downloaded update can be applied offline.
+
+Deployment never forces an active practice session to reload. **Update and reload** asks the active worker whether another tab or app window is using it. If so, the user is asked to close those windows and try again; sibling apps with their own workers do not block the update. Otherwise, the waiting worker activates and the requesting page reloads after activation and control transfer. Current practice restarts; saved preferences and progress remain. **Later** hides the notice for that waiting update in the current page; About still offers the update. Updates also activate normally after all controlled windows close.
+
+Already-cached versions without these controls need one normal close of all controlled tabs/app windows and an online reopening to receive them. Clearing browsing data is unnecessary and can remove saved practice information.
+
+Tune, Tone and Tempo share an update check covering both the directory-scoped tuner cache and the root suite cache. The updater checks all affected scopes for other controlled windows before applying either waiting update, then reloads the current URL. This also covers changing views with History API navigation before updating. tuNotes and Uno234 check their independent app workers; their background suite preparation does not create another notice.
+
+If a worker activates naturally while an older document remains open, the notice continues to offer a reload. Worker activation alone does not replace the JavaScript already running in that document.
+
+During a tuNotes round, the notice is deferred until results/setup so it does not reduce the fitted notation and answer area. Downloading an update never changes the current exercise or its answers.
 
 Deploy the complete hosted output together, including each app’s manifest, icons and worker. The caching, resource-serving, and release-retention requirements are documented in [release instructions](releasing.md).
 
@@ -66,7 +76,7 @@ The existing `/tune/sw.js` and `/notes/sw.js` registrations retain their directo
 
 A separate root registration at `/suite-sw.js` caches the launcher, the Tone/Tempo entry pages, Uno234 and the enumerated tUno resources they require. Its build identifier includes the rhythm assets so rhythm changes invalidate the suite cache. It does not intercept tuNotes, prototype routes or unknown files. A root scope is necessary because the new entry paths are siblings. More-specific existing app workers still take precedence. Each app header prepares this cache so Tools can return to the launcher offline after preparation; tuNotes still requires its own online preparation. Tone/Tempo direct loads verify the suite worker's build before reporting Offline ready. No practice state or preferences are shared by this worker.
 
-Suite updates also wait for existing controlled tabs to close: no `skipWaiting` or forced reload. Its cache name includes scope and build. The suite worker retires only obsolete suite caches and the exact former root-scoped tUno cache, leaving directory-scoped app caches and browser preferences intact.
+Suite updates wait for existing controlled tabs to close, with the same explicit **Update and reload** option on the launcher, Tone and Tempo. Background suite preparation on other app screens does not show a second update notice. Its cache name includes scope and build. The suite worker retires only obsolete suite caches and the exact former root-scoped tUno cache, leaving directory-scoped app caches and browser preferences intact.
 
 Keep `/sw.js` available as the retirement endpoint for older installations. It still has no fetch handler and waits for legacy clients to close before removing their cache and unregistering. A visitor who opens the new launcher may instead replace that root registration with `/suite-sw.js`; the suite worker performs the same narrowly targeted legacy-cache cleanup on activation. Both paths preserve active old sessions until they close.
 

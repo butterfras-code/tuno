@@ -12,6 +12,7 @@ export const browserChecks = [
   { file: 'tempo-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'animation-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'offline-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
+  { file: 'updates-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'site-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'suite-browser-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },
   { file: 'audio-render-check.mjs', status: 'active', engines: ['chromium', 'firefox'] },

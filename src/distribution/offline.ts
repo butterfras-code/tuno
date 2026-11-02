@@ -1,6 +1,7 @@
 import { tuno, type AppIdentity } from './identity.ts';
+import { watchForUpdates } from './updates.ts';
 /** Verify cached resources before promising offline use. */
-export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, workerOptions = { worker: './sw.js', scope: './' }) {
+export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, workerOptions = { worker: './sw.js', scope: './' }, primaryUpdates = true) {
   if (app.id === 'tuno' && /^\/(tone|tempo)\//.test(location.pathname)) {
     app = { id: 'suite', name: 'Practice Tools' };
     workerOptions = { worker: '/suite-sw.js', scope: '/' };
@@ -35,7 +36,7 @@ export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, wor
       });
       status.textContent = result.appId === app.id && result.ready && result.version === expectedVersion
         ? 'Offline ready' : 'Offline preparation incomplete · Reopen online to retry';
-      if (registration.waiting) status.textContent += ` · Update downloaded. Close all ${app.name} tabs after practice to apply it.`;
+      if (registration.waiting) status.textContent += ' · Update downloaded';
     } catch {
       status.textContent = 'Offline preparation could not be verified · Reopen online to retry';
     } finally { checking = false; }
@@ -47,6 +48,7 @@ export function prepareOffline(status: HTMLElement, app: AppIdentity = tuno, wor
   document.addEventListener('visibilitychange', () => { if (!document.hidden) void check(); });
   void navigator.serviceWorker.register(workerUrl, { scope: workerOptions.scope, updateViaCache: 'none' }).then((value) => {
     registration = value;
+    watchForUpdates(value, app, primaryUpdates);
     const observe = (worker: ServiceWorker | null) => worker?.addEventListener('statechange', () => {
       if (worker.state === 'redundant' && !registration?.active) status.textContent = 'Offline preparation failed · Reopen online to retry';
       void check();
