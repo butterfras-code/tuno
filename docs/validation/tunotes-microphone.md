@@ -1,8 +1,13 @@
 # tuNotes microphone input
 
 Mic is the third answer method in Practice and Challenge. Selecting it does not
-request microphone access: use the microphone icon (Start mic) inside the panel. Transposition is saved
-on the device; microphone access is never restarted automatically.
+request microphone access: use the microphone icon (Start mic) inside the panel.
+Instrument presets preselect their written-pitch transposition, including the
+double bass octave. Manual changes survive prompt updates and switching answer
+methods; selecting a different preset instrument applies its default. Without an
+instrument preset, the last manual transposition saved on the device is used.
+Automatic defaults do not replace that saved preference; microphone access is
+never restarted automatically.
 
 The readout shows written pitch and cents at A4 = 440 Hz. Raw tuner detector
 samples must remain within ±40 cents of the same semitone for at least 300 ms.
@@ -18,6 +23,7 @@ Prompt changes restart the hold without reusing the sustained answer.
 | B♭ Trumpet, Clarinet, Soprano Sax | +2 | B♭3 |
 | F Horn | +7 | F3 |
 | E♭ Alto Sax | +9 | E♭3 |
+| C Double bass (octave lower) | +12 | C3 |
 | B♭ Bass Clarinet, Tenor Sax, Euphonium TC | +14 | B♭2 |
 | E♭ Baritone Sax | +21 | E♭2 |
 

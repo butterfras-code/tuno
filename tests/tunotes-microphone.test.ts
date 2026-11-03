@@ -9,7 +9,7 @@ const hold = (policy: MicrophoneHold, note: number, offset = 0, start = 0) => {
   return result!;
 };
 test('written middle C requires the correct sounding octave for every instrument group', () => {
-  assert.deepEqual(microphoneTranspositions.map(t => writtenToConcert(60, t.offset)), [60, 58, 53, 51, 46, 39]);
+  assert.deepEqual(microphoneTranspositions.map(t => writtenToConcert(60, t.offset)), [60, 58, 53, 51, 48, 46, 39]);
   for (const { offset } of microphoneTranspositions) {
     assert.equal(hold(new MicrophoneHold(), 60 - offset, offset).answer, 60);
     assert.equal(hold(new MicrophoneHold(), 72 - offset, offset).answer, 72);
