@@ -66,7 +66,7 @@ try {
   await prepareOfflineContext(offlineContext, offlineUrl);
   host.setAvailable(false);
   const file = await offlineContext.newPage(); file.on('pageerror', e => errors.push(e.message));
-  await file.goto(offlineUrl); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); assert.match(await file.locator('#profile-history').textContent(),/20 correct/);
+  await file.goto(offlineUrl); await expandData(file); await upload(file,backup); await file.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click(); await file.waitForFunction(() => document.querySelector('#profile-history').textContent.includes('20 correct')); assert.match(await file.locator('#profile-history').textContent(),/20 correct/);
   const offlineDownload = file.waitForEvent('download'); await file.getByRole('button',{name:'Export backup',exact:true}).first().click(); const offlineBackup = await readFile(await (await offlineDownload).path(),'utf8'); await upload(page,offlineBackup); await page.getByRole('button',{name:'Replace tuNotes data',exact:true}).first().click();
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete selected profile',exact:true}).first().click(); assert.equal(await page.locator('#profile option').count(),1);
   page.once('dialog',d => d.accept()); await page.getByRole('button',{name:'Delete all tuNotes data',exact:true}).first().click(); assert.equal(await page.evaluate(()=>localStorage.getItem('tunotes:data:v1')),null); assert.equal(await page.evaluate(() => localStorage.getItem('tuno-preferences')),'preserve');
@@ -76,7 +76,7 @@ try {
     const ctx = await browser.newContext(); await ctx.addInitScript(mode => {
       if(mode==='denied') Object.defineProperty(window,'localStorage',{get(){throw new Error('denied');}});
       if(mode==='corrupt') localStorage.setItem('tunotes:data:v1','corrupt');
-      if(mode==='quota') Storage.prototype.setItem=function(){throw new Error('quota');};
+      if(mode==='quota') IDBObjectStore.prototype.put=function(){throw new DOMException('quota','QuotaExceededError');};
     },mode);
     const p = await ctx.newPage(); p.on('pageerror',e => errors.push(e.message)); await p.goto(new URL('/notes/', host.url).href); await expandData(p);
     await p.getByRole('button',{name:'Add profile',exact:true}).first().click(); await p.getByLabel('Profile name',{exact:true}).fill('Memory'); await p.getByLabel('Profile name',{exact:true}).press('Enter'); assert.match(await p.locator('#storage-status').textContent(),/memory/i);

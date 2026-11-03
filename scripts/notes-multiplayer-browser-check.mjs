@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { openRange, rangeDialog, configureMultiplayerNotes, selectPlayer, playerAction } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -29,7 +30,7 @@ async function start(page,format='turns') {
   await page.locator('.multiplayer-view').getByLabel('Duration (seconds)').fill('15');
   await button(page,'Start round').click();
   await page.getByRole('group',{name:'Play Style'}).getByRole('button',{name:format==='pairs'?'Side by Side':format==='turns'?'Pass and Play':'Head to Head'}).click();
-  await button(page,'Continue to round').click(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
+  await button(page,'Continue to round').click(); await page.locator('.multiplayer-round').waitFor(); await page.clock.runFor(50); assert.equal(await page.locator('.multiplayer-round').isVisible(),true);
 }
 async function readyAndExpire(page) { await button(page,'Ready').click(); await page.clock.fastForward(18100); }
 async function run(page,url,label) {
@@ -283,7 +284,7 @@ async function run(page,url,label) {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-results.png`,fullPage:true});
   await page.setViewportSize({width:1280,height:900});
-  await button(page,'Retry').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Heat 1 of 2/);
+  await button(page,'Retry').click();await page.locator('.multiplayer-round').waitFor();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Heat 1 of 2/);
   assert.match(await page.locator('.multiplayer-panel').first().locator('.muted').first().textContent(),/0 attempts/);
   await button(page,'End round').click();await button(page,'Edit setup').click();
 
@@ -396,7 +397,7 @@ async function run(page,url,label) {
   await button(profileDialog,'Clef').click(); await button(profileDialog,'Bass').click();
   await profileDialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();
   assert.equal(await page.locator('.profile-save-status').textContent(),'Changes saved.');
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).profiles.find(p=>p.name==='Bass Player').defaultPresetId),'bass-lines-and-spaces');
+  assert.equal(await readNotesData(page, data => data.profiles.find(p=>p.name==='Bass Player').defaultPresetId),'bass-lines-and-spaces');
   await button(page,'Challenge').click();
   assert.match(await page.locator('#notes-challenge .preset-name').textContent(),/Bass — Lines \+ Spaces/);
   await button(page,'Multi Player').click();

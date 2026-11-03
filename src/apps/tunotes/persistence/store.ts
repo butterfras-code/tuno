@@ -1,3 +1,5 @@
+import { applyObservation, changes } from './operations.ts';
+import type { Mutation, Operation, Repository, SavedState } from './operations.ts';
 import { migrateLegacyFingering } from './legacy-fingering.ts';
 import { canonicalFingering } from '../../../shared/input/fingering-code.ts';
 import { acceptsFingering, acceptsKeyboard, fingeringFor, validFingering } from '../domain/fingering.ts';
@@ -192,9 +194,11 @@ export class NotesStore {
       if (data.configuration.remember) data.configuration.presetId = presetId;
     });
     if (this.sharedDefaults) {
+      const before = structuredClone(this.durableData());
       const saved = this.sharedDefaults.profiles.find(p => p.id === profileId);
       if (saved) saved.defaultPresetId = presetId;
       this.transientPresets.delete(presetId);
+      for (const mutation of changes(before, this.durableData())) this.enqueue(mutation);
       this.flush();
     }
   }
@@ -217,17 +221,67 @@ export class NotesStore {
     if (!presets.some(p => p.id === data.configuration.presetId) && !data.customPresets.some(p => p.id === data.configuration.presetId)) data.configuration.presetId = emptySnapshot().configuration.presetId;
     return data;
   }
+  private repository: Repository | undefined;
+  private recover: (() => Promise<void>) | undefined;
+  allowRecovery(recover: () => Promise<void>) { this.recover = recover; }
+  private generation = '';
+  private operations: Operation[] = [];
+  private saving: Promise<void> = Promise.resolve();
+  private writes = 0;
+  get savingPending() { return this.writes > 0; }
+  private roundGenerations = new WeakMap<Practice, string>();
+  private recorded = new WeakSet<Practice>();
+  private activeRounds = new Map<Practice, string | undefined>();
+  private roundIds = new WeakMap<Practice, string>();
+  private roundResults = new WeakMap<Practice, Result>();
+  private checkpointAnswers = 0;
+  private dirty = false;
+  private revision = 0;
   private pending: ReturnType<typeof setTimeout> | undefined;
-  /** Shared browser storage must be opened through connectNotesStore, which holds the writer lock. */
+  useRepository(repository: Repository, state: SavedState) {
+    this.repository = repository; this.data = state.data; this.generation = state.generation;
+    this.durable = true; this.writeAllowed = true; this.message = ''; this.statusChanged();
+  }
+  endRound(round: Practice) { this.activeRounds.delete(round); }
+  beginRound(round: Practice, profileId?: string) { this.roundGenerations.set(round, this.generation); this.activeRounds.set(round, profileId); }
+  private enqueue(mutation: Mutation, generation = this.generation) {
+    if (this.repository && this.durable) this.operations.push({ id: crypto.randomUUID(), generation, mutation: structuredClone(mutation) });
+    this.dirty = true; this.revision++;
+  }
+  private saveFailed() {
+    this.durable = false;
+    this.message = 'Progress couldn’t be saved on this device. You can keep playing. Your progress is still in memory.';
+    this.statusChanged();
+  }
+  /** Refresh between rounds, preserving this tab's setup and any unsaved work. */
+  async refresh() {
+    await this.flush();
+    if (!this.repository || !this.durable || this.operations.length || this.activeRounds.size) return;
+    try {
+      const revision = this.revision;
+      const state = await this.repository.read();
+      if (this.operations.length || revision !== this.revision) return;
+      const configuration = state.generation === this.generation ? this.data.configuration : state.data.configuration;
+      const transient = this.data.customPresets.filter(p => this.transientPresets.has(p.id));
+      this.data = state.data; this.generation = state.generation;
+      this.data.configuration = configuration;
+      if (!this.data.profiles.some(p => p.id === configuration.profileId)) configuration.profileId = null;
+      for (const p of transient) if (!this.data.customPresets.some(v => v.id === p.id)) this.data.customPresets.push(p);
+      if (!presets.some(p => p.id === configuration.presetId) && !this.data.customPresets.some(p => p.id === configuration.presetId)) configuration.presetId = emptySnapshot().configuration.presetId;
+    } catch { this.saveFailed(); }
+  }
+  async close() { await this.flush(); this.activeRounds.clear(); this.repository?.close(); }
+
+  /** The browser attaches a transactional repository via connectNotesStore; the adapter supports legacy migration/tests. */
   constructor(storage?: StorageAdapter) {
     this.storage = storage;
-    try { if (!storage) throw new Error(); this.saved = storage.getItem(STORAGE_KEY); if (this.saved !== null) this.data = parseBackup(this.saved); }
+    try { if (!storage) throw new Error(); this.saved = storage.getItem(STORAGE_KEY); if (this.saved !== null) { this.data = parseBackup(this.saved); this.dirty = JSON.stringify(this.data) !== this.saved; } }
     catch { this.durable = false; this.message = 'Saved data could not be read. Using memory only; you can export a backup. Existing saved data has been preserved.'; }
   }
   onStatusChange(listener: () => void) { this.statusListeners.add(listener); listener(); return () => { this.statusListeners.delete(listener); }; }
-  get canDeleteSavedData() { return this.writeAllowed && Boolean(this.storage); }
+  get canDeleteSavedData() { return Boolean(this.recover) || this.writeAllowed && Boolean(this.repository || this.storage); }
   private statusChanged() { this.statusListeners.forEach(listener => listener()); }
-  /** Revocation is permanent for this snapshot. Reload to acquire a lock and read fresh data. */
+  /** Preserve usable memory when durable storage cannot be opened. */
   memoryOnly(message: string) {
     this.writeAllowed = false; this.durable = false; this.message = message;
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
@@ -243,7 +297,20 @@ export class NotesStore {
   }
   private write(raw: string) { this.requireCurrent(); this.storage!.setItem(STORAGE_KEY, raw); this.saved = raw; }
   update(change: (data: Snapshot) => void, deferred = false) {
-    const next = structuredClone(this.data); change(next); this.data = validateSnapshot(next);
+    const before = this.repository ? structuredClone(this.durableData()) : undefined;
+    const previous = this.data;
+    const next = structuredClone(this.data);
+    const configurationWrites = new Set<keyof Snapshot['configuration']>();
+    next.configuration = new Proxy(next.configuration, {
+      set(target, key, value) { configurationWrites.add(key as keyof Snapshot['configuration']); return Reflect.set(target, key, value); },
+    });
+    change(next); this.data = validateSnapshot(next);
+    for (const [round, profileId] of this.activeRounds) {
+      const result = this.roundResults.get(round);
+      const index = result ? previous.profiles.find(p => p.id === profileId)?.results.indexOf(result) ?? -1 : -1;
+      const replacement = index < 0 ? undefined : this.data.profiles.find(p => p.id === profileId)?.results[index];
+      if (replacement) this.roundResults.set(round, replacement);
+    }
     while (new TextEncoder().encode(JSON.stringify(this.data)).length > MAX_BYTES) {
       const oldest = this.data.profiles.filter(p => p.contexts.length).sort((a,b) => a.contexts[0]!.updated - b.contexts[0]!.updated)[0];
       if (oldest) oldest.contexts.shift();
@@ -253,16 +320,46 @@ export class NotesStore {
         history.results.shift();
       }
     }
-    if (deferred) { if (!this.pending) this.pending = setTimeout(() => this.flush(),400); } else this.flush();
+    if (before) {
+      const mutations = changes(before, this.durableData());
+      // An explicit selection still matters when another tab changed the stored default to a different value.
+      if (!this.sharedDefaults && configurationWrites.size) {
+        let config = mutations.find(m => m.kind === 'configuration');
+        if (!config) { config = { kind: 'configuration', patch: {} }; mutations.push(config); }
+        Object.assign(config.patch, Object.fromEntries([...configurationWrites].map(key => [key, this.data.configuration[key]])));
+      }
+      for (const mutation of mutations) this.enqueue(mutation);
+    }
+    this.dirty = true;
+    if (deferred) { if (!this.pending) this.pending = setTimeout(() => { void this.flush(); },400); this.pending.unref?.(); } else void this.flush();
   }
   flush() {
+    for (const [round, profileId] of this.activeRounds) if (round.attempts) this.captureResult(profileId, round, false);
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
-    if (!this.durable) return;
-    try { this.write(JSON.stringify(this.durableData())); }
+    this.checkpointAnswers = 0;
+    if (!this.durable) return this.saving;
+    if (this.repository) {
+      const batch = this.operations.splice(0);
+      if (!batch.length) return this.saving;
+      this.writes++; this.statusChanged();
+      this.saving = this.saving.then(async () => {
+        if (!this.durable) { this.operations.unshift(...batch); this.writes--; this.statusChanged(); return; }
+        try {
+          const { ignored } = await this.repository!.commit(batch);
+          if (ignored) { this.message = 'Saved profiles changed in another tab. This round won’t restore deleted or replaced progress.'; this.statusChanged(); }
+        } catch { this.operations.unshift(...batch); this.saveFailed(); }
+        finally { this.writes--; this.statusChanged(); }
+      });
+      return this.saving;
+    }
+    if (!this.dirty) return this.saving;
+    try { this.write(JSON.stringify(validateSnapshot(this.durableData()))); this.dirty = false; }
     catch { if (this.writeAllowed) { this.durable = false; this.message = 'Storage is unavailable or full. Progress is kept in memory; export a backup before closing.'; this.statusChanged(); } }
   }
-  replace(candidate: Snapshot) {
+  replace(candidate: Snapshot): void | Promise<void> {
     const next = validateSnapshot(candidate);
+    if (this.repository && this.durable) return this.replaceStored(next);
+
     // Keep both the previous memory snapshot and the durable snapshot on a failed import.
     if (this.durable) {
       try { this.write(JSON.stringify(next)); }
@@ -273,7 +370,19 @@ export class NotesStore {
     this.message = this.durable ? 'Backup imported.' : 'Backup replaced in memory only. Export before closing.';
     this.statusChanged();
   }
-  clear() {
+  private async replaceStored(next: Snapshot) {
+    // Serialize behind saves already dispatched, but do not discard pending memory unless replacement commits.
+    await this.saving;
+    const state = await this.repository!.replace(next);
+    try { this.storage?.removeItem(STORAGE_KEY); } catch { /* The transactional replacement is already committed. */ }
+    if (this.pending) clearTimeout(this.pending); this.pending = undefined;
+    this.operations = []; this.data = state.data; this.generation = state.generation;
+    if (this.sharedDefaults) this.sharedDefaults = structuredClone(next);
+    this.transientPresets.clear(); this.durable = true; this.message = 'Changes saved.'; this.statusChanged();
+  }
+  clear(): void | Promise<void> {
+    if (!this.repository && this.recover) return this.recover();
+    if (this.repository && this.writeAllowed) return this.replaceStored(emptySnapshot());
     if (this.pending) clearTimeout(this.pending); this.pending = undefined;
     this.data = emptySnapshot();
     if (this.sharedDefaults) this.sharedDefaults = emptySnapshot(); this.transientPresets.clear();
@@ -282,7 +391,21 @@ export class NotesStore {
     catch { this.durable = false; this.message = 'In-memory data was deleted. Saved data could not be deleted; reload to review it or clear site data in your browser.'; }
     this.statusChanged();
   }
-  export() { return JSON.stringify(this.data); }
+  export() {
+    const data = validateSnapshot(this.data);
+    let raw = JSON.stringify(data);
+    while (new TextEncoder().encode(raw).length > MAX_BYTES) {
+      const oldest = data.profiles.filter(p => p.contexts.length).sort((a,b) => a.contexts[0]!.updated - b.contexts[0]!.updated)[0];
+      if (oldest) oldest.contexts.shift();
+      else {
+        const history = data.profiles.filter(p => p.results.length).sort((a,b) => a.results[0]!.at - b.results[0]!.at)[0];
+        if (!history) throw new Error('Data exceeds the backup size limit.');
+        history.results.shift();
+      }
+      raw = JSON.stringify(data);
+    }
+    return raw;
+  }
   profile() { return this.data.configuration.remember ? this.data.profiles.find(p => p.id === this.data.configuration.profileId) : undefined; }
   benchmark(preset: Preset, adaptive = false) { return Math.max(10,...(this.profile()?.results.filter(r => r.context === fingerprint(preset,adaptive) && r.attempts >= 20 && !r.interrupted).slice(-5).map(r => r.first20) ?? [])); }
   challengeBenchmark(preset: Preset, adaptive: boolean, rules: ChallengeRules) {
@@ -292,24 +415,43 @@ export class NotesStore {
     if (rules.goal === 'target') return rules.target;
     return Math.max(10,...(this.data.profiles.find(p => p.id === profileId)?.results.filter(r => r.context === fingerprint(preset,adaptive,'challenge') && r.challenge?.end === 'completed' && !r.interrupted && r.attempts > 0 && JSON.stringify(r.challenge.rules) === JSON.stringify(rules)).slice(-5).map(r => r.correct) ?? []));
   }
-  observe(profileId: string | undefined, preset: Preset, observation: Observation, adaptive = false, learning?: Learning) {
-    if (!profileId) return;
-    this.update(data => {
-      const p = data.profiles.find(p => p.id === profileId); if (!p) return;
-      const fp = fingerprint(preset,adaptive,observation.activity); let context = p.contexts.find(c => c.fingerprint === fp);
-      if (!context) { context = { fingerprint: fp, version: 1, updated: Date.now(), notes: {} }; p.contexts.push(context); }
-      if (adaptive && learning) { if (context.learning && context.learning.algorithmVersion !== learning.algorithmVersion) context.notes = {}; context.learning = learning; }
-      context.updated = Date.now(); const label = pitchLabel(observation.pitch);
-      context.notes[label] = [...(context.notes[label] ?? []),observation].slice(-10);
-      p.contexts.sort((a,b) => a.updated - b.updated); p.contexts = p.contexts.slice(-128);
-    },true);
+  observe(profileId: string | undefined, preset: Preset, observation: Observation, adaptive = false, learning?: Learning, round?: Practice) {
+    if (!profileId || round && this.roundGenerations.has(round) && this.roundGenerations.get(round) !== this.generation) return;
+    const p = this.data.profiles.find(p => p.id === profileId); if (!p) return;
+    const mutation: Extract<Mutation, { kind: 'observation' }> = {
+      kind: 'observation', profileId, fingerprint: fingerprint(preset,adaptive,observation.activity),
+      observation, ...(adaptive && learning ? { learning: { ...learning } } : {}), at: Date.now(),
+    };
+    applyObservation(p, mutation);
+    if (!this.transientPresets.has(preset.id)) this.enqueue(mutation, round ? this.roundGenerations.get(round) ?? this.generation : this.generation);
+    // No history cloning, validation, serialization or storage on the answer path.
+    this.checkpointAnswers++;
+    if (this.checkpointAnswers >= 20) {
+      if (this.pending) clearTimeout(this.pending);
+      this.pending = setTimeout(() => { void this.flush(); }, 0);
+    } else if (!this.pending) this.pending = setTimeout(() => { void this.flush(); }, 30_000);
+    this.pending?.unref?.();
   }
+
   record(profileId: string | undefined, session: Practice) {
+    this.activeRounds.delete(session);
     if (!profileId || !session.attempts && !(session instanceof Challenge)) return;
-    this.update(data => {
-      const p = data.profiles.find(p => p.id === profileId); if (!p) return;
-      p.results.push({ version: 1, context: fingerprint(session.preset,session.adaptive,session.activity), attempts: session.attempts, correct: session.correct, first20: session.first20Correct, interrupted: session.interrupted, at: Date.now(), activeMs: session instanceof Challenge ? Math.floor(session.activeMs) : session.activeMs, ...(session instanceof Challenge ? { challenge: { rules: session.rules, end: session.end ?? 'partial', bestStreak: session.bestStreak } } : {}), preview: session.preview });
-      p.results = p.results.slice(-100);
-    });
+    if (this.recorded.has(session)) return;
+    this.recorded.add(session);
+    this.captureResult(profileId, session, true);
+    void this.flush();
+  }
+  private captureResult(profileId: string | undefined, session: Practice, final: boolean) {
+    if (this.roundGenerations.has(session) && this.roundGenerations.get(session) !== this.generation) return;
+    const p = this.data.profiles.find(p => p.id === profileId); if (!p) return;
+    const result: Result = { version: 1, context: fingerprint(session.preset,session.adaptive,session.activity), attempts: session.attempts, correct: session.correct, first20: session.first20Correct, interrupted: !final || session.interrupted, at: this.roundResults.get(session)?.at ?? Date.now(), activeMs: session instanceof Challenge ? Math.floor(session.activeMs) : session.activeMs, ...(session instanceof Challenge ? { challenge: { rules: session.rules, end: session.end ?? 'partial', bestStreak: session.bestStreak } } : {}), preview: session.preview };
+    const previous = this.roundResults.get(session);
+    if (previous && JSON.stringify(previous) === JSON.stringify(result)) return;
+    const index = previous ? p.results.indexOf(previous) : -1;
+    if (index < 0) p.results.push(result); else p.results[index] = result;
+    p.results = p.results.slice(-100); this.roundResults.set(session, result);
+    let roundId = this.roundIds.get(session);
+    if (!roundId) { roundId = crypto.randomUUID(); this.roundIds.set(session, roundId); }
+    if (!this.transientPresets.has(session.preset.id)) this.enqueue({ kind: 'result', profileId: p.id, roundId, result }, this.roundGenerations.get(session) ?? this.generation);
   }
 }
