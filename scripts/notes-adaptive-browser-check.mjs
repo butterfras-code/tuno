@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -11,8 +12,9 @@ const name=process.env.TUNO_BROWSER||'chromium', browser=await ({chromium,firefo
 const host=await hostBuild();
 const results=[],errors=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true}).first();
-const readData=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')));
+const readData=page=>readNotesData(page, data => data);
 async function previewLabels(page) {
+  await page.locator('.note-preview').waitFor();
   const previous=button(page,'Previous'),next=button(page,'Next');
   while(await previous.isVisible() && await previous.isEnabled()) await previous.click();
   const labels=[];
@@ -36,6 +38,7 @@ async function run(page,url,mode) {
   await button(page,'Add profile').click(); await page.getByLabel('Profile name',{exact:true}).fill('Reader'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   await choosePreset(page,'treble-lines-and-spaces',true); await setPacing(page,'Normal');
   await button(page,'Start Practice').click();
+  await page.locator('.note-preview').waitFor();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
   assert.equal(await button(page,'Start Practice').isDisabled(),true);
   assert.equal(await button(page,'Skip').isVisible(),true);
@@ -121,7 +124,7 @@ async function run(page,url,mode) {
   await choosePreset(page,'treble-lines-and-spaces',true);
   await openData(page); page.once('dialog',dialog=>dialog.accept());
   await button(page,'Delete all tuNotes data').click();
-  assert.equal(await readData(page),null);
+  assert.equal((await readData(page)).profiles.length,0);
   results.push(`${mode}: preview completion/catch, Replay/Skip, no automatic play or observations, keyboard isolation, exposure and timing, 360/768/1280 and 200% zoom, reduced motion, one centered note, right-side Uno, edge wrap, tail waiting until catch, altered labels/review, profile preferences and Guest memory passed`);
 }
 async function expansion(page) {

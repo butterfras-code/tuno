@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { startPractice, readyForAnswer } from './notes-setup-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -19,7 +20,7 @@ try {
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).click(); await page.getByLabel('Profile name',{exact:true}).fill('UI reader'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   assert.equal(await page.locator('.profile-card').isVisible(),true);
   assert.equal(await page.locator('.profile-save-status').textContent(),'Changes saved.');
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).profiles[0].name),'UI reader');
+  assert.equal(await readNotesData(page, data => data.profiles[0].name),'UI reader');
   await setToggle(page,'remember-progress',false);
   assert.equal(await page.locator('.profile-card').isVisible(),true);
   assert.equal(await page.locator('#profile').isEnabled(),true);
@@ -36,7 +37,7 @@ try {
   page.once('dialog',dialog=>dialog.accept()); await page.getByRole('button',{name:'Delete selected profile',exact:true}).click();
   assert.equal(await page.locator('#profile option').count(),1);
   await choosePreset(page,'treble-lines-and-spaces',true);await page.reload();
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).profiles[0].adaptive),true);
+  assert.equal(await readNotesData(page, data => data.profiles[0].adaptive),true);
   await startPractice(page);
   await notesMode(page,'Options'); await page.keyboard.press('e');
   assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);

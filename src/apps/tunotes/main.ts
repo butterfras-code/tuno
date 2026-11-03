@@ -24,15 +24,13 @@ import { savingNotice } from './ui/saving-notice.ts';
 export async function mountNotes(root: HTMLElement, linked: ActivityLink<NotesActivity> = {kind:'none'}) {
   if (linked.kind === 'error') { root.append(sharedActivityNotice(linked,notesAdapter)); return () => {}; }
   let session: NotesSession | undefined;
-  let leftPage = false;
-  const suspend = () => { leftPage = true; session?.close(); };
+  const suspend = () => { void session?.store.flush(); };
   window.addEventListener('pagehide', suspend);
   document.addEventListener('freeze', suspend);
   let storage: Storage | undefined;
   let locks: LockManager | undefined;
   try { storage = window.localStorage; locks = navigator.locks; } catch { /* Safe memory-only fallback. */ }
   session = await connectNotesStore(storage, locks);
-  if (leftPage) session.close();
   if (!root.isConnected) {
     session.close(); window.removeEventListener('pagehide', suspend); document.removeEventListener('freeze', suspend);
     return () => {};
@@ -54,12 +52,13 @@ export async function mountNotes(root: HTMLElement, linked: ActivityLink<NotesAc
   const navigation = el('nav','focus-navigation'); navigation.setAttribute('aria-label','tuNotes modes');
   const views = [practicePanel,challenge,multiplayerPanel,practice.options];
   let current = 0;
+  let selection = 0;
   let activityIndex = 0;
   const links = ['Practice','Challenge','Multi Player','Options'].map((label,index) => {
     const control = el('button','control',label); control.type = 'button';
     views[index]!.id = `notes-${label.toLowerCase()}`;
     control.setAttribute('aria-controls',views[index]!.id); control.setAttribute('aria-pressed',String(index === 0));
-    control.addEventListener('click',() => {
+    const activate = () => {
       if (control.getAttribute('aria-pressed') === 'true') return;
       if (current === 2) multiplayer?.leave(index === 3);
       else practice.leave();
@@ -67,12 +66,17 @@ export async function mountNotes(root: HTMLElement, linked: ActivityLink<NotesAc
       if (index === 2) {
         if (!multiplayer) { multiplayer = multiplayerView(practice.store); multiplayerPanel.append(multiplayer.node); }
       }
-      if (index < 2) practice.enter();
+      if (index < 2 || index === 3) practice.enter();
       practice.node.hidden = index >= 2;
       views.forEach((view,i) => { view.hidden = i !== index; links[i]!.setAttribute('aria-pressed',String(i === index)); });
       if (index === 2) multiplayer!.enter();
       current = index;
       if (index !== 3) activityIndex = index;
+    };
+    control.addEventListener('click', () => {
+      const own = ++selection;
+      if (index === 3) void session.store.refresh().then(() => { if (selection === own) activate(); });
+      else activate();
     });
     navigation.append(control); return control;
   });

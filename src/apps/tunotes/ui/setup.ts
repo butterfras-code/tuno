@@ -206,7 +206,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
         const p = { id: crypto.randomUUID(), name: `Profile ${data.profiles.length+1}`, results: [], contexts: [], defaultPresetId: data.configuration.presetId };
         data.profiles.push(p); data.configuration.profileId = p.id; data.configuration.remember = true;
       });
-      refresh(); saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.'; name.focus(); name.select();
+      refresh(); showSaved(); name.focus(); name.select();
     } catch (error) { status.textContent = (error as Error).message; }
   });
   const card = el('section','profile-card');
@@ -216,10 +216,18 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
   const profilePreset = presetPicker(() => store.data.customPresets,id => {
     const p = selectedProfile(); if (!p) return;
     store.saveProfileDefault(p.id,id); refresh();
-    saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.';
+    showSaved();
   },'profile-',false,'Default preset');
   const status = el('p'); status.setAttribute('role','status'); status.id = 'storage-status';
   const saved = el('p','profile-save-status'); saved.setAttribute('role','status');
+  let saveNotice = 0;
+  function showSaved() {
+    const own = ++saveNotice;
+    saved.textContent = store.durable ? 'Saving changes…' : 'Changes kept in memory only.';
+    void Promise.resolve(store.flush()).then(() => {
+      if (saveNotice === own) saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.';
+    });
+  }
   const history = el('p'); history.id = 'profile-history';
   const previous = button('Prev',() => selectNearby(-1)); previous.setAttribute('aria-label','Previous profile');
   const next = button('Next',() => selectNearby(1)); next.setAttribute('aria-label','Next profile');
@@ -257,7 +265,7 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     const next = name.value.trim();
     if (!next) { name.value = p.name; status.textContent = 'Give the profile a name.'; saved.textContent = ''; return; }
     if (next === p.name) return;
-    try { store.update(data => { data.profiles.find(v => v.id === p.id)!.name = next; }); refresh(); saved.textContent = store.durable ? 'Changes saved.' : 'Changes kept in memory only.'; }
+    try { store.update(data => { data.profiles.find(v => v.id === p.id)!.name = next; }); refresh(); showSaved(); }
     catch (error) { status.textContent = (error as Error).message; name.value = p.name; }
   });
   name.addEventListener('keydown',event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); name.blur(); profiles.input.focus(); } });
@@ -267,9 +275,11 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
     store.update(data => { data.configuration.profileId = target.id; if (data.configuration.remember) data.configuration.presetId = target.defaultPresetId; }); refresh(); saved.textContent = '';
     const control = delta < 0 ? previous : next; if (control.disabled) profiles.input.focus(); else control.focus();
   }
-  const erase = button('Delete all tuNotes data',() => {
+  const erase = button('Delete all tuNotes data',async () => {
     if (!window.confirm(store.canDeleteSavedData ? 'Delete all tuNotes profiles, presets, settings and progress in this storage context? Other browsers, files and tUno data are unaffected.' : 'Delete only this tab’s in-memory tuNotes data? Saved data will stay unchanged.')) return;
-    store.clear(); refresh(); reload();
+    node.inert = true;
+    try { await store.clear(); refresh(); reload(); } catch { status.textContent = 'Data could not be deleted. Please try again.'; }
+    finally { node.inert = false; }
   });
   const backupLink = el('a','control','Save backup JSON'); backupLink.hidden = true; backupLink.download = 'tunotes-backup.json'; let url = '';
   const exportButton = button('Export backup',() => {
@@ -279,10 +289,12 @@ export function localData(store: NotesStore, reload: () => void, playerChanged: 
   const fileLabel = el('label','setting','Import backup'); const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.id = 'import-backup'; fileLabel.append(file);
   let candidate: Snapshot | undefined; let generation = 0;
   const preview = el('p'); preview.setAttribute('role','status'); preview.id = 'import-preview';
-  const replace = button('Replace tuNotes data',() => {
+  const replace = button('Replace tuNotes data',async () => {
     if (!candidate) return;
-    try { store.replace(candidate); candidate = undefined; replace.hidden = true; preview.textContent = store.message; refresh(); reload(); }
-    catch (error) { preview.textContent = (error as Error).message; }
+    node.inert = true;
+    try { await store.replace(candidate); candidate = undefined; replace.hidden = true; preview.textContent = store.message; refresh(); reload(); }
+    catch (error) { preview.textContent = `Backup was not saved. ${(error as Error).message}`; }
+    finally { node.inert = false; }
   }); replace.hidden = true;
   file.addEventListener('change',async () => {
     const own = ++generation; candidate = undefined; replace.hidden = true; preview.textContent = '';

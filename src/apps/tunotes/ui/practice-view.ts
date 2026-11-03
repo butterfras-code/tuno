@@ -164,7 +164,7 @@ export function practiceView(store: NotesStore, shared = false) {
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
     setupUI.select('notes');
-    closePreview(); answerNotice.clear(); session?.finish(); session = undefined; resetInput();
+    closePreview(); answerNotice.clear(); if (session) { session.finish(); store.endRound(session); } session = undefined; resetInput();
     presetsUI.companion.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
@@ -240,7 +240,7 @@ export function practiceView(store: NotesStore, shared = false) {
   const submit = (answer: NoteAnswer, token: PromptToken) => {
     const previousAnnouncement = session?.announcement;
     if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
-    store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning);
+    store.observe(profileId, session.preset, session.last!, session.adaptive, session.savedLearning, session);
     if (!profileId) {
       const fp = fingerprint(session.preset,session.adaptive,session.activity);
       guestContexts.delete(fp);
@@ -257,13 +257,18 @@ export function practiceView(store: NotesStore, shared = false) {
     answers.respond(session, reward, previousAnnouncement);
     if (session.state === 'finished') finish(); else render();
   };
-  const start = () => {
+  const start = async () => {
+    if (startButton.disabled) return;
+    startButton.disabled = true;
+    await store.refresh();
+    startButton.disabled = false;
+    if (disposed) return;
     const preset = selected(); if (!preset) return;
     const rules = activity === 'challenge' ? rulesUI.read() : undefined;
     if (activity === 'challenge' && !rules) return;
     if (!presetsUI.saveConfiguration(pace === 'click')) return;
     profileId = store.profile()?.id;
-    closePreview(); answerNotice.clear(); session?.finish(); session = undefined;
+    closePreview(); answerNotice.clear(); if (session) { session.finish(); store.endRound(session); } session = undefined;
     const useAdaptive = useAdaptation;
     const context = store.profile()?.contexts.find(c => c.fingerprint === fingerprint(preset,useAdaptive,activity)) ?? (!profileId ? guestContexts.get(fingerprint(preset,useAdaptive,activity)) : undefined);
     const begin = (exposure: PreviewExposure) => {
@@ -271,6 +276,7 @@ export function practiceView(store: NotesStore, shared = false) {
       closePreview();
       resultRecorded = false;
       session = rules ? new Challenge(preset, rules, () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning }) : new Practice(preset, pace === 'click', () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, continueAfter: pace, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
+      store.beginRound(session, profileId);
       session.preview = exposure;
       progress = new NotesProgress(rules ? store.challengeBenchmark(preset,useAdaptive,rules) : store.benchmark(preset,useAdaptive)); resetInput(); treatUntil = 0;
       node.classList.toggle('challenge-active', Boolean(rules));

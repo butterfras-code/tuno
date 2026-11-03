@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { startPractice, readyForAnswer } from './notes-setup-helpers.mjs';
 import { notesMode, openData, setToggle, setPacing } from './notes-setup-helpers.mjs';
 import { choosePreset, setEndpoint, setModifiers, setKey, useRange, saveCustom } from './notes-setup-helpers.mjs';
@@ -117,7 +118,7 @@ try {
     await page.screenshot({path:`dist/validation/notes-input-${name}-${width}.png`,fullPage:true});
   }
   await page.getByRole('button',{name:'Finish',exact:true}).first().click();
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).profiles[0].contexts.flatMap(c=>Object.values(c.notes).flat()).map(o=>o.answer.letter+o.answer.accidental).sort()),submitted.sort());
+  assert.deepEqual(await readNotesData(page, data => data.profiles[0].contexts.flatMap(c=>Object.values(c.notes).flat()).map(o=>o.answer.letter+o.answer.accidental).sort()),submitted.sort());
   results.push('Arrow sharp/flat/natural shortcuts; held letter rejection; focused exact spelling; conflicting arrows ignored; pointer token invalidated by keyboard answer; 44px targets at 360/768/1280');
   // Isolated adapter fixture tests exact submitted spellings and the future pool-update hook.
   const compiled = await build({stdin:{contents:`import {answerControls} from './src/apps/tunotes/ui/answers.ts'; import {normalizePreset} from './src/apps/tunotes/domain/presets.ts'; import {keySignature} from './src/apps/tunotes/domain/notation.ts';

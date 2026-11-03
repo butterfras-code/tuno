@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 import {mkdir} from 'node:fs/promises';
@@ -153,17 +154,17 @@ try {
     await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name:'Options',exact:true}).click();
     assert.equal((await share(page,notesAdapter)).mode,mode,'Options retains its activity context');
     await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name:mode==='practice'?'Practice':'Challenge',exact:true}).click();
-    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('tunotes:data:v1'))).configuration.showKeySignature,undefined);
+    assert.equal((await readNotesData(page)).configuration.showKeySignature,undefined);
     if (mode === 'practice') {
       await page.getByRole('button',{name:'Resume',exact:true}).click();
       await page.keyboard.press('A');
       await page.getByRole('button',{name:'Finish',exact:true}).click();
-      const stored=JSON.parse(await page.evaluate(() => localStorage.getItem('tunotes:data:v1')));
+      const stored=(await readNotesData(page));
       assert.ok(stored.profiles[0].results.length,'local built-in progress persists');
       assert.equal(stored.profiles[0].adaptive,true,'assignment does not replace saved adaptation');
       assert.equal((await share(page,notesAdapter)).mode,'practice','results share a fresh activity');
       await page.reload();await page.getByRole('button',{name:'Start Practice',exact:true}).waitFor();
-      assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('tunotes:data:v1'))).profiles[0].results.length,stored.profiles[0].results.length);
+      assert.equal((await readNotesData(page)).profiles[0].results.length,stored.profiles[0].results.length);
     }
     await context.close();
   }
@@ -171,7 +172,7 @@ try {
   const {page:customPage,context:customContext}=await open(notesAdapter,{mode:'practice',ranges:[captureRange(custom,false,true)],pace:'instant',intro:false,rules:defaultTimed,format:'turns'});
   await customPage.getByRole('button',{name:'Start Practice',exact:true}).click();await customPage.locator('.practice-view[data-screen="playing"]').waitFor();
   await customPage.keyboard.press('A');await customPage.getByRole('button',{name:'Finish',exact:true}).click();
-  assert.deepEqual(JSON.parse(await customPage.evaluate(() => localStorage.getItem('tunotes:data:v1'))).customPresets,[]);
+  assert.deepEqual((await readNotesData(customPage)).customPresets,[]);
   await customContext.close();
   for(const format of ['turns','pairs','head-to-head']) {
     const value={mode:'multiplayer',ranges:[range,captureRange(presets.find(p=>p.clef==='bass'),false,true)],pace:'instant',intro:false,rules:defaultTimed,format};

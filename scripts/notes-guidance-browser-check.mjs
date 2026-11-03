@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import { positivePhrases } from '../src/apps/tunotes/ui/answer-feedback.ts';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -35,7 +36,7 @@ try {
     const staffBounds = await staff.boundingBox();
     let previousPlacement;
     const initialCounts = await page.locator('#practice-counts').textContent();
-    const initialData = await page.evaluate(() => localStorage.getItem('tunotes:data:v1'));
+    const initialData = JSON.stringify(await readNotesData(page));
     for (let repeat = 0; repeat < 3; repeat++) {
       await page.keyboard.press(letter);
       assert.ok((await page.locator('.answer-feedback').textContent()).includes(`+ ${letter.toUpperCase()} for ${label}`), `Missing hint for ${pitch} on press ${repeat + 1}`);
@@ -62,7 +63,7 @@ try {
       }
       assert.deepEqual(await staff.boundingBox(), staffBounds);
       assert.equal(await page.getByRole('button', { name: 'Dismiss accidental reminders', exact: true }).isVisible(), true);
-      assert.equal(await page.evaluate(() => localStorage.getItem('tunotes:data:v1')), initialData);
+      assert.equal(JSON.stringify(await readNotesData(page)), initialData);
     }
     // A deliberate modifier immediately submits a correct answer, even for a natural.
     await page.keyboard.down(arrow); await page.keyboard.press(letter); await page.keyboard.up(arrow);

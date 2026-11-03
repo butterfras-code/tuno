@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild, prepareOfflineContext } from './test-host.mjs';
@@ -22,7 +23,7 @@ try {
   assert.equal(await notation.getByRole('button',{name:'On each note',exact:true}).locator('.preset-notation-mark').textContent(),'✓');
   await notation.getByRole('button',{name:'Key Signature',exact:true}).click();
   await page.keyboard.press('Escape');
-  assert.notEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'cancel discards notation draft');
+  assert.notEqual(await readNotesData(page, data => data.configuration.showKeySignature),true,'cancel discards notation draft');
   await openCustom(page);await useRange(page);
   assert.equal(await page.locator('#preset-summary').textContent(),summary,'converting an instrument preserves its key and pitch bounds');
   await openCustom(page);await notation.getByRole('button',{name:'Key Signature',exact:true}).click();
@@ -32,7 +33,7 @@ try {
   assert.match(await nameDialog.getByRole('alert').textContent(),/Enter a preset name/);
   await nameDialog.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await rangeDialog(page).isVisible(),true);
   await saveCustom(page,'My D major');
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true);
+  assert.equal(await readNotesData(page, data => data.configuration.showKeySignature),true);
   await choosePreset(page,'bass-spaces');await page.reload();
   await openRange(page);await rangeDialog(page).getByRole('button',{name:'My Presets',exact:true}).click();
   await rangeDialog(page).getByRole('button',{name:/My D major/}).click();await rangeDialog(page).getByRole('button',{name:'Keep this range',exact:true}).click();

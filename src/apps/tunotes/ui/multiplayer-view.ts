@@ -375,7 +375,8 @@ export function multiplayerView(store: NotesStore) {
     return true;
   }
 
-  function startRound(chooseStyle = false) {
+  async function startRound(chooseStyle = false) {
+    if (start.disabled) return;
     setupError.textContent = '';
     if (!commitEditor()) { setupError.textContent = 'Fix the selected preset before starting.'; return; }
     const unconfigured = players.find(player => !player.notesChosen);
@@ -394,7 +395,12 @@ export function multiplayerView(store: NotesStore) {
       format.buttons.find(control => control.dataset.value === selectedFormat)?.focus();
       return;
     }
-    finishActive(true); active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
+    finishActive(true);
+    start.disabled = true;
+    await store.refresh();
+    start.disabled = false;
+    if (disposed) return;
+    active.forEach(l => { l.feedback.clear(); l.dog.dispose(); }); active = [];
     rulesValue = nextRules; completed = new Map(); sessionTreats.clear(); heatIndex = 0;
     players.forEach((p,i) => { p.name = names[i]!; });
     heats = schedule(players.map(p => ({...p,preset:structuredClone(p.preset)})), selectedFormat);
@@ -407,6 +413,7 @@ export function multiplayerView(store: NotesStore) {
     const contextKey = fingerprint(player.preset,adaptive,'challenge');
     const context = player.profileId ? store.data.profiles.find(p => p.id === player.profileId)?.contexts.find(c => c.fingerprint === contextKey) : guestContexts.get(`${player.id}:${contextKey}`);
     const session = new Challenge(player.preset,rulesValue!,() => performance.now(),Math.random,{ adaptive, notes: context?.notes, learning: context?.learning });
+    store.beginRound(session, player.profileId);
     const progress = new NotesProgress(player.profileId ? store.challengeBenchmarkFor(player.profileId,player.preset,adaptive,rulesValue!) : 10);
     const displayName = displayNames(players).get(player.id)!;
     const panel = el('section','multiplayer-panel'); panel.setAttribute('aria-label',`${displayName} note area`);
@@ -541,7 +548,7 @@ export function multiplayerView(store: NotesStore) {
     const previousAnnouncement = lane.session.announcement;
     if (!active.includes(lane) || round.hidden || !lane.session.answer(token,answer)) return;
     const s = lane.session;
-    store.observe(lane.player.profileId,s.preset,s.last!,s.adaptive,s.savedLearning);
+    store.observe(lane.player.profileId,s.preset,s.last!,s.adaptive,s.savedLearning,s);
     if (!lane.player.profileId) {
       const key = `${lane.player.id}:${fingerprint(s.preset,s.adaptive,'challenge')}`;
       guestContexts.set(key,{ fingerprint:fingerprint(s.preset,s.adaptive,'challenge'), version:1, updated:Date.now(), notes:structuredClone(s.learning.notes) as Context['notes'], ...(s.adaptive ? {learning:s.savedLearning} : {}) });

@@ -1,3 +1,4 @@
+import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
@@ -24,7 +25,7 @@ try {
     assert.equal(await modes.getByRole('combobox').count(),0,'Auto Every timing stays deferred');
     await modes.getByRole('button',{name:'Correct Only',exact:true}).click();
     assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
-    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.continueAfter),'correct');
+    assert.equal(await readNotesData(page, data => data.configuration.continueAfter),'correct');
     await modes.getByRole('button',{name:'Normal',exact:true}).click();
     const summary = page.locator('#preset-summary');
     const original = await summary.textContent();
@@ -203,7 +204,7 @@ try {
     assert.deepEqual(await selectedClefs(),['Treble','Bass'],'saved practice clefs reload');
     await dialog.getByRole('button',{name:'Close range selection',exact:true}).click();
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
-    const clefsSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
+    const clefsSaved = await readNotesData(page, data => data.customPresets.find(p=>p.id==='custom-current'));
     assert.deepEqual(clefsSaved.availableClefs,['treble','bass']);
     await page.close();
   }
@@ -226,7 +227,7 @@ try {
   await page.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await page.locator('#preset-summary').textContent(),/G Major.*Spaces.*flats/);
   await page.getByRole('button',{name:'Start Practice',exact:true}).click();
-  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
+  const persisted = await readNotesData(page, data => data.customPresets.find(p=>p.id==='custom-current'));
   assert.equal(persisted.content,'spaces'); assert.equal(persisted.key.fifths,1);
   assert.deepEqual(persisted.modifiers,['key','flat']); assert.deepEqual(persisted.range,['E4','G5']);
   await page.close();
@@ -261,7 +262,7 @@ try {
   await range.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await keyPage.locator('#preset-summary').textContent(),/No key signature/);
   await keyPage.getByRole('button',{name:'Start Practice',exact:true}).click();
-  const keySaved = await keyPage.evaluate(() => JSON.parse(localStorage.getItem('tunotes:data:v1')).customPresets.find(p=>p.id==='custom-current'));
+  const keySaved = await readNotesData(keyPage, data => data.customPresets.find(p=>p.id==='custom-current'));
   assert.deepEqual([...keySaved.modifiers].sort(),['flat','natural','sharp'],'accidental inclusions persist without a key');
   assert.equal(keySaved.key.fifths,-2,'No Key retains selected key for re-enabling');
   await keyPage.close();
@@ -300,7 +301,7 @@ try {
   }
   await fluteCards.first().click();
   await previewPage.getByRole('button',{name:'Keep this range',exact:true}).click();
-  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'notation applies with chosen preset');
+  assert.equal(await readNotesData(previewPage, data => data.configuration.showKeySignature),true,'notation applies with chosen preset');
   assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),2,'overview uses chosen notation');
   const openFlute = async () => {
     await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
@@ -312,10 +313,10 @@ try {
   await eachNote.click();
   assert.deepEqual(await fluteCards.locator('svg').evaluateAll(nodes=>nodes.map(n=>n.outerHTML)),originalPreviews,'On each note restores accidentals beside notes in every preview');
   await previewPage.getByRole('button',{name:'Close range selection',exact:true}).click();
-  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),true,'cancel preserves notation preference');
+  assert.equal(await readNotesData(previewPage, data => data.configuration.showKeySignature),true,'cancel preserves notation preference');
   await openFlute(); await eachNote.click(); await fluteCards.first().click();
   await previewPage.getByRole('button',{name:'Keep this range',exact:true}).click();
-  assert.equal(await previewPage.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:data:v1')).configuration.showKeySignature),false);
+  assert.equal(await readNotesData(previewPage, data => data.configuration.showKeySignature),false);
   assert.equal(await previewPage.locator('.preset-preview:visible .key-accidental').count(),0,'selected preset overview follows accidentals on notes');
   await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
   await previewPage.getByRole('button',{name:'Clef',exact:true}).click();

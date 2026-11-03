@@ -1,173 +1,234 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { setImmediate as nextTask } from 'node:timers/promises';
-import { connectNotesStore, WRITER_LOCK } from '../src/apps/tunotes/persistence/session.ts';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { connectNotesStore } from '../src/apps/tunotes/persistence/session.ts';
 import { NotesStore, STORAGE_KEY, emptySnapshot, parseBackup } from '../src/apps/tunotes/persistence/store.ts';
-
+import { openRepository } from '../src/apps/tunotes/persistence/database.ts';
+import { Practice } from '../src/apps/tunotes/engine/practice.ts';
+import { presets, fingerprint } from '../src/apps/tunotes/domain/presets.ts';
+import type { Repository } from '../src/apps/tunotes/persistence/operations.ts';
+const preset = presets[0]!;
 function memory() {
   const values = new Map<string, string>();
-  let writes = 0;
-  return { values, get writes() { return writes; }, getItem: (key: string) => values.get(key) ?? null,
-    setItem(key: string, value: string) { writes++; values.set(key, value); },
-    removeItem(key: string) { writes++; values.delete(key); } };
+  return { values, getItem: (key: string) => values.get(key) ?? null,
+    setItem(key: string, value: string) { values.set(key, value); }, removeItem(key: string) { values.delete(key); } };
 }
-/** Deterministic exclusive/ifAvailable scheduler. Real browser locks are exercised separately. */
-class Locks {
-  held = false;
-  request = (async (name: string, options: LockOptions, callback: LockGrantedCallback<void>) => {
-    assert.equal(name, WRITER_LOCK);
-    assert.deepEqual(options, { mode: 'exclusive', ifAvailable: true });
-    await Promise.resolve();
-    if (this.held) return callback(null);
-    this.held = true;
-    try { return await callback({ name, mode: 'exclusive' }); }
-    finally { this.held = false; }
-  }) as LockManager['request'];
+function add(store: NotesStore, id: string) {
+  store.update(data => { data.profiles.push({ id, name: id, results: [], contexts: [], defaultPresetId: data.configuration.presetId }); data.configuration.profileId = id; data.configuration.remember = true; });
 }
-function add(store: NotesStore, id: string, deferred = false) {
-  store.update(data => data.profiles.push({ id, name: id, results: [], contexts: [], defaultPresetId: data.configuration.presetId }), deferred);
+function round(store: NotesStore, id = 'Alice') { const game = new Practice(preset, true); store.beginRound(game, id); return game; }
+function answer(store: NotesStore, game: Practice, id = 'Alice') {
+  game.answer(game.token, game.pitch); store.observe(id, preset, game.last!, false, undefined, game); game.advance(game.token, true);
 }
-const names = (raw: string) => parseBackup(raw).profiles.map(profile => profile.name);
+async function fixture() {
+  const storage = memory(), factory = new IDBFactory();
+  const a = await connectNotesStore(storage, undefined, factory), b = await connectNotesStore(storage, undefined, factory);
+  const repository = await openRepository(factory, emptySnapshot);
+  return { a: a.store, b: b.store, repository, storage, factory, async close() { await a.store.close(); await b.store.close(); repository.close(); } };
+}
 
-test('simultaneous tabs get exactly one writer; the other keeps exportable memory', async () => {
-  const storage = memory(), locks = new Locks();
-  const [a, b] = await Promise.all([connectNotesStore(storage, locks), connectNotesStore(storage, locks)]);
+test('two tabs independently create profiles, edit different settings, and finish the same profile without loss', async () => {
+  const f = await fixture();
   try {
-    assert.equal(a.store.durable, true); assert.equal(b.store.durable, false);
-    add(a.store, 'Alice'); add(b.store, 'Bob');
-    b.store.flush();
-    assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Alice']);
-    assert.deepEqual(names(b.store.export()), ['Bob']);
-    assert.match(b.store.message, /Another tuNotes tab/);
-  } finally { a.close(); b.close(); }
+    add(f.a, 'Alice'); add(f.b, 'Bob'); await Promise.all([f.a.flush(), f.b.flush()]);
+    await Promise.all([f.a.refresh(), f.b.refresh()]);
+    f.a.update(d => { d.profiles.find(p => p.id === 'Alice')!.name = 'Alicia'; });
+    f.b.update(d => { d.profiles.find(p => p.id === 'Alice')!.preview = false; });
+    const a = round(f.a), b = round(f.b);
+    answer(f.a, a); answer(f.b, b); answer(f.b, b);
+    a.finish(); b.finish(); f.a.record('Alice', a); f.b.record('Alice', b);
+    await Promise.all([f.a.flush(), f.b.flush()]);
+    const saved = (await f.repository.read()).data;
+    assert.equal(saved.profiles.length, 2);
+    const alice = saved.profiles.find(p => p.id === 'Alice')!;
+    assert.equal(alice.name, 'Alicia'); assert.equal(alice.preview, false);
+    assert.deepEqual(alice.results.map(r => r.attempts).sort(), [1, 2]);
+    assert.equal(Object.values(alice.contexts[0]!.notes).flat().length, 3);
+    assert.equal(f.a.durable, true); assert.equal(f.b.durable, true);
+  } finally { await f.close(); }
 });
 
-test('blocked tab cannot take over when owner closes; a fresh session reads current data', async () => {
-  const storage = memory(), locks = new Locks();
-  const a = await connectNotesStore(storage, locks), b = await connectNotesStore(storage, locks);
-  add(a.store, 'Alice'); add(b.store, 'Bob');
-  a.close(); await nextTask();
-  b.store.flush(); assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Alice']);
-  const c = await connectNotesStore(storage, locks);
-  try {
-    assert.equal(c.store.durable, true); assert.deepEqual(names(c.store.export()), ['Alice']);
-    add(c.store, 'Carol'); b.store.clear();
-    assert.equal(b.store.durable, false); assert.equal(b.store.canDeleteSavedData, false);
-    assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Alice', 'Carol']);
-    assert.match(b.store.message, /Saved data is unchanged/);
-  } finally { c.close(); b.close(); }
-});
-
-test('closing flushes deferred work before release; restored snapshots cannot write', async t => {
+test('answers stay in memory; checkpoints and finish upsert one result and never duplicate observations', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const storage = memory(), locks = new Locks();
-  const a = await connectNotesStore(storage, locks);
-  add(a.store, 'Alice', true); assert.equal(storage.getItem(STORAGE_KEY), null);
-  a.close(); await nextTask();
-  assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Alice']);
-  const b = await connectNotesStore(storage, locks);
+  const f = await fixture();
   try {
-    b.store.clear();
-    add(a.store, 'Late', true); t.mock.timers.tick(1000); a.store.flush(); a.close();
-    assert.equal(storage.getItem(STORAGE_KEY), null);
-    assert.deepEqual(names(a.store.export()), ['Alice', 'Late']);
-    assert.equal(a.store.durable, false);
-  } finally { b.close(); }
+    add(f.a, 'Alice'); await f.a.flush(); const game = round(f.a);
+    answer(f.a, game);
+    assert.equal((await f.repository.read()).data.profiles[0]!.results.length, 0);
+    t.mock.timers.tick(30_000); await f.a.flush();
+    let saved = (await f.repository.read()).data.profiles[0]!;
+    assert.equal(saved.results.length, 1); assert.equal(saved.results[0]!.interrupted, true);
+    for (let i = 0; i < 20; i++) answer(f.a, game);
+    t.mock.timers.tick(0); await f.a.flush();
+    saved = (await f.repository.read()).data.profiles[0]!;
+    assert.equal(saved.results.length, 1); assert.equal(saved.results[0]!.attempts, 21);
+    game.finish(); f.a.record('Alice', game); f.a.record('Alice', game); await f.a.flush();
+    saved = (await f.repository.read()).data.profiles[0]!;
+    assert.equal(saved.results.length, 1); assert.equal(saved.results[0]!.attempts, 21); assert.equal(saved.results[0]!.interrupted, false);
+  } finally { await f.close(); }
 });
 
-test('import cancels an older deferred save; stale tabs cannot undo import or deletion', async t => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  const storage = memory(), locks = new Locks();
-  const a = await connectNotesStore(storage, locks), b = await connectNotesStore(storage, locks);
+test('deleting a profile while another tab plays cannot resurrect it or remove another profile', async () => {
+  const f = await fixture();
   try {
-    add(a.store, 'Before', true); add(b.store, 'Stale', true);
-    const replacement = emptySnapshot();
-    replacement.profiles.push({ id: 'imported', name: 'Imported', results: [], contexts: [], defaultPresetId: replacement.configuration.presetId });
-    a.store.replace(replacement); t.mock.timers.tick(1000);
-    b.store.replace(emptySnapshot()); b.store.flush();
-    assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Imported']);
-    a.store.clear(); t.mock.timers.tick(1000); b.store.flush();
-    assert.equal(storage.getItem(STORAGE_KEY), null);
-    assert.equal(b.store.durable, false);
-  } finally { a.close(); b.close(); }
+    add(f.a, 'Alice'); add(f.a, 'Bob'); await f.a.flush(); await f.b.refresh();
+    const game = round(f.b); answer(f.b, game);
+    f.a.update(d => { d.profiles = d.profiles.filter(p => p.id !== 'Alice'); }); await f.a.flush();
+    game.finish(); f.b.record('Alice', game); await f.b.flush();
+    assert.deepEqual((await f.repository.read()).data.profiles.map(p => p.id), ['Bob']);
+    assert.equal(f.b.durable, true);
+  } finally { await f.close(); }
 });
 
-test('clear cancels the writer’s deferred save', async t => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  const storage = memory(), session = await connectNotesStore(storage, new Locks());
+test('import and clear invalidate old rounds, including imports retaining identical profile IDs', async () => {
+  const f = await fixture();
   try {
-    add(session.store, 'Pending', true); session.store.clear();
-    const writes = storage.writes; t.mock.timers.tick(1000);
-    assert.equal(storage.writes, writes); assert.equal(storage.getItem(STORAGE_KEY), null);
-  } finally { session.close(); }
+    add(f.a, 'Alice'); await f.a.flush(); await f.b.refresh();
+    const game = round(f.b); answer(f.b, game);
+    const replacement = parseBackup(f.a.export()); replacement.profiles[0]!.name = 'Imported';
+    await f.a.replace(replacement);
+    answer(f.b, game); game.finish(); f.b.record('Alice', game); await f.b.flush();
+    let saved = (await f.repository.read()).data;
+    assert.equal(saved.profiles[0]!.name, 'Imported'); assert.equal(saved.profiles[0]!.results.length, 0); assert.equal(saved.profiles[0]!.contexts.length, 0);
+    await f.b.refresh(); const later = round(f.b); answer(f.b, later);
+    await f.a.clear(); later.finish(); f.b.record('Alice', later); await f.b.flush();
+    saved = (await f.repository.read()).data; assert.equal(saved.profiles.length, 0);
+    await f.b.refresh(); add(f.b, 'New'); await f.b.flush(); assert.equal((await f.repository.read()).data.profiles[0]!.name, 'New');
+  } finally { await f.close(); }
 });
 
-test('missing/rejected coordination never writes, imports, or deletes shared storage', async () => {
-  const rejected = { request: () => Promise.reject(new Error('denied')) } as Pick<LockManager, 'request'>;
-  const throws = { request: () => { throw new Error('unavailable'); } } as Pick<LockManager, 'request'>;
-  for (const locks of [undefined, rejected, throws]) {
-    const storage = memory(); storage.values.set(STORAGE_KEY, JSON.stringify(emptySnapshot()));
-    const session = await connectNotesStore(storage, locks);
-    add(session.store, 'Memory', true); session.store.flush();
-    assert.deepEqual(names(session.store.export()), ['Memory']);
-    session.store.replace(emptySnapshot()); session.store.clear(); session.close();
-    assert.equal(storage.writes, 0); assert.equal(session.store.durable, false);
-    assert.ok(storage.getItem(STORAGE_KEY));
-  }
-});
-
-test('external snapshot changes permanently revoke flush, replace, and clear permission', () => {
-  for (const action of ['flush', 'replace', 'clear'] as const) {
-    const storage = memory(), store = new NotesStore(storage);
-    add(store, 'Pending', true);
-    const other = JSON.stringify(emptySnapshot()); storage.values.set(STORAGE_KEY, other);
-    if (action === 'replace') assert.throws(() => store.replace(emptySnapshot()), /not committed/);
-    else store[action]();
-    assert.equal(store.durable, false); assert.equal(store.canDeleteSavedData, false);
-    assert.equal(storage.getItem(STORAGE_KEY), other);
-    store.clear(); store.flush(); assert.equal(storage.getItem(STORAGE_KEY), other);
-  }
-});
-
-test('corrupt data can be explicitly cleared only by the owning session', async () => {
-  const storage = memory(), locks = new Locks(); storage.values.set(STORAGE_KEY, '{broken');
-  const owner = await connectNotesStore(storage, locks), reader = await connectNotesStore(storage, locks);
+test('repository retries are idempotent and a checkpoint can be replaced by its final result', async () => {
+  const f = await fixture();
   try {
-    reader.store.clear(); assert.equal(storage.getItem(STORAGE_KEY), '{broken');
-    owner.store.clear(); assert.equal(storage.getItem(STORAGE_KEY), null); assert.equal(owner.store.durable, true);
-    add(owner.store, 'Recovered'); assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Recovered']);
-  } finally { owner.close(); reader.close(); }
+    add(f.a, 'Alice'); await f.a.flush(); const game = round(f.a); answer(f.a, game); game.finish(); f.a.record('Alice', game); await f.a.flush();
+    const state = await f.repository.read(), result = state.data.profiles[0]!.results[0]!;
+    const operation = { id: 'retry', generation: state.generation, mutation: { kind: 'result' as const, profileId: 'Alice', roundId: 'unique-round', result } };
+    await f.repository.commit([operation]); await f.repository.commit([operation]);
+    assert.equal((await f.repository.read()).data.profiles[0]!.results.length, 2);
+  } finally { await f.close(); }
 });
 
-test('failed import preserves pending memory and persisted data', async () => {
-  const storage = memory(), locks = new Locks(); let full = false;
-  const session = await connectNotesStore({ ...storage, setItem(key, value) { if (full) throw new Error('quota'); storage.setItem(key, value); } }, locks);
-  try {
-    add(session.store, 'Saved'); const saved = storage.getItem(STORAGE_KEY);
-    add(session.store, 'Pending', true); const pending = session.store.export(); full = true;
-    assert.throws(() => session.store.replace(emptySnapshot()), /not committed/);
-    assert.equal(session.store.export(), pending); assert.equal(storage.getItem(STORAGE_KEY), saved);
-    session.store.flush(); assert.equal(session.store.durable, false);
-    assert.equal(session.store.export(), pending);
-  } finally { session.close(); }
+test('migration is automatic, once-only and preserves legacy data on failure', async () => {
+  const storage = memory(), legacy = new NotesStore(storage); add(legacy, 'Legacy');
+  const factory = new IDBFactory();
+  const session = await connectNotesStore(storage, undefined, factory);
+  assert.equal(session.store.data.profiles[0]!.name, 'Legacy');
+  await session.store.clear(); await session.store.close();
+  const reopened = await connectNotesStore(storage, undefined, factory);
+  assert.equal(reopened.store.data.profiles.length, 0); await reopened.store.close();
+  storage.setItem(STORAGE_KEY, '{broken');
+  const broken = await connectNotesStore(storage, undefined, new IDBFactory());
+  assert.equal(broken.store.durable, false); assert.equal(storage.getItem(STORAGE_KEY), '{broken'); broken.close();
 });
 
-test('shared activities preserve local defaults while retaining stale-writer protection', async () => {
-  const storage = memory(), locks = new Locks();
-  const owner = await connectNotesStore(storage, locks), reader = await connectNotesStore(storage, locks);
+test('failed transactions and failed import retain memory and the last committed data', async () => {
+  const f = await fixture();
   try {
-    owner.store.beginSharedSession(); reader.store.beginSharedSession();
-    owner.store.update(data => { data.configuration.continueAfter = 'correct'; });
-    add(owner.store, 'Owner');
-    const saved = parseBackup(storage.getItem(STORAGE_KEY)!);
-    assert.equal(saved.configuration.continueAfter, emptySnapshot().configuration.continueAfter);
-    assert.deepEqual(saved.profiles.map(p => p.name), ['Owner']);
-    assert.equal(owner.store.durable, true, 'filtered saves remain recognized as the current snapshot');
-    add(reader.store, 'Reader'); reader.store.clear();
-    assert.deepEqual(names(storage.getItem(STORAGE_KEY)!), ['Owner']);
-    const external = JSON.stringify(emptySnapshot()); storage.values.set(STORAGE_KEY, external);
-    add(owner.store, 'Stale');
-    assert.equal(owner.store.durable, false);
-    assert.equal(storage.getItem(STORAGE_KEY), external);
-  } finally { owner.close(); reader.close(); }
+    add(f.a, 'Alice'); await f.a.flush();
+    const state = await f.repository.read();
+    const failing: Repository = { ...f.repository, commit: async () => { throw new Error('quota'); }, replace: async () => { throw new Error('quota'); } };
+    f.a.useRepository(failing, state);
+    await assert.rejects(async () => f.a.replace(emptySnapshot()), /quota/);
+    assert.equal(f.a.data.profiles[0]!.name, 'Alice');
+    const game = round(f.a); answer(f.a, game); game.finish(); f.a.record('Alice', game); await f.a.flush();
+    assert.equal(f.a.durable, false); assert.equal(parseBackup(f.a.export()).profiles[0]!.results.length, 1);
+    assert.equal((await f.repository.read()).data.profiles[0]!.results.length, 0);
+  } finally { await f.close(); }
+});
+
+test('shared links do not save transient settings or transient preset progress', async () => {
+  const f = await fixture();
+  try {
+    add(f.a, 'Alice'); await f.a.flush(); f.a.beginSharedSession();
+    f.a.update(d => { d.configuration.continueAfter = 'correct'; });
+    const game = round(f.a); answer(f.a, game); game.finish(); f.a.record('Alice', game); await f.a.flush();
+    const data = (await f.repository.read()).data;
+    assert.equal(data.configuration.continueAfter, undefined); assert.equal(data.profiles[0]!.results.length, 1);
+  } finally { await f.close(); }
+});
+
+test('Guest answers never queue durable progress', async () => {
+  const f = await fixture();
+  try {
+    const game = new Practice(preset, true); f.a.beginRound(game); game.answer(game.token, game.pitch);
+    f.a.observe(undefined, preset, game.last!, false, undefined, game); game.finish(); f.a.record(undefined, game); await f.a.flush();
+    assert.deepEqual((await f.repository.read()).data, emptySnapshot());
+  } finally { await f.close(); }
+});
+
+
+test('a round save touches only its profile; unrelated history does not enter the answer path', async t => {
+  const f = await fixture();
+  try {
+    const data = emptySnapshot();
+    const contexts = presets.slice(0, 40).map(preset => {
+      const game = new Practice(preset, true); game.answer(game.token, game.pitch);
+      const label = `${game.pitch.letter}${game.pitch.accidental === 1 ? '♯' : game.pitch.accidental === -1 ? '♭' : ''}${game.pitch.octave}`;
+      return { fingerprint: fingerprint(preset), version: 1 as const, updated: Date.now(), notes: { [label]: Array.from({ length: 10 }, () => game.last!) } };
+    });
+    for (let i = 0; i < 32; i++) data.profiles.push({ id: `p${i}`, name: `Player ${i}`, results: [], contexts: structuredClone(contexts), defaultPresetId: preset.id });
+    await f.a.replace(data);
+    const reads: unknown[] = [], writes: unknown[] = [];
+    const originalGet = IDBObjectStore.prototype.get, originalPut = IDBObjectStore.prototype.put;
+    t.mock.method(IDBObjectStore.prototype, 'get', function(this: IDBObjectStore, key: IDBValidKey | IDBKeyRange) {
+      if (this.name === 'profiles') reads.push(key); return originalGet.call(this, key);
+    });
+    t.mock.method(IDBObjectStore.prototype, 'put', function(this: IDBObjectStore, value: unknown, key?: IDBValidKey) {
+      if (this.name === 'profiles') writes.push(key); return originalPut.call(this, value, key);
+    });
+    const game = round(f.a, 'p0'), samples: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      game.answer(game.token, game.pitch);
+      const start = performance.now(); f.a.observe('p0', preset, game.last!, false, undefined, game); samples.push(performance.now() - start);
+      game.advance(game.token, true);
+    }
+    assert.deepEqual(reads, []); assert.deepEqual(writes, [], 'no synchronous database work during answers');
+    game.finish(); f.a.record('p0', game); await f.a.flush();
+    assert.deepEqual(reads, ['p0']); assert.deepEqual(writes, ['p0']);
+    t.diagnostic(`${new TextEncoder().encode(JSON.stringify(data)).length} bytes of unrelated-history fixture; observe median ${samples.sort((a,b) => a-b)[10]!.toFixed(3)} ms on this host (not a Chromebook measurement)`);
+  } finally { await f.close(); }
+});
+
+test('settings edits between checkpoints retain one in-memory result and one durable result', async () => {
+  const f = await fixture();
+  try {
+    add(f.a, 'Alice'); await f.a.flush(); const game = round(f.a); answer(f.a, game); await f.a.flush();
+    f.a.update(d => { d.configuration.continueAfter = 'correct'; });
+    answer(f.a, game); game.finish(); f.a.record('Alice', game); await f.a.flush();
+    assert.equal(parseBackup(f.a.export()).profiles[0]!.results.length, 1);
+    assert.equal((await f.repository.read()).data.profiles[0]!.results.length, 1);
+  } finally { await f.close(); }
+});
+
+
+test('replacement aborts atomically if a write throws after clearing the transaction', async t => {
+  const f = await fixture();
+  try {
+    add(f.a, 'Alice'); await f.a.flush();
+    const candidate = parseBackup(f.a.export()); candidate.profiles[0]!.name = 'Replacement';
+    const put = IDBObjectStore.prototype.put;
+    t.mock.method(IDBObjectStore.prototype, 'put', function(this: IDBObjectStore, value: unknown, key?: IDBValidKey) {
+      if (this.name === 'meta') throw new DOMException('full', 'QuotaExceededError');
+      return put.call(this, value, key);
+    });
+    await assert.rejects(async () => f.a.replace(candidate), /full/);
+    assert.equal((await f.repository.read()).data.profiles[0]!.name, 'Alice');
+    assert.equal(f.a.data.profiles[0]!.name, 'Alice');
+  } finally { await f.close(); }
+});
+
+
+test('explicit profile selection persists even when its local setting already matches', async () => {
+  const f = await fixture();
+  try {
+    add(f.a, 'Alice'); await f.a.flush(); await f.b.refresh();
+    f.b.update(d => { d.configuration.remember = true; }); await f.b.flush();
+    f.a.update(d => { d.configuration.remember = false; }); await f.a.flush();
+    add(f.b, 'Bob'); await f.b.flush();
+    assert.equal((await f.repository.read()).data.configuration.remember, true);
+    await f.a.clear(); await f.b.refresh();
+    assert.equal(f.b.data.configuration.remember, false, 'a replacement generation resets stale setup defaults');
+    add(f.b, 'Fresh'); await f.b.flush();
+    assert.equal((await f.repository.read()).data.configuration.remember, true);
+  } finally { await f.close(); }
 });
