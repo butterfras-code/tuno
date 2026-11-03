@@ -6,6 +6,7 @@ export const microphoneTranspositions = [
   { offset: 2, label: 'B♭ — Trumpet, Clarinet, Soprano Sax' },
   { offset: 7, label: 'F — Horn' },
   { offset: 9, label: 'E♭ — Alto Sax' },
+  { offset: 12, label: 'C — Double bass (octave lower)' },
   { offset: 14, label: 'B♭ — Bass Clarinet, Tenor Sax, Euphonium TC' },
   { offset: 21, label: 'E♭ — Baritone Sax' },
 ] as const;

@@ -26,25 +26,52 @@ try {
     };
   });
   await page.goto(new URL('/notes/', host.url).href);
+  await page.evaluate(() => localStorage.setItem('tunotes:mic-transposition', '21'));
+  await page.reload();
+  const select = page.getByLabel('Microphone transposition');
+  const editSetup = async () => {
+    await page.getByRole('button', { name: 'Finish', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit setup', exact: true }).click();
+  };
+  for (const [instrument, offset] of [
+    ['trumpet-bb', 2], ['clarinet-bb', 2], ['alto-sax', 9], ['horn-f', 7],
+    ['double-bass', 12], ['flute', 0], ['oboe', 0], ['bassoon', 0],
+    ['keyboards', 0], ['trombone', 0], ['euphonium', 0], ['tuba', 0],
+    ['violin', 0], ['viola', 0], ['cello', 0],
+  ]) {
+    await choosePreset(page, `${instrument}-starter`);
+    await startPractice(page);
+    await page.getByRole('button', { name: 'Mic', exact: true }).click();
+    assert.equal(await select.inputValue(), String(offset), `${instrument}: preset overrides saved manual transposition`);
+    assert.equal(await page.evaluate(() => window.micTest.streams.length), 0, 'preselection does not start the mic');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tunotes:mic-transposition')), '21', 'automatic defaults preserve the saved manual preference');
+    await editSetup();
+  }
+  await choosePreset(page, 'treble-lines-and-spaces');
+  await startPractice(page);
+  await page.getByRole('button', { name: 'Mic', exact: true }).click();
+  assert.equal(await select.inputValue(), '21', 'a preset without an instrument restores the manual preference');
+  await editSetup();
   await choosePreset(page, 'trumpet-bb-starter');
   await setPacing(page, 'Normal'); await startPractice(page);
   await page.getByRole('button', { name: 'Mic', exact: true }).click();
-  const select = page.getByLabel('Microphone transposition');
   const attempts = async () => Number((await page.locator('#practice-counts').textContent()).match(/\/ (\d+) attempts/)[1]);
-  await select.selectOption('2');
+  assert.equal(await select.inputValue(), '2', 'trumpet needs no manual setup');
   await page.getByRole('button', { name: 'Start mic', exact: true }).click();
   await page.evaluate(() => { window.micTest.hz = 233.08188; }); // B♭3 -> written C4.
   await page.waitForFunction(() => /\/ 1 attempts/.test(document.querySelector('#practice-counts').textContent));
   assert.match(await page.locator('.notes-mic-pitch').textContent(), /C4/);
   await page.waitForTimeout(650); assert.equal(await attempts(), 1, 'sustained note submits once');
-  for (const [offset, hz] of [[7,174.61412],[9,155.56349],[14,116.54094],[21,77.78175],[0,261.62557]]) {
+  for (const [offset, hz] of [[7,174.61412],[9,155.56349],[12,130.81278],[14,116.54094],[21,77.78175],[0,261.62557]]) {
     const before = await attempts();
     await page.evaluate(() => { window.micTest.hz = 0; });
     await select.selectOption(String(offset));
     await page.evaluate(hz => { window.micTest.hz = hz; }, hz);
     await page.waitForFunction(n => Number(document.querySelector('#practice-counts').textContent.match(/\/ (\d+) attempts/)[1]) === n, before + 1);
     assert.match(await page.locator('.notes-mic-pitch').textContent(), /C4/);
+    assert.equal(await select.inputValue(), String(offset), 'prompt updates preserve a manual override');
   }
+  await select.selectOption('14');
   await mkdir('dist/validation', { recursive: true });
   for (const profile of viewportProfiles) {
     await page.setViewportSize(profile.viewport);
@@ -59,13 +86,15 @@ try {
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true);
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  assert.equal(await select.inputValue(), '14', 'pause and resume preserve the manual override');
   await page.getByRole('button', { name: 'Start mic', exact: true }).click();
   await page.getByRole('button', { name: 'Note Names', exact: true }).click();
   assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true);
   await page.getByRole('button', { name: 'Mic', exact: true }).click();
+  assert.equal(await select.inputValue(), '14', 'switching answer methods preserves the manual override');
   await page.evaluate(() => { window.micTest.deny = true; });
   await page.getByRole('button', { name: 'Start mic', exact: true }).click();
   await page.getByText('Microphone permission denied.', {exact:false}).waitFor();
   assert.deepEqual(errors, []);
-  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['All transpositions preserve written C4', '300 ms hold and sustained-note latch', 'Pause and mode change stop tracks', 'Permission denial is recoverable', 'All primary and secondary viewports fit'], errors },null,2));
+  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch', 'Pause and mode change stop tracks', 'Permission denial is recoverable', 'All primary and secondary viewports fit'], errors },null,2));
 } finally { await browser.close(); await host.close(); }

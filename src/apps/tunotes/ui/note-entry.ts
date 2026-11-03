@@ -264,6 +264,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     const [preset, token, locked] = args;
     if (!initialized || presetInstrument !== preset.instrument) {
       initialized = true; presetInstrument = preset.instrument;
+      microphone.setInstrument(preset.instrument);
       selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? pianoInstrument;
     }
     for (const item of instruments) {

@@ -4,6 +4,7 @@ import { createPracticeStore } from '../../../practice/state.ts';
 import { noteName } from '../../../music/pitch.ts';
 import { el } from '../../../shared/ui/components.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
+import { instruments } from '../domain/presets.ts';
 import type { PromptToken } from '../engine/practice.ts';
 import { MIC_HOLD_MS, MIC_TOLERANCE_CENTS, MicrophoneHold, microphoneTranspositions } from '../engine/microphone.ts';
 
@@ -19,6 +20,7 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
     const option = el('option', '', item.label); option.value = String(item.offset); select.append(option);
   }
   try { const saved = localStorage.getItem('tunotes:mic-transposition'); if (microphoneTranspositions.some(item => String(item.offset) === saved)) select.value = saved!; } catch { /* Session-only preference. */ }
+  let manualTransposition = select.value;
   label.append(select); controls.append(toggle, label);
   const pitch = el('p', 'notes-mic-pitch', '—');
   const meter = el('div', 'notes-mic-meter'); meter.setAttribute('role', 'meter');
@@ -39,6 +41,7 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   toggle.addEventListener('click', () => { if (active) audio.toggleMic(); });
   select.addEventListener('change', () => {
     policy.clear(); hold.value = 0;
+    manualTransposition = select.value;
     try { localStorage.setItem('tunotes:mic-transposition', select.value); } catch { /* Session-only preference. */ }
   });
   const unsubscribe = store.subscribe(state => {
@@ -58,6 +61,10 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   const visibility = () => { if (document.hidden) stop(); };
   document.addEventListener('visibilitychange', visibility);
   return { node, stop, focus: () => toggle.focus(),
+    setInstrument(instrument: string | undefined) {
+      select.value = String(instruments.find(item => item.id === instrument)?.transpose ?? manualTransposition);
+      policy.clear(); hold.value = 0; pitch.textContent = '—'; setCents(null);
+    },
     enable(value: boolean) { if (active && !value) stop(); active = value; node.hidden = !value; },
     update(next: PromptToken, disabled: boolean) {
       const key = `${next.session}:${next.prompt}`;
