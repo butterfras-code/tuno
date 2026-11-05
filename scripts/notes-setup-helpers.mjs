@@ -34,6 +34,7 @@ export async function choosePreset(page,id,adaptive=false) {
   }
   await dialog.locator(`[data-preset-id="${id}"]`).click();
   await dialog.getByRole('button',{name:adaptive ? 'Yes, let Uno help' : 'Keep this range',exact:true}).click();
+  await waitNotesSaved(page);
 }
 export async function openCustom(page) {
   if (await rangeDialog(page).isVisible() && await rangeDialog(page).getAttribute('data-screen') === 'Custom') return;
@@ -96,6 +97,7 @@ export async function setToggle(page,id,selected) {
   await openData(page);
   const control = page.locator(`#${id}`);
   if ((await control.getAttribute('aria-pressed') === 'true') !== selected) await control.click();
+  await waitNotesSaved(page);
 }
 export async function setPacing(page, label) {
   await notesMode(page,'Practice');

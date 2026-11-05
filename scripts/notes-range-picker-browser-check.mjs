@@ -261,7 +261,7 @@ try {
   assert.equal(await keyOptions.getByRole('button',{name:'No Key',exact:true}).getAttribute('aria-pressed'),'true');
   await range.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await keyPage.locator('#preset-summary').textContent(),/No key signature/);
-  await keyPage.getByRole('button',{name:'Start Practice',exact:true}).click();
+  await startPractice(keyPage);
   const keySaved = await readNotesData(keyPage, data => data.customPresets.find(p=>p.id==='custom-current'));
   assert.deepEqual([...keySaved.modifiers].sort(),['flat','natural','sharp'],'accidental inclusions persist without a key');
   assert.equal(keySaved.key.fifths,-2,'No Key retains selected key for re-enabling');

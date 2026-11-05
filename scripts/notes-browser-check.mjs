@@ -148,7 +148,8 @@ async function loop(page, mode) {
   const afterCleanup = await page.evaluate(() => ({ ...window.practiceListeners, timers: window.practiceTimers.size }));
   assert.equal(beforeCleanup.keydown, 1); assert.equal(beforeCleanup.keyup, 1); assert.equal(beforeCleanup.timers, 1);
   assert.equal(beforeCleanup.blur, 1); assert.equal(afterCleanup.blur, 0);
-  assert.equal(afterCleanup.keyup, 0); assert.equal(afterCleanup.visibilitychange, beforeCleanup.visibilitychange - 1);
+  // Practice and its microphone adapter each release their visibility handler.
+  assert.equal(afterCleanup.keyup, 0); assert.equal(afterCleanup.visibilitychange, beforeCleanup.visibilitychange - 2);
   assert.deepEqual(errors, []);
   results.push(`${mode}: full Practice, bag coverage, incorrect reveal, duplicate/held/stale pointer rejection, pause/resume, visibility fixture, lost-keyup recovery and repeat rejection for letters/Enter/Space on blur/visibility loss, results/retry/home, 360/768/1280 layouts, 200% zoom, focus, reduced motion and Practice listener/timer cleanup passed`);
 }
