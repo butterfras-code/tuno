@@ -1,4 +1,5 @@
 import { pianoKeyboard } from '../../shared/input/piano-keyboard.ts';
+import { onUnmount } from '../../shared/ui/unmount.ts';
 import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
@@ -79,6 +80,14 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     label: 'Concert-pitch keyboard',
   });
   const { node: keyboard, scroll, keys, whiteSemitones } = sharedKeyboard;
+  const visibilityChanged = () => { if (document.hidden) sharedKeyboard.reset(); };
+  window.addEventListener('blur', sharedKeyboard.reset);
+  document.addEventListener('visibilitychange', visibilityChanged);
+  onUnmount(node, () => {
+    sharedKeyboard.reset();
+    window.removeEventListener('blur', sharedKeyboard.reset);
+    document.removeEventListener('visibilitychange', visibilityChanged);
+  });
   const keyboardHint = el('p', 'keyboard-hint small muted');
   const primary = el('div', 'tone-primary');
   primary.append(top, controls, keyboardTop, keyboard, keyboardHint);

@@ -155,14 +155,29 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     const hiddenTone = audio.playTone();
     audio.visibilityChanged(true);
     await hiddenTone;
-    assert.equal(store.get().tonePlaying, false);
-    assert.equal(oscillators.length, count);
+    assert.equal(store.get().tonePlaying, true, 'tab hiding preserves a pending sustained tone');
+    assert.equal(oscillators.length, count + 1);
+    const backgroundTone = oscillators.at(-1)!;
+    audio.visibilityChanged(true);
+    assert.equal(backgroundTone.stopped, false, 'an active sustained tone continues in the background');
+    assert.equal(store.get().audioError, '');
+    // Stopping microphone capture must not stop the reference tone.
+    const backgroundMic = audio.startMic(); await Promise.resolve();
+    track.stopped = false;
+    audio.visibilityChanged(true);
+    resolve(stream); await backgroundMic;
+    assert.equal(track.stopped, true, 'a late microphone grant is released while tone playback continues');
+    assert.equal(store.get().micStatus, 'interrupted');
+    assert.match(store.get().audioError, /Microphone paused/);
+    assert.equal(store.get().tonePlaying, true);
+    audio.stopTone();
+    assert.equal(backgroundTone.stopped, true, 'explicit stop still silences a background tone');
     audio.visibilityChanged(false);
     // Same-key sustain toggles also cancel an AudioContext resume still in flight.
     audio.pressToneKey(60); audio.pressToneKey(60);
     await Promise.resolve();
     assert.equal(store.get().tonePlaying, false);
-    assert.equal(oscillators.length, count);
+    assert.equal(oscillators.length, count + 1);
     audio.pressToneKey(60); await Promise.resolve();
     assert.equal(store.get().tonePlaying, true);
     audio.pressToneKey(62); await Promise.resolve();
@@ -191,6 +206,22 @@ test('audio cancellation, coexistence, settings, disconnect and interruption', a
     assert.equal(store.get().tonePlaying, true, 'Releasing an older key does not stop the current note');
     audio.releaseToneKey(64);
     assert.equal(store.get().tonePlaying, false);
+    audio.pressToneKey(65); await Promise.resolve();
+    audio.visibilityChanged(true);
+    assert.equal(store.get().tonePlaying, false, 'an unsustained held key is released when hidden');
+    audio.visibilityChanged(false);
+    audio.pressToneKey(65);
+    audio.visibilityChanged(true);
+    await Promise.resolve();
+    assert.equal(store.get().tonePlaying, false, 'a pending held-key tone cannot get stuck after hiding');
+    audio.visibilityChanged(false);
+    // Timed Play-button notes retain their normal release, even when hidden.
+    await audio.playTone();
+    audio.visibilityChanged(true);
+    assert.equal(store.get().tonePlaying, true);
+    audio.stopAll();
+    assert.equal(store.get().tonePlaying, false);
+    audio.visibilityChanged(false);
     // Cancel during engine loading, after AudioContext.resume has completed.
     const existingContext = ac!;
     const existingWorklets = worklets.length;

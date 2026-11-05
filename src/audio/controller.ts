@@ -273,10 +273,12 @@ export function createAudioController(store: PracticeStore) {
     hidden = isHidden;
     if (hidden) {
       const micActive = stream || store.get().micStatus === 'requesting';
-      const otherActive = micActive || oscillator || tonePending;
-      stopMic(); stopTone();
-      if (otherActive) update({ ...(micActive ? { micStatus: 'interrupted' as const } : {}),
-        audioError: 'Microphone and reference tone paused while tUno was hidden. Start either tool to resume.' });
+      stopMic();
+      // A held piano key can lose its release event on a tab switch. Sustained
+      // reference tones and timed notes keep their normal playback lifecycle.
+      if (!store.get().sustain && heldToneNote !== undefined) stopTone();
+      if (micActive) update({ micStatus: 'interrupted',
+        audioError: 'Microphone paused while tUno was hidden. Start listening to resume.' });
       if (visualFrame) cancelAnimationFrame(visualFrame);
       visualFrame = 0;
       visualQueue = [];
