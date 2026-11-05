@@ -26,6 +26,7 @@ try {
       window.audioContexts = [];
       window.AudioContext = class extends NativeAudioContext {
         constructor(...args) { super(...args); window.audioContexts.push(this); }
+        createGain() { const node = super.createGain(); this.lastCreatedGain = node; return node; }
       };
     });
     if (mode === 'hosted-offline') { await prepareOfflineContext(context, url); host.setAvailable(false); }
@@ -130,10 +131,20 @@ try {
     // Real Web Audio graph with synthetic input; this does not test permission or hardware.
     await page.evaluate(() => {
       window.scheduledClicks = [];
-      const originalStart = OscillatorNode.prototype.start;
-      OscillatorNode.prototype.start = function(time = 0) {
-        if (time > 0 && this.frequency.value >= 750) window.scheduledClicks.push({ time, now: this.context.currentTime, frequency: this.frequency.value });
-        return originalStart.call(this, time);
+      const NativeWorkletNode = window.AudioWorkletNode;
+      window.AudioWorkletNode = class extends NativeWorkletNode {
+        constructor(...args) {
+          super(...args);
+          window.lastMetronomeNode = this;
+          const seen = new Set();
+          this.port.addEventListener('message', ({ data }) => {
+            for (const pulse of data) if (!seen.has(pulse.time)) {
+              seen.add(pulse.time);
+              window.scheduledClicks.push(pulse);
+            }
+          });
+          this.port.start();
+        }
       };
       const ac = new AudioContext();
       const osc = ac.createOscillator();
@@ -178,8 +189,7 @@ try {
     await page.waitForFunction(() => window.scheduledClicks.length >= 13);
     const clicks = await page.evaluate(() => window.scheduledClicks);
     for (let i = 1; i < clicks.length; i++) assert.ok(Math.abs(clicks[i].time - clicks[i - 1].time - 1 / 6) < 0.00001);
-    assert.ok(clicks.every((click) => click.time >= click.now), 'Clicks must be scheduled ahead of playback');
-    assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 2000, 2000, 1000, 2000, 2000, 1500]);
+    assert.deepEqual(clicks.slice(0, 7).map((click) => [click.accented, click.part]), [[true, 0], [false, 1], [false, 2], [false, 0], [false, 1], [false, 2], [true, 0]]);
     await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     // Change focus and settings while input analysis and clicks continue.
     await selectTool('Tuner');
@@ -203,33 +213,115 @@ try {
     await page.getByText('Microphone disconnected. Reconnect it and start listening again.', { exact: true }).waitFor();
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     await stopAllAudio();
-    await page.evaluate(() => window.testInput.ac.close());
+    // Keep the synthetic input source alive for the visibility fixture below.
     const stoppedClicks = await page.evaluate(() => window.scheduledClicks.length);
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => window.scheduledClicks.length), stoppedClicks);
     assert.equal(await page.locator('#current-beat').textContent(), 'Stopped');
     await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
-    await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate scheduler underrun. */ } });
-    await page.getByText('Metronome timing was interrupted. Start it again to resume a steady beat.', { exact: true }).waitFor();
+    await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate main-thread stall. */ } });
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1, 'UI stalls do not stop the audio thread');
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await stopAllAudio();
-    measurements.push({ mode, settlingMs, silenceClearMs, clicks: clicks.length, minimumLeadMs: Math.min(...clicks.map((click) => click.time - click.now)) * 1000 });
-    console.log(`${mode}: settling ${settlingMs.toFixed(0)} ms, silence clearing ${silenceClearMs.toFixed(0)} ms; ${clicks.length} clicks at 1/6-second spacing during pitch analysis, tone playback and UI activity; minimum scheduling lead ${(Math.min(...clicks.map((click) => click.time - click.now)) * 1000).toFixed(1)} ms; long stall stops playback.`);
+    measurements.push({ mode, settlingMs, silenceClearMs, clicks: clicks.length, engine: 'AudioWorklet' });
+    console.log(`${mode}: settling ${settlingMs.toFixed(0)} ms, silence clearing ${silenceClearMs.toFixed(0)} ms; ${clicks.length} audio-thread pulses at 1/6-second spacing during pitch analysis, tone playback and UI activity; playback survives a 500 ms UI stall.`);
 
-    // Background interruption cancels active output and requires an explicit restart.
+    // Sustained tones and audio-thread beats both continue while microphone capture pauses.
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await page.getByRole('button', { name: 'Play tone', exact: true }).click();
     await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+    // Probe the reference voice after its volume gain, without feeding it back to output.
+    await page.evaluate(() => {
+      const ac = window.audioContexts[0];
+      window.backgroundToneAnalyser = ac.createAnalyser();
+      ac.lastCreatedGain.connect(window.backgroundToneAnalyser);
+    });
+    await page.evaluate(() => {
+      const input = window.testInput;
+      input.destination = input.ac.createMediaStreamDestination(); input.gain.connect(input.destination);
+      navigator.mediaDevices.getUserMedia = async () => input.destination.stream;
+    });
+    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    const beforeHidden = await page.evaluate(() => window.scheduledClicks.at(-1));
+    // Synthetic visibility fixture; physical tab/app switching remains device acceptance.
     await page.evaluate(() => {
       Object.defineProperty(document, 'hidden', { configurable: true, value: true });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    await page.getByText('Practice paused while tUno was hidden. Start a tool to resume.', { exact: true }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0);
+    await page.getByText('Microphone paused while tUno was hidden. Start listening to resume.', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 1);
+    assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every(track => track.readyState === 'ended')), true);
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1);
+    const hiddenMessages = await page.evaluate(() => window.scheduledClicks.length);
+    await page.waitForTimeout(1200);
+    const tonePeak = await page.evaluate(() => {
+      const samples = new Float32Array(window.backgroundToneAnalyser.fftSize);
+      window.backgroundToneAnalyser.getFloatTimeDomainData(samples);
+      return Math.max(...samples.map(Math.abs));
+    });
+    assert.ok(tonePeak > 0.02, 'the sustained reference tone remains audible after visibility loss');
+    assert.equal(await page.evaluate(() => window.scheduledClicks.length), hiddenMessages, 'hidden visuals do not poll the audio thread');
     await page.evaluate(() => {
       delete document.hidden;
       document.dispatchEvent(new Event('visibilitychange'));
     });
+    await page.waitForFunction(time => window.scheduledClicks.at(-1).time > time + 1, beforeHidden.time);
+    // Read a current snapshot after return, never restart or replay old clicks.
+    const restored = await page.evaluate(() => new Promise(resolve => {
+      const node = window.lastMetronomeNode;
+      node.port.addEventListener('message', event => resolve(event.data), { once: true });
+      node.port.postMessage({ type: 'position' });
+    }));
+    const hiddenPulses = restored.filter(pulse => pulse.time >= beforeHidden.time);
+    assert.ok(hiddenPulses.length >= 7);
+    for (let i = 1; i < hiddenPulses.length; i++) assert.ok(Math.abs(hiddenPulses[i].time - hiddenPulses[i - 1].time - 1 / 6) < 0.00001);
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1);
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
+    assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 1, 'returning does not replace or stop the sustained tone');
     await stopAllAudio();
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(() => {
+      const data = new Float32Array(window.backgroundToneAnalyser.fftSize);
+      window.backgroundToneAnalyser.getFloatTimeDomainData(data);
+      return Math.max(...data.map(Math.abs));
+    }), 0, 'Stop all silences the background reference voice');
+    await page.evaluate(() => { window.backgroundToneAnalyser.disconnect(); });
+
+    await page.evaluate(() => window.testInput.ac.close());
+
+    // Lost keyup on focus/visibility loss must release a held note and allow a fresh press.
+    await selectTool('Reference tone');
+    await page.getByRole('button', { name: 'Sustain on', exact: true }).click();
+    const pianoKey = page.locator('.piano-key:visible').first();
+    for (const loss of ['blur', 'visibility']) {
+      await pianoKey.dispatchEvent('keydown', { key: 'Enter', code: 'Enter' });
+      await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
+      await page.evaluate(loss => {
+        if (loss === 'blur') window.dispatchEvent(new Event('blur'));
+        else {
+          Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+      }, loss);
+      assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0, 'held notes release even without keyup');
+      if (loss === 'visibility') await page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+      await pianoKey.dispatchEvent('keydown', { key: 'Enter', code: 'Enter' });
+      await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
+      await pianoKey.dispatchEvent('keyup', { key: 'Enter', code: 'Enter' });
+      assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0);
+    }
+    // Unsustained Play-button tones still stop after their normal duration while hidden.
+    await page.getByRole('button', { name: 'Play tone', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Stop tone', exact: true }).first().waitFor();
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange')); });
+    assert.ok(await page.getByRole('button', { name: 'Stop tone', exact: true }).count() > 0);
+    await page.waitForFunction(() => !document.querySelector('[aria-label="Stop tone"]') && document.querySelector('.tone-controls button').textContent === 'Play tone');
+    await page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+    await page.getByRole('button', { name: 'Sustain off', exact: true }).click();
 
     // Fonts and exact Figma vectors must decode inside both distributions.
     const assets = await page.evaluate(async () => {

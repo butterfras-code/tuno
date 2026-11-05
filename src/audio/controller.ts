@@ -1,8 +1,8 @@
 import { createReferenceTone, setToneSound } from './tone.ts';
 import { detectPitch } from './detector.ts';
-import { createTimeline, createTapTempo } from '../music/rhythm.ts';
-import type { Pulse } from '../music/rhythm.ts';
-import { scheduleClick } from './click.ts';
+import { createTapTempo } from '../music/rhythm.ts';
+import { prepareMetronome } from './metronome.ts';
+import type { MetronomeSettings, VisualPulse } from './metronome-renderer.ts';
 import { toneHz, meterInfo } from '../practice/state.ts';
 import type { AudioState, PracticeStore } from '../practice/state.ts';
 import { PitchDisplay } from '../practice/pitch-display.ts';
@@ -26,17 +26,16 @@ export function createAudioController(store: PracticeStore) {
   let toneTimer: ReturnType<typeof setTimeout> | undefined;
   let metronomeGeneration = 0;
   let metronomePending = false;
-  let metronomeTimer: ReturnType<typeof setTimeout> | undefined;
+  let metronome: AudioWorkletNode | undefined;
+  let metronomeGain: GainNode | undefined;
+  let metronomeFactory: ReturnType<typeof prepareMetronome> | undefined;
+  let positionPending = false;
+  let hidden = typeof document !== 'undefined' && document.hidden;
   let visualFrame = 0;
-  let timeline: ReturnType<typeof createTimeline> | undefined;
-  type VisualPulse = Pulse & { duration: number; index: number; accented: boolean };
   let visualQueue: VisualPulse[] = [];
-  let beatIndex = -1;
-  let beatDuration = 0;
   let visualBeat: VisualPulse | undefined;
   const pulseListeners = new Set<(angle: number, playing: boolean, beatIndex: number | null, accent: number) => void>();
   const tapListeners = new Set<() => void>();
-  const clicks = new Set<ReturnType<typeof scheduleClick>>();
   const tap = createTapTempo();
   const pitchDisplay = new PitchDisplay();
   const buffer = new Float32Array(4096);
@@ -45,7 +44,7 @@ export function createAudioController(store: PracticeStore) {
     if (!context) {
       context = new AudioContext();
       context.onstatechange = () => {
-        if (context?.state !== 'running' && (stream || oscillator || tonePending || timeline || metronomePending || store.get().micStatus === 'requesting')) {
+        if (context?.state !== 'running' && (stream || oscillator || tonePending || metronome || metronomePending || store.get().micStatus === 'requesting')) {
           stopAll();
           update({ micStatus: 'interrupted', audioError: 'Audio interrupted. Start listening, play a tone, or start the metronome to resume.' });
         }
@@ -158,27 +157,34 @@ export function createAudioController(store: PracticeStore) {
   function stopMetronome() {
     metronomeGeneration++;
     metronomePending = false;
-    clearTimeout(metronomeTimer);
+    if (metronome) {
+      metronome.port.postMessage({ type: 'stop' });
+      metronome.onprocessorerror = null;
+      metronome.port.onmessage = null;
+      metronome.port.close();
+      metronome.disconnect();
+    }
+    metronomeGain?.disconnect();
+    metronome = undefined;
+    metronomeGain = undefined;
+    positionPending = false;
     if (visualFrame) cancelAnimationFrame(visualFrame);
     visualFrame = 0;
-    timeline = undefined;
     visualQueue = [];
     visualBeat = undefined;
-    beatIndex = -1;
     pulseListeners.forEach(listener => listener(0, false, null, 0));
-    for (const click of clicks) click.stop();
-    clicks.clear();
     update({ metronomePlaying: false, currentBeat: null, currentPart: 0 });
   }
   function renderBeat() {
-    if (!timeline || !context) return;
+    if (!metronome || !context || hidden) return;
     // Audio events drive beat identity; rendering never schedules sound.
     const stamp = context.getOutputTimestamp?.();
     const now = stamp?.contextTime || context.currentTime;
     let current: VisualPulse | undefined;
-    while (visualQueue.length && visualQueue[0]!.time <= now) {
-      current = visualQueue.shift()!;
-      if (current.part === 0) visualBeat = current;
+    for (const pulse of visualQueue) {
+      if (pulse.time > now) break;
+      current = pulse;
+      if (pulse.part === 0) visualBeat = pulse;
     }
     if (visualBeat) {
       const fraction = Math.max(0, Math.min(1, (now - visualBeat.time) / visualBeat.duration));
@@ -191,30 +197,17 @@ export function createAudioController(store: PracticeStore) {
       const accent = visualBeat.accented ? (progress < 0.2 ? progress / 0.2 : (1 - progress) / 0.8) : 0;
       pulseListeners.forEach(listener => listener(angle, true, visualBeat!.index, accent));
     }
-    if (current) update({ currentBeat: current.beat, currentPart: current.part });
+    if (current && (store.get().currentBeat !== current.beat || store.get().currentPart !== current.part)) update({ currentBeat: current.beat, currentPart: current.part });
+    if (!positionPending) { positionPending = true; metronome.port.postMessage({ type: 'position' }); }
     visualFrame = requestAnimationFrame(renderBeat);
   }
-  function scheduleBeats() {
-    if (!timeline || !context) return;
-    if (timeline.time < context.currentTime - 0.05) {
-      stopMetronome();
-      update({ audioError: 'Metronome timing was interrupted. Start it again to resume a steady beat.' });
-      return;
-    }
-    while (timeline.time < context.currentTime + 0.15) {
-      const state = store.get();
-      const pulse = timeline.next({ tempo: state.tempo, beats: meterInfo(state).beats, subdivision: state.subdivision });
-      const accented = meterInfo(state).beats > 0 && pulse.part === 0 && !!state.beatAccents[pulse.beat];
-      const click = scheduleClick(context, { ...pulse, downbeat: accented }, { ...state, accent: true });
-      clicks.add(click);
-      click.oscillator.addEventListener('ended', () => clicks.delete(click), { once: true });
-      if (pulse.part === 0) { beatIndex++; beatDuration = 60 / state.tempo; }
-      visualQueue.push({ ...pulse, index: beatIndex, duration: beatDuration, accented });
-    }
-    metronomeTimer = setTimeout(scheduleBeats, 25);
+  function metronomeSettings(): MetronomeSettings {
+    const state = store.get();
+    return { tempo: state.tempo, beats: meterInfo(state).beats, subdivision: state.subdivision,
+      clickSound: state.clickSound, beatAccents: state.beatAccents };
   }
   async function startMetronome() {
-    if (timeline || metronomePending) return;
+    if (metronome || metronomePending) return;
     const generation = ++metronomeGeneration;
     metronomePending = true;
     update({ audioError: '' });
@@ -222,11 +215,29 @@ export function createAudioController(store: PracticeStore) {
       const ac = audioContext();
       await ac.resume();
       if (generation !== metronomeGeneration) return;
-      timeline = createTimeline(ac.currentTime + 0.05);
+      metronomeFactory ??= prepareMetronome(ac).catch(error => { metronomeFactory = undefined; throw error; });
+      const create = await metronomeFactory;
+      if (generation !== metronomeGeneration) return;
+      if (ac.state !== 'running') throw Error('Audio interrupted. Start the metronome again to resume.');
+      const node = create(metronomeSettings());
+      metronome = node;
+      metronomeGain = ac.createGain();
+      metronomeGain.gain.value = store.get().clickVolume / 100;
+      node.connect(metronomeGain);
+      metronomeGain.connect(ac.destination);
+      node.port.onmessage = ({ data }: MessageEvent<VisualPulse[]>) => {
+        if (metronome !== node) return;
+        positionPending = false;
+        if (!hidden) visualQueue = data;
+      };
+      node.onprocessorerror = () => {
+        if (metronome !== node) return;
+        stopMetronome();
+        update({ audioError: 'Metronome audio was interrupted. Start it again to resume.' });
+      };
       update({ metronomePlaying: true });
       // Move from rest immediately, including before the first scheduled click.
       pulseListeners.forEach(listener => listener(TAIL_LOWERED_ANGLE, true, 0, 0));
-      scheduleBeats();
       renderBeat();
     } catch (error) {
       if (generation !== metronomeGeneration) return;
@@ -238,7 +249,16 @@ export function createAudioController(store: PracticeStore) {
   let heldToneNote: number | undefined;
   let sustain = store.get().sustain;
   let { toneNote, a4, toneVolume, toneSound } = store.get();
+  let previous = store.get();
   const unsubscribe = store.subscribe((state) => {
+    if (metronome && (state.tempo !== previous.tempo || state.meter !== previous.meter || state.subdivision !== previous.subdivision
+      || state.clickSound !== previous.clickSound || state.beatAccents !== previous.beatAccents)) {
+      metronome.port.postMessage({ type: 'settings', settings: metronomeSettings() });
+    }
+    if (metronomeGain && context && state.clickVolume !== previous.clickVolume) {
+      metronomeGain.gain.setTargetAtTime(state.clickVolume / 100, context.currentTime, 0.01);
+    }
+    previous = state;
     if (state.toneNote !== toneNote || state.a4 !== a4 || state.toneVolume !== toneVolume || state.toneSound !== toneSound) {
       toneNote = state.toneNote; a4 = state.a4; toneVolume = state.toneVolume; toneSound = state.toneSound;
       syncTone();
@@ -249,11 +269,23 @@ export function createAudioController(store: PracticeStore) {
       else stopTone();
     }
   });
-  return { interrupt() {
-    const active = stream || oscillator || tonePending || timeline || metronomePending || store.get().micStatus === 'requesting';
-    if (active) { stopAll(); update({ micStatus: 'interrupted', audioError: 'Practice paused while tUno was hidden. Start a tool to resume.' }); }
+  return { visibilityChanged(isHidden: boolean) {
+    hidden = isHidden;
+    if (hidden) {
+      const micActive = stream || store.get().micStatus === 'requesting';
+      stopMic();
+      // A held piano key can lose its release event on a tab switch. Sustained
+      // reference tones and timed notes keep their normal playback lifecycle.
+      if (!store.get().sustain && heldToneNote !== undefined) stopTone();
+      if (micActive) update({ micStatus: 'interrupted',
+        audioError: 'Microphone paused while tUno was hidden. Start listening to resume.' });
+      if (visualFrame) cancelAnimationFrame(visualFrame);
+      visualFrame = 0;
+      visualQueue = [];
+      visualBeat = undefined;
+    } else if (metronome && !visualFrame) renderBeat();
   }, startMic, stopMic, playTone, stopTone, stopAll, startMetronome, stopMetronome,
-    toggleMetronome: () => timeline || metronomePending ? stopMetronome() : void startMetronome(),
+    toggleMetronome: () => metronome || metronomePending ? stopMetronome() : void startMetronome(),
     onPulseFrame(listener: (angle: number, playing: boolean, beatIndex: number | null, accent: number) => void) {
       pulseListeners.add(listener);
       return () => pulseListeners.delete(listener);

@@ -151,6 +151,10 @@ try {
     await page.goto(origin + path); await page.reload();
     if (path !== '/rhythm/') await page.getByText('Offline ready', { exact: true }).waitFor();
     else assert.equal(await page.locator('h1').textContent(), 'Uno234');
+    if (path === '/tempo/') {
+      await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();
+      await page.getByRole('button', { name: 'Stop metronome', exact: true }).first().waitFor();
+    }
     await page.getByRole('link', { name: '← Tools' }).click();
     await page.locator('.launcher-card').first().waitFor();
     assert.equal(await page.locator('.launcher-card').count(), 3);

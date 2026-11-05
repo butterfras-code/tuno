@@ -26,7 +26,7 @@ import { toolLabel } from './tool-label.ts';
 export function mountApp(root: HTMLElement, store: PracticeStore) {
   const audio = createAudioController(store);
   window.addEventListener('pagehide', audio.stopAll);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) audio.interrupt(); });
+  document.addEventListener('visibilitychange', () => audio.visibilityChanged(document.hidden));
   const settings = createSettings(store);
   const header = createAppHeader('tUno', 'Practice with a friend.');
   header.append(createAreaNavigation('tuno'));
