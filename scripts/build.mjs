@@ -62,7 +62,9 @@ async function buildApp(app) {
         build.onLoad({ filter: /[/\\]main\.ts$/ }, async (args) => ({
           contents: await readFile(args.path, 'utf8'),
           loader: 'ts',
-          watchFiles: [path.join(root, app.template)],
+          watchFiles: [path.join(root, app.template), ...(app.id === 'tuno' ? [
+            'src/audio/metronome-worklet.ts', 'src/audio/metronome-renderer.ts', 'src/music/rhythm.ts',
+          ].map(name => path.join(root, name)) : [])],
         }));
         build.onEnd(async (result) => {
           if (result.errors.length) return;
@@ -81,14 +83,20 @@ async function buildApp(app) {
           ]);
           const workerTemplate = await readFile(path.join(root, 'src/distribution/service-worker.js'), 'utf8');
           const worker = workerTemplate.replaceAll('__APP_ID__', app.id).replace('__EXCLUDED_PATHS__', JSON.stringify(app.excluded));
-          const version = createHash('sha256').update(template + js + css + worker + manifest + packageInfo.version + sourceUrl).update(icons['icon-192.png']).update(icons['icon-512.png']).digest('hex').slice(0, 16);
+          const audioResources = {};
+          if (app.id === 'tuno') {
+            const worklet = await esbuild.build({ absWorkingDir: root, entryPoints: ['src/audio/metronome-worklet.ts'],
+              bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022', minify: !dev });
+            audioResources['metronome-worklet.js'] = worklet.outputFiles[0].text;
+          }
+          const version = createHash('sha256').update(template + js + css + worker + manifest + Object.values(audioResources).join('') + packageInfo.version + sourceUrl).update(icons['icon-192.png']).update(icons['icon-512.png']).digest('hex').slice(0, 16);
           const render = (styles, scripts) => template
             .replace('<!-- version -->', `<meta name="${app.id}-version" content="${version}"><meta name="${app.id}-release" content="${packageInfo.version}"><meta name="${app.id}-source" content="${sourceUrl}">`)
             .replace('<!-- styles -->', () => styles)
             .replace('<!-- scripts -->', () => scripts);
           const hostedHtml = render('<link rel="stylesheet" href="./app.css">' + (!dev
             ? `<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png">` : ''), '<script defer src="./app.js"></script>');
-          const resources = { 'index.html': hostedHtml, 'app.js': js, 'app.css': css,
+          const resources = { 'index.html': hostedHtml, 'app.js': js, 'app.css': css, ...audioResources,
             ...(!dev ? { 'manifest.webmanifest': manifest, ...icons } : {}),
           };
           const integrity = Object.fromEntries(Object.entries(resources)

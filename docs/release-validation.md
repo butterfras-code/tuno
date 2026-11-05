@@ -66,9 +66,9 @@ The offline harness denies server responses as well as enabling browser offline 
 
 ## Integration decisions
 
-Foreground profiling supports retaining the current detector execution model on this host. No worker/worklet is justified by these results alone; repeat measurements on the managed Chromebook before deciding. Tone parameter automation now changes only when pitch/calibration/volume changes, avoiding redundant scheduling on every input frame.
+Foreground profiling supports retaining the current detector execution model on this host. No worker/worklet for pitch detection is justified by these results alone; repeat measurements on the managed Chromebook before deciding. Tone parameter automation now changes only when pitch/calibration/volume changes, avoiding redundant scheduling on every input frame.
 
-Hiding the page pauses capture and output, clears pending starts, and requires an explicit restart after return. The app does not promise background playback. A timing underrun stops the metronome rather than attempting a burst of missed clicks.
+Hiding the page pauses microphone capture and reference-tone output, including their pending starts. The metronome continues on the audio thread, including a start already requested before hiding; its visuals synchronize on return. Leaving the page or an actual audio-context/processor interruption stops playback and requires an explicit restart. Mobile browser/OS suspension can still interrupt audio; screen-lock and app-switch playback require physical-device acceptance. See [metronome validation](validation/metronome-background.md) for the current automated evidence.
 
 Reference tone and metronome output can leak acoustically into the microphone. The app states this and suggests comparing headphones. Microphone nodes are never routed to speakers, but this does not provide acoustic isolation. No acoustic-cancellation or real-room rejection claim is made. Uno remains static with timed beat cues; animated rewards and tail motion are still visual follow-ups.
 

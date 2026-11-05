@@ -100,10 +100,19 @@ try {
     await page.getByLabel('Subdivision', { exact: true }).selectOption('3');
     await page.evaluate(() => {
       window.clickTimes = [];
-      const start = OscillatorNode.prototype.start;
-      OscillatorNode.prototype.start = function(time = 0) {
-        if (time > 0) { window.beatContext = this.context; window.clickTimes.push(time); }
-        return start.call(this, time);
+      const NativeWorkletNode = window.AudioWorkletNode;
+      window.AudioWorkletNode = class extends NativeWorkletNode {
+        constructor(...args) {
+          super(...args);
+          window.beatContext = this.context;
+          const seen = new Set();
+          this.port.addEventListener('message', ({ data }) => {
+            for (const pulse of data) if (!seen.has(pulse.time)) {
+              seen.add(pulse.time); window.clickTimes.push(pulse.time);
+            }
+          });
+          this.port.start();
+        }
       };
     });
     await page.getByRole('button', { name: 'Start metronome', exact: true }).first().click();

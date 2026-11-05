@@ -130,10 +130,20 @@ try {
     // Real Web Audio graph with synthetic input; this does not test permission or hardware.
     await page.evaluate(() => {
       window.scheduledClicks = [];
-      const originalStart = OscillatorNode.prototype.start;
-      OscillatorNode.prototype.start = function(time = 0) {
-        if (time > 0 && this.frequency.value >= 750) window.scheduledClicks.push({ time, now: this.context.currentTime, frequency: this.frequency.value });
-        return originalStart.call(this, time);
+      const NativeWorkletNode = window.AudioWorkletNode;
+      window.AudioWorkletNode = class extends NativeWorkletNode {
+        constructor(...args) {
+          super(...args);
+          window.lastMetronomeNode = this;
+          const seen = new Set();
+          this.port.addEventListener('message', ({ data }) => {
+            for (const pulse of data) if (!seen.has(pulse.time)) {
+              seen.add(pulse.time);
+              window.scheduledClicks.push(pulse);
+            }
+          });
+          this.port.start();
+        }
       };
       const ac = new AudioContext();
       const osc = ac.createOscillator();
@@ -178,8 +188,7 @@ try {
     await page.waitForFunction(() => window.scheduledClicks.length >= 13);
     const clicks = await page.evaluate(() => window.scheduledClicks);
     for (let i = 1; i < clicks.length; i++) assert.ok(Math.abs(clicks[i].time - clicks[i - 1].time - 1 / 6) < 0.00001);
-    assert.ok(clicks.every((click) => click.time >= click.now), 'Clicks must be scheduled ahead of playback');
-    assert.deepEqual(clicks.slice(0, 7).map((click) => click.frequency), [1500, 2000, 2000, 1000, 2000, 2000, 1500]);
+    assert.deepEqual(clicks.slice(0, 7).map((click) => [click.accented, click.part]), [[true, 0], [false, 1], [false, 2], [false, 0], [false, 1], [false, 2], [true, 0]]);
     await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     // Change focus and settings while input analysis and clicks continue.
     await selectTool('Tuner');
@@ -210,25 +219,47 @@ try {
     assert.equal(await page.locator('#current-beat').textContent(), 'Stopped');
     await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
     await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
-    await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate scheduler underrun. */ } });
-    await page.getByText('Metronome timing was interrupted. Start it again to resume a steady beat.', { exact: true }).waitFor();
+    await page.evaluate(() => { const until = performance.now() + 500; while (performance.now() < until) { /* Deliberate main-thread stall. */ } });
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1, 'UI stalls do not stop the audio thread');
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await stopAllAudio();
-    measurements.push({ mode, settlingMs, silenceClearMs, clicks: clicks.length, minimumLeadMs: Math.min(...clicks.map((click) => click.time - click.now)) * 1000 });
-    console.log(`${mode}: settling ${settlingMs.toFixed(0)} ms, silence clearing ${silenceClearMs.toFixed(0)} ms; ${clicks.length} clicks at 1/6-second spacing during pitch analysis, tone playback and UI activity; minimum scheduling lead ${(Math.min(...clicks.map((click) => click.time - click.now)) * 1000).toFixed(1)} ms; long stall stops playback.`);
+    measurements.push({ mode, settlingMs, silenceClearMs, clicks: clicks.length, engine: 'AudioWorklet' });
+    console.log(`${mode}: settling ${settlingMs.toFixed(0)} ms, silence clearing ${silenceClearMs.toFixed(0)} ms; ${clicks.length} audio-thread pulses at 1/6-second spacing during pitch analysis, tone playback and UI activity; playback survives a 500 ms UI stall.`);
 
-    // Background interruption cancels active output and requires an explicit restart.
+    // Backgrounding pauses reference tones while audio-thread beats continue.
+    await page.getByRole('button', { name: 'Start metronome', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop metronome', exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await page.getByRole('button', { name: 'Play tone', exact: true }).click();
     await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+    const beforeHidden = await page.evaluate(() => window.scheduledClicks.at(-1));
+    // Synthetic visibility fixture; physical tab/app switching remains device acceptance.
     await page.evaluate(() => {
       Object.defineProperty(document, 'hidden', { configurable: true, value: true });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    await page.getByText('Practice paused while tUno was hidden. Start a tool to resume.', { exact: true }).waitFor();
+    await page.getByText('Microphone and reference tone paused while tUno was hidden. Start either tool to resume.', { exact: true }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1);
+    const hiddenMessages = await page.evaluate(() => window.scheduledClicks.length);
+    await page.waitForTimeout(1200);
+    assert.equal(await page.evaluate(() => window.scheduledClicks.length), hiddenMessages, 'hidden visuals do not poll the audio thread');
     await page.evaluate(() => {
       delete document.hidden;
       document.dispatchEvent(new Event('visibilitychange'));
     });
+    await page.waitForFunction(time => window.scheduledClicks.at(-1).time > time + 1, beforeHidden.time);
+    // Read a current snapshot after return, never restart or replay old clicks.
+    const restored = await page.evaluate(() => new Promise(resolve => {
+      const node = window.lastMetronomeNode;
+      node.port.addEventListener('message', event => resolve(event.data), { once: true });
+      node.port.postMessage({ type: 'position' });
+    }));
+    const hiddenPulses = restored.filter(pulse => pulse.time >= beforeHidden.time);
+    assert.ok(hiddenPulses.length >= 7);
+    for (let i = 1; i < hiddenPulses.length; i++) assert.ok(Math.abs(hiddenPulses[i].time - hiddenPulses[i - 1].time - 1 / 6) < 0.00001);
+    assert.equal(await page.getByRole('button', { name: 'Stop metronome', exact: true }).count(), 1);
+    await page.waitForFunction(() => document.querySelector('.beat[aria-current="true"]'));
     await stopAllAudio();
 
     // Fonts and exact Figma vectors must decode inside both distributions.
