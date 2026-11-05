@@ -169,8 +169,15 @@ try {
     await startPractice(preview);
     const endpoints=preview.locator(`.answer[data-letter="${tonic}"][data-accidental="${accidental}"]`);
     assert.equal(await endpoints.count(),2);
-    const first=await endpoints.first().boundingBox(),last=await endpoints.last().boundingBox();
-    const c=await button(preview,'C').boundingBox(),d=await button(preview,'D').boundingBox(),cs=await button(preview,'C',1).boundingBox(),df=await button(preview,'D',-1).boundingBox();
+    await preview.waitForFunction(() => getComputedStyle(document.querySelector('.answers')).gridTemplateColumns.split(' ').length === 16);
+    // Read every target in one layout snapshot: the fitter can move the whole
+    // keyboard between separate asynchronous boundingBox calls.
+    const {first,last,c,d,cs,df}=await preview.locator('.answers').evaluate((grid,{tonic,accidental})=>{
+      const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,width:r.width};};
+      const key=(letter,accidental=0)=>rect(grid.querySelector(`[data-letter="${letter}"][data-accidental="${accidental}"]`));
+      const endpoints=grid.querySelectorAll(`[data-letter="${tonic}"][data-accidental="${accidental}"]`);
+      return {first:rect(endpoints[0]),last:rect(endpoints[1]),c:key('C'),d:key('D'),cs:key('C',1),df:key('D',-1)};
+    },{tonic,accidental});
     assert.ok(Math.abs(last.x-first.x-c.width*7)<1);
     assert.ok(Math.abs(cs.x+cs.width/2-(c.x+c.width/2+d.x+d.width/2)/2)<1);
     assert.ok(Math.abs(cs.x+cs.width/2-df.x-df.width/2)<1);

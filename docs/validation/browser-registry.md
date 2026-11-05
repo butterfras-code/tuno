@@ -42,3 +42,8 @@ its listeners and timer, while the updater remains active. These are browser-tes
 repairs without application behavior changes. Focused repair runs do not replace
 full `npm run verify` on the final integrated release candidate; failed runs stay
 in their original `.verification-runs/` directories.
+
+The spelling keyboard alignment check waits for its staggered desktop layout and
+reads all target rectangles in one browser evaluation. Separate asynchronous
+geometry reads could sample different fitted positions. The octave width,
+enharmonic alignment and accidental-size assertions are retained.
