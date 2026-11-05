@@ -2,7 +2,7 @@ import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-import { notesMode, startPractice } from './notes-setup-helpers.mjs';
+import { notesMode, startPractice, setPacing } from './notes-setup-helpers.mjs';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { keySignature } from '../src/apps/tunotes/domain/notation.ts';
 
@@ -325,6 +325,7 @@ try {
   await previewPage.getByRole('button',{name:'Close range selection',exact:true}).click();
   await previewPage.getByRole('button',{name:'Start Practice',exact:true}).click();
   const intro = previewPage.locator('.note-preview:visible');
+  await intro.waitFor();
   assert.equal(await intro.locator('.key-accidental').count(),0,'practice uses accidentals on notes');
   for (let i=0;i<3;i++) await intro.getByRole('button',{name:'Next',exact:true}).click();
   assert.equal(await intro.locator('.preview-note[data-label="B♭"]').count(),1,'Flute Big 5 still includes B-flat');
@@ -336,12 +337,10 @@ try {
   await notesMode(modesPage,'Options');
   assert.equal(await modesPage.getByRole('button',{name:/^(Show Intro|Adapt Range)$/}).count(),0,'redundant intro and adaptation toggles are removed');
   await notesMode(modesPage,'Practice');
-  await modesPage.getByRole('button',{name:'Correct Only',exact:true}).click();
+  await setPacing(modesPage,'Correct Only');
   await modesPage.reload();
   assert.equal(await modesPage.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true','practice mode persists');
-  await modesPage.getByRole('button',{name:'Start Practice',exact:true}).click();
-  const introSkip = modesPage.locator('.note-preview:visible').getByRole('button',{name:'Skip',exact:true});
-  if (await introSkip.isVisible()) await introSkip.click();
+  await startPractice(modesPage);
   const liveStaff = modesPage.locator('.practice-play .staff');
   const retryPitch = await liveStaff.getAttribute('aria-label');
   await modesPage.locator('.answer[data-letter="C"][data-accidental="1"]').first().click();
