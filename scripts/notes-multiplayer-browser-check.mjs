@@ -316,7 +316,7 @@ async function run(page,url,label) {
   assert.equal(await button(page,'Pause').isVisible(),true);
   assert.equal(await page.locator('.multiplayer-panel[data-phase="paused"]').count(),0);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-recovery.png`,fullPage:true});
-  await button(page,'Switch to Pass and Play').click();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
+  await button(page,'Switch to Pass and Play').click();await page.locator('.multiplayer-round h2').filter({hasText:/Turn 1 of 3/}).waitFor();assert.match(await page.locator('.multiplayer-round h2').textContent(),/Turn 1 of 3/);
   await page.setViewportSize({width:360,height:800});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-phone-turn.png`,fullPage:true});
@@ -396,6 +396,7 @@ async function run(page,url,label) {
   const profileDialog=page.locator('.preset-dialog:visible');
   await button(profileDialog,'Clef').click(); await button(profileDialog,'Bass').click();
   await profileDialog.locator('[data-preset-id="bass-lines-and-spaces"]').click();
+  await page.locator('.profile-save-status').filter({hasText:'Changes saved.'}).waitFor();
   assert.equal(await page.locator('.profile-save-status').textContent(),'Changes saved.');
   assert.equal(await readNotesData(page, data => data.profiles.find(p=>p.name==='Bass Player').defaultPresetId),'bass-lines-and-spaces');
   await button(page,'Challenge').click();

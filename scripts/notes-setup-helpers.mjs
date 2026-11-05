@@ -1,4 +1,5 @@
 import { presets, stringInstruments } from '../src/apps/tunotes/domain/presets.ts';
+import { waitNotesSaved } from './notes-storage-helpers.mjs';
 export const rangeDialog = page => page.locator('.range-picker-dialog[open]');
 export async function configureMultiplayerNotes(page) {
   const next = page.getByRole('button',{name:'Start round',exact:true});
@@ -52,6 +53,7 @@ export async function saveCustom(page,name) {
   const dialog = page.getByRole('dialog',{name:'Save Preset',exact:true});
   await dialog.getByLabel('Preset name',{exact:true}).fill(name);
   await dialog.getByRole('button',{name:'Save Preset',exact:true}).click();
+  await waitNotesSaved(page);
 }
 export async function setEndpoint(page,label,pitch) {
   await openCustom(page);
@@ -80,7 +82,11 @@ export async function setModifiers(page,values) {
     if ((await button.getAttribute('aria-pressed') === 'true') !== values.includes(id)) await button.click();
   }
 }
-export async function notesMode(page, name) { await page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name,exact:true}).click(); }
+export async function notesMode(page, name) {
+  const control = page.getByRole('navigation',{name:'tuNotes modes'}).getByRole('button',{name,exact:true});
+  await control.click();
+  await control.and(page.locator('[aria-pressed="true"]')).waitFor();
+}
 export async function openData(page) {
   await notesMode(page,'Options');
   if (!await page.locator('.local-data').evaluate(n => n.open)) await page.locator('.local-data summary').click();
@@ -94,6 +100,7 @@ export async function setToggle(page,id,selected) {
 export async function setPacing(page, label) {
   await notesMode(page,'Practice');
   await page.getByRole('group',{name:'Practice Mode',exact:true}).getByRole('button',{name:label,exact:true}).click();
+  await waitNotesSaved(page);
 }
 export async function startPractice(page) {
   await notesMode(page,'Practice');
@@ -103,6 +110,8 @@ export async function startPractice(page) {
     const skip = page.getByRole('button',{name:'Skip',exact:true});
     await (await skip.isVisible() ? skip : page.getByRole('button',{name:'Start Practice',exact:true})).click();
   }
+  await page.locator('.practice-view[data-screen="playing"] .practice-play').waitFor();
+  await page.evaluate(() => document.fonts.ready);
 }
 export async function readyForAnswer(page) {
   await page.waitForFunction(() => document.querySelector('.practice-play:not([hidden]) .answer')?.getAttribute('aria-disabled') === 'false');

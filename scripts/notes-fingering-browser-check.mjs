@@ -230,6 +230,7 @@ async function checkLayouts(page) {
       assert.match(await presetPage.locator('#practice-counts').textContent(),/1 attempts/);
     }
     assert.ok(await presetPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await presetPage.waitForFunction(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Finish')?.getBoundingClientRect().bottom <= innerHeight);
     const finish=await presetPage.getByRole('button',{name:'Finish',exact:true}).boundingBox();
     await presetPage.screenshot({path:`dist/validation/notes-layout-${id}-${name}.png`,fullPage:true});
     assert.ok(finish && finish.y+finish.height<=800,`${id}: Finish must remain onscreen ${JSON.stringify(finish)}`);

@@ -20,6 +20,7 @@ async function run(page,url,label) {
   assert.equal(await button(page,'Show Intro').isVisible(),false);
   await page.getByLabel('Duration (seconds)').fill('14');await button(page,'Start Challenge').click();assert.match(await page.getByRole('alert').textContent(),/15 to 300/);
   await page.getByLabel('Duration (seconds)').fill('15');await button(page,'Start Challenge').click();
+  await page.locator('#challenge-status').filter({hasText:/Ready/}).waitFor();
   assert.match(await page.locator('#challenge-status').textContent(),/Ready/);
   await page.keyboard.press('a');assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
   assert.equal(await page.locator('.challenge-scene').isVisible(),true);
@@ -67,7 +68,7 @@ async function run(page,url,label) {
   assert.equal(await page.locator('#challenge-result .result-uno').getAttribute('alt'),'Uno sitting with a treat');
   assert.match(await page.locator('#challenge-result .result-treats').textContent(),/^0 treats earned this session$/);
   await save('scoreboard');await stableFrame();
-  await button(page,'Play again').click();assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
+  await button(page,'Play again').click();await page.locator('#challenge-status').filter({hasText:/Ready/}).waitFor();assert.match(await page.locator('#practice-counts').textContent(),/0 attempts/);
   await button(page,'Ready').click();await page.clock.runFor(18050);assert.equal(await page.locator('#challenge-result .scoreboard-value strong').textContent(),'0.00');assert.match(await page.locator('.round-details').textContent(),/Unranked/);
   assert.equal(await page.locator('#challenge-result .result-uno').getAttribute('alt'),'Uno sleeping');
   await button(page,'Change setup').click();await button(page,'Goal').click();await page.getByLabel('Correct notes',{exact:true}).fill('1');assert.equal(await page.getByLabel('Timeout (seconds)').count(),0);

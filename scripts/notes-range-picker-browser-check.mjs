@@ -2,7 +2,7 @@ import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
 import { hostBuild } from './test-host.mjs';
-import { notesMode } from './notes-setup-helpers.mjs';
+import { notesMode, startPractice } from './notes-setup-helpers.mjs';
 import { emptySnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { keySignature } from '../src/apps/tunotes/domain/notation.ts';
 
@@ -203,7 +203,7 @@ try {
     await open();
     assert.deepEqual(await selectedClefs(),['Treble','Bass'],'saved practice clefs reload');
     await dialog.getByRole('button',{name:'Close range selection',exact:true}).click();
-    await page.getByRole('button',{name:'Start Practice',exact:true}).click();
+    await startPractice(page);
     const clefsSaved = await readNotesData(page, data => data.customPresets.find(p=>p.id==='custom-current'));
     assert.deepEqual(clefsSaved.availableClefs,['treble','bass']);
     await page.close();
@@ -226,7 +226,7 @@ try {
   await page.getByRole('button',{name:'Lowest note: move up',exact:true}).click();
   await page.getByRole('button',{name:'Accept',exact:true}).click();
   assert.match(await page.locator('#preset-summary').textContent(),/G Major.*Spaces.*flats/);
-  await page.getByRole('button',{name:'Start Practice',exact:true}).click();
+  await startPractice(page);
   const persisted = await readNotesData(page, data => data.customPresets.find(p=>p.id==='custom-current'));
   assert.equal(persisted.content,'spaces'); assert.equal(persisted.key.fifths,1);
   assert.deepEqual(persisted.modifiers,['key','flat']); assert.deepEqual(persisted.range,['E4','G5']);

@@ -103,6 +103,7 @@ try {
         assert.ok(switchButton.height>=44,'Pass and Play warning remains a usable touch target');
         await check(page,`${label} resized`);
         await button(page,'Switch to Pass and Play').click();
+        await page.waitForFunction(() => document.querySelectorAll('.multiplayer-panel').length === 1);
         assert.equal(await lanes.count(),1);await check(page,`${label} switched to turns`);
       }
       assert.deepEqual(errors,[]);await page.close();

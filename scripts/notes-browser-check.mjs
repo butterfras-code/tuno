@@ -107,10 +107,10 @@ async function loop(page, mode) {
   assert.ok(statsBox.x + statsBox.width <= rewardBox.x,'Stats sit to the left of Uno on desktop');
   assert.match(await page.locator('.practice-results .result-treats').textContent(), /^1 treat earned this session$/);
   assert.equal(await page.locator('.practice-results .result-uno').getAttribute('alt'), 'Uno sitting with a treat');
-  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
   await lostKeyup(page);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await choosePreset(page,'bass-spaces'); await setPacing(page,'Normal');
@@ -161,7 +161,9 @@ const instrument = () => {
   window.addEventListener = (type, ...args) => { if (type === 'blur') window.practiceListeners.blur++; return addWindow(type, ...args); };
   window.removeEventListener = (type, ...args) => { if (type === 'blur') window.practiceListeners.blur--; return removeWindow(type, ...args); };
   window.practiceTimers = new Set(); const set = window.setInterval.bind(window), clear = window.clearInterval.bind(window);
-  window.setInterval = (...args) => { const id = set(...args); window.practiceTimers.add(id); return id; };
+  // The application updater has its own long-lived interval. Track the
+  // Practice render loop here so its removal does not require stopping updates.
+  window.setInterval = (...args) => { const id = set(...args); if (args[1] === 25) window.practiceTimers.add(id); return id; };
   window.clearInterval = id => { window.practiceTimers.delete(id); clear(id); };
 };
 try {

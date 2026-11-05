@@ -28,6 +28,7 @@ try {
    if(mode!=='Practice') {
     const duration=page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true});
     await duration.fill('14');await action.click();
+    await page.waitForFunction(() => document.activeElement?.value === '14');
     assert.equal(await duration.evaluate(n=>n===document.activeElement),true);
     await duration.fill('60');
     const modes=page.getByRole('group',{name:mode==='Challenge'?'Challenge Mode':'Multi Player Mode',exact:true});
@@ -62,6 +63,7 @@ try {
     assert.equal(await page.getByRole('group',{name:'Play Style',exact:true}).isVisible(),false);
     await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('14');
     await action.click();
+    await page.waitForFunction(() => document.activeElement?.value === '14');
     assert.equal(await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).evaluate(n=>n===document.activeElement),true);
     await page.getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).fill('60');
     await action.click();
@@ -83,6 +85,7 @@ try {
     await action.click();
     await chooser.getByRole('button',{name:'Head to Head',exact:true}).click();
     await chooser.getByRole('button',{name:'Continue to round',exact:true}).click();
+    await page.locator('.multiplayer-round--head-to-head').waitFor();
     assert.equal(await page.locator('.multiplayer-round--head-to-head').isVisible(),true);
     await page.getByRole('button',{name:'End round',exact:true}).click();
     await page.getByRole('button',{name:'Edit setup',exact:true}).click();

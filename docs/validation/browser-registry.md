@@ -26,3 +26,19 @@ Enabling the mobile runner exposed a real 320px navigation overflow: the fullscr
 Generated evidence: [matrix and final reruns](../../dist/validation/browser-registry.json), [initial stopped verification](../../dist/validation/browser-registry-initial-verify.json), and [intentional preflight failure](../../dist/validation/browser-registry-preflight.json). Final layout/storage reports and `narrow-navigation-{chromium,firefox}-{setup,playing}.png` are under `dist/validation/`. Rebuilding replaces these artifacts.
 
 Physical device, real audio-route, screen-reader and production acceptance remain separate from this automation work.
+
+## Asynchronous tuNotes acceptance (2026-11-05)
+
+Release preparation exposed tests that still assumed synchronous saves and round
+starts after the transactional storage change. Shared setup helpers now wait for
+durable saves, selected navigation, active play and font readiness. Retry,
+Challenge, multiplayer and range checks wait for the new round or validation
+state before inspecting it; fingering geometry waits for the fitted layout.
+The existing scoring, persistence, focus and viewport assertions remain in place.
+
+The Practice cleanup probe now tracks its 25 ms render loop independently of the
+application updater's long-lived interval. Removing Practice must still remove
+its listeners and timer, while the updater remains active. These are browser-test
+repairs without application behavior changes. Focused repair runs do not replace
+full `npm run verify` on the final integrated release candidate; failed runs stay
+in their original `.verification-runs/` directories.

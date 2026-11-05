@@ -19,6 +19,7 @@ try {
   assert.equal(await page.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
   await openData(page); await page.getByRole('button',{name:'Add profile',exact:true}).click(); await page.getByLabel('Profile name',{exact:true}).fill('UI reader'); await page.getByLabel('Profile name',{exact:true}).press('Enter');
   assert.equal(await page.locator('.profile-card').isVisible(),true);
+  await page.locator('.profile-save-status').filter({hasText:'Changes saved.'}).waitFor();
   assert.equal(await page.locator('.profile-save-status').textContent(),'Changes saved.');
   assert.equal(await readNotesData(page, data => data.profiles[0].name),'UI reader');
   await setToggle(page,'remember-progress',false);

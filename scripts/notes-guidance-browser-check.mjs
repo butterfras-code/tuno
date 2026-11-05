@@ -6,7 +6,7 @@ import { mkdir } from 'node:fs/promises';
 import { emptySnapshot, validateSnapshot } from '../src/apps/tunotes/persistence/store.ts';
 import { keySignature } from '../src/apps/tunotes/domain/notation.ts';
 import { normalizePreset } from '../src/apps/tunotes/domain/presets.ts';
-import { notesMode } from './notes-setup-helpers.mjs';
+import { notesMode, startPractice } from './notes-setup-helpers.mjs';
 import { hostBuild } from './test-host.mjs';
 
 const name = process.env.TUNO_BROWSER || 'chromium';
@@ -27,7 +27,7 @@ try {
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(data => { if (!localStorage.getItem('tunotes:data:v1')) localStorage.setItem('tunotes:data:v1', JSON.stringify(data)); }, validateSnapshot(data));
     await page.goto(new URL('/notes/', host.url).href);
-    await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
+    await startPractice(page);
     assert.deepEqual(errors, []);
     const staff = page.locator('.practice-play .staff');
     const notation = () => staff.evaluate(svg => { const copy = svg.cloneNode(true); copy.querySelector('.answer-feedback-layer').remove(); return copy.outerHTML; });
@@ -86,7 +86,7 @@ try {
     await notesMode(page, 'Options');
     assert.equal(await page.getByLabel('Keyboard accidental guidance', { exact: true }).isChecked(), true);
     await notesMode(page, 'Practice');
-    await page.getByRole('button', { name: 'Start Practice', exact: true }).click();
+    await startPractice(page);
     await page.keyboard.press(letter);
     assert.match(await page.locator('#practice-counts').textContent(), /0 attempts/);
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.answer-feedback')).opacity) > 0.6);
