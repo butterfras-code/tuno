@@ -1,6 +1,5 @@
 import micAsset from '../../../assets/mic.svg';
-import { createAudioController } from '../../../audio/controller.ts';
-import { createPracticeStore } from '../../../practice/state.ts';
+import { createMicrophoneCapture } from '../../../shared/audio/microphone.ts';
 import { noteName } from '../../../music/pitch.ts';
 import { el } from '../../../shared/ui/components.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
@@ -35,16 +34,16 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   const hold = el('progress', 'notes-mic-hold'); hold.max = 1; hold.value = 0; hold.setAttribute('aria-label', 'Stable pitch hold');
   const status = el('p', 'muted notes-mic-status', `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`); status.setAttribute('role', 'status');
   node.append(controls, pitch, scale, meter, hold, status);
-  const store = createPracticeStore(), audio = createAudioController(store), policy = new MicrophoneHold();
+  const policy = new MicrophoneHold();
   let active = false, locked = true, token: PromptToken | undefined, identity = '', lastFrame = -1;
-  const stop = () => { policy.clear(); audio.stopMic(); };
-  toggle.addEventListener('click', () => { if (active) audio.toggleMic(); });
+  const stop = () => { policy.clear(); audio.stop(); };
+  toggle.addEventListener('click', () => { if (active) audio.toggle(); });
   select.addEventListener('change', () => {
     policy.clear(); hold.value = 0;
     manualTransposition = select.value;
     try { localStorage.setItem('tunotes:mic-transposition', select.value); } catch { /* Session-only preference. */ }
   });
-  const unsubscribe = store.subscribe(state => {
+  const audio = createMicrophoneCapture(state => {
     const live = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
     toggle.setAttribute('aria-label', live ? 'Stop mic' : 'Start mic'); toggle.title = live ? 'Stop mic' : 'Start mic'; toggle.setAttribute('aria-pressed', String(live));
     if (!live) { policy.clear(); pitch.textContent = '—'; hold.value = 0; setCents(null); }
@@ -71,6 +70,6 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
       if (identity !== key || disabled) { policy.reset(); hold.value = 0; }
       identity = key; token = next; locked = disabled;
     },
-    dispose() { unsubscribe(); audio.dispose(); document.removeEventListener('visibilitychange', visibility); },
+    dispose() { audio.dispose(); document.removeEventListener('visibilitychange', visibility); },
   };
 }

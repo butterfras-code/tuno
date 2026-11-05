@@ -22,6 +22,7 @@ try {
       return stream;
     };
     AnalyserNode.prototype.getFloatTimeDomainData = function(buffer) {
+      window.micTest.captureContext = this.context;
       for (let i = 0; i < buffer.length; i++) buffer[i] = window.micTest.hz ? .2 * Math.sin(2 * Math.PI * window.micTest.hz * i / this.context.sampleRate) : 0;
     };
   });
@@ -95,6 +96,16 @@ try {
   await page.evaluate(() => { window.micTest.deny = true; });
   await page.getByRole('button', { name: 'Start mic', exact: true }).click();
   await page.getByText('Microphone permission denied.', {exact:false}).waitFor();
+  await page.evaluate(() => { window.micTest.deny = false; window.micTest.hz = 0; });
+  await page.getByRole('button', { name: 'Start mic', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop mic', exact: true }).waitFor();
+  await page.evaluate(() => window.micTest.captureContext.suspend());
+  await page.getByText('Audio interrupted. Start mic to resume.', { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true, 'interruption releases capture tracks');
+  await page.getByRole('button', { name: 'Start mic', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop mic', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Finish', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true, 'finishing disposes capture');
   assert.deepEqual(errors, []);
-  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch', 'Pause and mode change stop tracks', 'Permission denial is recoverable', 'All primary and secondary viewports fit'], errors },null,2));
+  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch', 'Pause and mode change stop tracks', 'Permission denial and audio interruption recover on explicit retry', 'Finishing disposes capture', 'All primary and secondary viewports fit'], errors },null,2));
 } finally { await browser.close(); await host.close(); }

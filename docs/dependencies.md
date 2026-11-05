@@ -38,9 +38,9 @@ Font filenames were simplified locally; font data and internal names were not mo
 
 Source: local sibling `pitch-tracker`, revision `75214e7452f286fa50ac317ed06f5c552025275e`, reused at the owner's explicit request.
 
-- `src/audio/detector.ts` adapts `src/domain/pitch.ts` YIN detection and Butterworth filtering. It returns separate frequency, RMS, and YIN quality evidence, extends the candidate range to 1,760 Hz, and includes the upper-boundary period candidate. Quality is a periodicity measure, not a calibrated probability.
+- `src/shared/audio/detector.ts` (also exported by `src/audio/detector.ts`) adapts `src/domain/pitch.ts` YIN detection and Butterworth filtering. It returns separate frequency, RMS, and YIN quality evidence, extends the candidate range to 1,760 Hz, and includes the upper-boundary period candidate. Quality is a periodicity measure, not a calibrated probability.
 - `tests/fixtures/pitch-signal.ts` retains the deterministic upstream fixture generator. Regression cases cover clean and overtone-rich signals, silence, noise, and low amplitude.
-- `src/audio/controller.ts` adapts microphone cancellation generations, capture constraints, disconnected-track cleanup, and gain-ramp patterns from `src/audio/microphone.ts`. The controller is rewritten around tUno's store; teacher scoring and DOM dependencies are excluded. Microphone and tone have independent cancellation.
+- `src/audio/controller.ts` adapts microphone cancellation generations, capture constraints, disconnected-track cleanup, and gain-ramp patterns from `src/audio/microphone.ts`. The controller is rewritten around tUno's store; teacher scoring and DOM dependencies are excluded. Microphone and tone have independent cancellation. `src/shared/audio/microphone.ts` extracts the same capture lifecycle for tuNotes without importing tUno policy or playback.
 
 No license file was found in the source checkout. The owner authorized this reuse and subsequently selected GPLv3 for tUno, including these project adaptations; this does not relicense the separate upstream checkout. No runtime dependencies were added.
 
