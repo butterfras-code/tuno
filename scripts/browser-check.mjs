@@ -31,6 +31,10 @@ try {
     });
     if (mode === 'hosted-offline') { await prepareOfflineContext(context, url); host.setAvailable(false); }
     await page.goto(url);
+    // Cache preparation opens another tab. Visual pulse observations require
+    // this tab to be foregrounded; hidden pages intentionally stop polling.
+    await page.bringToFront();
+    await page.waitForFunction(() => !document.hidden);
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('.pitch-note').innerText(), '—');
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
@@ -51,6 +55,8 @@ try {
       page = await context.newPage();
       page.on('pageerror', (error) => errors.push(error.message));
       await page.goto(url);
+      await page.bringToFront();
+      await page.waitForFunction(() => !document.hidden);
       await page.getByText('Offline ready', { exact: true }).waitFor();
     }
     assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).count(), 0);
@@ -186,7 +192,14 @@ try {
       await selectTool(focus);
       await page.evaluate(() => { const until = performance.now() + 20; while (performance.now() < until) { /* Controlled foreground load. */ } });
     }
-    await page.waitForFunction(() => window.scheduledClicks.length >= 13);
+    try { await page.waitForFunction(() => window.scheduledClicks.length >= 13); }
+    catch (error) {
+      const state = await page.evaluate(() => ({ hidden: document.hidden, visibility: document.visibilityState,
+        clicks: window.scheduledClicks.length, nodeCreated: Boolean(window.lastMetronomeNode),
+        contexts: window.audioContexts.map(ac => ({state: ac.state, time: ac.currentTime})),
+        errors: [...document.querySelectorAll('[role="alert"]')].map(node => node.textContent) }));
+      throw new Error(`${mode}: metronome pulse history unavailable: ${JSON.stringify(state)}`, {cause:error});
+    }
     const clicks = await page.evaluate(() => window.scheduledClicks);
     for (let i = 1; i < clicks.length; i++) assert.ok(Math.abs(clicks[i].time - clicks[i - 1].time - 1 / 6) < 0.00001);
     assert.deepEqual(clicks.slice(0, 7).map((click) => [click.accented, click.part]), [[true, 0], [false, 1], [false, 2], [false, 0], [false, 1], [false, 2], [true, 0]]);

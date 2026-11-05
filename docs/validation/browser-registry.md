@@ -47,3 +47,9 @@ The spelling keyboard alignment check waits for its staggered desktop layout and
 reads all target rectangles in one browser evaluation. Separate asynchronous
 geometry reads could sample different fitted positions. The octave width,
 enharmonic alignment and accidental-size assertions are retained.
+
+The audio integration fixture explicitly foregrounds the tested page after
+offline cache preparation uses another tab. Visual pulse-history observations
+require a visible document; the separate hidden-page assertions still verify
+that audio continues without visual polling. A pulse timeout records document
+visibility, audio-context state and the observed pulse count for diagnosis.
