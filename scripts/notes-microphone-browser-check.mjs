@@ -13,7 +13,7 @@ try {
   const page = await browser.newPage();
   page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(() => {
-    window.micTest = { hz: 0, streams: [], deny: false };
+    window.micTest = { hz: 0, streams: [], deny: false, glitches: [] };
     navigator.mediaDevices.getUserMedia = async () => {
       if (window.micTest.deny) throw new DOMException('Denied', 'NotAllowedError');
       const context = new AudioContext();
@@ -23,7 +23,12 @@ try {
     };
     AnalyserNode.prototype.getFloatTimeDomainData = function(buffer) {
       window.micTest.captureContext = this.context;
-      for (let i = 0; i < buffer.length; i++) buffer[i] = window.micTest.hz ? .2 * Math.sin(2 * Math.PI * window.micTest.hz * i / this.context.sampleRate) : 0;
+      const hz = window.micTest.glitches.length ? window.micTest.glitches.shift() : window.micTest.hz;
+      let noise = 12345;
+      for (let i = 0; i < buffer.length; i++) {
+        noise = (Math.imul(noise, 1664525) + 1013904223) >>> 0;
+        buffer[i] = hz === -1 ? .2 * (noise / 2 ** 31 - 1) : hz ? .2 * Math.sin(2 * Math.PI * hz * i / this.context.sampleRate) : 0;
+      }
     };
   });
   await page.goto(new URL('/notes/', host.url).href);
@@ -62,7 +67,32 @@ try {
   await page.evaluate(() => { window.micTest.hz = 233.08188; }); // B♭3 -> written C4.
   await page.waitForFunction(() => /\/ 1 attempts/.test(document.querySelector('#practice-counts').textContent));
   assert.match(await page.locator('.notes-mic-pitch').textContent(), /C4/);
-  await page.waitForTimeout(650); assert.equal(await attempts(), 1, 'sustained note submits once');
+  await page.waitForTimeout(1100); assert.equal(await attempts(), 1, 'sustained note submits once across feedback and the next prompt');
+  await page.getByText('Note counted — change note or release to play again.', { exact: true }).waitFor();
+  for (const [label, frames] of [['brief silence', [0, 0]], ['unreliable input', [-1]], ['pitch wobble', [261.62557]], ['octave glitch', [466.16376]]]) {
+    await page.evaluate(frames => { window.micTest.glitches = frames; }, frames);
+    await page.waitForFunction(() => window.micTest.glitches.length === 0);
+    await page.waitForTimeout(550);
+    assert.equal(await attempts(), 1, `${label} cannot rearm the held note`);
+  }
+  await page.evaluate(() => { window.micTest.hz = -1; });
+  await page.waitForTimeout(450);
+  assert.equal(await page.locator('.notes-mic-pitch').textContent(), '—', 'audible noise supplies unreliable rather than pitch evidence');
+  await page.evaluate(() => { window.micTest.hz = 233.08188; });
+  await page.waitForTimeout(550);
+  assert.equal(await attempts(), 1, 'sustained unreliable input cannot prove release');
+  await page.evaluate(() => { window.micTest.hz = 0; });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => { window.micTest.hz = 233.08188; });
+  await page.waitForFunction(() => /\/ 2 attempts/.test(document.querySelector('#practice-counts').textContent));
+  await page.waitForTimeout(1000);
+  assert.equal(await attempts(), 2, 'confirmed release allows the repeated note once');
+  for (const [hz, expected] of [[261.62557, 3], [233.08188, 4]]) {
+    await page.evaluate(hz => { window.micTest.hz = hz; }, hz);
+    await page.waitForFunction(n => Number(document.querySelector('#practice-counts').textContent.match(/\/ (\d+) attempts/)[1]) === n, expected);
+    await page.waitForTimeout(1000);
+    assert.equal(await attempts(), expected, 'legato pitch change counts once and does not repeat');
+  }
   for (const [offset, hz] of [[7,174.61412],[9,155.56349],[12,130.81278],[14,116.54094],[21,77.78175],[0,261.62557]]) {
     const before = await attempts();
     await page.evaluate(() => { window.micTest.hz = 0; });
@@ -72,7 +102,12 @@ try {
     assert.match(await page.locator('.notes-mic-pitch').textContent(), /C4/);
     assert.equal(await select.inputValue(), String(offset), 'prompt updates preserve a manual override');
   }
+  const beforeViewports = await attempts();
   await select.selectOption('14');
+  await page.evaluate(() => { window.micTest.hz = 116.54094; });
+  await page.waitForFunction(n => Number(document.querySelector('#practice-counts').textContent.match(/\/ (\d+) attempts/)[1]) === n, beforeViewports + 1);
+  await page.waitForTimeout(1000);
+  await page.getByText('Note counted — change note or release to play again.', { exact: true }).waitFor();
   await mkdir('dist/validation', { recursive: true });
   for (const profile of viewportProfiles) {
     await page.setViewportSize(profile.viewport);
@@ -107,5 +142,5 @@ try {
   await page.getByRole('button', { name: 'Finish', exact: true }).click();
   assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true, 'finishing disposes capture');
   assert.deepEqual(errors, []);
-  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch', 'Pause and mode change stop tracks', 'Permission denial and audio interruption recover on explicit retry', 'Finishing disposes capture', 'All primary and secondary viewports fit'], errors },null,2));
+  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch across prompt changes', 'Brief silence, unreliable input, pitch wobbles and octave glitches cannot rearm held notes', 'Confirmed quiet release allows a fresh repeated note', 'Stable legato pitch changes submit once', 'Pause and mode change stop tracks', 'Permission denial and audio interruption recover on explicit retry', 'Finishing disposes capture', 'All primary and secondary viewports fit with counted-note guidance'], errors },null,2));
 } finally { await browser.close(); await host.close(); }

@@ -47,11 +47,15 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
     const live = ['requesting', 'listening', 'no-signal', 'unreliable'].includes(state.micStatus);
     toggle.setAttribute('aria-label', live ? 'Stop mic' : 'Start mic'); toggle.title = live ? 'Stop mic' : 'Start mic'; toggle.setAttribute('aria-pressed', String(live));
     if (!live) { policy.clear(); pitch.textContent = '—'; hold.value = 0; setCents(null); }
-    const message = state.audioError || (state.micStatus === 'requesting' ? 'Allow microphone access to begin.' : live ? `Hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents. A4 = 440 Hz.` : `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`);
-    if (status.textContent !== message) status.textContent = message;
-    if (!live || state.pitchUpdatedAt === lastFrame) return;
+    let message = state.audioError || (state.micStatus === 'requesting' ? 'Allow microphone access to begin.' : live ? `Hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents. A4 = 440 Hz.` : `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`);
+    if (!live || state.pitchUpdatedAt === lastFrame) {
+      if (status.textContent !== message) status.textContent = message;
+      return;
+    }
     lastFrame = state.pitchUpdatedAt;
-    const result = policy.update(state.pitchUpdatedAt, state.micStatus === 'listening' ? state.liveHz : null, Number(select.value), active && !locked && !document.hidden);
+    const result = policy.update(state.pitchUpdatedAt, state.micStatus === 'listening' ? state.liveHz : null, Number(select.value), active && !locked && !document.hidden, state.micStatus === 'no-signal');
+    if (result.blocked) message = 'Note counted — change note or release to play again.';
+    if (status.textContent !== message) status.textContent = message;
     hold.value = result.progress; setCents(result.reading?.cents ?? null);
     pitch.textContent = result.reading ? `${noteName(result.reading.writtenNote)} · ${Math.round(result.reading.cents)}¢` : '—';
     pitch.title = result.reading ? `Written pitch · sounding ${noteName(result.reading.concertNote)}` : 'Written pitch';

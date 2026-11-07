@@ -21,8 +21,77 @@ test('requires 300 continuous milliseconds; does not repeatedly submit a held no
   assert.equal(policy.update(300, 440, 0).answer, 69);
   policy.reset(); // New prompt must not reuse a sustained answer.
   assert.equal(hold(policy, 69, 0, 375).answer, undefined);
-  policy.update(700, null, 0);
-  assert.equal(hold(policy, 69, 0, 775).answer, 69);
+  policy.update(700, null, 0, true, true);
+  assert.equal(hold(policy, 69, 0, 775).answer, undefined, 'a brief quiet gap does not rearm');
+});
+
+test('counted notes survive missing, unreliable, out-of-tune and momentarily different readings across prompts', () => {
+  for (const enabled of [true, false]) for (const glitch of [null, NaN, 440 * 2 ** (41 / 1200), noteFrequency(70), noteFrequency(81)]) {
+    const policy = new MicrophoneHold();
+    assert.equal(hold(policy, 69).answer, 69);
+    policy.reset(); // Feedback/new prompt.
+    policy.update(375, glitch, 0, enabled);
+    policy.reset();
+    assert.equal(hold(policy, 69, 0, 450).answer, undefined, `glitch ${glitch}`);
+    policy.reset();
+    assert.equal(hold(policy, 69, 0, 825).answer, undefined, 'later prompts still cannot reuse the note');
+  }
+});
+
+test('a stable different pitch counts without silence and becomes the new blocked note', () => {
+  const policy = new MicrophoneHold();
+  assert.equal(hold(policy, 69).answer, 69);
+  policy.reset();
+  for (const time of [375, 450, 525, 600, 674]) assert.equal(policy.update(time, noteFrequency(71), 0).answer, undefined);
+  assert.equal(policy.update(675, noteFrequency(71), 0).answer, 71);
+  policy.reset();
+  assert.equal(hold(policy, 71, 0, 750).answer, undefined);
+  assert.equal(hold(policy, 69, 0, 1125).answer, 69, 'returning to the earlier pitch is a new note');
+});
+
+test('250 ms of confirmed quiet rearms a repeated pitch, including release during feedback', () => {
+  const policy = new MicrophoneHold();
+  assert.equal(hold(policy, 69).answer, 69);
+  for (const time of [375, 450, 525, 600, 624, 625]) {
+    policy.reset(); // Locked UI renders must not restart the release timer.
+    policy.update(time, null, 0, false, true);
+  }
+  for (const time of [700, 775, 850, 925, 999]) assert.equal(policy.update(time, 440, 0).answer, undefined);
+  assert.equal(policy.update(1000, 440, 0).answer, 69, 'a fresh full hold is required after release');
+});
+
+test('release must be continuous quiet evidence, never unreliable readings or an analysis gap', () => {
+  for (const [time, frequency, quiet] of [[550, null, false], [550, 440, false], [800, null, true]] as const) {
+    const policy = new MicrophoneHold();
+    hold(policy, 69);
+    policy.update(375, null, 0, true, true);
+    policy.update(450, null, 0, true, true);
+    policy.update(time, frequency, 0, true, quiet);
+    policy.update(time + 75, null, 0, true, true);
+    assert.equal(hold(policy, 69, 0, time + 150).answer, undefined);
+  }
+  const policy = new MicrophoneHold();
+  hold(policy, 69);
+  for (const time of [375, 450, 525, 600, 675, 750]) policy.update(time, null, 0);
+  assert.equal(hold(policy, 69, 0, 825).answer, undefined, 'missing pitches alone never prove release');
+});
+
+test('a short quiet gap cannot accumulate across returns to a held pitch', () => {
+  const policy = new MicrophoneHold();
+  hold(policy, 69);
+  for (const start of [375, 975, 1575]) {
+    for (const time of [start, start + 75, start + 150, start + 249]) policy.update(time, null, 0, true, true);
+    assert.equal(hold(policy, 69, 0, start + 250).answer, undefined);
+  }
+});
+
+test('locked pitch changes cannot answer or rearm; explicit capture reset clears the latch', () => {
+  const policy = new MicrophoneHold();
+  hold(policy, 69);
+  for (const time of [375, 450, 525, 600, 675]) assert.equal(policy.update(time, noteFrequency(71), 0, false).answer, undefined);
+  assert.equal(hold(policy, 69, 0, 750).answer, undefined);
+  policy.clear();
+  assert.equal(hold(policy, 69, 0, 1125).answer, 69);
 });
 test('silence, tolerance excursions, pitch changes and stale frames restart the hold', () => {
   for (const interruption of [null, 440 * 2 ** (41 / 1200), noteFrequency(70), NaN]) {
