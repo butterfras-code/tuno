@@ -3,6 +3,7 @@ import { fingerHeld, isOpenFingering } from '../../../shared/input/fingering-cod
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringResize, type FingerPosition, type FingerSize } from '../../../shared/input/fingering-resize.ts';
 import { fingeringInput } from '../../../shared/input/fingering-input.ts';
+import { arrangementDirection } from './valve-arrangement.ts';
 import { fingerSpacing, spacingPresets } from '../../../shared/input/fingering-layout.ts';
 import type { FingerSpacing } from '../../../shared/input/fingering-layout.ts';
 import { FingeringPolicy } from '../engine/fingering-policy.ts';
@@ -131,6 +132,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   const resizeLabel = el('span', '', 'Adjust Input'), doneLabel = el('span', '', 'Done');
   doneLabel.hidden = true; resize.append(resizeLabel, doneLabel);
   const layoutTools = el('div', 'fingering-layout-tools'); layoutTools.append(move, resize);
+  const restore = el('button', 'control fingering-restore', '↺'); restore.type = 'button'; restore.hidden = true;
+  restore.setAttribute('aria-label', 'Reset arrangement'); restore.title = 'Reset arrangement';
   flip.style.visibility = 'hidden';
   let resizing = false, activeScaleKey = '';
   let selectedScale: FingerSize = { x: 1, y: 1 };
@@ -146,9 +149,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     if (commit) try { localStorage.setItem(activeScaleKey, JSON.stringify(value)); localStorage.setItem(handPositionKey(), JSON.stringify(position)); } catch { /* Session-only size and position. */ }
   }
   let resizer = fingeringResize(fingers.node, changeScale);
-  resizer.outline.append(flip);
+  resizer.outline.append(flip, restore);
   function editSize(value: boolean) {
-    reset(); resizing = value;
+    reset(); resizing = value; restore.hidden = !value;
     flip.style.visibility = value ? 'visible' : 'hidden';
     resizeLabel.hidden = value;
     doneLabel.hidden = !value;
@@ -164,12 +167,32 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let selectedSpacing: FingerSpacing = 'regular';
   const spacingKey = 'tunotes:finger-spacing';
   let spacingLoaded = false;
-  const layouts = new Map<string, { position: Position; flipped: boolean }>();
+  const layouts = new Map<string, { position: Position }>();
+  const overrides = new Map<string, boolean>();
   const orientation = matchMedia('(orientation: landscape)');
   const layoutKey = () => `tunotes:grip:${orientation.matches ? 'landscape' : 'portrait'}`;
   const legacyKey = (key: string) => key.replace(/:(portrait|landscape)$/, `:${selectedInstrument.value}:$1`);
+  const overrideKey = () => `tunotes:arrangement-v2:${selectedInstrument.value}:${position}:${orientation.matches ? 'landscape' : 'portrait'}`;
+  function loadFlip() {
+    const key = overrideKey();
+    if (!overrides.has(key)) {
+      let value = false;
+      try { value = localStorage.getItem(key) === 'true'; } catch { /* Session-only preference. */ }
+      overrides.set(key, value);
+    }
+    flipped = overrides.get(key)!;
+  }
+  function saveFlip(value: boolean) {
+    flipped = value; overrides.set(overrideKey(), value);
+    try {
+      if (value) localStorage.setItem(overrideKey(), 'true');
+      else localStorage.removeItem(overrideKey());
+    } catch { /* Session-only preference. */ }
+    applyLayout();
+  }
   function applyLayout() {
     node.dataset.gripPosition = position;
+    fingers.node.style.setProperty('--direction', String(arrangementDirection(configuration?.control === 'finger' ? 'strings' : configuration?.instrument === 'horn-f' ? 'horn' : 'brass', position)));
     fingers.node.dataset.flipped = String(flipped);
     fingers.node.dataset.spacing = selectedSpacing;
     fingers.node.style.setProperty('--finger-spacing', `${fingerSpacing[selectedSpacing]}px`);
@@ -201,14 +224,10 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     if (!saved) try {
       const shared = localStorage.getItem(key);
       const value = JSON.parse(shared ?? localStorage.getItem(legacyKey(key)) ?? 'null');
-      if (value && positions.includes(value.position) && typeof value.flipped === 'boolean') {
-        // The corrected horn baseline reverses both axes in the bottom panel.
-        // Keep an existing user's physical arrangement when adopting it.
-        saved = { position: value.position, flipped: shared === null && configuration?.instrument === 'horn-f' && value.position === 'bottom' ? !value.flipped : value.flipped };
-      }
+      if (value && positions.includes(value.position)) saved = { position: value.position };
     } catch { /* Session-only layout if storage is unavailable. */ }
     position = saved?.position ?? 'bottom';
-    flipped = saved?.flipped ?? false;
+    loadFlip();
     // Preserve the baseline of existing saved arrangements after removing the spacing tool.
     if (!spacingLoaded) try {
       const value = localStorage.getItem(spacingKey) ?? localStorage.getItem(`${spacingKey}:${selectedInstrument.value}`);
@@ -219,25 +238,26 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     // Cache defaults too, so unavailable storage cannot restore instrument-specific layouts.
     handPositions.set(handPositionKey(), selectedPosition);
     scales.set(activeScaleKey, selectedScale);
-    layouts.set(key, { position, flipped });
+    layouts.set(key, { position });
     try {
       localStorage.setItem(handPositionKey(), JSON.stringify(selectedPosition));
       localStorage.setItem(activeScaleKey, JSON.stringify(selectedScale));
-      localStorage.setItem(key, JSON.stringify({ position, flipped }));
+      localStorage.setItem(key, JSON.stringify({ position }));
       localStorage.setItem(spacingKey, selectedSpacing);
     } catch { /* Session-only preferences. */ }
     applyLayout();
   }
   function saveLayout() {
-    const value = { position, flipped }; layouts.set(layoutKey(), value);
+    const value = { position }; layouts.set(layoutKey(), value);
     try { localStorage.setItem(layoutKey(), JSON.stringify(value)); } catch { /* Session-only preference. */ }
     applyLayout();
   }
   move.addEventListener('click', () => {
-    reset(); position = positions[(positions.indexOf(position) + 1) % positions.length]!; saveLayout();
+    reset(); position = positions[(positions.indexOf(position) + 1) % positions.length]!; loadFlip(); saveLayout();
   });
-  flip.addEventListener('click', () => { reset(); flipped = !flipped; saveLayout(); });
-  for (const button of [move, flip, resize]) button.addEventListener('pointerdown', () => reset());
+  flip.addEventListener('click', () => { reset(); saveFlip(!flipped); });
+  restore.addEventListener('click', () => { reset(); saveFlip(false); });
+  for (const button of [move, flip, resize, restore]) button.addEventListener('pointerdown', () => reset());
   const orientationChanged = () => { if (method !== 'mic') loadLayout(); };
   if (options.fingering) orientation.addEventListener('change', orientationChanged);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
@@ -287,7 +307,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       }, config?.instrument === 'horn-f' ? { index: 3, anchor: 0, along: -0.75, across: 1 } : undefined);
       previous.replaceWith(fingers.node);
       resizer = fingeringResize(fingers.node, changeScale);
-      resizer.outline.append(flip);
+      resizer.outline.append(flip, restore);
       fingers.node.dataset.instrument = config?.instrument ?? '';
       fingers.node.dataset.hand = config?.hand ?? 'right';
       fingers.node.dataset.control = config?.control ?? 'valve';
@@ -320,7 +340,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       if (!supported || method !== 'fingering' || instrumentPicker.matches(':popover-open')) return false;
       if (resizing) {
         if (event.key === 'Escape') { event.preventDefault(); editSize(false); resize.focus(); return true; }
-        if (event.target === resize || event.target === move || event.target === flip) return false;
+        if (event.target === resize || event.target === move || event.target === flip || event.target === restore) return false;
         if (event.key === ' ' || configuration?.fingers.some(f => f.key === event.key.toLowerCase())) { event.preventDefault(); return true; }
         return false;
       }

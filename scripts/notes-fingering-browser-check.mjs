@@ -86,7 +86,9 @@ async function checkHand(page, context) {
     assert.ok(handedness < 0, `${context}: horn retains left-hand geometry`);
     const thumbReach = vertical ? Math.hypot(geometry.stepX, 0.75 * geometry.stepY) : Math.hypot(0.75 * geometry.stepX, geometry.stepY);
     assert.ok(Math.abs(Math.hypot(thumb.x-one.x,thumb.y-one.y) - thumbReach) < 0.75, `${context}: thumb reach follows the resized arrangement`);
-    if (vertical && flipped) assert.ok(thumb.y > one.y && one.y > two.y && thumb.x < one.x, `${context}: flipped left-hand thumb is below and left of valve 1`);
+    const position = await page.locator('.note-entry').getAttribute('data-grip-position');
+    const below = position === 'left' ? !flipped : flipped;
+    if (vertical) assert.ok(below ? thumb.y > one.y && one.y > two.y && thumb.x < one.x : thumb.y < one.y && one.y < two.y && thumb.x > one.x, `${context}: horn thumb follows panel position and override`);
     assert.equal(await page.locator('.fingering-trigger kbd').textContent(),'V');
     assert.equal(await page.locator('.fingering-trigger kbd').isVisible(),true);
     assert.equal(await page.locator('.fingering-trigger').getAttribute('aria-keyshortcuts'),'V');
@@ -280,12 +282,12 @@ async function checkLayouts(page) {
         assert.ok(v.x>=0 && v.y>=0 && v.x+v.w<=viewport.width && v.y+v.h<=viewport.height,JSON.stringify(v));
         assert.ok(v.y>=panel.y && v.y+v.h<=panel.y+panel.height,'Valves stay within the panel');
         assert.ok(v.w>=40 && v.h>=40, 'Valve targets remain usable after fitting the stage');
-        if(i) assert.ok((strings.includes(instrument) || instrument==='horn-f' ? v.y>valves[i-1].y : v.y<valves[i-1].y) && Math.abs(v.x-valves[0].x)<1,'Finger order follows the instrument default');
+        if(i) assert.ok((strings.includes(instrument) ? v.y>valves[i-1].y : v.y<valves[i-1].y) && Math.abs(v.x-valves[0].x)<1,'Finger order follows the instrument default');
         assert.ok(left ? v.x+v.w<staff.x : v.x>staff.x+staff.width,'Valves sit on the instrument hand side');
       }
       if(instrument==='horn-f') {
         const trigger=await phone.locator('.fingering-trigger').boundingBox();
-        assert.ok(trigger.x>valves[0].x && trigger.y<valves[0].y && trigger.x+trigger.width<staff.x);
+        assert.ok(trigger.x<valves[0].x && trigger.y>valves[0].y && trigger.x+trigger.width<staff.x);
       }
       await phone.screenshot({path:`dist/validation/notes-grip-${instrument}-${viewport.width}-${name}.png`});
     }
@@ -336,6 +338,11 @@ async function checkLayouts(page) {
       await move.click();
       await screen.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const position = await screen.locator('.note-entry').getAttribute('data-grip-position');
+      assert.equal(await flip.getAttribute('aria-pressed'), 'false', 'Moving starts with this position’s default');
+      const centers = await screen.locator('.fingering-valve:not(.fingering-trigger)').evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; }));
+      const axis = position === 'bottom' ? 'x' : 'y';
+      const positive = strings.includes(instrument) ? position !== 'bottom' : instrument === 'horn-f' ? position === 'right' : position !== 'right';
+      assert.equal(centers[1][axis] > centers[0][axis], positive, `${instrument} ${position}: default valve order`);
       await withAdjustment(screen, async () => { await flip.focus(); await screen.keyboard.press('Space'); });
       assert.equal(await flip.getAttribute('aria-pressed'),'true');
       assert.match(await screen.locator('#practice-counts').textContent(), /0 attempts/);
@@ -350,7 +357,8 @@ async function checkLayouts(page) {
           `${instrument} ${profile.id} ${position}: control outside panel ${JSON.stringify({r,bounds})}`);
       }
       assert.ok(await screen.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${instrument} ${profile.id} ${position}: overflow ${JSON.stringify(await screen.locator('body *').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.width && r.right>innerWidth+1}).map(e=>({tag:e.tagName,cls:e.className,x:e.getBoundingClientRect().x,w:e.getBoundingClientRect().width})).slice(0,12)))}`);
-      await adjustmentClick(screen, 'Flip finger order');
+      await adjustmentClick(screen, 'Reset arrangement');
+      assert.equal(await flip.getAttribute('aria-pressed'), 'false', 'Reset restores default order');
       await checkHand(screen,`${instrument} ${profile.id} ${position}`);
       if (['horn-f','violin'].includes(instrument)) await checkResize(screen, `${instrument} ${profile.id} ${position}`);
     }
@@ -371,12 +379,17 @@ async function checkLayouts(page) {
       assert.deepEqual(await screen.evaluate(()=>JSON.parse(localStorage.getItem('tunotes:finger-position:landscape'))),{x:0.4,y:0.5},'Position reloads before the next adjustment');
       await screen.getByRole('button',{name:'Done',exact:true}).click();
       assert.equal(await flip.getAttribute('aria-pressed'),'true','Saved flip survives reload');
+      for (let step = 0; step < 3; step++) {
+        await move.click();
+        assert.equal(await flip.getAttribute('aria-pressed'), String(step === 2), 'Moving restores only the destination override');
+      }
+
       assert.equal(await screen.locator('.fingering-input').getAttribute('data-spacing'),'regular','Spacing survives reload');
       const shared = await screen.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /tunotes:(grip|finger-)/.test(key))));
       for (const instrument of ['trumpet-bb','horn-f']) {
         await selectInstrument(screen,instrument);
         assert.equal(await screen.locator('.note-entry').getAttribute('data-grip-position'),originalPosition,'Changing instruments preserves panel placement');
-        assert.equal(await flip.getAttribute('aria-pressed'),'true','Changing instruments preserves flip');
+        assert.equal(await flip.getAttribute('aria-pressed'),String(instrument === 'horn-f'),'Flip override belongs to the selected instrument');
         assert.equal(Number(await screen.locator('.note-entry').getAttribute('data-hand-scale')),0.9,'Changing instruments preserves size');
         assert.deepEqual(await screen.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /tunotes:(grip|finger-)/.test(key)))),shared,'Changing instruments preserves all shared preferences');
       }
@@ -492,14 +505,14 @@ try {
     await migration.addScriptTag({content:fixture.outputFiles[0].text});
     await chooseMethod(migration,'fingering');
     await migration.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip),'Migration preserves the previous physical horn order');
+    assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),'false','Migration retires legacy flip workarounds');
     const previous = await migration.getByRole('button',{name:'Valve 1',exact:true}).boundingBox();
     const thumb = await migration.locator('.fingering-trigger').boundingBox();
-    assert.equal(thumb.y > previous.y,legacyFlip,'Migration preserves the previous trigger side');
+    assert.ok(thumb.y > previous.y,'Migration restores the default thumb side');
     for (const instrument of ['trumpet-bb','violin','horn-f']) {
       await selectInstrument(migration,instrument);
       assert.equal(await migration.locator('.note-entry').getAttribute('data-grip-position'),'bottom','Legacy per-instrument placement cannot replace shared placement');
-      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip));
+      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),'false');
       assert.equal(await migration.locator('.note-entry').getAttribute('data-hand-scale'),'0.85');
       assert.equal(await migration.locator('.fingering-input').getAttribute('data-spacing'),'wide');
     }
@@ -512,7 +525,7 @@ try {
       await migration.addScriptTag({content:fixture.outputFiles[0].text});
       await chooseMethod(migration,'fingering');
       assert.equal(await migration.locator('.note-entry').getAttribute('data-grip-position'),'bottom');
-      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),String(!legacyFlip));
+      assert.equal(await migration.locator('.fingering-input').getAttribute('data-flipped'),'false');
       assert.equal(await migration.locator('.note-entry').getAttribute('data-hand-scale'),'0.85');
     }
     await context.close();
@@ -617,6 +630,8 @@ try {
   // Real simultaneous touchscreen contacts, including partial release.
   if (name === 'chromium') {
     await page.setViewportSize({width:360,height:740});
+    // Orientation restores a different arrangement; wait before measuring touch coordinates.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const cdp = await page.context().newCDPSession(page);
     const point = async (n,id) => { const b=await page.getByRole('button',{name:'Valve '+n,exact:true}).boundingBox(); return {x:b.x+b.width/2,y:b.y+b.height/2,id}; };
     const a=await point(1,10), b=await point(2,11);
