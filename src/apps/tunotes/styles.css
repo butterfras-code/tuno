@@ -1296,8 +1296,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 }
 /* Handedness belongs to the instrument, independent of the panel's placement. */
 .fingering-input[data-hand='left'] { --thumb-side: -1; }
-/* Left-hand horn: 3–2–1 across the screen, with T below and right of valve 1. */
-.fingering-input[data-instrument='horn-f'] { --direction: -1; }
+/* Instrument and panel direction comes from valve-arrangement.ts. */
 .fingering-valve, .fingering-valve * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #home .fingering-input .fingering-valve { background: transparent; border: 0; box-shadow: none; }
 .valve-outline { position: relative; display: block; flex: none; width: 56px; height: 42px; min-height: 0; color: var(--color-teal); pointer-events: none; }
@@ -1410,7 +1409,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .play-stage--grip .interaction-body { min-height: 0; padding: 6px; }
 #home .play-stage--grip .fingering-panel { display: grid; grid-template-columns: minmax(0, 1fr) var(--hand-column); grid-template-rows: auto minmax(0, 1fr); height: 100%; gap: 2px 6px; }
 #home .play-stage--grip .fingering-input {
-  grid-column: 2; grid-row: 2; min-height: 0; height: 100%; --direction: -1;
+  grid-column: 2; grid-row: 2; min-height: 0; height: 100%;
   --layout-width: var(--span-across); --layout-height: var(--span-along);
 }
 #home .play-stage--grip .fingering-input .fingering-valve {
@@ -1418,7 +1417,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   --x: calc(-1 * var(--across) * var(--direction) * var(--thumb-side) * var(--flip));
   --y: calc(var(--along) * var(--direction) * var(--flip));
 }
-#home .play-stage--grip .fingering-input:is([data-control='finger'], [data-instrument='horn-f']) { --direction: 1; }
+
 #home .play-stage--grip .fingering-help { grid-column: 1 / -1; grid-row: 1; }
 #home .play-stage--grip .fingering-actions { grid-column: 1; grid-row: 2; flex-direction: column; align-self: end; margin: 0; gap: 4px; }
 #home .play-stage--grip .fingering-open { min-height: 44px; font-size: 12px; padding: 4px; white-space: nowrap; }
@@ -1447,7 +1446,6 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home.is-playing:has(:is(.play-stage--grip,.play-stage--bottom)) .area-navigation img { flex-basis: 28px; width: 28px; height: 28px; }
 
 /* String fingers use simple fingertip pads, sharing the held-input interactions. */
-.fingering-input[data-control='finger'] { --direction: -1; }
 .fingering-input[data-flipped='true'] { --flip: -1; }
 .fingering-input[data-control='finger'] .valve-outline { overflow: visible; width: 48px; height: 48px; }
 .fingering-input[data-control='finger'] .valve-cap { height: 48px; border-radius: 50%; }
@@ -1554,6 +1552,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 #home .note-entry[data-input-method='fingering'] .interaction-body { padding-top: 2px; padding-bottom: 2px; }
 .fingering-resize-outline { background: transparent; }
 #home .fingering-resize-outline .control { position: absolute; width: min(28px, 30%); min-width: 0; height: 28px; min-height: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--color-accent); box-shadow: none; transform: scale(calc(1 / var(--play-scale, 1))); }
+.fingering-resize-outline .fingering-restore { left: 0; bottom: 0; transform-origin: bottom left; font-size: 24px; }
 .fingering-resize-outline .fingering-flip { right: 0; top: 0; transform-origin: top right; }
 .fingering-position-handle { transform: scale(calc(1 / var(--play-scale, 1))); transform-origin: top left; }
 
