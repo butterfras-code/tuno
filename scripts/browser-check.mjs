@@ -417,6 +417,10 @@ try {
         const navigation = await page.locator('.practice-navigation').boundingBox();
         assert.ok(navigation.height <= 64, `${mode}: integrated navigation must stay compact at ${width}px`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        if (focus === 'Metronome') {
+          const volumeBox = await page.locator('#view-metronome .beat-volume > .control').boundingBox();
+          assert.ok(volumeBox && volumeBox.height >= 44, `${mode}: mobile beat volume button must keep a 44px touch target at ${width}px`);
+        }
       }
       await selectTool('Reference tone');
       for (const trigger of [tone.locator('.note-picker-trigger'), tone.getByRole('button', { name: 'Browse octave', exact: true })]) {
@@ -430,9 +434,28 @@ try {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
     await selectTool('Tuner');
+    // Mobile idle tuner shows a single "Ready when you are." prompt while Uno is visible, and restores readout feedback when Uno is hidden.
+    assert.equal(await page.locator('#view-tuner .hold-feedback').isVisible(), true);
+    assert.equal(await page.locator('#view-tuner .pitch-feedback').isVisible(), false);
     await page.getByRole('button', { name: 'Show Uno', exact: true }).click();
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
+    assert.equal(await page.locator('#view-tuner .pitch-feedback').isVisible(), true);
     assert.equal(await page.locator('.pitch-lane').isVisible(), true);
+    // Mobile direct /tone/ load must reveal the default selected key (B♭3) inside the keyboard viewport.
+    await page.evaluate(() => localStorage.clear());
+    const directTone = await context.newPage();
+    await directTone.setViewportSize({ width: 390, height: 844 });
+    await directTone.goto(new URL('/tone/', url).href);
+    await directTone.locator('#view-tone .piano-key[aria-pressed="true"]').waitFor();
+    await directTone.waitForFunction(() => {
+      const scroller = document.querySelector('#view-tone .piano-scroll');
+      const active = document.querySelector('#view-tone .piano-key[aria-pressed="true"]');
+      if (!scroller || !active) return false;
+      const sr = scroller.getBoundingClientRect();
+      const kr = active.getBoundingClientRect();
+      return scroller.scrollLeft > 0 && kr.left >= sr.left && kr.right <= sr.right;
+    });
+    await directTone.close();
     assert.deepEqual(errors, []);
 
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {

@@ -162,6 +162,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);
     const reading = pitchReading(state);
+    readout.classList.toggle('pitch-readout--idle', reading === null);
     const centered = reading !== null && Math.abs(reading.cents) <= TUNER_FEEDBACK.leaveCents * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
     const cents = reading ? `${reading.cents < 0 ? '−' : reading.cents > 0 ? '+' : ''}${Math.abs(reading.cents).toFixed(0)}` : '';
     responsiveLabel(feedback, centered ? 'Right there. Hold steady.' : text.direction, centered ? `${cents} cents · In tune` : text.direction);

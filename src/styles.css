@@ -397,7 +397,7 @@ img { display: block; max-width: 100%; }
   .metronome-heading .control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .meter-field, .beat-mode, .metronome--numbered .meter-field, .metronome--numbered .beat-mode { position: static; width: 100%; font-size: 16px; }
   .metronome-heading .control, .rhythm-controls .control { min-height: 44px; padding: 8px; }
-  .metronome-body, .metronome--numbered .metronome-body { display: flex; min-height: 297px; padding: 31px 0 0; }
+  .metronome-body, .metronome--numbered .metronome-body { display: flex; min-height: 268px; padding: 8px 0 6px; }
   .tempo-and-uno { position: relative; inset: auto; width: 100%; max-width: 338px; grid-template-columns: 100px 10px minmax(0, 1fr); gap: var(--space-1) 8px; transform: none; }
   .tempo-controls { width: 100px; height: 220px; }
   .tempo-nudges .control { height: 32px; min-height: 32px; padding: 4px 6px; border-radius: 10px; font-size: 16px; }
@@ -410,25 +410,25 @@ img { display: block; max-width: 100%; }
   .pulse-friend .uno { width: 100%; height: 100%; }
   .tempo-pet-hint, .metronome--numbered .tempo-pet-hint { font-size: 12px; line-height: 1.2; }
   .meter-field select.control, .metronome-heading .beat-mode, .subdivision-field select.control { font-size: 14px; }
-  .rhythm-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .rhythm-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 8px; }
   .metronome-play { position: static; grid-column: 1 / -1; width: 100%; }
   .subdivision-field, .sound-field, .beat-volume, .metronome--numbered .subdivision-field { position: static; width: 100%; }
   .beat-volume { grid-column: 1 / -1; }
-  .beat-volume > .control { height: 24px; min-height: 24px; padding: 2px; background: transparent; font: 400 12px/20px var(--font-body); color: var(--color-muted); }
-  .beat-grid { top: 86px; left: 16px; right: 16px; width: auto; transform: none; height: 30px; padding-left: 30px; }
+  .beat-volume > .control { min-height: 44px; height: 44px; padding: 8px 12px; background: var(--color-tint); font: 700 14px/1.3 var(--font-heading); color: var(--color-ink); }
+  .beat-grid { top: 76px; left: 16px; right: 16px; width: auto; transform: none; height: 30px; padding-left: 30px; }
   .beat { height: 30px; max-width: 56px; }
   .beat-number { font-size: 16px; line-height: 30px; }
   .beat:first-child { background: var(--color-tint); color: var(--color-ink); }
   .beat[aria-current='true'] { background: var(--color-accent); color: var(--color-surface); }
-  .metronome--numbered .metronome-body { padding-top: 76px; }
+  .metronome--numbered .metronome-body { padding-top: 62px; padding-bottom: 4px; }
   .metronome--numbered .tempo-pet-hint { font-size: 11px; }
   .metronome--numbered .tempo-and-uno { inset: auto; width: 100%; max-width: 304px; grid-template-columns: 96px 10px minmax(0, 1fr); }
-  .metronome--numbered .tempo-controls { width: 96px; height: 190px; }
-  .metronome--numbered .tempo-input { font-size: 64px; }
-  .metronome--numbered .tempo-input--three { font-size: 52px; }
-  .metronome--numbered .tempo-drag-hint { height: 190px; }
-  .metronome--numbered .pulse-friend { width: 100%; height: 190px; }
-  .metronome--numbered .pulse-friend .pet-tempo { left: -19.72px; top: -31.55px; width: calc(100% + 39.44px); height: 229.44px; }
+  .metronome--numbered .tempo-controls { width: 96px; height: 176px; }
+  .metronome--numbered .tempo-input { font-size: 60px; }
+  .metronome--numbered .tempo-input--three { font-size: 48px; }
+  .metronome--numbered .tempo-drag-hint { height: 176px; }
+  .metronome--numbered .pulse-friend { width: 100%; height: 176px; }
+  .metronome--numbered .pulse-friend .pet-tempo { left: -18.27px; top: -29.23px; width: calc(100% + 36.54px); height: 212.53px; }
   .metronome--numbered .pulse-friend .uno { width: 100%; height: 100%; }
   .tuner-body { grid-template-columns: 117px minmax(0, 1fr); gap: 20px 12px; padding: 12px 2px 0; }
   .tuner-friend { padding-top: 0; }
@@ -453,7 +453,7 @@ img { display: block; max-width: 100%; }
   .metronome--numbered .tempo-and-uno { gap: var(--space-1) 8px; }
 }
 .beat-hint { position: absolute; top: 76px; left: 0; right: 0; text-align: center; font-size: 12px; }
-@media (max-width: 650px) { .beat-hint { top: 62px; } }
+@media (max-width: 650px) { .beat-hint { top: 58px; } }
 /* Tone follows the same 546px desktop surface as Tune and Tempo. */
 @media (min-width: 651px) {
   .tone-heading { margin-bottom: 16px; }
@@ -468,8 +468,7 @@ img { display: block; max-width: 100%; }
 @media (max-width: 650px) {
   .desktop-tone-volume { display: none; }
   .tone-output .control, .tone-controls .control { min-height: 48px; }
-  .rhythm-controls { row-gap: 8px; }
-  .beat-volume > .control { line-height: 16px; height: 16px; min-height: 16px; padding: 0; }
+  .rhythm-controls { row-gap: 6px; }
   .beat button[aria-pressed='true'] { background: transparent; color: inherit; }
 }
 @media (min-width: 651px) and (max-width: 1000px) {
@@ -501,7 +500,7 @@ img { display: block; max-width: 100%; }
 .metronome--numbered .pulse-friend .uno { left: -23.66px; top: -37.86px; }
 @media (max-width: 650px) {
   .pulse-friend .uno { left: -22.83px; top: -36.53px; width: calc(100% + 45.66px); height: 265.66px; }
-  .metronome--numbered .pulse-friend .uno { left: -19.72px; top: -31.55px; width: calc(100% + 39.44px); height: 229.44px; }
+  .metronome--numbered .pulse-friend .uno { left: -18.27px; top: -29.23px; width: calc(100% + 36.54px); height: 212.53px; }
 }
 .beat-grid { z-index: 1; }
 .beat { background: var(--color-tint); }
@@ -735,6 +734,8 @@ img { display: block; max-width: 100%; }
 @media (max-width: 650px) {
   .tuner-mic-label { display: none; }
   .tuner-options .tuner-mic { flex: 0 0 44px; padding: 0; }
+  .tuner-body:not(.tuner-body--no-friend) .pitch-readout--idle .pitch-feedback { display: none; }
+  .tuner-body:not(.tuner-body--no-friend) .pitch-readout--idle .pitch-detail { grid-row: 1 / 3; align-self: center; }
   .tuner-friend .uno { height: 200px; margin-top: 4px; }
   .tuner-friend .hold-caption { margin: 6px 0 4px 10px; }
   .wake-uno-button { min-height: 44px; padding: 6px 12px; font-size: 13px; }
