@@ -40,6 +40,8 @@ try {
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     assert.equal(await page.locator('.pitch-marker').evaluate((marker) => getComputedStyle(marker).transitionDuration), '0.14s');
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Stop all audio', exact: true }).isVisible(), false);
+    assert.equal(await page.getByRole('button', { name: 'Wake Uno!', exact: true }).isVisible(), true);
     const accuracyTrigger = page.getByRole('button', { name: 'Tuner accuracy', exact: true });
     assert.match(await accuracyTrigger.textContent(), /BEG/);
     for (const label of ['INT', 'BEG', 'ADV']) {
@@ -211,7 +213,10 @@ try {
     await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 500 });
     const silenceClearMs = await page.evaluate(() => performance.now() - window.silenceStarted);
     assert.ok(silenceClearMs <= 500);
-    await stopAllAudio();
+    const stopAll = page.getByRole('button', { name: 'Stop all audio', exact: true });
+    assert.equal(await stopAll.isVisible(), true);
+    await stopAll.click();
+    assert.equal(await stopAll.isVisible(), false);
     assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
     await page.evaluate(() => {
       const input = window.testInput;
@@ -220,8 +225,12 @@ try {
       input.gain.gain.value = 0.2;
       navigator.mediaDevices.getUserMedia = async () => input.destination.stream;
     });
-    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
-    await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    await selectTool('Reference tone');
+    await page.getByRole('button', { name: 'Activate Mic', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.mini-note').textContent === 'B4');
+    assert.equal(await stopAll.isVisible(), true);
+    await selectTool('Tuner');
+    assert.equal(await page.locator('.pitch-note').innerText(), 'B4');
     await page.evaluate(() => window.testInput.destination.stream.getAudioTracks()[0].dispatchEvent(new Event('ended')));
     await page.getByText('Microphone disconnected. Reconnect it and start listening again.', { exact: true }).waitFor();
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);

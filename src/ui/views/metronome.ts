@@ -110,6 +110,7 @@ export function createMetronome(store: PracticeStore, audio: AudioController) {
     const info = meterInfo(state);
     responsiveLabel(play, state.metronomePlaying ? 'Stop' : 'Start', state.metronomePlaying ? 'Pause' : 'Start');
     play.setAttribute('aria-label', state.metronomePlaying ? 'Stop metronome' : 'Start metronome');
+    play.setAttribute('aria-pressed', String(state.metronomePlaying));
     compactVolume.trigger.textContent = `Volume · ${state.clickVolume}%`;
     subdivision.value = String(state.subdivision);
     sound.value = state.clickSound;
