@@ -1356,6 +1356,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .instrument-picker { position: fixed; inset: auto; margin: 0; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 6px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 4px 20px #0003; }
 .instrument-picker:popover-open { display: grid; gap: 4px; }
 .instrument-picker .control { width: 100%; justify-content: flex-start; text-align: left; font-size: 14px; }
+.instrument-picker-hint { margin: 4px 6px 2px; font-size: 12px; line-height: 1.35; }
 .note-entry .interaction-selector [aria-haspopup='dialog']::after { content: '▾'; margin-left: 6px; font-size: 12px; }
 
 /* The bone is decorative: the full rectangular button remains a touch target. */

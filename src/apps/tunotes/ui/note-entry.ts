@@ -123,6 +123,9 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     });
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
+  const instrumentHint = el('p', 'muted instrument-picker-hint', 'Choose an instrument preset in Choose Notes to unlock its chart.');
+  instrumentHint.hidden = true;
+  instrumentPicker.append(instrumentHint);
   const move = el('button', 'control fingering-move', 'Move Panel'); move.type = 'button';
   const flip = el('button', 'control fingering-flip'); flip.type = 'button';
   const flipIcon = el('span', 'fingering-tool-icon', '⇄');
@@ -268,12 +271,16 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       microphone.setInstrument(preset.instrument);
       selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? pianoInstrument;
     }
+    let anyDisabled = false;
     for (const item of instruments) {
       const choice = instrumentChoices.get(item.value)!;
       const chart = fingeringFor(item.instrument, item.valves);
       choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
-      choice.textContent = item.label + (choice.disabled ? ' (outside note range)' : '');
+      if (choice.disabled) anyDisabled = true;
+      const reason = chart?.control === 'finger' ? ' (Big 5 presets only)' : ' (outside note range)';
+      choice.textContent = item.label + (choice.disabled ? reason : '');
     }
+    instrumentHint.hidden = !anyDisabled;
     if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = pianoInstrument;
     for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
     if (method !== 'names' && method !== 'mic') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
