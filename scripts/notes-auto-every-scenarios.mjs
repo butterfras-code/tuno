@@ -25,9 +25,9 @@ export async function checkAutoEvery(browser,host) {
     });
     await page.goto(new URL('/notes/',host.url).href);
     await page.getByRole('button',{name:'Auto Every',exact:true}).click();
+    assert.equal(await page.getByLabel('Show next note').isChecked(),true);
+    assert.equal(await page.getByLabel('Metronome',{exact:true}).isChecked(),true);
     await page.getByLabel('Note duration').selectOption('2');
-    await page.getByLabel('Show next note').check();
-    await page.getByLabel('Metronome',{exact:true}).check();
     await layouts('setup');
     await startPractice(page);
     const play = page.locator('.practice-play:visible');

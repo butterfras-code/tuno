@@ -10,6 +10,8 @@ import { presets } from '../src/apps/tunotes/domain/presets.ts';
 
 test('written windows commit previews, allow recovery, expire once and gate resumed input', () => {
   assert.deepEqual(autoValues.map(quarterBeats),[1,2,3,4]);
+  assert.equal(defaultAuto.lookahead,true);
+  assert.equal(defaultAuto.sound,true);
   let now = 0, expired = 0;
   const s = new Practice(presets[0]!,false,() => now,() => 0.5,{continueAfter:'auto',adaptive:true,
     auto:{...defaultAuto,value:{type:'half',dots:1},lookahead:true}});

@@ -272,6 +272,11 @@ try {
   previewPage.on('pageerror',error => errors.push(error.message));
   await previewPage.goto(new URL('/notes/',host.url).href);
   await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+  assert.deepEqual(await previewPage.locator('.range-picker-instrument-label').allTextContents(),['Band','Orchestra'],'Band and Orchestra labels are visible in Instrument card');
+  await previewPage.getByRole('button',{name:'Orchestra instruments',exact:true}).click();
+  assert.equal(await previewPage.getByRole('button',{name:'Orchestra',exact:true}).getAttribute('aria-pressed'),'true','Orchestra shortcut opens Orchestra catalog');
+  assert.equal(await previewPage.getByRole('button',{name:'Violin',exact:true}).isVisible(),true);
+  await previewPage.getByRole('button',{name:'Back to range options',exact:true}).click();
   await previewPage.getByRole('button',{name:'Band instruments',exact:true}).click();
   await previewPage.getByRole('button',{name:'Flute',exact:true}).click();
   const fluteCards = previewPage.locator('.range-picker-dialog[open] .range-picker-presets button');

@@ -20,7 +20,7 @@ export function pitchedEvent(id: string, pitch: WrittenPitch, value: AutoValue):
 // A one-beat window must accommodate a 350 ms fingering settle or 300 ms microphone hold.
 export const minAutoBpm = 30, maxAutoBpm = 150;
 export interface AutoSettings { value: AutoValue; bpm: number; lookahead: boolean; sound: boolean }
-export const defaultAuto: AutoSettings = { value: { type: 'whole', dots: 0 }, bpm: 80, lookahead: false, sound: false };
+export const defaultAuto: AutoSettings = { value: { type: 'whole', dots: 0 }, bpm: 80, lookahead: true, sound: true };
 export const quarterBeats = (value: AutoValue) => toNumber(divide(writtenDuration(value.type, value.dots), quarterPulse));
 export function validateAuto(input: unknown): AutoSettings {
   const v = input as Partial<AutoSettings> | null;
