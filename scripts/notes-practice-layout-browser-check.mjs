@@ -38,6 +38,9 @@ try {
     }
     assert.equal(await page.locator('#home').evaluate(node => node.classList.contains('is-playing')),false,`${width}: intro keeps the regular page layout`);
     const introBounds = await page.locator('.note-preview').boundingBox();
+    const backBounds = await page.getByRole('button',{name:'Back to setup',exact:true}).boundingBox();
+    assert.ok(backBounds && backBounds.height >= 44 && backBounds.y >= introStart.y + introStart.height - 1,`${width}: Back to setup is touch-safe below toolbar`);
+    assert.equal(await page.locator('.preview-caption').isVisible(),true,`${width}: intro guidance caption is visible`);
     const activityBounds = await page.locator('#notes-practice').boundingBox();
     assert.ok(introBounds.x >= activityBounds.x && introBounds.y >= activityBounds.y
       && introBounds.x + introBounds.width <= activityBounds.x + activityBounds.width + 1

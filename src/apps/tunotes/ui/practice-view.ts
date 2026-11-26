@@ -290,7 +290,7 @@ export function practiceView(store: NotesStore, shared = false) {
     if (showIntro && activity === 'practice') {
       node.dataset.screen = 'intro';
       setup.hidden = true; result.hidden = true; play.hidden = true; dog.node.hidden = true; node.classList.add('previewing'); resetInput();
-      introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin,store.data.configuration.showKeySignature);
+      introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin,store.data.configuration.showKeySignature,showSetup);
       stage.append(introduction.node); introduction.start();
     } else begin({ shown: false, skipped: false, completed: false });
   };

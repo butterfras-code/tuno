@@ -40,8 +40,18 @@ async function run(page,url,mode) {
   await button(page,'Start Practice').click();
   await page.locator('.note-preview').waitFor();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
+  assert.match(await page.locator('.preview-caption').textContent(),/press Skip/);
+  await button(page,'Back to setup').click();
+  assert.equal(await page.locator('.note-preview').count(),0);
+  assert.equal(await button(page,'Choose Notes').evaluate(node => node === document.activeElement),true);
+  await page.clock.runFor(2000);
+  assert.equal(await page.locator('.note-preview').count(),0);
+  await button(page,'Start Practice').click();
+  await page.locator('.note-preview').waitFor();
+  assert.equal(await page.locator('.note-preview').isVisible(),true);
   assert.equal(await button(page,'Start Practice').isDisabled(),true);
   assert.equal(await button(page,'Skip').isVisible(),true);
+  assert.equal(await button(page,'Back to setup').isVisible(),true);
   assert.equal(await button(page,'Replay').isVisible(),false);
   assert.equal(await page.locator('.preview-staff .notehead').count(),1);
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
@@ -60,6 +70,7 @@ async function run(page,url,mode) {
   assert.equal(await button(page,'Start Practice').isEnabled(),true);
   assert.equal(await button(page,'Skip').isVisible(),false);
   assert.equal(await button(page,'Replay').isVisible(),true);
+  assert.match(await page.locator('.preview-caption').textContent(),/press Start Practice/);
   assert.equal(await page.locator('.note-preview .uno').getAttribute('data-pose'),'happy');
   assert.equal((await previewLabels(page)).length,9);
   assert.equal(await page.locator('.preview-staff').count(),1);

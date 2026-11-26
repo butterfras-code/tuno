@@ -8,9 +8,11 @@ import { renderPreviewStaff } from './staff.ts';
 import { button } from './setup.ts';
 export interface PreviewExposure { shown: boolean; skipped: boolean; completed: boolean }
 /** Own all callbacks; finishing a preview can never start play without a user action. */
-export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void, showKeySignature = false) {
+export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void, showKeySignature = false, onBack?: () => void) {
   const node = el('section','note-preview');
+  const header = el('div','preview-header');
   const heading = el('h2','','Meet your notes'); heading.tabIndex = -1;
+  const caption = el('p','muted preview-caption','Quick note preview — press Skip to jump straight in.');
   const status = el('p'); status.setAttribute('role','status');
   const scene = el('div','preview-scene');
   const viewport = el('div','preview-staff-viewport');
@@ -50,6 +52,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
     if (disposed) return;
     toy.hidden = true; dog.pose('happy'); node.classList.remove('preview-introducing');
     completed = true; start.disabled = false; again.disabled = false; again.hidden = false; skip.hidden = true; navigation.hidden = total < 2;
+    caption.textContent = 'You’ve met your notes — review them, or press Start Practice.';
     status.textContent = 'You’ve met your notes. Start when you’re ready, or replay.';
   };
   const finish = () => {
@@ -66,6 +69,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   function replay() {
     if (disposed) return; cancel(); node.classList.add('preview-introducing'); dog.pose('happy'); toy.hidden = true;
     start.disabled = true; again.disabled = true; again.hidden = true; skip.hidden = false; navigation.hidden = true; status.textContent = '';
+    caption.textContent = 'Quick note preview — press Skip to jump straight in.';
     showNote(0,media.matches);
     if (media.matches) { caught(); return; }
     let index = 0;
@@ -103,7 +107,16 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
     bounce();
   }
   again.hidden = true;
-  node.append(controls,heading,status,scene);
+  header.append(heading);
+  if (onBack) {
+    const back = button('',() => { if (disposed) return; dispose(); onBack(); });
+    back.classList.add('preview-back');
+    const arrow = el('span','','← '); arrow.setAttribute('aria-hidden','true');
+    back.append(arrow, document.createTextNode('Back to setup'));
+    header.append(back);
+  }
+  header.append(caption);
+  node.append(controls,header,status,scene);
   media.addEventListener('change',replay);
   return { node, dispose, start: () => { heading.focus(); replay(); } };
 }
