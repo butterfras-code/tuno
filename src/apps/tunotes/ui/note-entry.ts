@@ -277,7 +277,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       const chart = fingeringFor(item.instrument, item.valves);
       choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
       if (choice.disabled) anyDisabled = true;
-      const reason = chart?.control === 'finger' ? ' (Big 5 presets only)' : ' (outside note range)';
+      const reason = chart?.control === 'finger' ? ' (string presets only)' : ' (outside note range)';
       choice.textContent = item.label + (choice.disabled ? reason : '');
     }
     instrumentHint.hidden = !anyDisabled;
