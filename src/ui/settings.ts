@@ -1,6 +1,8 @@
 import { LIMITS, TRANSPOSITIONS } from '../practice/state.ts';
 import type { PracticeStore } from '../practice/state.ts';
 import { button, el, field, numberInput, row, select } from './components.ts';
+import { THEMES, type ThemeId } from '../shared/theme/registry.ts';
+import { getTheme, setTheme } from '../shared/theme/state.ts';
 
 export function createSettings(store: PracticeStore) {
   const dialog = el('dialog', 'settings-dialog');
@@ -16,11 +18,14 @@ export function createSettings(store: PracticeStore) {
   showUno.type = 'checkbox';
   const display = field('Show Uno', showUno);
   display.classList.add('checkbox-field');
+  const appearance = select(THEMES.map(theme => ({ value: theme.id, label: theme.label })));
+  appearance.id = 'appearance-theme';
   const save = button('Save settings', undefined, true);
   save.type = 'submit';
   const cancel = button('Cancel', () => dialog.close());
   form.append(field('A4 reference (Hz)', calibration), field('Written pitch', transposition),
     el('p', 'small muted', 'Transposition changes the displayed note. Reference-tone keys stay in concert pitch.'),
+    field('Appearance', appearance),
     display, el('p', 'small muted', 'Settings are saved in this browser when storage is available. Clear site data to remove them. Reduced motion follows your device preference.'), row(cancel, save));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -28,6 +33,7 @@ export function createSettings(store: PracticeStore) {
     store.dispatch({ type: 'settings', value: {
       a4: Number(calibration.value), transposition: Number(transposition.value), showUno: showUno.checked,
     } });
+    setTheme(appearance.value as ThemeId);
     dialog.close();
   });
   dialog.append(title, form);
@@ -38,6 +44,7 @@ export function createSettings(store: PracticeStore) {
       calibration.value = String(state.a4);
       transposition.value = String(state.transposition);
       showUno.checked = state.showUno;
+      appearance.value = getTheme();
       dialog.showModal();
     },
   };

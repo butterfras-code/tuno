@@ -4,8 +4,14 @@ import begAsset from '../../assets/uno-beg.svg';
 import restAsset from '../../assets/uno-rest.svg';
 import leftAsset from '../../assets/uno-head-left.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
+import firesideBoneAsset from '../../assets/pitch-bone-fireside.svg';
 import { el } from './components.ts';
 import type { UnoPose } from './uno-pose.ts';
+import { attachUnoCostumes } from '../theme/uno-costume.ts';
+import { pickAsset } from '../theme/assets.ts';
+import { subscribeTheme } from '../theme/state.ts';
+
+const rewardBones = { default: boneAsset, fireside: firesideBoneAsset } as const;
 
 const ns = 'http://www.w3.org/2000/svg';
 /** Parse only bundled, project-owned SVGs. No remote artwork or HTML enters this path. */
@@ -66,13 +72,19 @@ export function animatedUno() {
   // Figma head bounds in the 320px source, scaled to the retained 300px sit.
   for (const [key, value] of Object.entries({ x: 68.4375, y: 33.75, width: 150, height: 136.875 })) left.setAttribute(key, String(value));
   head.append(front, left);
-  sit.append(paths[0]!, tailSide, body, paws, beg, paths[6]!, paths[7]!, head);
+  const collar = group('uno-collar-layer');
+  const defaultCollar = group('uno-default-collar');
+  defaultCollar.append(paths[6]!, paths[7]!);
+  collar.append(defaultCollar);
+  sit.append(paths[0]!, tailSide, body, paws, beg, collar, head);
   svg.replaceChildren(sit);
   const rest = artwork(restAsset);
   rest.setAttribute('class', 'uno-rest');
   rest.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  attachUnoCostumes({ frontHead: front, leftHead: left.firstElementChild!, sitBody: collar, restRoot: rest.firstElementChild! });
   const bone = el('img', 'uno-reward');
-  Object.assign(bone, { src: boneAsset, alt: '', draggable: false });
+  Object.assign(bone, { src: pickAsset(rewardBones), alt: '', draggable: false });
+  const stopTheme = subscribeTheme(theme => { bone.src = pickAsset(rewardBones, theme); });
   node.append(svg, rest, bone);
   let nod: Animation | undefined;
   let flight: Animation | undefined;
@@ -93,6 +105,7 @@ export function animatedUno() {
     if (disposed) return;
     disposed = true;
     stopWatching();
+    stopTheme();
     reduced.removeEventListener('change', motionChanged);
     nod?.cancel(); flight?.cancel();
     node.getAnimations({ subtree: true }).forEach(animation => animation.cancel());

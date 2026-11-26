@@ -4,6 +4,11 @@ import { animatedUno } from '../uno.ts';
 import { createTunerFeedback, TUNER_FEEDBACK } from '../../practice/feedback.ts';
 import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
+import firesideBoneAsset from '../../assets/pitch-bone-fireside.svg';
+import { pickAsset } from '../../shared/theme/assets.ts';
+import { subscribeTheme } from '../../shared/theme/state.ts';
+
+const pitchBones = { default: boneAsset, fireside: firesideBoneAsset } as const;
 import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
 import type { PracticeStore, Settings } from '../../practice/state.ts';
 import { button, el, micStatusText, field, numberInput, pitchText, responsiveLabel, row, view, selectorPopover, volumePopover } from '../components.ts';
@@ -53,8 +58,9 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   }
   lane.append(el('div', 'lane-center'), el('span', 'lane-label lane-label--flat', 'FLAT'));
   const marker = el('img', 'pitch-marker');
-  Object.assign(marker, { src: boneAsset, width: 114, height: 30, alt: '' });
+  Object.assign(marker, { src: pickAsset(pitchBones), width: 114, height: 30, alt: '' });
   marker.hidden = true;
+  const stopBoneTheme = subscribeTheme(theme => { marker.src = pickAsset(pitchBones, theme); });
   lane.append(marker);
 
   const friend = el('div', 'tuner-friend tuner-friend--sleeping');
@@ -189,7 +195,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     wake();
   });
   onUnmount(node, () => {
-    unsubscribe(); cancelAnimationFrame(frame); dog.dispose();
+    unsubscribe(); stopBoneTheme(); cancelAnimationFrame(frame); dog.dispose();
     document.removeEventListener('visibilitychange', visibilityChanged);
   });
   return node;

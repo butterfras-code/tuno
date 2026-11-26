@@ -4,7 +4,12 @@ import type { AudioController } from '../../audio/controller.ts';
 import { noteName } from '../../music/pitch.ts';
 import { TONE_SOUNDS, type ToneSound } from '../../music/tone-sounds.ts';
 import boneAsset from '../../assets/pitch-bone.svg';
+import firesideBoneAsset from '../../assets/pitch-bone-fireside.svg';
 import micAsset from '../../assets/mic.svg';
+import { pickAsset } from '../../shared/theme/assets.ts';
+import { subscribeTheme } from '../../shared/theme/state.ts';
+
+const pitchBones = { default: boneAsset, fireside: firesideBoneAsset } as const;
 import { LIMITS, toneHz, pitchReading } from '../../practice/state.ts';
 import type { PracticeStore } from '../../practice/state.ts';
 import { button, el, micStatusText, field, select, pitchText, responsiveLabel, row, uno, view, volumePopover, selectorPopover } from '../components.ts';
@@ -32,8 +37,9 @@ export function createTone(store: PracticeStore, audio: AudioController) {
     lane.append(tick);
   }
   const marker = el('img', 'mini-marker');
-  Object.assign(marker, { src: boneAsset, alt: '' });
+  Object.assign(marker, { src: pickAsset(pitchBones), alt: '' });
   marker.hidden = true;
+  const stopBoneTheme = subscribeTheme(theme => { marker.src = pickAsset(pitchBones, theme); });
   lane.append(marker);
   mini.append(el('p', 'eyebrow', 'Uno hears...'), miniReadout, lane);
   const friend = uno('tone-friend mobile-only');
@@ -134,6 +140,7 @@ export function createTone(store: PracticeStore, audio: AudioController) {
   window.addEventListener('blur', sharedKeyboard.reset);
   document.addEventListener('visibilitychange', visibilityChanged);
   onUnmount(node, () => {
+    stopBoneTheme();
     sharedKeyboard.reset();
     cancelAnimationFrame(scrollFrame);
     mobileQuery.removeEventListener('change', onMobileChange);

@@ -58,7 +58,7 @@ footer.suite-footer {
   overflow-wrap: anywhere;
   text-align: left;
 }
-.suite-footer .information-dialog::backdrop { background: #342f2d66; }
+.suite-footer .information-dialog::backdrop { background: var(--color-backdrop); }
 .suite-footer .information-dialog h2 { margin: 0 0 16px; color: var(--color-accent); font: 700 26px/1.25 var(--font-heading); }
 .suite-footer .information-dialog p { margin: 16px 0; }
 .suite-footer .information-dialog a { color: var(--color-accent); }

@@ -3,9 +3,15 @@ import { captureTools, toolAdapter } from '../practice/sharing.ts';
 import { createAppHeader } from '../shared/ui/app-header.ts';
 import { toolPaths } from '../shared/ui/tuno-routes.ts';
 import tapHeadAsset from '../assets/uno-tap-head.svg';
+import tapHeadFiresideAsset from '../assets/uno-tap-head-fireside.svg';
 import micAsset from '../assets/mic.svg';
 import playAsset from '../assets/play.svg';
 import stopAsset from '../assets/stop.svg';
+import { pickAsset } from '../shared/theme/assets.ts';
+import { subscribeTheme } from '../shared/theme/state.ts';
+import { onUnmount } from '../shared/ui/unmount.ts';
+
+const tapHeads = { default: tapHeadAsset, fireside: tapHeadFiresideAsset } as const;
 import { createAreaNavigation } from '../shared/ui/area-navigation.ts';
 import { prepareOffline } from '../distribution/offline.ts';
 import { createAudioController } from '../audio/controller.ts';
@@ -119,8 +125,10 @@ export function mountApp(root: HTMLElement, store: PracticeStore) {
       compactControl('TEMPO', status);
       const tap = button('Tap tempo', audio.tapTempo);
       tap.classList.add('tool-tap');
-      iconLabel(tap, 'Tap tempo', tapHeadAsset);
-      tap.querySelector('img')!.classList.add('tap-head');
+      iconLabel(tap, 'Tap tempo', pickAsset(tapHeads));
+      const tapIcon = tap.querySelector('img')!;
+      tapIcon.classList.add('tap-head');
+      onUnmount(tap, subscribeTheme(theme => { tapIcon.src = pickAsset(tapHeads, theme); }));
       compactControl('TAP', tap);
       compactControl('SUBDIVISION', subdivPicker.trigger);
     }

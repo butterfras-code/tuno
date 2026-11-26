@@ -3,11 +3,11 @@
 .notes-workspace .mode-pill-selector .practice-mode-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 14px; background: var(--color-tint); }
 .mode-pill-selector .practice-mode-auto { display: contents; }
 .mode-pill-selector .practice-mode-choices .range-content-button.control { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 2px; width: 100%; min-height: 36px; margin: 0; padding: 4px; border: 0; border-radius: 11px; background: transparent; color: var(--color-ink); font-size: 14px; text-align: center; }
-.mode-pill-selector .practice-mode-choices > .range-content-button[aria-pressed='true'], .mode-pill-selector .challenge-mode-card:has(> [aria-pressed='true']) { background: var(--color-surface); box-shadow: 0 1px 4px #0002; }
+.mode-pill-selector .practice-mode-choices > .range-content-button[aria-pressed='true'], .mode-pill-selector .challenge-mode-card:has(> [aria-pressed='true']) { background: var(--color-surface); box-shadow: 0 1px 4px var(--color-shadow); }
 .mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control { gap: 4px; white-space: nowrap; }
 .mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='false'] { background: transparent; color: var(--color-ink); border-color: transparent; }
 .mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='false']:hover { background: color-mix(in srgb, var(--color-teal) 12%, transparent); }
-.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='true'] { background: var(--color-teal); color: var(--color-surface); border-color: transparent; box-shadow: 0 1px 4px #0002; }
+.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='true'] { background: var(--color-teal); color: var(--color-surface); border-color: transparent; box-shadow: 0 1px 4px var(--color-shadow); }
 .mode-pill-selector .challenge-correct-mark { font-size: 12px; line-height: 1; }
 .mode-pill-selector .practice-mode-choices .range-content-button:disabled { opacity: .5; }
 .mode-pill-selector .challenge-mode-card { display: flex; align-items: center; justify-content: center; gap: 2px; min-height: 36px; padding: 4px 2px; border: 0; border-radius: 11px; background: transparent; }
@@ -54,7 +54,7 @@
 }
 .auto-toggle:hover { border-color: var(--color-teal); }
 .auto-toggle input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
-.auto-toggle:has(input:checked) { background: var(--color-teal); border-color: var(--color-teal); color: var(--color-surface); box-shadow: 0 1px 4px #0002; }
+.auto-toggle:has(input:checked) { background: var(--color-teal); border-color: var(--color-teal); color: var(--color-surface); box-shadow: 0 1px 4px var(--color-shadow); }
 .auto-toggle:has(input:checked)::before { content: '✓'; font-size: 11px; line-height: 1; }
 .auto-toggle:has(input:focus-visible) { outline: 3px solid var(--color-accent); outline-offset: 2px; }
 

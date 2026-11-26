@@ -2,9 +2,11 @@ import { el } from './components.ts';
 import { prepareSuiteOffline } from '../../distribution/suite-offline.ts';
 import './app-header.css';
 import { createUpdateNotice } from '../../distribution/updates.ts';
+import { initTheme } from '../theme/state.ts';
 
 /** Shared presentation only; each application owns its navigation and state. */
 export function createAppHeader(title: string, subtitle: string) {
+  initTheme();
   const header = el('header', 'app-header suite-header');
   const tools = el('a', 'control suite-tools', '← Tools');
   tools.href = '/';

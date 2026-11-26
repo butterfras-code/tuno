@@ -1,0 +1,74 @@
+/* Suite-wide themes. Add new themes as html[data-theme='<id>'] blocks and register in registry.ts. */
+
+html[data-theme='fireside'] {
+  --color-canvas: #f5efe6;
+  --color-surface: #fffdf8;
+  --color-accent: #8c2f39;
+  --color-tint: #f3e2e3;
+  --color-ink: #2f2624;
+  --color-muted: #6d5f59;
+  --color-teal: #245e4b;
+  --color-destructive: #8f2d36;
+  --color-destructive-tint: #f8e3e4;
+  --color-destructive-line: #cc9498;
+  --color-line: #ddd0be;
+  --color-lavender: #b96e76;
+  --color-cream: #f4dfae;
+  --color-center: #5fa084;
+  --color-keycap-ink: #3c2f26;
+  --color-keycap-bg: #fff9ec;
+  --color-keycap-bg-hover: #f6e7cb;
+  --color-keycap-line: #c4ae8c;
+  --color-keycap-line-hover: #8c2f39;
+  --color-keycap-shadow: #d3bfa0;
+  --color-uno-window-sky: #2f435a;
+  --color-uno-window-hills: #eff4f6;
+  --color-uno-window-sky-night: #1f2d40;
+  --color-uno-window-hills-night: #dbe5ec;
+}
+
+/* Articulated Uno costume layers toggle purely via data-theme with zero DOM teardown. */
+html[data-theme='fireside'] .uno-costume--fireside { display: inline; }
+html[data-theme='fireside'] .uno-default-collar { opacity: 0; }
+
+/* Keep reindeer antlers clear of the metronome header buttons (including under prefers-reduced-motion). */
+html[data-theme='fireside'] .pulse-friend .uno > svg {
+  top: 14%;
+  height: 86%;
+}
+@media (max-width: 650px) {
+  html[data-theme='fireside'] .pulse-friend .uno > svg {
+    top: 16%;
+    height: 84%;
+  }
+}
+
+/* Decorative top garland: full-bleed, zero horizontal overflow, hidden during active fullscreen play. */
+.theme-garland {
+  display: none;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  line-height: 0;
+}
+html[data-theme='fireside'] .theme-garland--fireside {
+  display: block;
+  height: 30px;
+  margin-bottom: -14px;
+}
+.theme-garland svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+body:has(#home.is-playing) .theme-garland {
+  display: none;
+}
+@media (max-width: 700px) {
+  html[data-theme='fireside'] .theme-garland--fireside {
+    height: 28px;
+    margin-bottom: -10px;
+  }
+}
