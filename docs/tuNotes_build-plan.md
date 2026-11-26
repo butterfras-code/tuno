@@ -1,5 +1,7 @@
 # tuNotes staged build plan
 
+> Status reconciliation (2026-11-07): Stages 0–5 and subsequent solo input, sharing and storage work are implemented; Stage 6 teams/co-op/relay and Stage 7 Flow remain open. Stage 8 automation exists, but final candidate and physical/classroom acceptance remain open. [Microphone](validation/tunotes-microphone.md) and [fingerings](validation/tunotes-fingering.md) are implemented follow-ups, despite the original deferred scope. Historical stage snapshots below retain their original evidence.
+
 > Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
 
 Status: Stages 0–5 implemented as a local Practice, solo Challenge and Multi Player preview, 2026-09-27. Read the [product specification](tuNotes_spec.md) first. This plan authorizes no publication. The Stage 2 implementation and in-phase answer-entry update below are recorded in local commit `73eba41`; its validation is recorded separately from the original dropdown preview. Phase 5 adds turns and pairs through a separate Multi Player entry; Stages 6–8 remain unimplemented.
@@ -128,6 +130,8 @@ Exit evidence: Next becomes Current exactly once; only Current receives its hint
 
 ## Stage 8 — full candidate and release evidence
 
+CSV analysis export is deferred beyond the first complete release (product decision, 2026-11-25) and is excluded from this stage’s first-release gate. JSON backup/restore remains in scope.
+
 Extend `npm run verify` to build once and validate both apps plus cross-app worker/storage behavior, preserving existing tUno evidence. Update [release instructions](releasing.md), [release validation](release-validation.md), [distribution architecture](architecture.md) and README to describe implemented outputs only. Capture artifact hashes and exact source revision.
 
 Required physical acceptance: Chromebook/laptop keyboard and audio, Windows/macOS/Linux browser file-opening workflows, iPad/tablet multitouch and layout, iPhone/Android turn-based layout and file-opening limitations, and at least one classroom display. Use Chromium/Firefox automated coverage plus actual Safari/WebKit acceptance where available. Record device/browser versions, exact build, results, limitations and untested cases; emulation is not physical evidence. If a platform cannot open downloaded HTML through an ordinary browser workflow, document the supported hosted-offline path and the portable limitation rather than claiming universal file support.
@@ -141,7 +145,7 @@ Gate: all inherited first-release features are implemented; required checks pass
 | Initial specification area | Implementation reference | Stage |
 | --- | --- | --- |
 | Principles, written pitch, spelling, key signatures (§1–4) | Product spec §§1, 3 | 1–2 |
-| Practice, adaptive, recommendations, speed scope (§5–10) | §§2, 4–5, 12 | 1, 3; speed/mic later |
+| Practice, adaptive, recommendations, speed scope (§5–10) | §§2, 4–5, 12 | 1, 3; mic implemented later, speed deferred |
 | Clef/instrument/custom and human-readable presets (§11–15) | §3 | 1–2 |
 | Challenge, scoring, qualification, player presets (§16–22) | §§4, 6 | 4–5 |
 | Co-op, teams, relay, scoreboard (§23–25) | §6 | 6 |
@@ -149,7 +153,7 @@ Gate: all inherited first-release features are implemented; required checks pass
 | Flow, hints, count-in, tUno suggestion (§31–37) | §8 | 7 |
 | Optional rests (§38) | §1 | Deferred |
 | Persistence, profiles, backup, loss recovery (§39–45) | §§9–10 | 2, 8 |
-| Reuse, architecture and separation (§46–47) | §§11–12 | 0, 7; mic later |
+| Reuse, architecture and separation (§46–47) | §§11–12 | 0, 7; mic implemented later |
 | Non-goals and complete outcome (§48–49) | §§1, 12 | 8 |
 
 ## Review decisions and risk controls

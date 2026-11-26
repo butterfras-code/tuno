@@ -927,6 +927,8 @@ Should preserve enough structured information to reimport tuNotes history and co
 
 ### CSV
 
+> Scope decision (2026-11-25): CSV analysis export is deferred beyond the first complete release. The original use cases below remain future scope; current JSON backup/restore does not implement this analysis format.
+
 Human-readable analysis export.
 
 Useful for:
