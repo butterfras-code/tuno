@@ -132,6 +132,7 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
     letter(letter: Letter, accidental: Accidental = 0) {
       if (preset) submit({ letter, accidental });
     },
+    hint(text = 'Tap a note to answer.') { preview.textContent = text; },
     focused(button: HTMLButtonElement) { const value = values.get(button); if (value) submit(value); },
     focus() { buttons.find(enabled)?.focus(); },
   };

@@ -134,11 +134,13 @@ export function practiceView(store: NotesStore, shared = false) {
   options.append(dataUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
+  const playHeader = el('div','practice-play-header');
   const heading = el('h2'); heading.tabIndex = -1;
-  const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const beats = el('span','practice-beats');
+  playHeader.append(heading,beats);
+  const counts = el('p', 'counts'); counts.id = 'practice-counts';
   const stats = el('span');
-  counts.append(beats,stats);
+  counts.append(stats);
   const staff = el('div', 'staff-panel');
   const answers = noteEntry((answer, token) => submit(answer, token), {
     fingering: true, onMethodChange: () => resetInput(),
@@ -226,7 +228,8 @@ export function practiceView(store: NotesStore, shared = false) {
   const updateBeat = (s: Practice) => {
     beats.hidden = !s.auto;
     if (s.auto) {
-      beats.replaceChildren(document.createTextNode(s.countingIn ? 'Count in ' : 'Beat '));
+      beats.dataset.countingIn = String(s.countingIn);
+      beats.replaceChildren(el('span','practice-beats-label',s.countingIn ? 'Count in' : 'Beat'));
       for (let i = 0; i < s.beats; i++) {
         const mark = el('b','',String(i+1)); mark.setAttribute('aria-current',String(i === s.beat));
         beats.append(mark);
@@ -240,6 +243,7 @@ export function practiceView(store: NotesStore, shared = false) {
     const waiting = session instanceof Challenge && session.phase !== 'playing';
     const isChallenge = session instanceof Challenge;
     scene.node.hidden = !isChallenge;
+    playHeader.hidden = isChallenge;
     counts.hidden = isChallenge; heading.hidden = isChallenge;
     answers.node.hidden = waiting || isChallenge && paused; keyboardHelp.hidden = answers.node.hidden;
     feedback.hidden = isChallenge && (waiting || paused);
@@ -256,22 +260,28 @@ export function practiceView(store: NotesStore, shared = false) {
     }
     pause.textContent = paused ? 'Resume' : 'Pause';
     soundButton.hidden = !session.auto;
-    soundButton.textContent = auto.sound ? 'Metronome on' : 'Metronome off';
+    soundButton.setAttribute('aria-label',auto.sound ? 'Metronome on' : 'Metronome off');
     soundButton.setAttribute('aria-pressed',String(auto.sound));
     updateBeat(session);
     stats.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = promptIdentity(session);
     if (renderedPrompt !== identity) {
       inputSince = performance.now() - (session.auto ? session.activeMs - session.inputStartMs : 0);
-      renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature,session.currentEvent?.written));
-      const upcoming = session.upcomingEvent;
-      if (upcoming && !session.countingIn) {
-        const next = upcoming.pitch;
-        const preview = renderStaff(next,clefForPitch(session.preset,next),session.preset.key,session.preset.keyless,store.data.configuration.showKeySignature,upcoming.written);
+      renderedPrompt = identity;
+      const clef = clefForPitch(session.preset, session.pitch);
+      const upcoming = session.upcomingEvent && !session.countingIn ? session.upcomingEvent : undefined;
+      const upcomingClef = upcoming ? clefForPitch(session.preset, upcoming.pitch) : undefined;
+      const sameClefUpcoming = upcoming && upcomingClef === clef ? { pitch: upcoming.pitch, clef: upcomingClef, value: upcoming.written } : undefined;
+      staff.replaceChildren(renderStaff(session.pitch, clef, session.preset.key, session.preset.keyless, store.data.configuration.showKeySignature, session.currentEvent?.written, sameClefUpcoming));
+      if (upcoming && upcomingClef && upcomingClef !== clef) {
+        const preview = renderStaff(upcoming.pitch, upcomingClef, session.preset.key, session.preset.keyless, store.data.configuration.showKeySignature, upcoming.written);
         preview.classList.add('upcoming-note'); preview.setAttribute('aria-label','Next note, ' + preview.getAttribute('aria-label'));
         staff.append(preview);
       }
     }
+    const countingInLocked = Boolean(session.auto && session.countingIn && !session.inputOpen);
+    staff.classList.toggle('staff-counting-in', countingInLocked);
+    answers.hint(countingInLocked ? 'Count in — get ready…' : undefined);
     answerNotice.mount(staff.querySelector('svg')!);
     if (paused || waiting) answerNotice.clear();
     staff.hidden = !isChallenge && paused;
@@ -361,16 +371,19 @@ export function practiceView(store: NotesStore, shared = false) {
   const startButton = button('Start Practice', start); startButton.disabled = !selected();
   presetsUI.onChange(() => { startButton.disabled = !selected(); refreshPreferences(); refreshSettingsSummary(); });
   startButton.classList.add('control--primary'); setupUI.action(startButton);
-  const soundButton = button('Metronome', () => {
+  const soundButton = button('', () => {
     auto = {...auto,sound:!auto.sound}; saveAuto(); refreshPacing();
     if (auto.sound) enableAudio(); else stopClick();
     render();
   });
+  soundButton.classList.add('practice-sound-toggle');
+  const soundDot = el('span','practice-sound-dot'); soundDot.setAttribute('aria-hidden','true');
+  soundButton.append(soundDot,el('span','','Metronome'));
   const controls = el('div', 'control-row'); controls.append(pause, soundButton, continueButton, button('Finish', finish));
   const keyboardHelp = el('details', 'practice-help');
   keyboardHelp.append(el('summary','','How to answer'),el('p', 'muted keyboard-help', 'Strings: F/D/S/A = fingers 1–4 (index to little finger). Fingering: hold J/K/L (horn: E/W/Q) for valves 1/2/3, Space = Open, V = horn trigger. Note names: A–G = natural · hold ↑ + letter = ♯ · hold ↓ + letter = ♭ · hold → + letter = ♮.'));
   controls.append(keyboardHelp);
-  play.append(heading, counts, scene.node, staff, feedback, answers.node, controls);
+  play.append(playHeader, counts, scene.node, staff, feedback, answers.node, controls);
   const resultControls = el('div', 'control-row result-controls');
   const retry = button('Retry',start); retry.classList.add('control--primary');
   resultControls.append(retry, button('Edit setup', showSetup));
