@@ -1,3 +1,4 @@
+import { checkAutoEvery } from "./notes-auto-every-scenarios.mjs";
 import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -10,6 +11,7 @@ const browser = await ({chromium,firefox})[process.env.TUNO_BROWSER || 'chromium
 const host = await hostBuild();
 const errors = [];
 try {
+  await checkAutoEvery(browser,host);
   for (const [width,height] of [[320,667],[375,667],[390,844],[1024,768],[1366,600]]) {
     const page = await browser.newPage({viewport:{width,height},hasTouch:true});
     page.on('pageerror',error => errors.push(error.message));
@@ -21,8 +23,8 @@ try {
     assert.equal(actions.length,2); assert.equal(actions[0].width,actions[1].width); assert.equal(actions[0].height,actions[1].height); assert.equal(actions[0].top,actions[1].top);
     const modes = page.getByRole('group',{name:'Practice Mode',exact:true});
     assert.equal(await modes.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
-    assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),true);
-    assert.equal(await modes.getByRole('combobox').count(),0,'Auto Every timing stays deferred');
+    assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),false);
+    assert.equal(await modes.getByRole('combobox').count(),0,'Timing controls appear only when Auto Every is selected');
     await modes.getByRole('button',{name:'Correct Only',exact:true}).click();
     assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await readNotesData(page, data => data.configuration.continueAfter),'correct');

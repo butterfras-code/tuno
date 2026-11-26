@@ -23,6 +23,7 @@ export const keyboardGuidanceKey = 'tunotes:keyboard-accidental-guidance';
 export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => void, options: {
   concurrentPointers?: boolean;
   fingering?: boolean;
+  timedPrompts?: () => boolean;
   currentPitch?: () => WrittenPitch | undefined;
   onMethodChange?: () => void;
   guidance: () => boolean;
@@ -295,7 +296,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       side.hidden = config?.instrument !== 'horn-f';
     }
     if (!supported && method === 'fingering') method = 'names';
-    microphone.update(token, locked);
+    microphone.update(token, locked, options.timedPrompts?.() ?? false);
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     const primary = pitch && config?.pitches[chromatic(pitch)]?.[0];

@@ -65,8 +65,9 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
       policy.clear(); hold.value = 0; pitch.textContent = '—'; setCents(null);
     },
     enable(value: boolean) { if (active && !value) stop(); active = value; node.hidden = !value; },
-    update(next: PromptToken, disabled: boolean) {
+    update(next: PromptToken, disabled: boolean, timed: boolean) {
       const key = `${next.session}:${next.prompt}`;
+      if (timed && !disabled && (identity !== key || locked)) policy.beginWindow();
       if (identity !== key || disabled) { policy.reset(); hold.value = 0; }
       identity = key; token = next; locked = disabled;
     },

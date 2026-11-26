@@ -19,10 +19,14 @@ export class MicrophoneHold {
   private since = 0;
   private last = -Infinity;
   private submitted: number | undefined;
+  private sounding: number | undefined;
+  /** A timed prompt needs an attack inside its own window, including after count-in. */
+  beginWindow() { this.submitted = this.sounding; this.reset(); }
   reset() { this.note = undefined; this.last = -Infinity; }
-  clear() { this.reset(); this.submitted = undefined; }
+  clear() { this.reset(); this.submitted = undefined; this.sounding = undefined; }
   update(now: number, frequency: number | null, offset: number, enabled = true) {
     const reading = frequency !== null && Number.isFinite(frequency) && frequency > 0 ? identifyPitch(frequency, 440, offset) : null;
+    this.sounding = reading?.writtenNote;
     if (!reading || reading.writtenNote !== this.submitted) this.submitted = undefined;
     // Allow floating-point roundoff at the inclusive cents boundary.
     if (!enabled || !reading || Math.abs(reading.cents) > MIC_TOLERANCE_CENTS + 1e-8) {

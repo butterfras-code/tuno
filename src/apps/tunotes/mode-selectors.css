@@ -14,3 +14,33 @@
   .mode-pill-selector .practice-mode-choices .challenge-mode-card > .control { font-size: 12px; }
   .mode-pill-selector .challenge-mode-card { gap: 2px; padding-inline: 2px; }
 }
+
+.mode-pill-selector .practice-mode-auto.auto-selected {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .25em;
+  border-radius: 11px; padding: 4px; background: var(--color-surface); box-shadow: 0 1px 4px #0002;
+}
+.notes-workspace .practice-mode-choices:has(.auto-selected) { grid-template-columns: 1fr minmax(0, 2.8fr) 1fr; }
+.mode-pill-selector .auto-selected .range-content-button.control { width: auto; padding: 0 2px; min-height: 26px; }
+.auto-prefs, .practice-beats { display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: .4em; }
+.auto-fields { display: contents; }
+.auto-fields label { white-space: nowrap; }
+.auto-fields input, .auto-fields select {
+  border: 0; border-bottom: 1px solid var(--color-muted); border-radius: 0;
+  background: transparent; color: var(--color-ink); font: inherit;
+}
+.auto-fields input { width: 4ch; appearance: textfield; text-align: center; }
+.auto-fields input::-webkit-inner-spin-button { appearance: none; }
+.auto-selected .auto-fields select { padding: 3px 0; }
+.auto-selected { font: 600 13px/1.3 var(--font-body); }
+.auto-prefs label { display: inline-flex; align-items: center; min-height: 44px; gap: 4px; }
+.practice-beats { display: flex; width: fit-content; margin-bottom: 2px; font-size: clamp(15px, 1.4vw, 24px); font-weight: bold; color: var(--color-ink); }
+.practice-beats[hidden] { display: none; }
+.practice-beats b { text-align: center; min-width: 1.55em; border-radius: 50%; }
+.practice-beats [aria-current=true] { background: var(--color-ink); color: var(--color-surface); }
+.staff-panel:has(.upcoming-note) { grid-template-columns: 1fr 1fr; }
+.staff-panel .upcoming-note { color: var(--color-muted); }
+.auto-fields[hidden], .auto-prefs[hidden] { display: none; }
+.auto-duration { position: relative; border-bottom: 1px solid var(--color-muted); }
+.auto-duration > span { display: inline-flex; align-items: center; gap: 2px; }
+.auto-duration select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.auto-duration:focus-within { outline: 2px solid var(--color-teal); outline-offset: 2px; }
