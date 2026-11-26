@@ -1,6 +1,6 @@
 # tUno design direction
 
-Status: approved design direction; implementation and interaction testing pending.  
+Status (2026-11-07): approved design direction, with practice shell, audio, tuner rewards and metronome animation implemented. Physical-device/classroom acceptance remains open. This document preserves the original design decisions; [design handoff](design-handoff.md) and [architecture](architecture.md) describe implementation.
 Decision date: 2026-09-19.  
 Approved by: Justin Butterfras, project founder.
 
@@ -10,7 +10,7 @@ This document records the UI and character decisions made during the first tUno 
 
 Read alongside [the charter](charter.md), [distribution architecture](architecture.md), and [prototype plan](prototype-plan.md). Those documents continue to own product commitments, delivery formats, and validation milestones. This document owns the agreed visual identity and interaction direction; it does not claim a working app or verified browser behavior.
 
-Preserve free core tools, no required account, on-device microphone processing, offline operation, inexpensive-school-hardware support, keyboard access, and reduced-motion support. Hosted and portable HTML releases must share the same core musical behavior. Teacher check-ins remain a follow-on workflow, not a prerequisite for ordinary practice.
+Preserve free core tools, no required account, on-device microphone processing, offline operation, inexpensive-school-hardware support, keyboard access, and reduced-motion support. Current delivery is the hosted PWA with offline caching; portable HTML releases are retired. Teacher check-ins remain a follow-on workflow, not a prerequisite for ordinary practice.
 
 ## 1. Identity and personality
 
@@ -164,7 +164,9 @@ Original collages supplied by Justin are included unchanged:
 
 These are character reference assets, not runtime images. Keep their original filenames and retain provenance to the founder. Inclusion in this design bundle does not establish a new license for the photos or project.
 
-## 10. Next implementation steps
+## 10. Original implementation sequence (historical)
+
+The shell, bundled artwork, tuner/reward state machine, piano controls and synchronized metronome are implemented. This sequence records the original plan, not an outstanding task list. Physical-device, classroom and accessibility acceptance still require evidence.
 
 1. Refine center-band contrast and retain the corrected symmetric pitch gradient.
 2. Export/version approved Uno vectors and screen references in the repo so visual preservation does not depend solely on an external Figma file.
@@ -174,4 +176,4 @@ These are character reference assets, not runtime images. Keep their original fi
 6. Synchronize Uno’s pulse and numbered beats with metronome audio, including compound meter.
 7. Complete responsive, permission, interruption, and reduced-motion states; validate on the devices named in the prototype plan.
 
-This ZIP contains the decision document and original photos. It does not contain a Figma export or application code. Extract its `docs/` tree into the repository, add a link to this document from the project README, and commit it with the reference photos.
+The original design bundle supplied this decision document and reference photos. They are now retained in the repository; the original bundle-import instructions are complete.

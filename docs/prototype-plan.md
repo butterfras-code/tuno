@@ -1,10 +1,12 @@
 # Prototype plan
 
+> History note (2026-11-07): implementation snapshots below retain their original scope and results. Later work delivered tuner rewards, metronome tail animation and background audio; see [design handoff](design-handoff.md) and [background-audio evidence](validation/metronome-background.md). Earlier “next” and “not implemented” statements are not a current backlog. Teacher check-ins and physical acceptance remain open.
+
 > Distribution update: standalone HTML releases are retired. Current delivery uses installable PWAs with verified offline caching; see [distribution architecture](architecture.md). Portable-file requirements and measurements below describe the earlier format and do not require new portable builds.
 
 ## Purpose
 
-Turn feasibility questions into a small playable experiment and recorded evidence. This document tracks proposed work and implementation evidence. The integrated tuner/reference/metronome prototype, both builds, hosted offline support, and release controls are implemented. Physical-device acceptance remains pending; historical implementation evidence below records each stage.
+Turn feasibility questions into a small playable experiment and recorded evidence. This document tracks proposed work and implementation evidence. The integrated tuner/reference/metronome prototype, hosted PWA distribution, offline support, and release controls are implemented. Physical-device acceptance remains pending; historical implementation evidence below records each stage.
 
 ## Implementation sequence
 
