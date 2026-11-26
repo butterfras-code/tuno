@@ -47,7 +47,15 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   const again = button('Replay',() => replay());
   const skip = button('Skip',() => enter(true));
   const actions = el('div','control-row preview-actions'); actions.append(navigation,again,skip);
-  const controls = el('div','activity-setup-toolbar preview-toolbar'); controls.append(actions,start);
+  const controls = el('div','activity-setup-toolbar preview-toolbar');
+  if (onBack) {
+    const back = button('',() => { if (disposed) return; dispose(); onBack(); });
+    back.classList.add('preview-back');
+    const arrow = el('span','','← '); arrow.setAttribute('aria-hidden','true');
+    back.append(arrow, document.createTextNode('Back to setup'));
+    controls.append(back);
+  }
+  controls.append(start);
   const caught = () => {
     if (disposed) return;
     toy.hidden = true; dog.pose('happy'); node.classList.remove('preview-introducing');
@@ -107,15 +115,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
     bounce();
   }
   again.hidden = true;
-  header.append(heading);
-  if (onBack) {
-    const back = button('',() => { if (disposed) return; dispose(); onBack(); });
-    back.classList.add('preview-back');
-    const arrow = el('span','','← '); arrow.setAttribute('aria-hidden','true');
-    back.append(arrow, document.createTextNode('Back to setup'));
-    header.append(back);
-  }
-  header.append(caption);
+  header.append(heading,actions,caption);
   node.append(controls,header,status,scene);
   media.addEventListener('change',replay);
   return { node, dispose, start: () => { heading.focus(); replay(); } };

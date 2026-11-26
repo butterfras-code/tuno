@@ -24,22 +24,23 @@ try {
       if (height >= 768 && ['playing','paused'].includes(state)) assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),true,`${width} ${state}: page should fit`);
     };
     await check('setup');
+    const setupChoose = await page.getByRole('button',{name:'Choose Notes',exact:true}).boundingBox();
     const setupStart = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
     await page.waitForSelector('.note-preview');
+    const introBack = await page.getByRole('button',{name:'Back to setup',exact:true}).boundingBox();
     const introStart = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
     for (const coordinate of ['x','y','width','height']) {
+      assert.ok(Math.abs(introBack[coordinate] - setupChoose[coordinate]) < 1,`${width}: intro Back to setup replaces Choose Notes ${coordinate}`);
       assert.ok(Math.abs(introStart[coordinate] - setupStart[coordinate]) < 1,`${width}: intro Start Practice keeps setup ${coordinate}`);
     }
     const reviewButtons = await page.locator('.preview-actions button:visible').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().toJSON()));
     assert.equal(reviewButtons.length,3);
     for (const bounds of reviewButtons) {
-      assert.ok(Math.abs(bounds.y - introStart.y) < 1 && bounds.right <= introStart.x,`${width}: review controls align to the left of Start Practice`);
+      assert.ok(Math.abs(bounds.y - reviewButtons[0].y) < 1 && bounds.height >= 44 && bounds.y >= introStart.y + introStart.height - 1,`${width}: review controls share a touch-safe row below toolbar`);
     }
     assert.equal(await page.locator('#home').evaluate(node => node.classList.contains('is-playing')),false,`${width}: intro keeps the regular page layout`);
     const introBounds = await page.locator('.note-preview').boundingBox();
-    const backBounds = await page.getByRole('button',{name:'Back to setup',exact:true}).boundingBox();
-    assert.ok(backBounds && backBounds.height >= 44 && backBounds.y >= introStart.y + introStart.height - 1,`${width}: Back to setup is touch-safe below toolbar`);
     assert.equal(await page.locator('.preview-caption').isVisible(),true,`${width}: intro guidance caption is visible`);
     const activityBounds = await page.locator('#notes-practice').boundingBox();
     assert.ok(introBounds.x >= activityBounds.x && introBounds.y >= activityBounds.y
