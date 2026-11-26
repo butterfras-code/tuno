@@ -58,7 +58,7 @@ export function microphoneInput(
   const policy = new MicrophoneHold();
   let attackToken: PromptToken | undefined;
   let active = false, locked = true, token: PromptToken | undefined, identity = '', lastFrame = -1;
-  let lastLive = false, lastRequesting = false, lastError = '';
+  let lastLive = false, lastRequesting = false, lastError = '', lastBlocked = false;
   const getSnapshot = (): MicSnapshot => ({
     live: lastLive,
     requesting: lastRequesting,
@@ -77,19 +77,22 @@ export function microphoneInput(
       : lastLive
         ? locked
           ? 'Mic is live — play a note to test. Scoring begins when you start.'
-          : `Hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents. A4 = 440 Hz.`
+          : lastBlocked
+            ? 'Note counted — change note or release to play again.'
+            : `Hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents. A4 = 440 Hz.`
         : `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`);
     if (status.textContent !== message) status.textContent = message;
   };
   const disarm = () => { policy.reset(); hold.value = 0; };
-  const stop = () => { policy.clear(); hold.value = 0; audio.stop(); };
+  const stop = () => { lastBlocked = false; policy.clear(); hold.value = 0; audio.stop(); };
   const toggleCapture = () => { if (active) audio.toggle(); };
   const setTransposition = (offset: string) => {
     if (!microphoneTranspositions.some(item => String(item.offset) === offset)) return;
     select.value = offset;
-    policy.clear(); hold.value = 0;
+    lastBlocked = false; policy.clear(); hold.value = 0;
     manualTransposition = select.value;
     try { localStorage.setItem('tunotes:mic-transposition', select.value); } catch { /* Session-only preference. */ }
+    updateStatusMessage();
     notify();
   };
   toggle.addEventListener('click', toggleCapture);
@@ -100,12 +103,12 @@ export function microphoneInput(
     lastRequesting = state.micStatus === 'requesting';
     lastError = state.audioError;
     toggle.setAttribute('aria-label', live ? 'Stop mic' : 'Start mic'); toggle.title = live ? 'Stop mic' : 'Start mic'; toggle.setAttribute('aria-pressed', String(live));
-    if (!live) { policy.clear(); pitch.textContent = '—'; pitch.title = 'Written pitch'; hold.value = 0; setCents(null); }
-    updateStatusMessage();
-    if (!live) { notify(); return; }
-    if (state.pitchUpdatedAt === lastFrame) { notify(); return; }
+    if (!live) { lastBlocked = false; policy.clear(); pitch.textContent = '—'; pitch.title = 'Written pitch'; hold.value = 0; setCents(null); }
+    if (!live || state.pitchUpdatedAt === lastFrame) { updateStatusMessage(); notify(); return; }
     lastFrame = state.pitchUpdatedAt;
-    const result = policy.update(state.pitchUpdatedAt, state.micStatus === 'listening' ? state.liveHz : null, Number(select.value), active && !locked && !document.hidden);
+    const result = policy.update(state.pitchUpdatedAt, state.micStatus === 'listening' ? state.liveHz : null, Number(select.value), active && !locked && !document.hidden, state.micStatus === 'no-signal');
+    lastBlocked = result.blocked;
+    updateStatusMessage();
     if (result.progress === 0) attackToken = token;
     hold.value = result.progress; setCents(result.reading?.cents ?? null);
     pitch.textContent = result.reading ? `${noteName(result.reading.writtenNote)} · ${Math.round(result.reading.cents)}¢` : '—';
@@ -118,13 +121,14 @@ export function microphoneInput(
   return { node, stop, disarm, toggle: toggleCapture, setTransposition, getSnapshot, focus: () => toggle.focus(),
     setLocked(value: boolean) {
       locked = value;
-      if (value) { policy.reset(); hold.value = 0; }
+      if (value) { lastBlocked = false; policy.reset(); hold.value = 0; }
       updateStatusMessage();
       notify();
     },
     setInstrument(instrument: string | undefined) {
       select.value = String(instruments.find(item => item.id === instrument)?.transpose ?? manualTransposition);
-      policy.clear(); hold.value = 0; pitch.textContent = '—'; setCents(null);
+      lastBlocked = false; policy.clear(); hold.value = 0; pitch.textContent = '—'; setCents(null);
+      updateStatusMessage();
       notify();
     },
     enable(value: boolean) { if (active && !value) stop(); active = value; node.hidden = !value; notify(); },
