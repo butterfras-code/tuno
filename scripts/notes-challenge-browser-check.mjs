@@ -114,6 +114,7 @@ async function run(page,url,label) {
   assert.match(await page.locator('.challenge-interlude .muted').textContent(),/Correct Only/);
   await button(page,'Ready').click();await page.clock.runFor(3050);
   const retryTarget = await answer();
+  const retryTransform = await page.locator('.staff-panel .notehead').getAttribute('transform');
   const wrongKey = retryTarget === 'a' ? 'b' : 'a';
   await page.keyboard.press(wrongKey);
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct \/ 1 attempts/);
@@ -122,10 +123,10 @@ async function run(page,url,label) {
   await page.keyboard.press(retryTarget);
   assert.match(await page.locator('#practice-counts').textContent(),/0 correct \/ 1 attempts/);
   await page.clock.runFor(150);
-  assert.equal(await answer(),retryTarget,'Correct Only keeps the missed note in Challenge');
+  assert.equal(await page.locator('.staff-panel .notehead').getAttribute('transform'),retryTransform,'Correct Only keeps the missed note in Challenge');
   await page.keyboard.press(retryTarget);
   assert.match(await page.locator('#practice-counts').textContent(),/1 correct \/ 2 attempts/);
-  assert.notEqual(await answer(),retryTarget,'Correct Only advances immediately on correct answer in Challenge');
+  assert.notEqual(await page.locator('.staff-panel .notehead').getAttribute('transform'),retryTransform,'Correct Only advances immediately on correct answer in Challenge');
   await button(page,'Finish').click();
   await page.locator('.round-details summary').click();
   assert.match(await page.locator('.round-details').textContent(),/Correct Only/);

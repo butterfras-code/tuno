@@ -28,6 +28,7 @@ import { Practice, PressGate } from '../engine/practice.ts';
 import type { ContinueAfter, PromptToken } from '../engine/practice.ts';
 import { NotesProgress } from '../engine/progress.ts';
 import { noteEntry, keyboardGuidanceKey } from './note-entry.ts';
+import { startInputControl } from './start-input-control.ts';
 import { renderStaff } from './staff.ts';
 function button(text: string, action: () => void) {
   const node = el('button', 'control', text); node.type = 'button'; node.addEventListener('click', action); return node;
@@ -127,10 +128,17 @@ export function practiceView(store: NotesStore, shared = false) {
   }
   refreshPreferences(); refreshSettingsSummary();
   let shownPresetId = store.data.configuration.presetId;
+  const answers = noteEntry((answer, token) => submit(answer, token), {
+    fingering: true, shared, onMethodChange: () => resetGestures(),
+    currentPitch: () => session?.inputPitch, timedPrompts: () => Boolean(session?.auto),
+    guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
+    disableGuidance: () => setGuidance(false),
+  });
+  const syncSetupInput = () => { const preset = selected(); if (preset) answers.syncPreset(preset); };
   const dataUI = localData(store, () => {
     showSetup(); guestContexts.clear(); guestAdaptive = false; presetsUI.refresh();
-    pace = savedPace(); auto = store.data.configuration.auto ?? defaultAuto; refreshPacing(); refreshPreferences();
-  },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); });
+    pace = savedPace(); auto = store.data.configuration.auto ?? defaultAuto; refreshPacing(); refreshPreferences(); syncSetupInput();
+  },() => { if (store.data.configuration.presetId !== shownPresetId) { shownPresetId = store.data.configuration.presetId; presetsUI.refresh(); } refreshPreferences(); syncSetupInput(); });
   options.append(dataUI.node);
   rulesUI.onChange(refreshSettingsSummary);
   const play = el('section','practice-play'); play.hidden = true;
@@ -142,12 +150,6 @@ export function practiceView(store: NotesStore, shared = false) {
   const stats = el('span');
   counts.append(stats);
   const staff = el('div', 'staff-panel');
-  const answers = noteEntry((answer, token) => submit(answer, token), {
-    fingering: true, onMethodChange: () => resetInput(),
-    currentPitch: () => session?.inputPitch, timedPrompts: () => Boolean(session?.auto),
-    guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
-    disableGuidance: () => setGuidance(false),
-  });
   const answerNotice = answers.feedback;
   const feedback = answers.status; feedback.id = 'feedback';
   const gate = new PressGate();
@@ -176,8 +178,8 @@ export function practiceView(store: NotesStore, shared = false) {
   const rewardSummary = resultReward();
   let resultRecorded = false;
   const scene = challengeScene({
-    ready: () => { if (session instanceof Challenge) { session.ready(); resetInput(); render(); scene.focus(); } },
-    resume: () => { session?.resume(); resetInput(); inputSince = performance.now(); render(); },
+    ready: () => { if (session instanceof Challenge) { session.ready(); resetGestures(); render(); scene.focus(); } },
+    resume: () => { session?.resume(); resetGestures(); inputSince = performance.now(); render(); },
     retry: () => start(), edit: () => showSetup(),
   });
   let presentedState = '';
@@ -186,8 +188,11 @@ export function practiceView(store: NotesStore, shared = false) {
   const coaching = el('p'); coaching.id = 'recommendation';
   const accuracy = (s: Practice) => s.accuracy === null ? '—' : `${Math.round(s.accuracy * 100)}%`;
   const showSetup = () => {
+    const hadActive = Boolean(session || introduction);
     stopClick(); setupUI.select('notes');
-    closePreview(); answerNotice.clear(); if (session) { session.finish(); store.endRound(session); } session = undefined; resetInput();
+    closePreview(); answerNotice.clear(); if (session) { session.finish(); store.endRound(session); } session = undefined;
+    if (hadActive) resetInput(); else resetGestures();
+    answers.lockForSetup(); answers.setSelectorDisabled(false); syncSetupInput();
     presetsUI.companion.prepend(dog.node); play.insertBefore(staff,feedback); scene.node.hidden = true; node.classList.remove('challenge-active'); treatProgress.hidden = true; treatUntil = 0;
     node.dataset.screen = 'setup';
     setup.hidden = false; play.hidden = true; result.hidden = true; dog.pose('rest'); dog.look(false); dog.tail(0, false); if (!node.hidden) picker.focus();
@@ -245,7 +250,8 @@ export function practiceView(store: NotesStore, shared = false) {
     scene.node.hidden = !isChallenge;
     playHeader.hidden = isChallenge;
     counts.hidden = isChallenge; heading.hidden = isChallenge;
-    answers.node.hidden = waiting || isChallenge && paused; keyboardHelp.hidden = answers.node.hidden;
+    answers.node.hidden = isChallenge && paused; keyboardHelp.hidden = waiting || isChallenge && paused;
+    answers.setSelectorDisabled(session instanceof Challenge && !paused && session.phase === 'countdown');
     feedback.hidden = isChallenge && (waiting || paused);
     controls.hidden = false; pause.hidden = isChallenge && paused;
     if (session instanceof Challenge) {
@@ -253,7 +259,7 @@ export function practiceView(store: NotesStore, shared = false) {
       const state = `${session.session}:${paused ? 'paused' : session.phase}`;
       if (presentedState !== state) {
         presentedState = state;
-        if (!paused && !waiting) { inputSince = performance.now(); resetInput(); }
+        if (!paused && !waiting) { inputSince = performance.now(); resetGestures(); }
         dog.pose(paused ? 'rest' : waiting ? 'wag' : progress.pose);
         dog.look(false); dog.tail(0,!paused && waiting);
       }
@@ -329,13 +335,14 @@ export function practiceView(store: NotesStore, shared = false) {
   };
   const start = async () => {
     if (startButton.disabled) return;
+    startControl.close();
     if (activity === 'practice' && pace === 'auto') {
       if (!automatic.bpm.reportValidity()) { automatic.bpm.focus(); return; }
       enableAudio();
     }
-    startButton.disabled = true;
+    startControl.setDisabled(true);
     await store.refresh();
-    startButton.disabled = false;
+    startControl.setDisabled(false);
     if (disposed) return;
     const preset = selected(); if (!preset) return;
     const rules = activity === 'challenge' ? rulesUI.read() : undefined;
@@ -352,7 +359,7 @@ export function practiceView(store: NotesStore, shared = false) {
       session = rules ? new Challenge(preset, rules, () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning }) : new Practice(preset, pace === 'click', () => performance.now(), Math.random, { inputFingering: () => answers.inputFingering, continueAfter: pace, auto, adaptive: useAdaptive, notes: context?.notes, learning: context?.learning });
       store.beginRound(session, profileId);
       session.preview = exposure;
-      progress = new NotesProgress(rules ? store.challengeBenchmark(preset,useAdaptive,rules) : store.benchmark(preset,useAdaptive)); resetInput(); treatUntil = 0;
+      progress = new NotesProgress(rules ? store.challengeBenchmark(preset,useAdaptive,rules) : store.benchmark(preset,useAdaptive)); resetGestures(); treatUntil = 0;
       node.classList.toggle('challenge-active', Boolean(rules));
       if (rules) { scene.notation.append(staff); scene.dogSlot.prepend(dog.node); }
       else { play.insertBefore(staff,feedback); dogHome.prepend(dog.node); }
@@ -363,14 +370,18 @@ export function practiceView(store: NotesStore, shared = false) {
     };
     if (showIntro && activity === 'practice') {
       node.dataset.screen = 'intro';
-      setup.hidden = true; result.hidden = true; play.hidden = true; dog.node.hidden = true; node.classList.add('previewing'); resetInput();
+      setup.hidden = true; result.hidden = true; play.hidden = true; dog.node.hidden = true; node.classList.add('previewing'); resetGestures();
       introduction = notePreview({ ...preset, pool: useAdaptive ? activePool(preset,context?.learning) : preset.pool },begin,store.data.configuration.showKeySignature,showSetup);
       stage.append(introduction.node); introduction.start();
     } else begin({ shown: false, skipped: false, completed: false });
   };
-  const startButton = button('Start Practice', start); startButton.disabled = !selected();
-  presetsUI.onChange(() => { startButton.disabled = !selected(); refreshPreferences(); refreshSettingsSummary(); });
-  startButton.classList.add('control--primary'); setupUI.action(startButton);
+  const startButton = button('Start Practice', start);
+  startButton.classList.add('control--primary');
+  const startControl = startInputControl(startButton, answers);
+  startControl.setDisabled(!selected());
+  syncSetupInput();
+  presetsUI.onChange(() => { startControl.setDisabled(!selected()); refreshPreferences(); refreshSettingsSummary(); syncSetupInput(); });
+  setupUI.action(startControl.node);
   const soundButton = button('', () => {
     auto = {...auto,sound:!auto.sound}; saveAuto(); refreshPacing();
     if (auto.sound) enableAudio(); else stopClick();
@@ -410,9 +421,10 @@ export function practiceView(store: NotesStore, shared = false) {
   };
   const keyup = (event: KeyboardEvent) => { answers.heldKeyup(event); gate.up(event.code || event.key); arrows.delete(event.key); showModifier(); };
   // Key releases outside the page may never reach document; repeats remain gated.
+  const resetGestures = () => { gate.reset(); arrows.clear(); answers.resetGestures(); answers.modifier(); };
   const resetInput = () => { gate.reset(); arrows.clear(); answers.reset(); answers.modifier(); };
   const visibility = () => { if (document.hidden) { resetInput(); store.flush(); syncAuto(); stopClick(); session?.pause(); if (session?.state === 'finished') finish(); else render(); } };
-  window.addEventListener('blur', resetInput);
+  window.addEventListener('blur', resetGestures);
   document.addEventListener('keydown', keydown); document.addEventListener('keyup', keyup); document.addEventListener('visibilitychange', visibility);
   let displayedBeat = '', inputWindow = '';
   const tickAuto = (s: Practice) => {
@@ -443,9 +455,9 @@ export function practiceView(store: NotesStore, shared = false) {
     if (session.advance(session.token) || session instanceof Challenge) { if ((session as Practice).state === 'finished') finish(); else render(); }
   }, 25);
   const dispose = () => {
-    if (disposed) return; disposed = true; stopClick(); if (audio) void audio.close(); answerNotice.clear(); closePreview(); answers.dispose(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
+    if (disposed) return; disposed = true; stopClick(); if (audio) void audio.close(); answerNotice.clear(); closePreview(); startControl.dispose(); answers.dispose(); store.flush(); dataUI.dispose(); clearInterval(timer); stopWatching(); dog.dispose();
     document.removeEventListener('keydown', keydown); document.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
-    window.removeEventListener('blur', resetInput);
+    window.removeEventListener('blur', resetGestures);
   };
   const stopWatching = onUnmount(node, dispose);
   return { node, options, store, dispose,
@@ -465,17 +477,18 @@ export function practiceView(store: NotesStore, shared = false) {
       presetsUI.loadRange(resolveSharedPreset(source));
       store.data.configuration.showKeySignature = range.showKeySignature;
       guestAdaptive = range.adaptive; linkedIntro = value.intro; pace = value.pace; auto = value.auto ?? auto;
-      rulesUI.load(value.rules); refreshPreferences(); refreshPacing(); refreshSettingsSummary();
-    }, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); }, setActivity: (next: 'practice' | 'challenge') => {
+      rulesUI.load(value.rules); refreshPreferences(); refreshPacing(); refreshSettingsSummary(); syncSetupInput();
+    }, enter: () => { presetsUI.refreshNotation(); dataUI.refresh(); refreshPreferences(); refreshSettingsSummary(); syncSetupInput(); }, setActivity: (next: 'practice' | 'challenge') => {
     if (next === activity) return;
+    startControl.close();
     if (session && !resultRecorded) finish();
     activity = next; node.dataset.activity = next; presetsUI.rangeContext(next === 'challenge' ? 'Challenge' : 'Practice'); showSetup();
     node.setAttribute('aria-label', next === 'challenge' ? 'Note reading Challenge' : 'Note reading Practice');
     rulesUI.node.hidden = next !== 'challenge'; practiceMode.hidden = next === 'challenge';
-    startButton.textContent = next === 'challenge' ? 'Start Challenge' : 'Start Practice';
+    startControl.setLabel(next === 'challenge' ? 'Start Challenge' : 'Start Practice');
     refreshSettingsSummary();
   }, leave: () => {
-    resetInput(); store.flush();
+    startControl.close(); resetInput(); store.flush();
     if (introduction) showSetup();
     syncAuto(); stopClick(); session?.pause(); if (session?.state === 'finished') finish(); else render();
   } };

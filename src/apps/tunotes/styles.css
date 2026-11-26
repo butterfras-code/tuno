@@ -264,7 +264,7 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .focus-navigation { display: flex; gap: var(--space-2); }
 .control { font: 700 16px/1.3 var(--font-heading); background: var(--color-tint); border-color: transparent; }
 .control:hover:not(:disabled) { border-color: var(--color-accent); }
-.control--primary, .control[aria-pressed='true']:not(.segments .control, :where(.input-workspace .interaction-selector .control)) { background: var(--color-accent); color: var(--color-surface); }
+.control--primary, .control[aria-pressed='true']:not(.segments .control, :where(.input-workspace .interaction-selector .control), .input-config-popover .control) { background: var(--color-accent); color: var(--color-surface); }
 .practice-toggles { margin-top: 20px; }
 .adaptive-control { position: relative; display: inline-flex; border-radius: var(--radius-control); background: var(--color-tint); }
 .adaptive-control.selected { background: var(--color-accent); color: var(--color-surface); }
@@ -1037,15 +1037,20 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .preset-notation-mark { min-width: 16px; color: var(--color-accent); }
 
 /* Practice keeps the two primary actions together and its mode choices visible. */
-.practice-layout .activity-setup-toolbar { display: grid; grid-template-columns: repeat(2,minmax(0,180px)); justify-content: space-between; align-items: stretch; gap: 8px; }
+.practice-layout .activity-setup-toolbar { display: grid; grid-template-columns: minmax(0,180px) minmax(0,236px); justify-content: space-between; align-items: stretch; gap: 8px; }
 .practice-layout .practice-setup-tabs { display: contents; }
 .multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: minmax(0,1fr) minmax(0,180px); }
 .multiplayer-setup .practice-layout .practice-setup-tabs { display: flex; }
 .multiplayer-setup .practice-layout .practice-setup-tabs .control { flex: 1 1 150px; width: auto; }
 @media (max-width: 600px) {
+  .practice-layout .activity-setup-toolbar { grid-template-columns: minmax(0,1fr) minmax(0,1.35fr); }
   .multiplayer-setup .practice-layout .activity-setup-toolbar { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
-.practice-layout .activity-setup-toolbar .control { width: 100%; max-width: none; min-height: 48px; margin: 0; padding: 10px; justify-content: center; border-radius: var(--radius-control); }
+.practice-layout .activity-setup-toolbar .control:not(:where(.input-config-popover .control)) { width: 100%; max-width: none; min-height: 48px; margin: 0; padding: 10px; justify-content: center; border-radius: var(--radius-control); }
+.note-preview .preview-toolbar { grid-template-columns: minmax(0,180px) minmax(0,236px); }
+@media (max-width: 600px) {
+  .note-preview .preview-toolbar { grid-template-columns: minmax(0,1fr) minmax(0,1.35fr); }
+}
 .practice-layout .practice-setup-summary { display: none; }
 .practice-mode-section { margin-top: 16px; }
 .practice-mode-section > h3 { margin: 0; font-size: 16px; }
@@ -1243,7 +1248,9 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .preset-picker { min-width: 0; grid-template-columns: minmax(0,1fr); }
 .preset-picker > .control { min-width: 0; overflow-wrap: anywhere; }
 /* A user-named range must not consume the notation/answer space during play. */
-#home .play-stage .practice-play > h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#home .play-stage .practice-play > h2,
+#home .play-stage .practice-play-header > h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#home .play-stage .practice-play-header { min-width: 0; }
 .picker-choices { grid-template-columns: minmax(0,1fr); }
 .picker-choices > .control { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 400px) {
@@ -1585,3 +1592,77 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
 .notes-mic-meter { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--color-line) calc(50% - var(--mic-tolerance)), #83b8a8 calc(50% - var(--mic-tolerance)) calc(50% + var(--mic-tolerance)), var(--color-line) calc(50% + var(--mic-tolerance))); }
 .notes-mic-meter::after { content: ''; position: absolute; left: 50%; top: -3px; height: 14px; border-left: 1px solid var(--color-ink); }
 .notes-mic-marker { position: absolute; top: -3px; width: 6px; height: 14px; border-radius: 3px; background: var(--color-ink); transform: translateX(-50%); }
+
+/* Split Start action and anchored input-method popover (Style 2: Input + active icon). */
+.start-split { display: flex; align-items: stretch; min-width: 0; width: 100%; border-radius: var(--radius-control); overflow: hidden; }
+.practice-layout .activity-setup-toolbar .start-split .start-split-main { flex: 1 1 auto; width: auto; min-width: 0; flex-direction: column; gap: 1px; padding: 6px 10px; border: 0; border-radius: var(--radius-control) 0 0 var(--radius-control); line-height: 1.15; }
+.start-split-label { white-space: nowrap; }
+.start-split-meta { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font: 600 11px/1.15 var(--font-body); opacity: .92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.practice-layout .activity-setup-toolbar .start-split .start-split-toggle { flex: 0 0 auto; width: auto; min-width: 58px; flex-direction: column; gap: 2px; padding: 4px 10px; border: 0; border-left: 1px solid color-mix(in srgb, var(--color-surface) 30%, transparent); border-radius: 0 var(--radius-control) var(--radius-control) 0; background: color-mix(in srgb, var(--color-accent) 88%, var(--color-ink)); color: var(--color-surface); }
+.practice-layout .activity-setup-toolbar .start-split .start-split-toggle:is(:hover, :focus-visible, [aria-expanded='true']) { background: color-mix(in srgb, var(--color-accent) 76%, var(--color-ink)); border-color: color-mix(in srgb, var(--color-surface) 35%, transparent); }
+.practice-layout .activity-setup-toolbar .start-split .start-split-toggle.is-live { background: var(--color-teal); border-left-color: color-mix(in srgb, var(--color-surface) 38%, transparent); }
+.practice-layout .activity-setup-toolbar .start-split .start-split-toggle.is-live:is(:hover, :focus-visible, [aria-expanded='true']) { background: color-mix(in srgb, var(--color-teal) 82%, var(--color-ink)); }
+.start-split .control:focus-visible { outline-offset: -3px; outline-color: var(--color-surface); }
+.start-split-kicker { font: 700 9px/1 var(--font-heading); text-transform: uppercase; letter-spacing: .06em; opacity: .86; }
+.start-split-icon-row { display: inline-flex; align-items: center; gap: 4px; }
+.start-split-icon { display: inline-flex; align-items: center; justify-content: center; }
+.start-split-caret { font-size: 10px; line-height: 1; opacity: .9; transition: transform 140ms ease; }
+.start-split-toggle[aria-expanded='true'] .start-split-caret { transform: rotate(180deg); }
+.input-abc-glyph { display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border: 1.5px solid currentColor; border-radius: 5px; font: 800 10px/1 var(--font-heading); letter-spacing: -.02em; }
+.input-abc-glyph--tile { padding: 3px 6px; border-width: 1.75px; border-radius: 6px; font-size: 13px; }
+.input-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-teal) 24%, transparent); flex-shrink: 0; }
+.input-live-dot--light { width: 6px; height: 6px; background: #9ef0e8; box-shadow: 0 0 0 2px color-mix(in srgb, #9ef0e8 30%, transparent); }
+
+@media (max-width: 400px) {
+  .practice-layout .activity-setup-toolbar,
+  .note-preview .preview-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 6px; }
+  .practice-layout .activity-setup-toolbar .control:not(:where(.input-config-popover .control)) { font-size: 14px; padding-inline: 6px; white-space: nowrap; }
+  .practice-layout .activity-setup-toolbar .start-split .start-split-main { padding-inline: 6px; font-size: 13px; }
+  .practice-layout .activity-setup-toolbar .start-split .start-split-toggle { min-width: 46px; padding-inline: 5px; }
+}
+
+.input-config-popover { position: fixed; inset: auto; margin: 0; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 16px; border: 1.5px solid var(--color-accent); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 14px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }
+.input-config-popover:popover-open { display: grid; gap: 12px; }
+.input-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.input-popover-title { margin: 0; font: 800 16px/1.2 var(--font-heading); }
+.input-config-popover .input-popover-close { flex: none; width: 36px; min-width: 36px; min-height: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; font-size: 14px; }
+.input-mode-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.input-config-popover .input-mode-tile { position: relative; flex-direction: column; justify-content: center; gap: 6px; width: 100%; min-width: 0; min-height: 68px; padding: 10px 6px 9px; border: 1.5px solid var(--color-line); border-radius: 13px; background: var(--color-canvas); color: var(--color-ink); }
+.input-config-popover .input-mode-tile:hover { border-color: var(--color-accent); }
+.input-config-popover .input-mode-tile[aria-pressed='true'] { background: var(--color-surface); border-color: var(--color-accent); color: var(--color-accent); box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 16%, transparent); }
+.input-config-popover .input-mode-tile.is-live[aria-pressed='true'] { background: color-mix(in srgb, var(--color-teal) 12%, var(--color-surface)); border-color: var(--color-teal); color: var(--color-teal); }
+.input-mode-tile-icon { height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.input-mode-tile-label { font: 700 13px/1.1 var(--font-heading); }
+.input-tile-dot { position: absolute; top: 8px; right: 8px; }
+.input-popover-panel { min-width: 0; }
+.input-popover-note { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--color-canvas); color: var(--color-muted); font-size: 13.5px; line-height: 1.5; }
+.input-popover-note strong { color: var(--color-ink); }
+.input-popover-note kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--color-line); border-radius: 5px; background: var(--color-surface); color: var(--color-ink); font: 700 12px/1.2 var(--font-heading); }
+.input-inst-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.input-config-popover .input-inst-option { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1.5px solid var(--color-line); border-radius: 11px; background: var(--color-canvas); color: var(--color-ink); text-align: left; font-size: 13px; line-height: 1.25; }
+.input-config-popover .input-inst-option:hover:not(:disabled) { border-color: var(--color-accent); }
+.input-config-popover .input-inst-option[aria-pressed='true'] { background: var(--color-tint); border-color: var(--color-accent); color: var(--color-ink); }
+.input-inst-reason { font: 500 11px/1.15 var(--font-body); color: var(--color-muted); }
+.input-inst-hint { margin: 8px 0 0; font-size: 12px; line-height: 1.4; }
+.input-mic-panel { display: grid; gap: 10px; }
+.input-mic-field { display: grid; gap: 4px; font: 700 12px/1.2 var(--font-heading); color: var(--color-muted); }
+.input-config-popover .input-mic-select { width: 100%; min-width: 0; min-height: 40px; padding: 6px 10px; border: 1.5px solid var(--color-line); border-radius: 11px; background: var(--color-canvas); color: var(--color-ink); font: 700 13px/1.2 var(--font-body); }
+.input-mic-box { display: grid; gap: 8px; padding: 12px; border: 1.5px solid var(--color-line); border-radius: 13px; background: var(--color-canvas); }
+.input-mic-box.is-live { border-color: var(--color-teal); background: color-mix(in srgb, var(--color-teal) 11%, var(--color-surface)); }
+.input-mic-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.input-config-popover .input-mic-toggle { flex: none; width: auto; min-height: 40px; padding: 6px 14px; border-radius: 10px; background: var(--color-teal); color: var(--color-surface); font-size: 13px; white-space: nowrap; }
+.input-config-popover .input-mic-toggle[aria-pressed='true'] { background: var(--color-surface); color: var(--color-destructive); border: 1.5px solid var(--color-destructive-line); }
+.input-mic-pitch { margin: 0; font: 800 18px/1 var(--font-heading); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.input-mic-status { margin: 0; font-size: 12px; line-height: 1.4; }
+.input-mic-box.is-live .input-mic-status { color: color-mix(in srgb, var(--color-teal) 85%, var(--color-ink)); }
+
+/* Compact Challenge Ready interlude when the live input workspace shares the viewport. */
+#home .play-stage .challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { pointer-events: none; }
+#home .play-stage--compact .challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { top: 68px; width: clamp(72px, 24vw, 104px); }
+#home .play-stage--compact .challenge-interlude .challenge-cue { font-size: 32px; }
+#home .play-stage--compact .challenge-interlude .muted { font-size: 13px; margin: auto 0 6px; }
+#home .play-stage:not(.play-stage--short):not(.play-stage--compact):not(.play-stage--bottom) .challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { top: 76px; width: 112px; }
+#home .play-stage--bottom .challenge-scene:is([data-phase='ready'],[data-phase='countdown'],[data-phase='paused']) .challenge-dog { top: 44px; width: 52px; }
+#home .play-stage--bottom .challenge-interlude { padding-bottom: 6px; }
+#home .play-stage--bottom .challenge-interlude .challenge-cue { font-size: 24px; }
+#home .play-stage--bottom .challenge-interlude .muted { font-size: 12px; margin: auto 0 4px; }

@@ -25,7 +25,7 @@ try {
     };
     await check('setup');
     const setupChoose = await page.getByRole('button',{name:'Choose Notes',exact:true}).boundingBox();
-    const setupStart = await page.getByRole('button',{name:'Start Practice',exact:true}).boundingBox();
+    const setupStart = await page.locator('.activity-setup-toolbar:visible .start-split').boundingBox();
     await page.getByRole('button',{name:'Start Practice',exact:true}).click();
     await page.waitForSelector('.note-preview');
     const introBack = await page.getByRole('button',{name:'Back to setup',exact:true}).boundingBox();

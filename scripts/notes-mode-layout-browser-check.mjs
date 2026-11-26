@@ -14,7 +14,7 @@ try {
    assert.equal(await action.isVisible(),true);
    const setup=page.locator('.activity-setup:visible');
    const toolbar=await setup.locator('.activity-setup-toolbar').boundingBox();
-   const actionBox=await action.boundingBox();
+   const actionBox=await (mode==='Multi Player' ? action : setup.locator('.start-split')).boundingBox();
    assert.ok(Math.abs(actionBox.x+actionBox.width-toolbar.x-toolbar.width)<1,'start aligns with toolbar right edge');
    const setupBox=await setup.boundingBox();
    assert.ok(Math.abs(setupBox.width-toolbar.width)<1,'toolbar uses full setup width');
