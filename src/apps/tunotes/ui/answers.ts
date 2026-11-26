@@ -106,10 +106,10 @@ export function answerControls(accept: (answer: AnswerSpelling, token: PromptTok
       for (const b of buttons) b.classList.toggle('answer-modifier', values.get(b)!.accidental === accidental);
       for (const cap of keycaps) cap.classList.toggle('keycap-held', cap.dataset.accidental === String(accidental));
     },
-    update(next: Preset, nextToken: PromptToken, nextLocked: boolean) {
+    update(next: Preset, nextToken: PromptToken, nextLocked: boolean, overlap = false) {
       if (!preset || preset.key.fifths !== next.key.fifths) build(next);
       const changed = token?.session !== nextToken.session || token?.prompt !== nextToken.prompt;
-      if (changed || nextLocked) reset();
+      if (changed && !overlap || nextLocked) reset();
       if (changed || locked && !nextLocked) since = performance.now();
       const nextAvailable = new Set(next.pool.map(spelling));
       const sameSession = token?.session === nextToken.session;

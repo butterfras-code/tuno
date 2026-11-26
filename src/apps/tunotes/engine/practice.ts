@@ -90,7 +90,44 @@ export class Practice {
     this.nextPreview = this.nextPitch();
   }
   get currentEvent() { return this.auto && pitchedEvent(`s${this.session}-n${this.prompt}`,this.pitch,this.auto.value); }
-  get upcomingEvent() { return this.auto && this.nextPreview && pitchedEvent(`s${this.session}-n${this.prompt+1}`,this.nextPreview,this.auto.value); }
+  get upcomingEvent() { return this.auto?.lookahead && this.nextPreview ? pitchedEvent(`s${this.session}-n${this.prompt+1}`,this.nextPreview,this.auto.value) : undefined; }
+  // Keep input acceptance separate from the written event and the metronome.
+  private earlyAnswer?: { prompt: number; answer: NoteAnswer };
+  private get earlyWindowMs() { return this.pulseMs / 2; }
+  get inputStartMs() { return this.promptStart - this.earlyWindowMs; }
+  get earlyNext() { return !!this.auto && this.activeMs >= this.deadline - this.earlyWindowMs && this.activeMs < this.deadline; }
+  get inputToken(): PromptToken { return this.earlyNext ? {session:this.session,prompt:this.prompt+1} : this.token; }
+  get inputPitch() {
+    if (!this.earlyNext) return this.pitch;
+    if (!this.nextPreview) this.reservePreview();
+    return this.nextPreview!;
+  }
+  get inputOpen() {
+    if (!this.auto) return this.state === 'running';
+    if (this.state === 'paused' || this.state === 'finished') return false;
+    return this.earlyNext || this.state === 'running' && this.activeMs >= this.inputStartMs;
+  }
+  /** Reserve only a matching early response. An unanswered visible note gets first claim. */
+  queueAutoAnswer(token: PromptToken, answer: NoteAnswer) {
+    if (!this.auto || !this.inputOpen || token.session !== this.session) return false;
+    const first = this.countingIn && token.prompt === this.prompt;
+    if (!first && !(this.earlyNext && token.prompt === this.prompt + 1)) return false;
+    if (!first && this.state === 'running' && this.accepts(this.pitch,answer)) return false;
+    if (!this.accepts(first ? this.pitch : this.inputPitch,answer)) return false;
+    this.earlyAnswer ??= {prompt:token.prompt,answer:this.normalizedAnswer(answer)};
+    return true;
+  }
+  private accepts(pitch: WrittenPitch, answer: NoteAnswer) {
+    if (!('kind' in answer)) return sameAnswer(pitch,answer);
+    if (answer.kind === 'keyboard') return Number.isInteger(answer.note) && answer.note >= 12 && answer.note <= 119 && acceptsKeyboard(pitch,answer);
+    const config = fingeringFor(answer.instrument ?? this.preset.instrument,4);
+    return !!config && validFingering(answer.code) && acceptsFingering(config,pitch,answer.code);
+  }
+  private normalizedAnswer(answer: NoteAnswer): NoteAnswer {
+    if (!('kind' in answer)) return {letter:answer.letter,accidental:answer.accidental};
+    if (answer.kind === 'keyboard') return {...answer,matchOctave:answer.matchOctave ?? false};
+    return {...answer,code:canonicalFingering(answer.code)};
+  }
   private pendingWrong?: NoteAnswer;
   private promptStart = 0;
   readonly beats: number = 0;
@@ -135,17 +172,17 @@ export class Practice {
   get activeMs() { return this.endTime ?? (this.state === 'paused' ? this.pausedAt : this.clock()) - this.origin - this.pausedMs; }
   matches(token: PromptToken) { return token.session === this.session && token.prompt === this.prompt; }
   answer(token: PromptToken, answer: NoteAnswer) {
-    if (this.state !== 'running' || !this.matches(token) || this.auto && (this.countingIn || this.activeMs >= this.deadline)) return false;
+    const overlap = this.earlyNext && token.session === this.session && token.prompt === this.prompt + 1;
+    if (this.state !== 'running' || !(this.matches(token) || overlap) || this.auto && (this.countingIn || this.activeMs >= this.deadline)) return false;
     if ('kind' in answer && answer.kind === 'keyboard' && (!Number.isInteger(answer.note) || answer.note < 12 || answer.note > 119)) return false;
     if ('kind' in answer && answer.kind === 'fingering') {
       if (!validFingering(answer.code)) return false;
-      answer = { ...answer, code: canonicalFingering(answer.code) };
     }
     const now = this.activeMs;
     const config = fingeringFor('kind' in answer && answer.kind === 'fingering' ? answer.instrument ?? this.preset.instrument : this.preset.instrument, 4);
     if ('kind' in answer && answer.kind === 'fingering' && (!config || !config.pitches[chromatic(this.pitch)])) return false;
-    const correct = 'kind' in answer ? answer.kind === 'keyboard' ? acceptsKeyboard(this.pitch, answer) : acceptsFingering(config!, this.pitch, answer.code) : sameAnswer(this.pitch, answer);
-    answer = 'kind' in answer ? answer.kind === 'keyboard' ? { ...answer, matchOctave: answer.matchOctave ?? false } : answer : { letter: answer.letter, accidental: answer.accidental };
+    const correct = this.accepts(this.pitch,answer);
+    answer = this.normalizedAnswer(answer);
     if (this.auto && !correct) { this.pendingWrong = { ...answer }; return true; }
     this.recordOutcome(answer, correct, now - this.promptStart);
     this.feedbackEnd = now + this.feedbackDuration(correct); this.state = 'feedback'; return true;
@@ -172,9 +209,18 @@ export class Practice {
     this.bestStreak = Math.max(this.bestStreak, this.streak);
   }
   /** Close each elapsed window against its scheduled boundary, including after a delayed frame. */
-  advanceAuto(onMiss: () => void) {
+  advanceAuto(onMiss: () => void, onEarlyCorrect: (previousAnnouncement: string) => void = () => {}) {
     if (!this.auto || this.state === 'paused' || this.state === 'finished') return;
     const now = this.activeMs;
+    const applyEarly = () => {
+      if (this.earlyAnswer?.prompt !== this.prompt || now < this.promptStart) return;
+      const previousAnnouncement = this.announcement;
+      this.recordOutcome(this.earlyAnswer.answer,true,0);
+      this.earlyAnswer = undefined;
+      this.state = 'feedback';
+      onEarlyCorrect(previousAnnouncement);
+    };
+    applyEarly();
     while (now >= this.deadline) {
       if (this.state === 'running') {
         this.recordOutcome(this.pendingWrong ?? { kind: 'unanswered' }, false, this.deadline - this.promptStart);
@@ -183,9 +229,12 @@ export class Practice {
       this.promptStart = this.deadline;
       this.pendingWrong = undefined;
       this.pitch = this.nextPreview ?? this.nextPitch();
+      this.nextPreview = undefined;
+      this.currentFocusPrompt = undefined;
       if (this.auto.lookahead) this.reservePreview();
       this.prompt++;
       this.state = 'running';
+      applyEarly();
     }
   }
   protected feedbackDuration(correct: boolean) { return this.continueAfter === 'instant' ? 0 : correct ? 250 : 800; }
@@ -196,6 +245,7 @@ export class Practice {
   }
   pause() {
     if (this.state !== 'running' && this.state !== 'feedback') return;
+    this.earlyAnswer = undefined;
     this.resumeState = this.state; this.pausedAt = this.clock(); this.state = 'paused'; this.interrupted = true;
   }
   resume() {

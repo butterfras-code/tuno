@@ -16,9 +16,9 @@ export class FingeringPolicy {
   constructor(submit: (code: FingeringCode, token: PromptToken) => void) { this.submit = submit; }
   private clearTimer() { clearTimeout(this.timer); this.timer = undefined; }
   cancel() { this.clearTimer(); this.submitted = undefined; this.releaseOpen = false; }
-  update(token: PromptToken, locked: boolean, primaryOpen = false) {
+  update(token: PromptToken, locked: boolean, primaryOpen = false, overlap = false) {
     const changed = token.session !== this.token?.session || token.prompt !== this.token?.prompt;
-    if (locked || changed) this.clearTimer();
+    if (locked || changed && !overlap) this.clearTimer();
     if (changed) {
       // Only a still-held answer to the immediately preceding card can release
       // into open. Updating a card never submits by itself.

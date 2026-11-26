@@ -55,3 +55,78 @@ test('auto pacing round trips through activity links and backups with expired pr
   assert.deepEqual(restored.configuration.auto,validated.auto);
   assert.deepEqual(Object.values(restored.profiles[0]!.contexts[0]!.notes)[0]![0]!.answer,{kind:'unanswered'});
 });
+
+test('early matches wait for the downbeat, with or without a visible preview', () => {
+  for (const lookahead of [true,false]) {
+    let now = 0, credits = 0, misses = 0;
+    const s = new Practice(presets[0]!,false,() => now,() => .5,{continueAfter:'auto',
+      auto:{...defaultAuto,value:autoValues[0],bpm:120,lookahead}});
+    const tick = () => s.advanceAuto(() => misses++,() => credits++);
+    now = 249;
+    assert.equal(s.inputOpen,false);
+    assert.equal(s.queueAutoAnswer(s.inputToken,s.pitch),false);
+    now = 250;
+    assert.ok(s.queueAutoAnswer(s.inputToken,s.pitch));
+    now = 499; tick(); assert.equal(s.attempts,0);
+    now = 500; tick(); assert.equal(credits,1); assert.equal(s.correct,1);
+    now = 749; assert.equal(s.inputOpen,false);
+    now = 750; const next = s.inputPitch, token = s.inputToken;
+    assert.ok(s.inputOpen); assert.ok(s.queueAutoAnswer(token,next));
+    assert.equal(s.prompt,1); assert.equal(s.correct,1);
+    now = 1000; tick(); tick();
+    assert.deepEqual(s.pitch,next); assert.deepEqual(s.token,token);
+    assert.equal(s.correct,2); assert.equal(s.last?.responseMs,0); assert.equal(misses,0);
+    // Pausing cancels a buffered answer and gives the resumed prompt a fresh count-in.
+    now = 1380; assert.ok(s.queueAutoAnswer(s.inputToken,s.inputPitch)); s.pause(); s.resume();
+    now = 2380; tick(); assert.equal(s.attempts,2);
+  }
+});
+
+test('overlap preserves the final retry, scores an unanswered outgoing note, and never doubles a press', () => {
+  let now = 0;
+  const preset = {...presets[0]!,pool:[presets[0]!.pool[0]!]};
+  const s = new Practice(preset,false,()=>now,Math.random,{continueAfter:'auto',auto:{...defaultAuto,bpm:120,value:autoValues[0]}});
+  now = 900;
+  const overlap = s.inputToken;
+  assert.equal(s.queueAutoAnswer(overlap,s.pitch),false);
+  assert.ok(s.answer(overlap,s.pitch));
+  now = 1000; s.advanceAuto(()=>{}); assert.equal(s.attempts,1);
+  const missed = s.token;
+  now = 2000; s.advanceAuto(()=>{});
+  assert.equal(s.attempts,3); assert.equal(s.correct,1);
+  assert.equal(s.answer(missed,s.pitch),false);
+});
+
+test('an early answer for a different pitch leaves the outgoing miss intact', () => {
+  let now = 0;
+  const s = new Practice(presets[0]!,false,()=>now,()=>.5,{continueAfter:'auto',auto:{...defaultAuto,bpm:120,value:autoValues[0]}});
+  now = 900;
+  assert.notDeepEqual(s.inputPitch,s.pitch);
+  assert.ok(s.queueAutoAnswer(s.inputToken,s.inputPitch));
+  assert.equal(s.attempts,0);
+  now = 1000;
+  const outcomes: boolean[] = [];
+  s.advanceAuto(()=>outcomes.push(s.last!.correct),()=>outcomes.push(s.last!.correct));
+  assert.deepEqual(outcomes,[false,true]);
+  assert.equal(s.accuracy,.5);
+});
+
+test('the early window scales with tempo and stays half a beat for every note value', () => {
+  for (const [bpm, halfBeatMs] of [[30,1000],[80,375],[150,200]] as const) {
+    for (const value of autoValues) {
+      let now = 0;
+      const session = new Practice(presets[0]!,false,()=>now,Math.random,{
+        continueAfter:'auto', auto:{...defaultAuto,value,bpm},
+      });
+      const noteMs = quarterBeats(value) * halfBeatMs * 2;
+      now = noteMs - halfBeatMs - 1;
+      assert.equal(session.inputOpen,false);
+      now++;
+      assert.equal(session.inputOpen,true);
+      now = 2 * noteMs - halfBeatMs - 1;
+      assert.equal(session.earlyNext,false);
+      now++;
+      assert.equal(session.earlyNext,true);
+    }
+  }
+});

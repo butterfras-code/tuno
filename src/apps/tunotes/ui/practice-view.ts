@@ -142,7 +142,7 @@ export function practiceView(store: NotesStore, shared = false) {
   const staff = el('div', 'staff-panel');
   const answers = noteEntry((answer, token) => submit(answer, token), {
     fingering: true, onMethodChange: () => resetInput(),
-    currentPitch: () => session?.pitch, timedPrompts: () => Boolean(session?.auto),
+    currentPitch: () => session?.inputPitch, timedPrompts: () => Boolean(session?.auto),
     guidance: () => { try { return storage ? storage.getItem(guidanceKey) !== 'false' : keyboardGuidance; } catch { return keyboardGuidance; } }, showKeySignature: () => store.data.configuration.showKeySignature,
     disableGuidance: () => setGuidance(false),
   });
@@ -262,7 +262,8 @@ export function practiceView(store: NotesStore, shared = false) {
     stats.textContent = `${session.correct} correct / ${session.attempts} attempts · Accuracy ${accuracy(session)} · Streak ${session.streak} (best ${session.bestStreak})`;
     const identity = promptIdentity(session);
     if (renderedPrompt !== identity) {
-      inputSince = performance.now(); renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature,session.currentEvent?.written));
+      inputSince = performance.now() - (session.auto ? session.activeMs - session.inputStartMs : 0);
+      renderedPrompt = identity; staff.replaceChildren(renderStaff(session.pitch, clefForPitch(session.preset, session.pitch), session.preset.key, session.preset.keyless,store.data.configuration.showKeySignature,session.currentEvent?.written));
       const upcoming = session.upcomingEvent;
       if (upcoming && !session.countingIn) {
         const next = upcoming.pitch;
@@ -274,8 +275,8 @@ export function practiceView(store: NotesStore, shared = false) {
     answerNotice.mount(staff.querySelector('svg')!);
     if (paused || waiting) answerNotice.clear();
     staff.hidden = !isChallenge && paused;
-    const locked = session.state !== 'running' || waiting || session.countingIn;
-    answers.update(session.activePreset, session.token, locked);
+    const locked = !session.inputOpen || waiting;
+    answers.update(session.activePreset, session.inputToken, locked, session.earlyNext);
     showModifier();
     continueButton.hidden = !(session.selfPaced && session.state === 'feedback');
     answers.paused(paused);
@@ -294,12 +295,9 @@ export function practiceView(store: NotesStore, shared = false) {
   const syncAuto = () => session?.advanceAuto(() => {
     persistOutcome();
     if (session) progress.update(session.correct,session.streak,session.attempts);
-  });
-  const submit = (answer: NoteAnswer, token: PromptToken) => {
-    const previousAnnouncement = session?.announcement;
-    syncAuto();
-    if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
-    if (session.auto && session.state === 'running') { answerNotice.show('Try again',false); return; }
+  }, previousAnnouncement => { render(); showAnswer(previousAnnouncement); });
+  const showAnswer = (previousAnnouncement?: string) => {
+    if (!session) return;
     persistOutcome();
     const reward = progress.update(session.correct, session.streak, session.attempts);
     dog.look(reward.look, -8);
@@ -310,6 +308,14 @@ export function practiceView(store: NotesStore, shared = false) {
     if (reward.treat) { dog.catch(session instanceof Challenge ? scene.treat : counts); treatUntil = performance.now() + 450; }
     answers.respond(session, reward, previousAnnouncement);
     if (session.state === 'finished') finish(); else render();
+  };
+  const submit = (answer: NoteAnswer, token: PromptToken) => {
+    const previousAnnouncement = session?.announcement;
+    syncAuto();
+    if (session?.queueAutoAnswer(token,answer)) return;
+    if (!session?.answer(token, answer)) { if (session?.state === 'finished') finish(); return; }
+    if (session.auto && session.state === 'running') { answerNotice.show('Try again',false); return; }
+    showAnswer(previousAnnouncement);
   };
   const start = async () => {
     if (startButton.disabled) return;
@@ -384,7 +390,7 @@ export function practiceView(store: NotesStore, shared = false) {
     if (/^[A-G]$/.test(letter)) {
       event.preventDefault();
       if (!fresh || arrows.size >= 2) return;
-      if (session.state === 'running' && (!(session instanceof Challenge) || session.phase === 'playing')) {
+      if (session.inputOpen && (!(session instanceof Challenge) || session.phase === 'playing')) {
         answers.keyboard(letter as Letter, arrows.has('ArrowUp') ? 1 : arrows.has('ArrowDown') ? -1 : 0, arrows.size > 0, session);
       }
     } else answers.focusedKey(event, fresh);
@@ -395,16 +401,16 @@ export function practiceView(store: NotesStore, shared = false) {
   const visibility = () => { if (document.hidden) { resetInput(); store.flush(); syncAuto(); stopClick(); session?.pause(); if (session?.state === 'finished') finish(); else render(); } };
   window.addEventListener('blur', resetInput);
   document.addEventListener('keydown', keydown); document.addEventListener('keyup', keyup); document.addEventListener('visibilitychange', visibility);
-  let displayedBeat = '';
+  let displayedBeat = '', inputWindow = '';
   const tickAuto = (s: Practice) => {
     syncAuto();
     const index = s.beatIndex;
+    const window = [s.inputToken.session,s.inputToken.prompt,s.inputOpen].join('/');
     const key = [s.session,s.prompt,index].join('/');
-    if (key !== displayedBeat) {
-      displayedBeat = key;
-      if (renderedPrompt !== promptIdentity(s)) render();
-      else updateBeat(s);
-    }
+    if (window !== inputWindow || renderedPrompt !== promptIdentity(s)) render();
+    else if (key !== displayedBeat) updateBeat(s);
+    inputWindow = window;
+    displayedBeat = key;
     if (!auto.sound || audio?.state !== 'running') return;
     const start = s.deadline - s.beats * s.pulseMs;
     const now = s.activeMs;

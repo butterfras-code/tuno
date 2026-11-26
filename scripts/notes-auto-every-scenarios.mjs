@@ -54,7 +54,21 @@ export async function checkAutoEvery(browser,host) {
     await page.keyboard.press(letter);
     assert.match(await play.locator('.counts').textContent(),/1 correct/);
     assert.equal(await current.getAttribute('aria-label'),initial);
-    await page.waitForFunction(() => document.querySelector('.practice-play .answer')?.getAttribute('aria-disabled') === 'false');
+    const nextLetter = 'efgabcdef'[positions.findIndex(value => preview.includes(value))];
+    // Answer as soon as the input reopens. Capture the staff and score in the same browser turn.
+    const early = await play.locator(`.answer[data-letter="${nextLetter.toUpperCase()}"][data-accidental="0"]`).first().evaluate(button => new Promise(resolve => {
+      function press() {
+        if (button.getAttribute('aria-disabled') === 'true') return;
+        observer.disconnect();
+        button.click();
+        resolve({label:document.querySelector('.practice-play .staff').getAttribute('aria-label'),counts:document.querySelector('.practice-play .counts').textContent});
+      }
+      const observer = new MutationObserver(press);
+      observer.observe(button,{attributes:true,attributeFilter:['aria-disabled']}); press();
+    }));
+    assert.equal(early.label,initial);
+    assert.match(early.counts,/1 correct/);
+    await page.waitForFunction(() => document.querySelector('.practice-play .counts')?.textContent.includes('2 correct'));
     assert.equal(await current.getAttribute('aria-label'),preview);
     await play.getByRole('button',{name:'Finish',exact:true}).click();
     const results = page.locator('.practice-results:visible');

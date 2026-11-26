@@ -35,6 +35,7 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
   const status = el('p', 'muted notes-mic-status', `Start mic, then hold a note for ${MIC_HOLD_MS} ms within ±${MIC_TOLERANCE_CENTS} cents.`); status.setAttribute('role', 'status');
   node.append(controls, pitch, scale, meter, hold, status);
   const policy = new MicrophoneHold();
+  let attackToken: PromptToken | undefined;
   let active = false, locked = true, token: PromptToken | undefined, identity = '', lastFrame = -1;
   const stop = () => { policy.clear(); audio.stop(); };
   toggle.addEventListener('click', () => { if (active) audio.toggle(); });
@@ -52,10 +53,11 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
     if (!live || state.pitchUpdatedAt === lastFrame) return;
     lastFrame = state.pitchUpdatedAt;
     const result = policy.update(state.pitchUpdatedAt, state.micStatus === 'listening' ? state.liveHz : null, Number(select.value), active && !locked && !document.hidden);
+    if (result.progress === 0) attackToken = token;
     hold.value = result.progress; setCents(result.reading?.cents ?? null);
     pitch.textContent = result.reading ? `${noteName(result.reading.writtenNote)} · ${Math.round(result.reading.cents)}¢` : '—';
     pitch.title = result.reading ? `Written pitch · sounding ${noteName(result.reading.concertNote)}` : 'Written pitch';
-    if (result.answer !== undefined && token) accept({ kind: 'keyboard', note: result.answer, matchOctave: true }, token);
+    if (result.answer !== undefined && attackToken) accept({ kind: 'keyboard', note: result.answer, matchOctave: true }, attackToken);
   });
   const visibility = () => { if (document.hidden) stop(); };
   document.addEventListener('visibilitychange', visibility);
@@ -65,10 +67,10 @@ export function microphoneInput(accept: (answer: NoteAnswer, token: PromptToken)
       policy.clear(); hold.value = 0; pitch.textContent = '—'; setCents(null);
     },
     enable(value: boolean) { if (active && !value) stop(); active = value; node.hidden = !value; },
-    update(next: PromptToken, disabled: boolean, timed: boolean) {
+    update(next: PromptToken, disabled: boolean, timed: boolean, overlap = false) {
       const key = `${next.session}:${next.prompt}`;
-      if (timed && !disabled && (identity !== key || locked)) policy.beginWindow();
-      if (identity !== key || disabled) { policy.reset(); hold.value = 0; }
+      if (timed && !disabled && (identity !== key && !overlap || locked)) policy.beginWindow();
+      if (identity !== key && !overlap || disabled) { policy.reset(); hold.value = 0; }
       identity = key; token = next; locked = disabled;
     },
     dispose() { audio.dispose(); document.removeEventListener('visibilitychange', visibility); },

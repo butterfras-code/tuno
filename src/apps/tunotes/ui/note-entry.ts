@@ -262,7 +262,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
 
   function update(...args: Parameters<typeof answers.update>) {
     lastUpdate = args;
-    const [preset, token, locked] = args;
+    const [preset, token, locked, overlap] = args;
     if (!initialized || presetInstrument !== preset.instrument) {
       initialized = true; presetInstrument = preset.instrument;
       microphone.setInstrument(preset.instrument);
@@ -296,11 +296,11 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       side.hidden = config?.instrument !== 'horn-f';
     }
     if (!supported && method === 'fingering') method = 'names';
-    microphone.update(token, locked, options.timedPrompts?.() ?? false);
+    microphone.update(token, locked, options.timedPrompts?.() ?? false, overlap);
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     const primary = pitch && config?.pitches[chromatic(pitch)]?.[0];
-    policy.update(token, locked, Boolean(primary && isOpenFingering(primary)));
+    policy.update(token, locked, Boolean(primary && isOpenFingering(primary)), overlap);
     open.disabled = locked || resizing;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;
@@ -351,7 +351,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     },
     keyboard(letter: Letter, accidental: Accidental, explicit: boolean, session: Practice, shortcut?: (hint: string) => string) {
       if (instrumentPicker.matches(':popover-open') || method === 'mic' || method === 'keyboard' || supported && method === 'fingering') return;
-      const hint = !explicit && options.guidance() && session.state === 'running'
+      const hint = !explicit && options.guidance() && session.state === 'running' && !session.earlyNext
         ? missingAccidentalHint(letter, session.pitch, session.preset, options.showKeySignature()) : undefined;
       if (hint) {
         answers.reset(); dismiss.hidden = false;
