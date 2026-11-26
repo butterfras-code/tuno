@@ -4,10 +4,6 @@
 .rhythm-app .activity-surface .rhythm-nav a.control[aria-current='page'] { display: flex; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 4px #0002; border-color: transparent; }
 .rhythm-app .activity-surface .rhythm-nav .practice-help-trigger { width: auto; flex: initial; margin: 0; }
 
-.response-options { display: grid; gap: 16px; }
-.response-options .field { min-width: 0; margin: 0; }
-.response-options select { width: 100%; min-height: 44px; }
-.response-options input[type='checkbox'] { width: 22px; height: 22px; }
 @media (max-width: 380px) {
   .rhythm-app .interaction-selector .control { font-size: 12px; padding-inline: 2px; }
 }

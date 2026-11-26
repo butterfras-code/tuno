@@ -40,11 +40,46 @@ main.rhythm-app {
 }
 
 .tap-response { margin-top: 20px; }
-.score-tempo { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0 0 4px; }
-.score-tempo svg { width: 24px; height: 24px; color: var(--color-teal); flex: none; }
-.rhythm-app .score-tempo input { width: 72px; min-height: 44px; padding: 8px; font-size: 15px; }
-.tempo-unit { font-size: 18px; }
-.tempo-bpm { font-size: 11px; color: var(--color-muted); }
+.score-tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 38px;
+  margin: 0;
+  padding: 3px 11px 3px 9px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 700 13px/1 var(--font-heading);
+  flex-shrink: 0;
+}
+.score-tempo:focus-within {
+  border-color: var(--color-teal);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-teal) 20%, transparent);
+}
+.score-tempo:has(input:disabled) { opacity: .6; }
+.score-tempo svg { width: 18px; height: 18px; color: var(--color-teal); flex: none; }
+.rhythm-app .score-tempo input {
+  width: 3.4ch;
+  min-height: 26px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--color-muted);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: 800 14px/1 var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+}
+.rhythm-app .score-tempo input:focus { outline: none; border-bottom-color: var(--color-teal); }
+.rhythm-app .score-tempo input::-webkit-inner-spin-button,
+.rhythm-app .score-tempo input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.tempo-unit { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.tempo-bpm { font-size: 11.5px; font-weight: 600; color: var(--color-muted); }
 .performance-settings input[type=checkbox], .calibration input[type=checkbox] { width: 22px; height: 22px; }
 .pad { width: 100%; min-height: 120px; border: 3px solid var(--color-teal); border-radius: 18px; font: 800 1.3rem var(--font-heading); background: var(--color-tint); color: var(--color-ink); touch-action: none; user-select: none; }
 .pad[aria-pressed=true] { background: #c3dce1; }
@@ -252,10 +287,92 @@ main.rhythm-app {
 .interaction-body { min-width: 0; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-tint); }
 .shared-interaction:has(.interaction-selector[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .shared-interaction .tap-response { margin-top: 0; }
-.performance-setup { display: flex; flex-wrap: wrap; align-items: start; gap: 16px; margin-bottom: 16px; }
-.performance-setup .field { margin: 0; flex: 1 1 180px; }
+.performance-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
+.performance-setup-primary,
+.performance-setup-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .performance-setup .setting-hint { max-width: 36ch; margin: 6px 0 0; }
-.performance-setup .score-tempo { margin: 0; min-height: 48px; }
+.play-style-segmented {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  padding: 3px;
+  gap: 2px;
+  min-height: 38px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-accent) 11%, var(--color-tint));
+  border: 1px solid color-mix(in srgb, var(--color-line) 85%, transparent);
+}
+.play-style-segmented.is-locked { opacity: .6; }
+.play-style-option {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: 700 13px/1.15 var(--font-heading);
+  padding: 6px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.play-style-option:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+.play-style-option[aria-pressed="true"] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 1px 3px #0002;
+}
+.play-style-option:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 1px; }
+.play-style-option:disabled { cursor: default; }
+.rhythm-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 5px 11px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  color: var(--color-ink);
+  font: 700 13px/1.15 var(--font-heading);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.rhythm-toggle:hover:not(:has(input:disabled)) { border-color: var(--color-teal); }
+.rhythm-toggle input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.rhythm-toggle:has(input:checked) {
+  background: var(--color-teal);
+  border-color: var(--color-teal);
+  color: var(--color-surface);
+  box-shadow: 0 1px 4px #0002;
+}
+.rhythm-toggle:has(input:checked)::before { content: '✓'; font-size: 11px; line-height: 1; }
+.rhythm-toggle:has(input:focus-visible) { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+.rhythm-toggle:has(input:disabled) { opacity: .6; cursor: default; }
+.rhythm-toggle input:disabled { cursor: default; }
 .count-palette-host { min-height: 180px; }
 .count-palette-host .count-palette { position: static; width: 100%; max-width: none; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; touch-action: auto; box-sizing: border-box; }
 .count-palette-host .count-popover-dismiss { display: none; }
@@ -267,13 +384,54 @@ main.rhythm-app {
 .count-palette-host:has(.count-palette:not([hidden]), .endpoint-prompt:not([hidden])) .palette-empty { display: none; }
 @media (max-width: 760px) {
   .shared-interaction { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .interaction-body { padding: 12px; }
   .count-palette-host .count-popover-markings { grid-template-columns: minmax(0, 1fr); }
+  .performance-setup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .performance-setup-primary {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .performance-setup-toggles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+  .score-tempo {
+    min-height: 36px;
+    padding: 2px 8px 2px 7px;
+    gap: 4px;
+    font-size: 12.5px;
+  }
+  .score-tempo svg { width: 16px; height: 16px; }
+  .rhythm-app .score-tempo input { width: 3.1ch; min-height: 24px; font-size: 13.5px; }
+  .tempo-unit { font-size: 13px; }
+  .tempo-bpm { font-size: 10.5px; }
+  .play-style-segmented {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 36px;
+    grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr);
+    padding: 2px;
+  }
+  .play-style-option { min-width: 0; padding: 5px 4px; font-size: 12px; }
+  .rhythm-toggle { width: 100%; min-height: 36px; padding: 4px 6px; font-size: 12px; }
+}
+@media (max-width: 360px) {
+  .score-tempo { padding: 2px 6px; gap: 3px; }
+  .tempo-bpm { display: none; }
+  .play-style-option { font-size: 11.5px; padding: 5px 2px; }
 }
 
 .rhythm-app .passage-measure:not(.active-count-measure) .count-slot[aria-pressed="true"] { background: var(--color-canvas); border-color: var(--color-line); }
-.performance-setup input[type="checkbox"] { width: 22px; height: 22px; }
 
 /* CountingPlan editor: musical identities and unit state are independent of these pieces. */
 .plan-answer { min-height: 150px; }
@@ -460,7 +618,6 @@ main.rhythm-app {
   .rhythm-app .plan-token-palette button.control { padding: 8px; }
   .rhythm-app .plan-unit-controls { gap: 4px; }
   .rhythm-app .plan-unit-controls button.control { padding: 8px 6px; font-size: 12px; }
-  .interaction-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Counting feedback uses the confirmed checked snapshot. */
@@ -539,8 +696,61 @@ g[data-counting-feedback="edited"] { outline-style: dotted; }
 .rhythm-app .count-erase-actions .control { background: transparent; color: var(--color-muted); }
 /* Session controls are outside the tappable outline and reserve their space. */
 .performance-surface { border: 0; background: none; overflow: visible; }
-.performance-surface > .pad { border: 3px solid var(--color-teal); border-radius: 18px; background: var(--color-tint); padding: 12px; }
+.performance-surface > .pad {
+  height: 124px;
+  min-height: 124px;
+  border: 2.5px solid var(--color-teal);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-surface) 38%, var(--color-tint));
+  padding: 12px 16px;
+}
+.performance-surface > .pad:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-teal) 9%, var(--color-tint));
+}
+.tap-response.active .performance-surface > .pad {
+  background: color-mix(in srgb, var(--color-teal) 14%, var(--color-surface));
+}
+.performance-surface > .pad[aria-pressed=true] { background: #c3dce1; }
+.pad-space-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px/1.2 var(--font-body);
+  color: var(--color-muted);
+}
+.pad-space-hint[hidden] { display: none; }
+.pad-space-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border: 1px solid var(--color-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 700 11px/1.1 var(--font-heading);
+}
+@media (hover: none) and (pointer: coarse), (max-width: 540px) {
+  .pad-space-hint { display: none; }
+}
 .pad-tools { position: static; flex-direction: row; justify-content: flex-start; margin-top: 8px; }
+.rhythm-app .pad-tools .control { min-height: 38px; padding: 6px 14px; font-size: 13px; border-radius: 11px; }
+.rhythm-app .pad-tools .pad-stop:not(:disabled) {
+  background: var(--color-destructive-tint);
+  border-color: var(--color-destructive-line);
+  color: var(--color-destructive);
+}
+.rhythm-app .pad-tools .pad-stop:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-destructive-tint) 85%, var(--color-destructive));
+  border-color: var(--color-destructive);
+}
+@media (max-width: 760px) {
+  .performance-surface > .pad { height: 108px; min-height: 108px; padding: 10px 12px; border-radius: 14px; }
+  .pad-action { font-size: 19px; }
+  .pad-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+  .rhythm-app .pad-tools .control { width: 100%; min-height: 38px; padding: 6px 8px; }
+}
 /* Lifecycle emphasis never changes target geometry during entry. */
 #practice-view[data-phase='input'] .interaction-body { border-color: var(--color-teal); }
 #practice-view[data-phase='review'] .interaction-body { background: var(--color-surface); }

@@ -36,7 +36,7 @@ try {
   assert.equal(await counts.first().textContent(), '1');
   await writeFile(`${output}/${style}-accessibility.yml`, await counts.first().ariaSnapshot());
   await page.getByRole('button', { name: 'Perform', exact: true }).click();
-  await page.getByLabel('How to play', { exact: true }).selectOption(style);
+  await page.getByRole('group', { name: 'How to play', exact: true }).getByRole('button', { name: style === 'hold' ? 'Tap + Hold' : 'Tap', exact: true }).click();
   await page.getByLabel('Tempo (quarter-note BPM)', { exact: true }).fill('120');
   await page.getByLabel('Metronome during exercise', { exact: true }).check();
   await page.getByRole('button', { name: 'Performance pad', exact: true }).click();
