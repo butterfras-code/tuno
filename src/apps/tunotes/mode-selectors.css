@@ -4,6 +4,11 @@
 .mode-pill-selector .practice-mode-auto { display: contents; }
 .mode-pill-selector .practice-mode-choices .range-content-button.control { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 2px; width: 100%; min-height: 36px; margin: 0; padding: 4px; border: 0; border-radius: 11px; background: transparent; color: var(--color-ink); font-size: 14px; text-align: center; }
 .mode-pill-selector .practice-mode-choices > .range-content-button[aria-pressed='true'], .mode-pill-selector .challenge-mode-card:has(> [aria-pressed='true']) { background: var(--color-surface); box-shadow: 0 1px 4px #0002; }
+.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control { gap: 4px; white-space: nowrap; }
+.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='false'] { background: transparent; color: var(--color-ink); border-color: transparent; }
+.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='false']:hover { background: color-mix(in srgb, var(--color-teal) 12%, transparent); }
+.mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control[aria-pressed='true'] { background: var(--color-teal); color: var(--color-surface); border-color: transparent; box-shadow: 0 1px 4px #0002; }
+.mode-pill-selector .challenge-correct-mark { font-size: 12px; line-height: 1; }
 .mode-pill-selector .practice-mode-choices .range-content-button:disabled { opacity: .5; }
 .mode-pill-selector .challenge-mode-card { display: flex; align-items: center; justify-content: center; gap: 2px; min-height: 36px; padding: 4px 2px; border: 0; border-radius: 11px; background: transparent; }
 .mode-pill-selector .practice-mode-choices .challenge-mode-card > .control { flex: 0 0 auto; width: auto; min-height: 24px; padding: 0; font-size: 13px; }
@@ -11,8 +16,13 @@
 .mode-pill-selector .challenge-mode-card input { flex: 0 0 3ch; width: 3ch; min-height: 24px; font-size: 13px; }
 @media (max-width: 400px) {
   .mode-pill-selector .practice-mode-choices .range-content-button.control { font-size: 12px; }
+  .mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control { gap: 2px; padding-inline: 2px; }
   .mode-pill-selector .practice-mode-choices .challenge-mode-card > .control { font-size: 12px; }
   .mode-pill-selector .challenge-mode-card { gap: 2px; padding-inline: 2px; }
+}
+@media (max-width: 350px) {
+  .mode-pill-selector .practice-mode-choices > .challenge-correct-only.range-content-button.control { font-size: 11px; }
+  .mode-pill-selector .challenge-correct-mark { font-size: 10px; }
 }
 
 .mode-pill-selector .practice-mode-auto.auto-selected {

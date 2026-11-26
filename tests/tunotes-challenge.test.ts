@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Challenge, challengeScore, defaultTimed, defaultTarget, validateRules } from '../src/apps/tunotes/engine/challenge.ts';
+import { Challenge, challengeScore, defaultTimed, defaultTarget, describeRules, validateRules } from '../src/apps/tunotes/engine/challenge.ts';
 import { defaultPreset, fingerprint } from '../src/apps/tunotes/domain/presets.ts';
 import { NotesStore, parseBackup } from '../src/apps/tunotes/persistence/store.ts';
 import type { ChallengeRules } from '../src/apps/tunotes/engine/challenge.ts';
@@ -73,5 +73,63 @@ test('Challenge backups retain zero-attempt results, isolate learning and benchm
   const empty=fixture();empty.round.finish();store.record('p',empty.round);assert.equal(store.profile()!.results.length,2);
   assert.deepEqual(parseBackup(store.export()),store.data);
   const bad=JSON.parse(store.export());bad.profiles[0].results[0].activeMs=1;assert.throws(()=>parseBackup(JSON.stringify(bad)));
-  for(const version of [0,1,2,3]) { const old={...JSON.parse(store.export()),schemaVersion:version,profiles:[],configuration:{remember:false,profileId:null,presetId:defaultPreset.id,selfPaced:false}};if(version===0)delete old.configuration;assert.equal(parseBackup(JSON.stringify(old)).schemaVersion,7); }
+  for (const version of [0,1,2,3]) { const old={...JSON.parse(store.export()),schemaVersion:version,profiles:[],configuration:{remember:false,profileId:null,presetId:defaultPreset.id,selfPaced:false}};if(version===0)delete old.configuration;assert.equal(parseBackup(JSON.stringify(old)).schemaVersion,7); }
+});
+test('Challenge Correct Only advances correct answers immediately, holds misses for 800 ms, retries the same pitch, and isolates backups/benchmarks', () => {
+  for (const bad of [{ ...defaultTimed, correctOnly: false }, { ...defaultTarget, correctOnly: 'yes' }]) assert.throws(() => validateRules(bad));
+  const timedRules = validateRules({ ...defaultTimed, seconds: 15, correctOnly: true });
+  const targetRules = validateRules({ ...defaultTarget, target: 2, correctOnly: true });
+  assert.match(describeRules(timedRules), /Correct Only$/);
+  assert.match(describeRules(targetRules), /Correct Only$/);
+
+  const f = fixture(timedRules); f.begin();
+  assert.equal(f.round.continueAfter, 'correct');
+  const firstPitch = f.round.pitch;
+  const wrongToken = f.round.token;
+  assert.equal(f.round.answer(wrongToken, { letter: firstPitch.letter === 'C' ? 'D' : 'C', accidental: 0 }), true);
+  assert.equal(f.round.state, 'feedback');
+  f.add(799); assert.equal(f.round.advance(wrongToken), false);
+  f.add(1); assert.equal(f.round.advance(wrongToken), true);
+  assert.equal(f.round.state, 'running');
+  assert.deepEqual(f.round.pitch, firstPitch);
+  assert.equal(f.round.prompt, wrongToken.prompt + 1);
+  assert.equal(f.round.answer(wrongToken, firstPitch), false);
+
+  const retryToken = f.round.token;
+  assert.equal(f.round.answer(retryToken, firstPitch), true);
+  assert.equal(f.round.advance(retryToken), true);
+  assert.equal(f.round.state, 'running');
+  assert.notDeepEqual(f.round.pitch, firstPitch);
+  assert.equal(f.round.attempts, 2);
+  assert.equal(f.round.correct, 1);
+
+  // Deadline during 800 ms retry window completes cleanly at limitMs without extending activeMs.
+  f.set(17900);
+  const latePitch = f.round.pitch;
+  assert.equal(f.round.answer(f.round.token, { letter: latePitch.letter === 'C' ? 'D' : 'C', accidental: 0 }), true);
+  assert.equal(f.round.state, 'feedback');
+  f.set(18000); f.round.tick();
+  assert.equal(f.round.state, 'finished'); assert.equal(f.round.end, 'completed'); assert.equal(f.round.activeMs, 15000);
+
+  // Goal + Correct Only finishes immediately on the final correct answer and counts misses in accuracy.
+  const g = fixture(targetRules); g.begin();
+  const missPitch = g.round.pitch;
+  assert.equal(g.round.answer(g.round.token, { letter: missPitch.letter === 'C' ? 'D' : 'C', accidental: 0 }), true);
+  g.add(800); assert.equal(g.round.advance(g.round.token), true);
+  assert.deepEqual(g.round.pitch, missPitch);
+  assert.equal(g.round.answer(g.round.token, missPitch), true);
+  assert.equal(g.round.advance(g.round.token), true);
+  assert.equal(g.round.answer(g.round.token, g.round.pitch), true);
+  assert.equal(g.round.end, 'completed');
+  assert.equal(g.round.attempts, 3); assert.equal(g.round.correct, 2); assert.equal(g.round.qualified, false);
+
+  // Backups round-trip correctOnly and benchmarks stay isolated from normal rules.
+  const store = new NotesStore();
+  store.update(d => { d.profiles.push({ id: 'p', name: 'Player', results: [], contexts: [], defaultPresetId: d.configuration.presetId }); d.configuration.remember = true; d.configuration.profileId = 'p'; });
+  const bench = fixture(timedRules); bench.begin();
+  for (let i = 0; i < 18; i++) { assert.equal(bench.round.answer(bench.round.token, bench.round.pitch), true); assert.equal(bench.round.advance(bench.round.token), true); }
+  bench.add(15000); bench.round.tick(); store.record('p', bench.round);
+  assert.equal(store.challengeBenchmark(defaultPreset, false, timedRules), 18);
+  assert.equal(store.challengeBenchmark(defaultPreset, false, { ...defaultTimed, seconds: 15 }), 10);
+  assert.deepEqual(parseBackup(store.export()), store.data);
 });

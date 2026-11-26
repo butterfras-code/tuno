@@ -361,8 +361,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     respond(session: Practice, reward: { treat: boolean; text: string }, previousAnnouncement?: string) {
       if (session.last!.correct) feedback.celebrate(reward, session.announcement !== previousAnnouncement ? session.announcement : '');
       else feedback.show(session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, false);
-      // Toasts keep their own lifetime while the next prompt is immediately usable.
-      if (session.continueAfter === 'instant') session.advance(session.token);
+      // Toasts keep their own lifetime while zero-delay prompts advance immediately.
+      if (!session.selfPaced) session.advance(session.token);
     },
   };
 }

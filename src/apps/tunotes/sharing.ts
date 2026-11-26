@@ -64,6 +64,6 @@ export const notesAdapter: ActivityAdapter<NotesActivity> = {
   },
   describe(value) {
     const range = value.ranges[0]!;
-    return [value.mode === 'multiplayer' ? `${value.ranges.length} players · ${{turns:'Pass and Play',pairs:'Side by Side','head-to-head':'Head to Head'}[value.format]}` : value.mode === 'challenge' ? 'Challenge' : 'Practice',range.source.name,range.adaptive ? 'Adaptive' : 'Fixed range',value.mode === 'practice' ? value.auto ? `Every ${quarterBeats(value.auto.value)} beats at ${value.auto.bpm} BPM` : value.pace === 'correct' ? 'Correct Only' : 'Normal' : value.rules.goal === 'timed' ? `${value.rules.seconds} seconds` : `${value.rules.target} correct`].join(' · ');
+    return [value.mode === 'multiplayer' ? `${value.ranges.length} players · ${{turns:'Pass and Play',pairs:'Side by Side','head-to-head':'Head to Head'}[value.format]}` : value.mode === 'challenge' ? 'Challenge' : 'Practice',range.source.name,range.adaptive ? 'Adaptive' : 'Fixed range',value.mode === 'practice' ? value.auto ? `Every ${quarterBeats(value.auto.value)} beats at ${value.auto.bpm} BPM` : value.pace === 'correct' ? 'Correct Only' : 'Normal' : `${value.rules.goal === 'timed' ? `${value.rules.seconds} seconds` : `${value.rules.target} correct`}${value.rules.correctOnly ? ' · Correct Only' : ''}`].join(' · ');
   },
 };

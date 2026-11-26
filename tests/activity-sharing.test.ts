@@ -45,6 +45,12 @@ test('all built-in ranges and custom ranges preserve their pool and adaptive cho
 test('multiplayer includes ordered ranges and rules, bounded to eight generic slots',async () => {
   const value: NotesActivity = {...notes(),mode:'multiplayer',format:'head-to-head',ranges:[captureRange(defaultPreset,false,true),captureRange(presets.find(p => p.clef === 'bass')!,false,true)]};
   assert.deepEqual(await readActivityLink(await activityUrl(base,notesAdapter,value),notesAdapter),{kind:'loaded',value});
+  const correctOnlyChallenge: NotesActivity = {...notes(),mode:'challenge',rules:{...defaultTimed,correctOnly:true}};
+  const correctOnlyMulti: NotesActivity = {...value,rules:{goal:'target',target:12,timeout:120,accuracyFloor:80,correctOnly:true}};
+  assert.deepEqual(await readActivityLink(await activityUrl(base,notesAdapter,correctOnlyChallenge),notesAdapter),{kind:'loaded',value:correctOnlyChallenge});
+  assert.deepEqual(await readActivityLink(await activityUrl(base,notesAdapter,correctOnlyMulti),notesAdapter),{kind:'loaded',value:correctOnlyMulti});
+  assert.match(notesAdapter.describe(correctOnlyChallenge),/Correct Only$/);
+  assert.match(notesAdapter.describe(correctOnlyMulti),/Correct Only$/);
   assert.throws(() => notesAdapter.validate({...value,ranges:Array(9).fill(value.ranges[0])}));
   assert.throws(() => notesAdapter.validate({...value,ranges:[]}));
   assert.throws(() => notesAdapter.validate({...value,profileId:'private'}));

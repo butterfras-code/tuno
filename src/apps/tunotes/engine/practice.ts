@@ -148,7 +148,7 @@ export class Practice {
     answer = 'kind' in answer ? answer.kind === 'keyboard' ? { ...answer, matchOctave: answer.matchOctave ?? false } : answer : { letter: answer.letter, accidental: answer.accidental };
     if (this.auto && !correct) { this.pendingWrong = { ...answer }; return true; }
     this.recordOutcome(answer, correct, now - this.promptStart);
-    this.feedbackEnd = now + (this.continueAfter === 'instant' ? 0 : correct ? 250 : 800); this.state = 'feedback'; return true;
+    this.feedbackEnd = now + this.feedbackDuration(correct); this.state = 'feedback'; return true;
   }
   private recordOutcome(answer: Observation['answer'], correct: boolean, responseMs: number) {
     if (!correct) this.misses[pitchLabel(this.pitch)] = (this.misses[pitchLabel(this.pitch)] ?? 0)+1;
@@ -188,6 +188,7 @@ export class Practice {
       this.state = 'running';
     }
   }
+  protected feedbackDuration(correct: boolean) { return this.continueAfter === 'instant' ? 0 : correct ? 250 : 800; }
   advance(token: PromptToken, explicit = false) {
     if (this.auto || this.state !== 'feedback' || !this.matches(token) || (this.selfPaced ? !explicit : this.activeMs < this.feedbackEnd)) return false;
     if (this.continueAfter !== 'correct' || this.last?.correct) this.pitch = this.nextPitch();
