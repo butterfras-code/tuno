@@ -192,6 +192,9 @@ async function checkLayouts(page) {
     const menu = page.getByRole('dialog',{name:'Choose instrument',exact:true});
     const bounds = await menu.boundingBox();
     assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0);
+    assert.equal(await menu.locator('[data-instrument="violin"]').textContent(),'Violin (string presets only)');
+    assert.equal(await menu.locator('[data-instrument="tuba-3"]').textContent(),'B♭ Tuba – 3V (outside note range)');
+    assert.equal(await menu.locator('.instrument-picker-hint').isVisible(),true);
     await page.screenshot({path:`dist/validation/notes-instrument-picker-${name}-${width}.png`});
     await page.mouse.click(2,2);
     assert.equal(await menu.count(),0);

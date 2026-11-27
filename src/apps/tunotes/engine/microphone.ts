@@ -20,14 +20,24 @@ export class MicrophoneHold {
   private since = 0;
   private last = -Infinity;
   private submitted: number | undefined;
+  private sounding: number | undefined;
   private quietSince: number | undefined;
   private lastFrame = -Infinity;
+  /** A new prompt window needs an attack inside its own window, including after count-in or Ready. */
+  beginWindow() {
+    if (this.sounding !== undefined) {
+      this.submitted = this.sounding;
+      this.quietSince = undefined;
+    }
+    this.reset();
+  }
   /** Prompt/feedback resets discard hold evidence, preserving the counted pitch and release evidence. */
   reset() { this.note = undefined; this.last = -Infinity; }
-  clear() { this.reset(); this.submitted = undefined; this.quietSince = undefined; this.lastFrame = -Infinity; }
+  clear() { this.reset(); this.submitted = undefined; this.sounding = undefined; this.quietSince = undefined; this.lastFrame = -Infinity; }
   /** quiet must mean measured low input level, never merely a missing pitch estimate. */
   update(now: number, frequency: number | null, offset: number, enabled = true, quiet = false) {
     const reading = frequency !== null && Number.isFinite(frequency) && frequency > 0 ? identifyPitch(frequency, 440, offset) : null;
+    this.sounding = reading?.writtenNote;
     if (now - this.lastFrame > 200 || now < this.lastFrame) this.quietSince = undefined;
     this.lastFrame = now;
     // Release can happen during feedback, but gaps and unreliable frames cannot prove silence.

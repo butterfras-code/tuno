@@ -14,7 +14,7 @@ try {
    assert.equal(await action.isVisible(),true);
    const setup=page.locator('.activity-setup:visible');
    const toolbar=await setup.locator('.activity-setup-toolbar').boundingBox();
-   const actionBox=await action.boundingBox();
+   const actionBox=await (mode==='Multi Player' ? action : setup.locator('.start-split')).boundingBox();
    assert.ok(Math.abs(actionBox.x+actionBox.width-toolbar.x-toolbar.width)<1,'start aligns with toolbar right edge');
    const setupBox=await setup.boundingBox();
    assert.ok(Math.abs(setupBox.width-toolbar.width)<1,'toolbar uses full setup width');
@@ -32,8 +32,23 @@ try {
     assert.equal(await duration.evaluate(n=>n===document.activeElement),true);
     await duration.fill('60');
     const modes=page.getByRole('group',{name:mode==='Challenge'?'Challenge Mode':'Multi Player Mode',exact:true});
-    assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).isDisabled(),true);
-    assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('title'),'Coming soon');
+    const correctOnly=modes.getByRole('button',{name:'Correct Only',exact:true});
+    assert.equal(await correctOnly.isDisabled(),false);
+    assert.equal(await correctOnly.getAttribute('aria-pressed'),'false');
+    assert.ok((await correctOnly.boundingBox()).height <= 40,'Correct Only pill stays compact');
+    await correctOnly.click();
+    assert.equal(await correctOnly.getAttribute('aria-pressed'),'true');
+    assert.equal(await modes.getByRole('button',{name:'Timed',exact:true}).getAttribute('aria-pressed'),'true','Correct Only combines with Timed');
+    assert.ok((await correctOnly.boundingBox()).height <= 40,'Active Correct Only pill stays compact');
+    assert.ok(await correctOnly.evaluate(node => {
+      const pill = node.getBoundingClientRect();
+      return [...node.children].filter(child => !child.hidden).every(child => {
+        const r = child.getBoundingClientRect();
+        return r.left >= pill.left - 0.5 && r.right <= pill.right + 0.5;
+      });
+    }),'Correct Only mark and label fit inside pill');
+    await correctOnly.click();
+    assert.equal(await correctOnly.getAttribute('aria-pressed'),'false');
     assert.equal(await page.getByRole('tab',{name:'Multi Player Settings',exact:true}).count(),0);
     assert.equal(await modes.locator('.challenge-mode-card').filter({has:page.getByRole('button',{name:'Timed',exact:true})}).getByRole('spinbutton',{name:'Duration (seconds)',exact:true}).count(),1);
     assert.equal(await modes.locator('.challenge-mode-card').filter({has:page.getByRole('button',{name:'Goal',exact:true})}).getByRole('spinbutton',{name:'Correct notes',exact:true}).count(),1);

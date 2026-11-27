@@ -1,3 +1,5 @@
+import { musicalSeconds, quarterPulse } from '../../music/tempo.ts';
+export { musicalSeconds, quarterPulse } from '../../music/tempo.ts';
 import { add, fraction, toNumber, divide, compare, multiply } from '../../music/fraction.ts';
 import type { Fraction } from '../../music/fraction.ts';
 import { derivePassage } from '../../music/measure.ts';
@@ -5,12 +7,6 @@ import type { RhythmMeasure } from '../../music/measure.ts';
 export interface TimingPolicy { readonly attackWindow: number; readonly releaseGrace: number; readonly leadIn: number }
 /** Seconds, provisional engineering defaults, not teaching thresholds. */
 export const prototypeTiming: TimingPolicy = { attackWindow: 0.18, releaseGrace: 0.30, leadIn: 0.12 };
-export const quarterPulse: Fraction = [1, 4];
-/** BPM is in units of pulse, independent of counting labels or measure.groups. */
-export function musicalSeconds(time: Fraction, bpm: number, pulse: Fraction = quarterPulse): number {
-  if (!Number.isFinite(bpm) || bpm <= 0 || compare(pulse, fraction(0)) <= 0) throw new Error('Invalid tempo/pulse.');
-  return toNumber(divide(time, pulse)) * 60 / bpm;
-}
 export interface Source { measure: number; event: number }
 export interface ExpectedNote { start: number; end: number; sources: Source[]; finalSegmentDuration?: number }
 export interface ExpectedRest { start: number; end: number; source: Source }

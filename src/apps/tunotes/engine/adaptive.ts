@@ -60,12 +60,12 @@ export function initialAdaptive(notes: NoteHistory = {}, learning?: Learning): A
   const compatible = !learning || learning.algorithmVersion === ALGORITHM_VERSION;
   return { notes: compatible ? structuredClone(notes) : {}, expansionCount: compatible ? learning?.expansionCount ?? 0 : 0, recent: [], answers: 0, sinceExpansion: 0, focus: [], focusRemaining: 0, focusPrompt: false, contrast: [], contrastRemaining: 0, previous: '', prompts: 0 };
 }
-export function learn(state: AdaptiveState, observation: Observation, preset: Preset): { state: AdaptiveState; added: readonly WrittenPitch[] } {
+export function learn(state: AdaptiveState, observation: Observation, preset: Preset, focusPrompt = state.focusPrompt): { state: AdaptiveState; added: readonly WrittenPitch[] } {
   let next = { ...state, notes: observe(state.notes,observation), recent: [...state.recent,observation].slice(-20), answers: state.answers+1, sinceExpansion: state.sinceExpansion+1 };
   const pool = activePool(preset,{ algorithmVersion: ALGORITHM_VERSION, expansionCount: next.expansionCount });
   let added: readonly WrittenPitch[] = [];
   const accuracy = next.recent.filter(o => o.correct).length / next.recent.length;
-  if (!next.focusRemaining && !next.focusPrompt && next.sinceExpansion >= 20 && next.recent.length === 20 && accuracy >= .9 && pool.every(p => mastered(next.notes[pitchLabel(p)]))) {
+  if (!next.focusRemaining && !focusPrompt && next.sinceExpansion >= 20 && next.recent.length === 20 && accuracy >= .9 && pool.every(p => mastered(next.notes[pitchLabel(p)]))) {
     added = expansionPlan(preset)[next.expansionCount] ?? [];
     if (added.length) next = { ...next, expansionCount: next.expansionCount+1, sinceExpansion: 0 };
   }

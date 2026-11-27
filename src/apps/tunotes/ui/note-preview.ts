@@ -8,9 +8,11 @@ import { renderPreviewStaff } from './staff.ts';
 import { button } from './setup.ts';
 export interface PreviewExposure { shown: boolean; skipped: boolean; completed: boolean }
 /** Own all callbacks; finishing a preview can never start play without a user action. */
-export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void, showKeySignature = false) {
+export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) => void, showKeySignature = false, onBack?: () => void) {
   const node = el('section','note-preview');
+  const header = el('div','preview-header');
   const heading = el('h2','','Meet your notes'); heading.tabIndex = -1;
+  const caption = el('p','muted preview-caption','Quick note preview — or press Start Practice to jump straight in.');
   const status = el('p'); status.setAttribute('role','status');
   const scene = el('div','preview-scene');
   const viewport = el('div','preview-staff-viewport');
@@ -19,7 +21,7 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   const toy = el('span','preview-toy'); toy.setAttribute('aria-hidden','true');
   toy.append(el('span','toy-ball'),el('span','toy-streamer one'),el('span','toy-streamer two'),el('span','toy-streamer three'));
   scene.append(viewport,dog.node);
-  let disposed = false, completed = false, noteIndex = 0;
+  let disposed = false, completed = false, introducing = false, noteIndex = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flight: Animation | undefined;
   const media = matchMedia('(prefers-reduced-motion: reduce)');
@@ -40,16 +42,28 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   const cancel = () => { clearTimeout(timer); flight?.cancel(); flight = undefined; };
   const dispose = () => { if (disposed) return; disposed = true; cancel(); media.removeEventListener('change',replay); dog.dispose(); };
   const enter = (skipped: boolean) => { if (disposed) return; const exposure = { shown: true, skipped, completed }; dispose(); begin(exposure); };
-  const start = button('Start Practice',() => enter(false));
-  start.classList.add('control--primary');
+  const start = button('',() => enter(introducing));
+  start.classList.add('control--primary','preview-start');
+  start.setAttribute('aria-label','Start Practice');
+  const skipHint = el('span','preview-skip-hint','(Skip Intro)');
+  skipHint.setAttribute('aria-hidden','true');
+  start.append(el('span','','Start Practice'),skipHint);
   const again = button('Replay',() => replay());
-  const skip = button('Skip',() => enter(true));
-  const actions = el('div','control-row preview-actions'); actions.append(navigation,again,skip);
-  const controls = el('div','activity-setup-toolbar preview-toolbar'); controls.append(actions,start);
+  const actions = el('div','control-row preview-actions'); actions.append(navigation,again); actions.hidden = true;
+  const controls = el('div','activity-setup-toolbar preview-toolbar');
+  if (onBack) {
+    const back = button('',() => { if (disposed) return; dispose(); onBack(); });
+    back.classList.add('preview-back');
+    const arrow = el('span','','← '); arrow.setAttribute('aria-hidden','true');
+    back.append(arrow, document.createTextNode('Back to setup'));
+    controls.append(back);
+  }
+  controls.append(start);
   const caught = () => {
     if (disposed) return;
     toy.hidden = true; dog.pose('happy'); node.classList.remove('preview-introducing');
-    completed = true; start.disabled = false; again.disabled = false; again.hidden = false; skip.hidden = true; navigation.hidden = total < 2;
+    introducing = false; completed = true; skipHint.hidden = true; again.disabled = false; again.hidden = false; navigation.hidden = total < 2; actions.hidden = false;
+    caption.textContent = 'You’ve met your notes — review them, or press Start Practice.';
     status.textContent = 'You’ve met your notes. Start when you’re ready, or replay.';
   };
   const finish = () => {
@@ -65,7 +79,8 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
   };
   function replay() {
     if (disposed) return; cancel(); node.classList.add('preview-introducing'); dog.pose('happy'); toy.hidden = true;
-    start.disabled = true; again.disabled = true; again.hidden = true; skip.hidden = false; navigation.hidden = true; status.textContent = '';
+    introducing = true; skipHint.hidden = false; again.disabled = true; again.hidden = true; navigation.hidden = true; actions.hidden = true; status.textContent = '';
+    caption.textContent = 'Quick note preview — or press Start Practice to jump straight in.';
     showNote(0,media.matches);
     if (media.matches) { caught(); return; }
     let index = 0;
@@ -103,7 +118,8 @@ export function notePreview(preset: Preset, begin: (exposure: PreviewExposure) =
     bounce();
   }
   again.hidden = true;
-  node.append(controls,heading,status,scene);
+  header.append(heading,actions,caption);
+  node.append(controls,header,status,scene);
   media.addEventListener('change',replay);
   return { node, dispose, start: () => { heading.focus(); replay(); } };
 }

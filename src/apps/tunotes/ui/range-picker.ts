@@ -198,8 +198,10 @@ export function rangePicker(idPrefix: string, selectPreset: (id: string, adaptiv
         const shortcut = control('',() => { ensemble = filter; renderInstruments(); show('Instrument'); });
         shortcut.classList.add('range-picker-instrument-target'); shortcut.setAttribute('aria-label',`${filter} instruments`);
         shortcut.dataset.ensemble = filter;
-        shortcut.append(instrumentIcon(asset)); shortcuts.append(shortcut);
+        const caption = el('span','range-picker-instrument-label',filter); caption.setAttribute('aria-hidden','true');
+        shortcut.append(instrumentIcon(asset),caption); shortcuts.append(shortcut);
       }
+      group.addEventListener('click',event => { if (!(event.target as Element).closest('button')) { renderInstruments(); show('Instrument'); } });
       group.append(shortcuts,el('strong','','Instrument')); choices.append(group);
       continue;
     }

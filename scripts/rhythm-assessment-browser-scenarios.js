@@ -47,7 +47,7 @@ window.__assessmentCheck = (async () => {
     assert(!outsideMenu.defaultPrevented,'context menus elsewhere remain available');
     const outsideTouch=new Event('touchstart',{bubbles:true,cancelable:true});document.querySelector('.rhythm-nav').dispatchEvent(outsideTouch);
     assert(!outsideTouch.defaultPrevented,'touch gestures elsewhere remain available');
-    selectPanel('Counts');choose(preset,'half');choose(preset,scenario==='rest-silence'?'sixteenth-all-rests':scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');choose(style,holdStyle?'hold':'tap');
+    selectPanel('Counts');choose(preset,'half');choose(preset,scenario==='rest-silence'?'sixteenth-all-rests':scenario==='tap-rest'?'rest':scenario==='compound'?'six-eighths':scenario==='tied'?'tie-dotted':'quarters');choose(tempo,scenario==='accepted'||scenario==='tied'||scenario==='tap-rest'?'120':'180');style.querySelector(`[data-value="${holdStyle?'hold':'tap'}"]`).click();
     button('Reset timing').click();
     document.querySelector('.calibration input[type=checkbox]').checked=false;
     const slot=document.querySelector('.count-slot');slot.focus();slot.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
@@ -111,7 +111,7 @@ window.__assessmentCheck = (async () => {
     if (typeof window.__assessmentSnapshot === 'function') await window.__assessmentSnapshot();
     if (scenario === 'short') assert(bag.textContent.includes('No long notes to check'), 'short sounds stay unrated');
     if (scenario === 'slower') assert(bag.textContent.includes('Steady beat: 5 out of 5 bones'), 'steady pace rewarded independently of tempo');
-    choose(tempo,'160');choose(style,holdStyle?'tap':'hold');
+    choose(tempo,'160');style.querySelector(`[data-value="${holdStyle?'tap':'hold'}"]`).click();
     for(const response of ['Counts','Perform']) {button(response).click();assert(panel.textContent===text && (response!=='Perform' || bag.textContent===bagText) && id()===exercise,'panel/preferences retain completed interpretation and rewards');}
     button('Counts').click();
     assert(!document.querySelector('.timing-timeline, [data-feedback]') && document.querySelector('.counting-rating') && !document.querySelector('[data-metric="rhythm"]'),'Counts restores counting score context without performance annotations');

@@ -1,3 +1,4 @@
+import { checkAutoEvery } from "./notes-auto-every-scenarios.mjs";
 import { readNotesData } from './notes-storage-helpers.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox } from 'playwright';
@@ -10,6 +11,7 @@ const browser = await ({chromium,firefox})[process.env.TUNO_BROWSER || 'chromium
 const host = await hostBuild();
 const errors = [];
 try {
+  await checkAutoEvery(browser,host);
   for (const [width,height] of [[320,667],[375,667],[390,844],[1024,768],[1366,600]]) {
     const page = await browser.newPage({viewport:{width,height},hasTouch:true});
     page.on('pageerror',error => errors.push(error.message));
@@ -21,8 +23,8 @@ try {
     assert.equal(actions.length,2); assert.equal(actions[0].width,actions[1].width); assert.equal(actions[0].height,actions[1].height); assert.equal(actions[0].top,actions[1].top);
     const modes = page.getByRole('group',{name:'Practice Mode',exact:true});
     assert.equal(await modes.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
-    assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),true);
-    assert.equal(await modes.getByRole('combobox').count(),0,'Auto Every timing stays deferred');
+    assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),false);
+    assert.equal(await modes.getByRole('combobox').count(),0,'Timing controls appear only when Auto Every is selected');
     await modes.getByRole('button',{name:'Correct Only',exact:true}).click();
     assert.equal(await modes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await readNotesData(page, data => data.configuration.continueAfter),'correct');
@@ -270,6 +272,11 @@ try {
   previewPage.on('pageerror',error => errors.push(error.message));
   await previewPage.goto(new URL('/notes/',host.url).href);
   await previewPage.getByRole('button',{name:'Choose Notes',exact:true}).click();
+  assert.deepEqual(await previewPage.locator('.range-picker-instrument-label').allTextContents(),['Band','Orchestra'],'Band and Orchestra labels are visible in Instrument card');
+  await previewPage.getByRole('button',{name:'Orchestra instruments',exact:true}).click();
+  assert.equal(await previewPage.getByRole('button',{name:'Orchestra',exact:true}).getAttribute('aria-pressed'),'true','Orchestra shortcut opens Orchestra catalog');
+  assert.equal(await previewPage.getByRole('button',{name:'Violin',exact:true}).isVisible(),true);
+  await previewPage.getByRole('button',{name:'Back to range options',exact:true}).click();
   await previewPage.getByRole('button',{name:'Band instruments',exact:true}).click();
   await previewPage.getByRole('button',{name:'Flute',exact:true}).click();
   const fluteCards = previewPage.locator('.range-picker-dialog[open] .range-picker-presets button');

@@ -141,6 +141,47 @@ try {
   await page.getByRole('button', { name: 'Stop mic', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Finish', exact: true }).click();
   assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true, 'finishing disposes capture');
+
+  // Pre-configure input from the split-Start popover and carry a live mic into Challenge Ready -> Go! without scoring early.
+  await page.getByRole('button', { name: 'Edit setup', exact: true }).click();
+  await page.getByRole('navigation', { name: 'tuNotes modes' }).getByRole('button', { name: 'Challenge', exact: true }).click();
+  const splitToggle = page.locator('.activity-setup-toolbar:visible .start-split-toggle');
+  await splitToggle.click();
+  const inputDialog = page.getByRole('dialog', { name: 'Answer with', exact: true });
+  await inputDialog.waitFor();
+  assert.equal(await inputDialog.locator('[data-input-tile]').count(), 3, 'popover shows Names, Fingering, and Mic tiles');
+  await inputDialog.locator('[data-input-tile="names"]').click();
+  assert.match(await inputDialog.locator('.input-popover-note').textContent(), /↑.*♯.*↓.*♭.*→.*♮/, 'Names hint documents real arrow-key shortcuts');
+  await inputDialog.locator('[data-input-tile="instrument"]').click();
+  assert.equal(await inputDialog.locator('.input-inst-option').count(), 11, 'Fingering grid matches the 11 real instruments');
+  await inputDialog.locator('[data-input-tile="mic"]').click();
+  const setupSelect = inputDialog.getByLabel('Transposition', { exact: true });
+  await setupSelect.selectOption('2');
+  const streamsBeforeArm = await page.evaluate(() => window.micTest.streams.length);
+  await page.evaluate(() => { window.micTest.hz = 233.08188; }); // B♭3 -> written C4 for B♭ transposition
+  await inputDialog.getByRole('button', { name: 'Start mic', exact: true }).click();
+  await inputDialog.getByRole('button', { name: 'Stop mic', exact: true }).waitFor();
+  await page.waitForFunction(() => /C4/.test(document.querySelector('.input-mic-pitch')?.textContent ?? ''));
+  await page.screenshot({ path: `dist/validation/notes-setup-input-popover-${name}.png` });
+  await page.keyboard.press('Escape');
+  assert.equal(await splitToggle.evaluate(el => el.classList.contains('is-live')), true, 'closed split trigger stays badged live');
+  await page.getByRole('button', { name: 'Start Challenge', exact: true }).click();
+  await page.locator('#challenge-status').filter({ hasText: /Ready/ }).waitFor();
+  assert.equal(await page.evaluate(() => window.micTest.streams.length), streamsBeforeArm + 1, 'Challenge Ready reuses the live mic stream from Setup');
+  assert.equal(await page.getByRole('button', { name: 'Stop mic', exact: true }).isVisible(), true, 'live mic controls are visible on Challenge Ready');
+  await page.waitForTimeout(450);
+  assert.match(await page.locator('#practice-counts').textContent(), /\/ 0 attempts/, 'sustained pitch during Challenge Ready never scores');
+  await page.screenshot({ path: `dist/validation/notes-challenge-ready-mic-${name}.png` });
+  await page.getByRole('button', { name: 'Ready', exact: true }).click();
+  await page.waitForFunction(() => /remaining/.test(document.querySelector('#challenge-status')?.textContent ?? ''), { timeout: 6000 });
+  await page.waitForTimeout(450);
+  assert.match(await page.locator('#practice-counts').textContent(), /\/ 0 attempts/, 'a note held across Go! does not accidentally grade');
+  await page.evaluate(() => { window.micTest.hz = 0; });
+  await page.waitForTimeout(450);
+  await page.evaluate(() => { window.micTest.hz = 233.08188; });
+  await page.waitForFunction(() => /\/ 1 attempts/.test(document.querySelector('#practice-counts')?.textContent ?? ''));
+  await page.getByRole('button', { name: 'Finish', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.micTest.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true, 'finishing Challenge disposes capture');
   assert.deepEqual(errors, []);
-  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch across prompt changes', 'Brief silence, unreliable input, pitch wobbles and octave glitches cannot rearm held notes', 'Confirmed quiet release allows a fresh repeated note', 'Stable legato pitch changes submit once', 'Pause and mode change stop tracks', 'Permission denial and audio interruption recover on explicit retry', 'Finishing disposes capture', 'All primary and secondary viewports fit with counted-note guidance'], errors },null,2));
+  await writeFile(`dist/validation/notes-mic-${name}.json`, JSON.stringify({ browser: browser.version(), profiles: viewportProfiles.map(p => p.id), results: ['Every instrument preset preselects its transposition without starting the mic', 'Manual overrides and saved fallback are preserved', 'All transpositions preserve written C4', '300 ms hold and sustained-note latch across prompt changes', 'Brief silence, unreliable input, pitch wobbles and octave glitches cannot rearm held notes', 'Confirmed quiet release allows a fresh repeated note', 'Stable legato pitch changes submit once', 'Pause and mode change stop tracks', 'Permission denial and audio interruption recover on explicit retry', 'Finishing disposes capture', 'Setup split-Start popover pre-configures Names/Fingering/Mic with real options and carries a live mic through Challenge Ready and countdown without scoring across Go!', 'All primary and secondary viewports fit with counted-note guidance'], errors },null,2));
 } finally { await browser.close(); await host.close(); }

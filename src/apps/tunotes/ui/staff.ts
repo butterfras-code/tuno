@@ -1,3 +1,4 @@
+import type { WrittenNote } from '../../../music/score.ts';
 import { ledgerPositions, positionDescription, staffPosition, keyAccidental, keyPositions, spelling, pitchLabel } from '../domain/notation.ts';
 import type { Clef, KeySignature, WrittenPitch } from '../domain/notation.ts';
 const ns = 'http://www.w3.org/2000/svg';
@@ -14,14 +15,29 @@ function svgNode(tag: string, attrs: Record<string, string | number>) {
 // Original project-owned vector clefs. No system music font or remote glyph dependency.
 const treble = 'M 66 156 C 87 159 87 132 76 105 L 62 64 C 53 35 72 19 76 38 C 81 58 45 82 43 104 C 39 130 79 142 88 116 C 96 93 59 82 55 105 C 52 116 64 123 73 118 M 66 156 C 52 154 54 143 61 143';
 const bass = 'M 45 83 C 43 59 76 58 77 80 C 79 99 59 115 44 121 M 45 82 C 57 85 58 70 48 70 C 40 70 39 79 45 82';
-export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless = false, showKeySignature = false) {
-
+function staffAriaLabel(pitch: WrittenPitch, clef: Clef, key: KeySignature, keyless: boolean, showKeySignature: boolean, value?: Pick<WrittenNote, 'type' | 'dots'>) {
+  const base = `${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major${showKeySignature ? '' : ', accidentals on notes'}`}, ${positionDescription(staffGeometry(pitch, clef).position)}`;
+  return value ? `${base}, ${value.dots ? 'dotted ' : ''}${value.type} note` : base;
+}
+export function renderStaff(
+  pitch: WrittenPitch,
+  clef: Clef,
+  key: KeySignature,
+  keyless = false,
+  showKeySignature = false,
+  value?: Pick<WrittenNote, 'type' | 'dots'>,
+  upcoming?: { pitch: WrittenPitch; clef: Clef; value?: Pick<WrittenNote, 'type' | 'dots'> },
+) {
   const signature = showKeySignature && !keyless;
+  const sharedUpcoming = upcoming && upcoming.clef === clef ? upcoming : undefined;
   const geometry = staffGeometry(pitch, clef);
+  const nextGeometry = sharedUpcoming ? staffGeometry(sharedUpcoming.pitch, sharedUpcoming.clef) : undefined;
   const offset = signature ? Math.abs(key.fifths) * 19 : 0;
-  const top = Math.min(0, geometry.noteY - 30), bottom = Math.max(200, geometry.noteY + 30);
-  const svg = svgNode('svg', { viewBox: `0 ${top} ${360 + offset} ${bottom - top}`, role: 'img', 'aria-label': `${clef} clef, ${keyless ? 'no key signature' : `${spelling(key.tonic)} major${showKeySignature ? '' : ', accidentals on notes'}`}, ${positionDescription(geometry.position)}`, class: 'staff' });
-  for (let p = 0; p <= 8; p += 2) svg.append(svgNode('line', { x1: 24, x2: 336 + offset, y1: staffY(p), y2: staffY(p), stroke: 'currentColor', 'stroke-width': 1.5 }));
+  const width = (sharedUpcoming ? 510 : 360) + offset;
+  const top = Math.min(0, geometry.noteY - 30, ...(nextGeometry ? [nextGeometry.noteY - 30] : []));
+  const bottom = Math.max(200, geometry.noteY + 30, ...(nextGeometry ? [nextGeometry.noteY + 30] : []));
+  const svg = svgNode('svg', { viewBox: `0 ${top} ${width} ${bottom - top}`, role: 'img', 'aria-label': staffAriaLabel(pitch, clef, key, keyless, showKeySignature, value), class: 'staff' });
+  for (let p = 0; p <= 8; p += 2) svg.append(svgNode('line', { x1: 24, x2: width - 24, y1: staffY(p), y2: staffY(p), stroke: 'currentColor', 'stroke-width': 1.5 }));
   const glyph = svgNode('g', { 'aria-hidden': 'true', fill: 'none', stroke: 'currentColor', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
   if (clef === 'treble' || clef === 'bass') {
     glyph.append(svgNode('path', { d: clef === 'treble' ? treble : bass, transform: clef === 'treble' ? 'translate(0 10)' : 'translate(0 0)' }));
@@ -34,9 +50,37 @@ export function renderStaff(pitch: WrittenPitch, clef: Clef, key: KeySignature, 
   svg.append(glyph);
   const positions = keyPositions[clef][key.fifths > 0 ? 'sharp' : 'flat'];
   positions.slice(0, signature ? Math.abs(key.fifths) : 0).forEach((p, i) => svg.append(accidentalGlyph(key.fifths > 0 ? 1 : -1, 117 + i * 19, staffY(p), 'key-accidental')));
-  if (pitch.accidental !== (signature ? keyAccidental(pitch.letter, key) : 0)) svg.append(accidentalGlyph(pitch.accidental, 192 + offset, geometry.noteY, 'note-accidental'));
-  for (const ledger of geometry.ledgers) svg.append(svgNode('line', { class: 'ledger', x1: ledger.x1 + offset, x2: ledger.x2 + offset, y1: ledger.y, y2: ledger.y, stroke: 'currentColor', 'stroke-width': 2 }));
-  svg.append(svgNode('path', { class: 'notehead', fill: 'currentColor', 'fill-rule': 'evenodd', d: 'M -17 0 a 17 10 0 1 0 34 0 a 17 10 0 1 0 -34 0 M -7 0 a 7 8 0 1 0 14 0 a 7 8 0 1 0 -14 0', transform: `translate(${230 + offset} ${geometry.noteY}) rotate(-15)` }));
+  const drawPitch = (target: SVGElement, p: WrittenPitch, g: ReturnType<typeof staffGeometry>, x: number, noteValue?: Pick<WrittenNote, 'type' | 'dots'>) => {
+    if (p.accidental !== (signature ? keyAccidental(p.letter, key) : 0)) target.append(accidentalGlyph(p.accidental, x - 38, g.noteY, 'note-accidental'));
+    for (const ledger of g.ledgers) target.append(svgNode('line', { class: 'ledger', x1: x - 23, x2: x + 23, y1: ledger.y, y2: ledger.y, stroke: 'currentColor', 'stroke-width': 2 }));
+    appendNote(target, x, g.noteY, g.position, noteValue);
+  };
+  const currentX = (sharedUpcoming ? 218 : 230) + offset;
+  if (value) svg.dataset.value = value.dots ? 'dotted-' + value.type : value.type;
+  drawPitch(svg, pitch, geometry, currentX, value);
+  if (sharedUpcoming && nextGeometry) {
+    svg.append(svgNode('line', { class: 'staff-barline', x1: 308 + offset, x2: 308 + offset, y1: staffY(8), y2: staffY(0), 'aria-hidden': 'true' }));
+    const nextGroup = svgNode('g', { class: 'upcoming-note', role: 'img', 'aria-label': `Next note, ${staffAriaLabel(sharedUpcoming.pitch, sharedUpcoming.clef, key, keyless, showKeySignature, sharedUpcoming.value)}` });
+    drawPitch(nextGroup, sharedUpcoming.pitch, nextGeometry, 398 + offset, sharedUpcoming.value);
+    svg.append(nextGroup);
+  }
+  return svg;
+}
+
+function appendNote(svg: SVGElement, x: number, y: number, position: number, value?: Pick<WrittenNote,'type' | 'dots'>) {
+  const stem = value && value.type !== 'whole';
+  const down = position >= 4;
+  if (stem) {
+    const stemX = x + (down ? -13 : 13);
+    svg.append(svgNode('line', { class: 'note-stem', x1:stemX,x2:stemX,y1:y,y2:y+(down ? 56 : -56),stroke:'currentColor','stroke-width':2.5}));
+  }
+  if (value?.dots) svg.append(svgNode('circle',{ class: 'note-dot', cx:x+24,cy:y-(position % 2 === 0 ? 10 : 0),r:3.5,fill:'currentColor'}));
+  svg.append(svgNode('path', { class: 'notehead', fill: 'currentColor', 'fill-rule': 'evenodd', d: stem ? 'M -14 0 a 14 9 0 1 0 28 0 a 14 9 0 1 0 -28 0' + (value.type === 'half' ? ' M -10 0 a 10 5 0 1 0 20 0 a 10 5 0 1 0 -20 0' : '') : 'M -17 0 a 17 10 0 1 0 34 0 a 17 10 0 1 0 -34 0 M -7 0 a 7 8 0 1 0 14 0 a 7 8 0 1 0 -14 0', transform: `translate(${x} ${y}) rotate(-15)` }));
+}
+
+export function durationIcon(value: Pick<WrittenNote,'type' | 'dots'>) {
+  const svg = svgNode('svg',{viewBox:'0 0 52 72',width:16,height:22,'aria-hidden':'true',class:'auto-duration-icon'});
+  appendNote(svg,18,value.type === 'whole' ? 52 : 58,1,value);
   return svg;
 }
 

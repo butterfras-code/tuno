@@ -118,3 +118,15 @@ test('beginner tolerance accepts pitches up to 40 cents flat or sharp', () => {
     assert.equal(result!.answer, Math.abs(cents) <= 40 ? 69 : undefined, `${cents} cents`);
   }
 });
+
+test('timed prompts require a fresh note after a count-in or incomplete previous hold', () => {
+  const policy = new MicrophoneHold();
+  policy.update(0,440,0,false);
+  policy.beginWindow();
+  assert.equal(hold(policy,69,0,10).answer,undefined);
+  policy.update(350,noteFrequency(70),0);
+  policy.beginWindow();
+  assert.equal(hold(policy,70,0,400).answer,undefined);
+  for (const time of [750, 825, 900, 975, 1000]) policy.update(time, null, 0, true, true);
+  assert.equal(hold(policy,70,0,1050).answer,70);
+});

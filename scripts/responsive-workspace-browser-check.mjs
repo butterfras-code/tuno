@@ -17,6 +17,9 @@ try {
     const url = new URL('/prototypes/rhythm-walk/', host.url).href;
     await page.goto(url); await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: `${output}/${width}-default.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Perform', exact: true }).click();
+    await page.locator('.tap-response').waitFor({ state: 'visible' });
+    await page.screenshot({ path: `${output}/${width}-perform.png`, fullPage: true });
     await page.goto(`${url}?fixture=dense-sixteenths`);
     const layouts = await page.evaluate(async () => {
       const checks = [], q = s => document.querySelector(s), all = s => [...document.querySelectorAll(s)];
@@ -35,8 +38,7 @@ try {
       q('.custom-exercise-dialog').close(); await settle();
       const header = rect('.app-header');
       check(all('.app-header > *').filter(visible).every(el => { const r = el.getBoundingClientRect(); return r.top >= header.top && r.bottom <= header.bottom; }), 'Header controls remain within the shared header');
-      const mobileOptions = matchMedia('(max-width: 760px)').matches;
-      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').filter(visible).length === (mobileOptions ? 4 : 3), 'Response selector adds Options only on mobile');
+      check(!q('[aria-label="Mode"]') && all('.interaction-selector button').filter(visible).length === 3, 'Response selector keeps 3 tabs (Counts, Perform, Feedback) at every width');
       check(all('.interaction-selector button').filter(visible).every(button => button.scrollWidth <= button.clientWidth), 'Response pill labels fit without overlap');
       const level = rect('.rhythm-preset-trigger'), next = rect('.setup-actions button');
       check(Math.abs(level.bottom - next.bottom) < 1 && level.right <= next.left, 'Choose rhythms and Next Exercise share one row');
@@ -54,19 +56,13 @@ try {
       check(ratings.length === 4 && ratings.every(el => !visible(el)), 'Unscored dimensions stay compact until review');
       check(ratings.every(el => el.dataset.bones === '' && el.textContent.includes('Not yet scored')), 'Unscored state never implies zero bones');
       check(q('.feedback-snapshot').dataset.scored === 'false', 'Feedback is quiet before scoring');
-      const optionControls = q(mobileOptions ? '.response-options' : '.performance-setup');
-      check(optionControls.querySelectorAll('input[type=checkbox]').length===2, 'Metronome and written-count controls use the current layout');
-      if (mobileOptions) {
-        check(!q('.performance-setup [data-setting="how-to-play"]') && !q('.performance-setup input[type=checkbox]'), 'Mobile Perform contains input rather than configuration');
-        const source = q('.passage-strip');
-        panel('Options');
-        check(visible(optionControls) && !visible(q('.tap-response')) && !visible(q('.count-palette-host')), 'Options replaces the input surface');
-        check(q('.passage-strip') === source, 'Options preserves the exercise');
-        check(visible(optionControls.querySelector('[data-setting="how-to-play"]')), 'How to play is available in mobile Options');
-        panel('Perform');
-      }
+      const optionControls = q('.performance-setup');
+      check(optionControls.querySelectorAll('input[type=checkbox]').length === 2, 'Metronome and written-count toggles live directly inside Perform');
+      check(visible(optionControls.querySelector('[data-setting="how-to-play"]')), 'Tap / Tap + Hold segmented control is directly visible in Perform');
+      check(all('.performance-setup button, .performance-setup .rhythm-toggle').every(el => visible(el) && el.scrollWidth <= el.clientWidth + 1), 'Perform control labels fit without clipping');
+      check(document.documentElement.scrollWidth <= innerWidth, 'Perform panel causes no horizontal overflow');
       check(!q('.counting-rating') && q('.passage').classList.contains('counts-hidden'), 'Perform shows performance feedback and hides written counts by default');
-      const showCounts = [...optionControls.querySelectorAll('label')].find(label=>label.textContent.includes('Show written counts')).querySelector('input');
+      const showCounts = optionControls.querySelector('input[aria-label="Show written counts during performance"]');
       showCounts.checked=true; showCounts.dispatchEvent(new Event('change'));
       check(!q('.passage').classList.contains('counts-hidden') && all('.answer-area').every(area=>area.inert), 'Perform can show read-only written counts');
       showCounts.checked=false; showCounts.dispatchEvent(new Event('change'));
@@ -107,32 +103,33 @@ try {
     report.layouts.push(layouts);
     if (width <= 760) {
       const response = page.getByRole('group', { name: 'Choose response' });
-      const options = response.getByRole('button', { name: 'Options', exact: true });
-      const howToPlay = page.getByRole('combobox', { name: 'How to play', exact: true });
+      await response.getByRole('button', { name: 'Perform', exact: true }).click();
+      const howToPlay = page.getByRole('group', { name: 'How to play', exact: true });
+      const tapBtn = howToPlay.getByRole('button', { name: 'Tap', exact: true });
+      const holdBtn = howToPlay.getByRole('button', { name: 'Tap + Hold', exact: true });
       const metronome = page.getByRole('checkbox', { name: 'Metronome during exercise', exact: true });
       const writtenCounts = page.getByRole('checkbox', { name: 'Show written counts during performance', exact: true });
-      await options.click();
-      await howToPlay.selectOption('hold'); await metronome.uncheck(); await writtenCounts.check();
+      await holdBtn.click(); await metronome.uncheck(); await writtenCounts.check();
       await page.setViewportSize({ width: 1024, height: 844 });
-      await options.waitFor({ state: 'hidden' });
-      await response.getByRole('button', { name: 'Perform', exact: true }).click();
-      assert.ok(await howToPlay.isVisible(), 'Desktop keeps configuration beside performance');
-      assert.equal(await howToPlay.inputValue(), 'hold');
+      assert.ok(await howToPlay.isVisible(), 'Desktop keeps configuration above performance pad');
+      assert.equal(await holdBtn.getAttribute('aria-pressed'), 'true');
       assert.equal(await metronome.isChecked(), false);
       assert.equal(await writtenCounts.isChecked(), true);
       await page.setViewportSize({ width, height: 844 });
-      await options.click();
-      assert.equal(await howToPlay.inputValue(), 'hold', 'Resizing preserves the selected play style');
+      assert.equal(await holdBtn.getAttribute('aria-pressed'), 'true', 'Resizing preserves the selected play style');
       assert.equal(await metronome.isChecked(), false);
       assert.equal(await writtenCounts.isChecked(), true);
-      await howToPlay.selectOption('tap'); await metronome.check(); await writtenCounts.uncheck();
+      await tapBtn.click(); await metronome.check(); await writtenCounts.uncheck();
       if (width === 390) {
-        await response.getByRole('button', { name: 'Perform', exact: true }).click();
-        await page.getByRole('button', { name: 'Performance pad', exact: true }).click();
+        // Space starts the pad even when another Perform button/control holds focus.
+        await page.getByRole('button', { name: 'Perform', exact: true }).focus();
+        await page.keyboard.press('Space');
         await page.locator('.tap-response.active').waitFor();
-        await options.click();
-        assert.equal(await page.locator('.tap-response.active').count(), 0, 'Opening Options safely interrupts performance');
-        assert.ok(await howToPlay.isEnabled(), 'Configuration unlocks after interruption');
+        assert.equal(await page.getByRole('button', { name: 'Performance pad', exact: true }).evaluate(n => n === document.activeElement), true, 'Space focuses the pad and starts performance from another focused button');
+        await page.getByRole('button', { name: 'Stop', exact: true }).click();
+        assert.equal(await page.locator('.tap-response.active').count(), 0, 'Stop cancels active performance');
+        await page.getByRole('button', { name: 'Try again', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Perform', exact: true }).click();
       }
       await response.getByRole('button', { name: 'Counts', exact: true }).click();
     }

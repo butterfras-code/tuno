@@ -54,19 +54,28 @@ try {
   await page.evaluate(() => caches.open('tuno:unrelated-scope:keep'));
   await page.getByRole('button', { name: 'Play tone', exact: true }).click();
   await page.getByRole('button', { name: 'Stop tone', exact: true }).waitFor();
+
+  // Deploying a new version refreshes the offline cache silently without
+  // interrupting active audio, and serves the live version immediately on load.
   revision = 'test-update-0002';
   await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-  await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting);
-  await page.waitForFunction(() => document.querySelector('#offline-status').textContent.includes('Update downloaded'));
-  assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true);
-  assert.equal(await page.locator('meta[name="tuno-version"]').getAttribute('content'), version);
+  await page.waitForFunction(async () => {
+    const keys = await caches.keys();
+    return keys.some(key => key.endsWith('test-update-0002'));
+  });
+  await page.getByText('Offline ready', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Stop tone', exact: true }).isVisible(), true, 'Silent worker update does not interrupt active audio');
+  assert.equal(await page.locator('meta[name="tuno-version"]').getAttribute('content'), version, 'Open tab keeps its current document until reloaded');
+
   const other = await context.newPage();
   await other.goto(url);
-  await other.getByText(/Update downloaded/).waitFor();
+  assert.equal(await other.locator('meta[name="tuno-version"]').getAttribute('content'), revision, 'Online visits immediately receive the live version even with another tab open');
+  await other.getByText('Offline ready', { exact: true }).waitFor();
   await page.locator('button', { hasText: 'Stop all audio' }).evaluate((button) => button.click());
   await page.close();
-  assert.equal(await other.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), true, 'Another open tab must keep the update waiting');
   await other.close();
+
+  // Offline reopening uses the verified precached bundle for the latest build.
   online = false;
   await context.setOffline(true);
   page = await context.newPage();
@@ -97,7 +106,7 @@ try {
   assert.equal(await brokenPage.getByText('Offline ready', { exact: true }).count(), 0);
   assert.equal((await brokenPage.evaluate(() => caches.keys())).length, 0, 'Failed installation must discard its partial cache');
   await failed.close();
-  console.log('Hosted offline: refreshes redirected cached HTML online and offline, update waits across active tabs, activates after closure, reopens offline, preserves other scopes, detects missing cache, and reports failed installation.');
+  console.log('Hosted offline: network-first live loads, silent background cache update without interrupting playback, offline fallback with redirected HTML, scope isolation, missing-cache repair, and failed installation cleanup passed.');
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));

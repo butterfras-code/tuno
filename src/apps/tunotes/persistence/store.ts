@@ -1,9 +1,9 @@
+import { validateAuto, type AutoSettings } from '../engine/auto-every.ts';
 import { applyObservation, changes } from './operations.ts';
 import type { Mutation, Operation, Repository, SavedState } from './operations.ts';
 import { migrateLegacyFingering } from './legacy-fingering.ts';
 import { canonicalFingering } from '../../../shared/input/fingering-code.ts';
 import { acceptsFingering, acceptsKeyboard, fingeringFor, validFingering } from '../domain/fingering.ts';
-import type { NoteAnswer } from '../domain/fingering.ts';
 import { Challenge, validateRules } from '../engine/challenge.ts';
 import type { ChallengeRules, ChallengeEnd } from '../engine/challenge.ts';
 import { ALGORITHM_VERSION, activePool, expansionPlan } from '../engine/adaptive.ts';
@@ -17,7 +17,7 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export interface Result { version: 1; context: string; attempts: number; correct: number; first20: number; interrupted: boolean; at: number; activeMs: number; challenge?: { rules: ChallengeRules; end: ChallengeEnd; bestStreak: number }; preview?: { shown: boolean; skipped: boolean; completed: boolean } }
 export interface Context { fingerprint: string; version: 1; updated: number; notes: Record<string, Observation[]>; learning?: Learning }
 export interface Profile { id: string; name: string; results: Result[]; contexts: Context[]; adaptive?: boolean; preview?: boolean; defaultPresetId: string }
-export interface Snapshot { appId: 'tunotes'; schemaVersion: 7; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
+export interface Snapshot { appId: 'tunotes'; schemaVersion: 7; profiles: Profile[]; customPresets: PresetSource[]; configuration: { remember: boolean; profileId: string | null; presetId: string; selfPaced: boolean; auto?: AutoSettings; continueAfter?: ContinueAfter; showKeySignature?: boolean } }
 export const emptySnapshot = (): Snapshot => ({ appId: 'tunotes', schemaVersion: 7, profiles: [], customPresets: [], configuration: { remember: false, profileId: null, presetId: 'treble-lines-and-spaces', selfPaced: false } });
 function fail(message: string): never { throw new Error(message); }
 function object(v: unknown, keys: string[]): Record<string, unknown> {
@@ -56,8 +56,11 @@ function observation(v: unknown, version: number): Observation {
   const pitch = parsePitch(`${p.letter}${integer(p.accidental,-1,1) === 1 ? '#' : p.accidental === -1 ? 'b' : ''}${integer(p.octave,0,8)}`);
   const a = object(o.answer,['letter','accidental','kind','mask','code','note','matchOctave','instrument']);
   const correct = boolean(o.correct);
-  let answer: NoteAnswer;
-  if (a.kind === 'fingering') {
+  let answer: Observation['answer'];
+  if (a.kind === 'unanswered') {
+    object(a,['kind']); if (correct || o.activity !== 'practice') fail('Invalid unanswered note.');
+    answer = {kind:'unanswered'};
+  } else if (a.kind === 'fingering') {
     const field = version < 7 ? 'mask' : 'code';
     object(a,['kind',field,'instrument']);
     const instrument = a.instrument === undefined ? undefined : string(a.instrument,40);
@@ -151,12 +154,12 @@ export function validateSnapshot(input: unknown): Snapshot {
     return { id: id(p.id), name, results, contexts, defaultPresetId, ...(p.adaptive === undefined ? {} : { adaptive: boolean(p.adaptive) }), ...(p.preview === undefined ? {} : { preview: boolean(p.preview) }) };
   });
   unique(profiles.map(p => p.id));
-  const c = object(o.configuration,['remember','profileId','presetId','selfPaced','continueAfter','showKeySignature']);
-  if (c.continueAfter !== undefined && (typeof c.continueAfter !== 'string' || !['instant','delay','click','correct'].includes(c.continueAfter))) fail('Invalid feedback pacing.');
+  const c = object(o.configuration,['remember','profileId','presetId','selfPaced','continueAfter','showKeySignature','auto']);
+  if (c.continueAfter !== undefined && (typeof c.continueAfter !== 'string' || !['instant','delay','click','correct','auto'].includes(c.continueAfter))) fail('Invalid feedback pacing.');
   const profileId = c.profileId === null ? null : id(c.profileId);
   if (profileId !== null && !profiles.some(p => p.id === profileId)) fail('Selected profile does not exist.');
   const presetId = id(c.presetId); if (!validPresets.has(presetId)) fail('Selected preset does not exist.');
-  return { appId: 'tunotes', schemaVersion: 7, profiles, customPresets, configuration: { remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
+  return { appId: 'tunotes', schemaVersion: 7, profiles, customPresets, configuration: { ...(c.auto === undefined ? {} : {auto:validateAuto(c.auto)}), remember: boolean(c.remember), profileId, presetId, selfPaced: boolean(c.selfPaced), ...(c.showKeySignature === undefined ? {} : { showKeySignature: boolean(c.showKeySignature) }), ...(c.continueAfter === undefined ? {} : { continueAfter: c.continueAfter as ContinueAfter }) } };
 }
 function validateContext(value: string, validPresets: Set<string>) {
   const parts: unknown = JSON.parse(value);

@@ -109,8 +109,7 @@ export async function startPractice(page) {
   await page.getByRole('button',{name:'Start Practice',exact:true}).click();
   await page.waitForFunction(() => Boolean(document.querySelector('.practice-play:not([hidden])') || document.querySelector('.note-preview')));
   if (await page.locator('.note-preview').isVisible()) {
-    const skip = page.getByRole('button',{name:'Skip',exact:true});
-    await (await skip.isVisible() ? skip : page.getByRole('button',{name:'Start Practice',exact:true})).click();
+    await page.locator('.note-preview').getByRole('button',{name:'Start Practice',exact:true}).click();
   }
   await page.locator('.practice-view[data-screen="playing"] .practice-play').waitFor();
   await page.evaluate(() => document.fonts.ready);

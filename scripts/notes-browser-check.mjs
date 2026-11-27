@@ -107,10 +107,10 @@ async function loop(page, mode) {
   assert.ok(statsBox.x + statsBox.width <= rewardBox.x,'Stats sit to the left of Uno on desktop');
   assert.match(await page.locator('.practice-results .result-treats').textContent(), /^1 treat earned this session$/);
   assert.equal(await page.locator('.practice-results .result-uno').getAttribute('alt'), 'Uno sitting with a treat');
-  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.locator('.note-preview').getByRole('button',{name:'Start Practice',exact:true}).click(); await count(page, 0);
   await lostKeyup(page);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.getByRole('button',{name:'Skip',exact:true}).click(); await count(page, 0);
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click(); await page.locator('.practice-results').waitFor({state:'hidden'}); if(await page.locator('.note-preview').isVisible()) await page.locator('.note-preview').getByRole('button',{name:'Start Practice',exact:true}).click(); await count(page, 0);
   await page.getByRole('button', { name: 'Finish', exact: true }).first().click();
   await page.getByRole('button', { name: 'Edit setup', exact: true }).first().click();
   await choosePreset(page,'bass-spaces'); await setPacing(page,'Normal');

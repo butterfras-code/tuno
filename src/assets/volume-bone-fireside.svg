@@ -1,0 +1,9 @@
+<svg width="32" height="18" viewBox="0 0 32 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern id="vcane" width="7" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(28)">
+<rect width="7" height="18" fill="#FFF8EE"/>
+<rect width="3.2" height="18" fill="#A6323C"/>
+</pattern>
+</defs>
+<path d="M8.5 5.5C7 1 1 1.5 1 5.5C1 7 1.8 8.2 3 9C1.8 9.8 1 11 1 12.5C1 16.5 7 17 8.5 12.5H23.5C25 17 31 16.5 31 12.5C31 11 30.2 9.8 29 9C30.2 8.2 31 7 31 5.5C31 1.5 25 1 23.5 5.5H8.5Z" fill="url(#vcane)" stroke="#8C2F39" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

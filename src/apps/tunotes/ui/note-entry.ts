@@ -1,4 +1,4 @@
-import { microphoneInput } from './microphone-input.ts';
+import { microphoneInput, type MicSnapshot } from './microphone-input.ts';
 import { fingerHeld, isOpenFingering } from '../../../shared/input/fingering-code.ts';
 import { keyboardAnswers } from './keyboard-answers.ts';
 import { fingeringResize, type FingerPosition, type FingerSize } from '../../../shared/input/fingering-resize.ts';
@@ -9,6 +9,7 @@ import { FingeringPolicy } from '../engine/fingering-policy.ts';
 import { fingeringFor } from '../domain/fingering.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { chromatic } from '../domain/notation.ts';
+import type { Preset } from '../domain/presets.ts';
 import { el } from '../../../shared/ui/components.ts';
 import { missingAccidentalHint } from '../domain/keyboard-guidance.ts';
 import { spelling } from '../domain/notation.ts';
@@ -18,18 +19,38 @@ import { answerControls } from './answers.ts';
 import { answerFeedback } from './answer-feedback.ts';
 
 export const keyboardGuidanceKey = 'tunotes:keyboard-accidental-guidance';
+export type InputMode = 'names' | 'instrument' | 'mic';
+export type InstrumentChoiceState = Readonly<{
+  value: string;
+  label: string;
+  disabled: boolean;
+  reason: string;
+  selected: boolean;
+}>;
+export type InputState = Readonly<{
+  mode: InputMode;
+  instrumentChosen: boolean;
+  selectedInstrument: { value: string; label: string };
+  instruments: InstrumentChoiceState[];
+  anyInstrumentDisabled: boolean;
+  mic: MicSnapshot;
+}>;
 
 /** Shared entry surface and feedback lifecycle for every note-reading mode. */
 export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => void, options: {
   concurrentPointers?: boolean;
   fingering?: boolean;
+  shared?: boolean;
+  timedPrompts?: () => boolean;
   currentPitch?: () => WrittenPitch | undefined;
   onMethodChange?: () => void;
   guidance: () => boolean;
   showKeySignature: () => boolean | undefined;
   disableGuidance: () => void;
 }) {
-  const microphone = microphoneInput(accept);
+  const inputListeners = new Set<() => void>();
+  const notifyInput = () => { for (const listener of inputListeners) listener(); };
+  const microphone = microphoneInput(accept, notifyInput);
   const answers = answerControls(accept, options.concurrentPointers);
   const feedback = answerFeedback();
   const status = el('p', 'feedback'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -57,12 +78,68 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   let initialized = false;
   let instrumentChosen = false;
   let lastUpdate: Parameters<typeof answers.update> | undefined;
+  const methodStorageKey = 'tunotes:input-method';
+  const instrumentStorageKey = 'tunotes:input-instrument';
+  const saveInputPreference = () => {
+    if (!options.fingering || options.shared) return;
+    const savedMode: InputMode = method === 'names' || method === 'mic' ? method : 'instrument';
+    try {
+      localStorage.setItem(methodStorageKey, savedMode);
+      if (instrumentChosen) localStorage.setItem(instrumentStorageKey, selectedInstrument.value);
+    } catch { /* Session-only preference. */ }
+  };
+  if (options.fingering && !options.shared) {
+    try {
+      const savedMode = localStorage.getItem(methodStorageKey);
+      const savedInst = instruments.find(item => item.value === localStorage.getItem(instrumentStorageKey));
+      if (savedInst) { selectedInstrument = savedInst; instrumentChosen = true; }
+      if (savedMode === 'mic') method = 'mic';
+      else if (savedMode === 'instrument') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    } catch { /* Session-only preference. */ }
+  }
   const node = el('div', 'note-entry');
   const interaction = el('section', 'input-workspace');
   interaction.setAttribute('aria-label', 'Note answer input');
   const methodSelector = el('div', 'interaction-selector');
   methodSelector.setAttribute('role', 'group'); methodSelector.setAttribute('aria-label', 'Answer method');
   const methodButtons = new Map<string, HTMLButtonElement>();
+  const selectMode = (next: InputMode) => {
+    if (next === 'instrument') {
+      const target = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+      if (method === target && instrumentChosen) return;
+      reset(); feedback.clear(); dismiss.hidden = true;
+      instrumentChosen = true;
+      method = target;
+      saveInputPreference();
+      options.onMethodChange?.();
+      if (lastUpdate) update(...lastUpdate);
+      else refreshMethod();
+      return;
+    }
+    if (method === next) return;
+    reset(); feedback.clear(); dismiss.hidden = true; method = next;
+    saveInputPreference();
+    options.onMethodChange?.(); refreshMethod();
+  };
+  const selectInstrumentByValue = (value: string, focusAfter = false) => {
+    const item = instruments.find(entry => entry.value === value);
+    if (!item || instrumentChoices.get(item.value)?.disabled) return;
+    reset(); feedback.clear(); dismiss.hidden = true;
+    selectedInstrument = item; instrumentChosen = true;
+    method = item.instrument ? 'fingering' : 'keyboard';
+    saveInputPreference();
+    options.onMethodChange?.();
+    if (instrumentPicker.matches(':popover-open')) instrumentPicker.hidePopover();
+    if (lastUpdate) update(...lastUpdate);
+    else {
+      for (const entry of instruments) instrumentChoices.get(entry.value)!.setAttribute('aria-pressed', String(entry === selectedInstrument));
+      refreshMethod();
+    }
+    if (focusAfter) {
+      if (method === 'keyboard') keyboard.focus();
+      else fingers.node.querySelector('button')?.focus();
+    }
+  };
   for (const [value, title] of [['names', 'Note Names'], ['instrument', 'Instrument'], ['mic', 'Mic']] as const) {
     const button = el('button', 'control', title); button.type = 'button';
     button.addEventListener('click', () => {
@@ -80,10 +157,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
         }
         return;
       }
-      const next = value;
-      if (method === next) return;
-      reset(); feedback.clear(); dismiss.hidden = true; method = next;
-      options.onMethodChange?.(); refreshMethod();
+      selectMode(value);
     });
     methodButtons.set(value, button); methodSelector.append(button);
   }
@@ -109,19 +183,12 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   for (const item of instruments) {
     const choice = el('button', 'control', item.label); choice.type = 'button';
     choice.dataset.instrument = item.value;
-    choice.addEventListener('click', () => {
-      reset(); feedback.clear(); dismiss.hidden = true;
-      selectedInstrument = item; instrumentChosen = true;
-      method = item.instrument ? 'fingering' : 'keyboard';
-      options.onMethodChange?.();
-      instrumentPicker.hidePopover();
-      if (lastUpdate) update(...lastUpdate);
-      // Resume playing without Space reactivating the instrument menu.
-      if (method === 'keyboard') keyboard.focus();
-      else fingers.node.querySelector('button')?.focus();
-    });
+    choice.addEventListener('click', () => selectInstrumentByValue(item.value, true));
     instrumentChoices.set(item.value, choice); instrumentPicker.append(choice);
   }
+  const instrumentHint = el('p', 'muted instrument-picker-hint', 'Choose an instrument preset in Choose Notes to unlock its chart.');
+  instrumentHint.hidden = true;
+  instrumentPicker.append(instrumentHint);
   const move = el('button', 'control fingering-move', 'Move Panel'); move.type = 'button';
   const flip = el('button', 'control fingering-flip'); flip.type = 'button';
   const flipIcon = el('span', 'fingering-tool-icon', '⇄');
@@ -242,7 +309,49 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   if (options.fingering) orientation.addEventListener('change', orientationChanged);
   const fingeringActions = el('div','fingering-actions'); fingeringActions.append(side,open,layoutTools);
   fingeringPanel.append(fingeringHelp, fingers.node, fingeringActions);
-  const reset = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); microphone.stop(); };
+  const resetGestures = () => { answers.reset(); fingers.reset(); keyboard.reset(); policy.cancel(); microphone.disarm(); };
+  const reset = () => { resetGestures(); microphone.stop(); };
+  const instrumentReasons = new Map<string, string>();
+  let anyInstrumentDisabled = false;
+  const syncPreset = (preset: Preset) => {
+    if (!initialized || presetInstrument !== preset.instrument) {
+      const hadInstrument = presetInstrument !== undefined;
+      initialized = true; presetInstrument = preset.instrument;
+      microphone.setInstrument(preset.instrument);
+      if (preset.instrument || hadInstrument || !instrumentChosen) {
+        selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? pianoInstrument;
+      }
+    }
+    anyInstrumentDisabled = false;
+    for (const item of instruments) {
+      const choice = instrumentChoices.get(item.value)!;
+      const chart = fingeringFor(item.instrument, item.valves);
+      choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
+      if (choice.disabled) anyInstrumentDisabled = true;
+      const reason = choice.disabled ? (chart?.control === 'finger' ? 'string presets only' : 'outside note range') : '';
+      instrumentReasons.set(item.value, reason);
+      choice.textContent = item.label + (reason ? ` (${reason})` : '');
+    }
+    instrumentHint.hidden = !anyInstrumentDisabled;
+    if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = pianoInstrument;
+    for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
+    if (method !== 'names' && method !== 'mic') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    refreshMethod();
+  };
+  const getInputState = (): InputState => ({
+    mode: method === 'names' || method === 'mic' ? method : 'instrument',
+    instrumentChosen,
+    selectedInstrument: { value: selectedInstrument.value, label: selectedInstrument.label },
+    instruments: instruments.map(item => ({
+      value: item.value,
+      label: item.label,
+      disabled: instrumentChoices.get(item.value)?.disabled ?? false,
+      reason: instrumentReasons.get(item.value) ?? '',
+      selected: item === selectedInstrument,
+    })),
+    anyInstrumentDisabled,
+    mic: microphone.getSnapshot(),
+  });
   const refreshMethod = () => {
     const active = supported && method === 'fingering';
     answers.node.hidden = active || method === 'keyboard' || method === 'mic'; fingeringPanel.hidden = !active;
@@ -253,6 +362,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     instrumentButton.setAttribute('aria-label', instrumentChosen ? `Choose instrument: ${selectedInstrument.label}` : 'Choose instrument');
     if (!active && resizing) editSize(false);
     fingers.enable(active && !resizing); node.dataset.inputMethod = active ? 'fingering' : method;
+    notifyInput();
   };
   if (options.fingering) {
     interactionBody.append(answers.node, fingeringPanel, keyboard.node, microphone.node);
@@ -261,21 +371,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
 
   function update(...args: Parameters<typeof answers.update>) {
     lastUpdate = args;
-    const [preset, token, locked] = args;
-    if (!initialized || presetInstrument !== preset.instrument) {
-      initialized = true; presetInstrument = preset.instrument;
-      microphone.setInstrument(preset.instrument);
-      selectedInstrument = instruments.find(item => item.instrument === preset.instrument) ?? pianoInstrument;
-    }
-    for (const item of instruments) {
-      const choice = instrumentChoices.get(item.value)!;
-      const chart = fingeringFor(item.instrument, item.valves);
-      choice.disabled = Boolean(item.instrument && (!chart || !preset.pool.every(p => chart.pitches[chromatic(p)])));
-      choice.textContent = item.label + (choice.disabled ? ' (outside note range)' : '');
-    }
-    if (instrumentChoices.get(selectedInstrument.value)!.disabled) selectedInstrument = pianoInstrument;
-    for (const item of instruments) instrumentChoices.get(item.value)!.setAttribute('aria-pressed', String(item === selectedInstrument));
-    if (method !== 'names' && method !== 'mic') method = selectedInstrument.instrument ? 'fingering' : 'keyboard';
+    const [preset, token, locked, overlap] = args;
+    syncPreset(preset);
     const config = options.fingering ? fingeringFor(selectedInstrument.instrument, selectedInstrument.valves) : undefined;
     supported = Boolean(config && preset.pool.every(p => config.pitches[chromatic(p)]));
     if (configuration !== config) {
@@ -295,11 +392,11 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
       side.hidden = config?.instrument !== 'horn-f';
     }
     if (!supported && method === 'fingering') method = 'names';
-    microphone.update(token, locked);
+    microphone.update(token, locked, options.timedPrompts?.() ?? false, overlap);
     keyboard.update(token,locked,preset.pool[0]!.octave);
     const pitch = options.currentPitch?.();
     const primary = pitch && config?.pitches[chromatic(pitch)]?.[0];
-    policy.update(token, locked, Boolean(primary && isOpenFingering(primary)));
+    policy.update(token, locked, Boolean(primary && isOpenFingering(primary)), overlap);
     open.disabled = locked || resizing;
     refreshMethod();
     const identity = `${token.session}:${token.prompt}`;
@@ -311,8 +408,28 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
   // Keep controls and their live announcement together in every mode.
   node.append(feedback.node);
   return {
-    ...answers, node, feedback, status, reset,
-    dispose() { reset(); microphone.dispose(); resizer.dispose(); orientation.removeEventListener('change', orientationChanged); },
+    ...answers, node, feedback, status, reset, resetGestures, syncPreset,
+    getInputState,
+    setMethod: selectMode,
+    selectInstrument: (value: string) => selectInstrumentByValue(value, false),
+    toggleMic() {
+      if (method !== 'mic') selectMode('mic');
+      microphone.toggle();
+    },
+    setMicTransposition(offset: string) { microphone.setTransposition(offset); },
+    setSelectorDisabled(disabled: boolean) {
+      if (disabled && instrumentPicker.matches(':popover-open')) instrumentPicker.hidePopover();
+      for (const button of methodButtons.values()) button.disabled = disabled;
+    },
+    lockForSetup() {
+      lastUpdate = undefined;
+      microphone.setLocked(true);
+    },
+    onInputChange(listener: () => void) {
+      inputListeners.add(listener);
+      return () => { inputListeners.delete(listener); };
+    },
+    dispose() { reset(); microphone.dispose(); resizer.dispose(); orientation.removeEventListener('change', orientationChanged); inputListeners.clear(); },
     get isMusicalKeyboard() { return method === 'keyboard'; },
     get inputFingering() { return supported && method === 'fingering' ? configuration : undefined; },
     get isFingering() { return supported && method === 'fingering'; },
@@ -350,7 +467,7 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     },
     keyboard(letter: Letter, accidental: Accidental, explicit: boolean, session: Practice, shortcut?: (hint: string) => string) {
       if (instrumentPicker.matches(':popover-open') || method === 'mic' || method === 'keyboard' || supported && method === 'fingering') return;
-      const hint = !explicit && options.guidance() && session.state === 'running'
+      const hint = !explicit && options.guidance() && session.state === 'running' && !session.earlyNext
         ? missingAccidentalHint(letter, session.pitch, session.preset, options.showKeySignature()) : undefined;
       if (hint) {
         answers.reset(); dismiss.hidden = false;
@@ -360,8 +477,8 @@ export function noteEntry(accept: (answer: NoteAnswer, token: PromptToken) => vo
     respond(session: Practice, reward: { treat: boolean; text: string }, previousAnnouncement?: string) {
       if (session.last!.correct) feedback.celebrate(reward, session.announcement !== previousAnnouncement ? session.announcement : '');
       else feedback.show(session.continueAfter === 'correct' ? 'Try again' : `That note is ${spelling(session.pitch)}.`, false);
-      // Toasts keep their own lifetime while the next prompt is immediately usable.
-      if (session.continueAfter === 'instant') session.advance(session.token);
+      // Toasts keep their own lifetime while zero-delay prompts advance immediately.
+      if (!session.selfPaced) session.advance(session.token);
     },
   };
 }

@@ -3,7 +3,10 @@ import type { PromptToken } from './practice.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import type { Preset } from '../domain/presets.ts';
 
-export type ChallengeRules = Readonly<{ goal: 'timed'; seconds: number; scoring: 'adjusted' | 'correct' } | { goal: 'target'; target: number; timeout: number; accuracyFloor: number }>;
+export type ChallengeRules = Readonly<
+  | { goal: 'timed'; seconds: number; scoring: 'adjusted' | 'correct'; correctOnly?: true }
+  | { goal: 'target'; target: number; timeout: number; accuracyFloor: number; correctOnly?: true }
+>;
 export type ChallengeEnd = 'completed' | 'timeout' | 'partial';
 export const defaultTimed = Object.freeze({ goal: 'timed', seconds: 60, scoring: 'adjusted' } satisfies ChallengeRules);
 export const defaultTarget = Object.freeze({ goal: 'target', target: 10, timeout: 120, accuracyFloor: 80 } satisfies ChallengeRules);
@@ -14,8 +17,10 @@ export function validateRules(value: unknown): ChallengeRules {
     if (typeof v !== 'number' || !Number.isInteger(v) || v < min || v > max) throw new Error(`Enter a whole number from ${min} to ${max}.`);
     return v;
   };
-  if (r.goal === 'timed' && Object.keys(r).every(k => ['goal','seconds','scoring'].includes(k)) && (r.scoring === 'adjusted' || r.scoring === 'correct')) return Object.freeze({ goal: 'timed', seconds: integer(r.seconds,15,300), scoring: r.scoring });
-  if (r.goal === 'target' && Object.keys(r).every(k => ['goal','target','timeout','accuracyFloor'].includes(k))) return Object.freeze({ goal: 'target', target: integer(r.target,1,100), timeout: integer(r.timeout,15,600), accuracyFloor: integer(r.accuracyFloor,50,100) });
+  if (r.correctOnly !== undefined && r.correctOnly !== true) throw new Error('Invalid Challenge rules.');
+  const correctOnly = r.correctOnly ? { correctOnly: true as const } : {};
+  if (r.goal === 'timed' && Object.keys(r).every(k => ['goal','seconds','scoring','correctOnly'].includes(k)) && (r.scoring === 'adjusted' || r.scoring === 'correct')) return Object.freeze({ goal: 'timed', seconds: integer(r.seconds,15,300), scoring: r.scoring, ...correctOnly });
+  if (r.goal === 'target' && Object.keys(r).every(k => ['goal','target','timeout','accuracyFloor','correctOnly'].includes(k))) return Object.freeze({ goal: 'target', target: integer(r.target,1,100), timeout: integer(r.timeout,15,600), accuracyFloor: integer(r.accuracyFloor,50,100), ...correctOnly });
   throw new Error('Invalid Challenge rules.');
 }
 export function challengeScore(correct: number, attempts: number) { return attempts ? correct * correct / attempts : 0; }
@@ -23,7 +28,8 @@ export function qualifies(rules: ChallengeRules, end: ChallengeEnd, correct: num
   return end === 'completed' && attempts > 0 && !interrupted && (rules.goal === 'timed' || correct === rules.target && correct * 100 >= rules.accuracyFloor * attempts);
 }
 export function describeRules(rules: ChallengeRules) {
-  return rules.goal === 'timed' ? `${rules.seconds} seconds · ${rules.scoring === 'adjusted' ? 'Correct Notes × Accuracy' : 'Correct Notes'}` : `${rules.target} correct · ${rules.timeout} second timeout · ${rules.accuracyFloor}% accuracy to qualify`;
+  const base = rules.goal === 'timed' ? `${rules.seconds} seconds · ${rules.scoring === 'adjusted' ? 'Correct Notes × Accuracy' : 'Correct Notes'}` : `${rules.target} correct · ${rules.timeout} second timeout · ${rules.accuracyFloor}% accuracy to qualify`;
+  return rules.correctOnly ? `${base} · Correct Only` : base;
 }
 /** Practice owns answers and feedback; this clock also excludes Ready and count-in. */
 export class Challenge extends Practice {
@@ -36,9 +42,10 @@ export class Challenge extends Practice {
   private countInRemaining = 3000;
   constructor(preset: Preset, rules: ChallengeRules, clock = () => performance.now(), random = Math.random, options: ConstructorParameters<typeof Practice>[4] = {}) {
     const frozen = validateRules(rules), timeline: { origin?: number } = {};
-    super(preset, false, () => timeline.origin === undefined ? 0 : clock() - timeline.origin, random, { ...options, continueAfter: 'instant', activity: 'challenge' });
+    super(preset, false, () => timeline.origin === undefined ? 0 : clock() - timeline.origin, random, { ...options, continueAfter: frozen.correctOnly ? 'correct' : 'instant', activity: 'challenge' });
     this.rules = frozen; this.now = clock; this.timeline = timeline;
   }
+  protected override feedbackDuration(correct: boolean) { return correct || this.continueAfter === 'instant' ? 0 : 800; }
   get limitMs() { return (this.rules.goal === 'timed' ? this.rules.seconds : this.rules.timeout) * 1000; }
   override get activeMs() { return Math.min(this.limitMs, super.activeMs); }
   get remainingMs() { return Math.max(0, this.limitMs - this.activeMs); }

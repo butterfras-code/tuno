@@ -1,3 +1,4 @@
+import { validateAuto, quarterBeats, type AutoSettings } from './engine/auto-every.ts';
 import { bool, choice, list, record, text, canonical } from '../../shared/sharing/activity-link.ts';
 import type { ActivityAdapter } from '../../shared/sharing/activity-link.ts';
 import { normalizePreset, generatedPresetName, presets } from './domain/presets.ts';
@@ -12,7 +13,8 @@ export interface RangeSelection { source: PresetSource; pool: string[]; expansio
 export interface NotesActivity {
   mode: 'practice' | 'challenge' | 'multiplayer';
   ranges: RangeSelection[];
-  pace: 'instant' | 'correct';
+  pace: 'instant' | 'correct' | 'auto';
+  auto?: AutoSettings;
   intro: boolean;
   rules: ChallengeRules;
   format: Format;
@@ -48,17 +50,20 @@ export function validateRange(input: unknown): RangeSelection {
 export const notesAdapter: ActivityAdapter<NotesActivity> = {
   app:'tunotes',version:1,path:() => '/notes/',
   validate(input) {
-    const raw = record(input,['mode','ranges','pace','intro','rules','format']);
+    const raw = record(input,['mode','ranges','pace','intro','rules','format','auto']);
     const mode = choice(raw.mode,['practice','challenge','multiplayer']);
     const ranges = list(raw.ranges,8).map(validateRange);
     if (!ranges.length || mode !== 'multiplayer' && ranges.length !== 1) throw new Error('Invalid number of player ranges.');
     // Current multiplayer uses one adaptation and notation choice for the round.
     if (mode === 'multiplayer' && ranges.some(r => r.adaptive !== ranges[0]!.adaptive || r.showKeySignature !== ranges[0]!.showKeySignature)) throw new Error('Unsupported per-player round settings.');
     const rules = validateRules(raw.rules);
-    return {mode,ranges,pace:choice(raw.pace,['instant','correct']),intro:bool(raw.intro),rules:mode === 'practice' ? defaultTimed : rules,format:choice(raw.format,['turns','pairs','head-to-head'])};
+    const pace = choice(raw.pace,['instant','correct','auto']);
+    if (raw.auto !== undefined && pace !== 'auto') throw new Error('Unexpected automatic pacing settings.');
+    if (pace === 'auto' && mode !== 'practice') throw new Error('Automatic pacing requires Practice.');
+    return {mode,ranges,pace,...(pace === 'auto' ? { auto: validateAuto(raw.auto) } : {}),intro:bool(raw.intro),rules:mode === 'practice' ? defaultTimed : rules,format:choice(raw.format,['turns','pairs','head-to-head'])};
   },
   describe(value) {
     const range = value.ranges[0]!;
-    return [value.mode === 'multiplayer' ? `${value.ranges.length} players · ${{turns:'Pass and Play',pairs:'Side by Side','head-to-head':'Head to Head'}[value.format]}` : value.mode === 'challenge' ? 'Challenge' : 'Practice',range.source.name,range.adaptive ? 'Adaptive' : 'Fixed range',value.mode === 'practice' ? value.pace === 'correct' ? 'Correct Only' : 'Normal' : value.rules.goal === 'timed' ? `${value.rules.seconds} seconds` : `${value.rules.target} correct`].join(' · ');
+    return [value.mode === 'multiplayer' ? `${value.ranges.length} players · ${{turns:'Pass and Play',pairs:'Side by Side','head-to-head':'Head to Head'}[value.format]}` : value.mode === 'challenge' ? 'Challenge' : 'Practice',range.source.name,range.adaptive ? 'Adaptive' : 'Fixed range',value.mode === 'practice' ? value.auto ? `Every ${quarterBeats(value.auto.value)} beats at ${value.auto.bpm} BPM` : value.pace === 'correct' ? 'Correct Only' : 'Normal' : `${value.rules.goal === 'timed' ? `${value.rules.seconds} seconds` : `${value.rules.target} correct`}${value.rules.correctOnly ? ' · Correct Only' : ''}`].join(' · ');
   },
 };

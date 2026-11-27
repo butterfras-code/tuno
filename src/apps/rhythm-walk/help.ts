@@ -23,7 +23,7 @@ export function createHelpPage() {
     'A rest means silence. When the Rest button is shown, use it to mark the counts that belong to a rest. Connect joins the counts for a long note or notes joined by a tie. A tie is a curved line that joins notes into one longer sound. These buttons change the whole note, rest, or tied group you selected. Press the button again to undo it.',
     'Choose Check to check your work. You can fix your answers and check again. Erase clears the selected count box. Erase All clears all your written answers.');
   const perform = section('Play the rhythm',
-    'Choose Perform. Tempo controls how fast the music goes. Try a slower tempo while you learn. On a small screen, open Options to find How to play and the metronome (a steady click that helps you keep the beat).',
+    'Choose Perform. Tempo controls how fast the music goes. Try a slower tempo while you learn. Switch between Tap and Tap + Hold, or toggle the Metronome (a steady click that helps you keep the beat) and Show counts right above the pad.',
     'In Tap, tap once when each note starts. Notes joined by a tie need just one tap at the start. In Tap + Hold, keep pressing for the whole note, then lift before the next note. Keep holding through a tie. Do not tap during rests.');
   const performanceInstructions = el('div'); perform.append(performanceInstructions);
   perform.append(el('p', '', 'Choose Stop if you need a break. Opening Settings or Help also stops the performance. Go back to Practice when you want to try again.'));
@@ -38,6 +38,6 @@ export function createHelpPage() {
   section('Keyboard tips',
     'Select a count box, then type your answer. Use the arrow keys to move between boxes and Enter to check. R marks a rest and C connects counts when those choices are available. Backspace or Delete clears the selected count.',
     'For counting sounds, type t then a for ta, or t then e for te. Type l for la and i for li.',
-    'To play with a keyboard, use Tab to move to the performance pad, then use the Space bar to start and play.');
+    'To play with a keyboard, open Perform and press the Space bar to start and play.');
   return { page, performanceInstructions };
 }

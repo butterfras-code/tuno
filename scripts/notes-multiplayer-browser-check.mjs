@@ -305,6 +305,28 @@ async function run(page,url,label) {
   evidence.push(`${label}: pairs, odd heat, lane-isolated keyboard/finish, held keys, focused text, ties, duplicate names, retry${name==='chromium' ? ', concurrent touch pointers' : ''}`);
 
   await button(page,'Edit setup').click();await button(page,'Timed').click();
+  const multiModes = page.getByRole('group',{name:'Multi Player Mode',exact:true});
+  await multiModes.getByRole('button',{name:'Correct Only',exact:true}).click();
+  assert.equal(await multiModes.getByRole('button',{name:'Correct Only',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.match(await page.locator('.multiplayer-setup .practice-setup-summary').textContent(),/Correct Only/);
+  await button(page,'Start round').click();await button(page,'Continue to round').click();
+  await page.locator('.multiplayer-round').waitFor();
+  assert.match(await page.locator('.multiplayer-round-summary').textContent(),/Correct Only/);
+  await button(page,'Ready').click();await page.clock.runFor(3050);
+  const firstLane = page.locator('.multiplayer-panel').nth(0);
+  const targetNote = await answerLetter(firstLane);
+  const wrongIdx = targetNote === 'A' ? 1 : 0;
+  const targetIdx = letters.indexOf(targetNote);
+  await page.keyboard.press(`Key${left[wrongIdx]}`);
+  assert.match(await firstLane.locator('.muted').first().textContent(),/0 correct · 1 attempts/);
+  assert.equal(await firstLane.locator('.answer-feedback-announcement').textContent(),'Try again');
+  await page.clock.runFor(850);
+  assert.equal(await answerLetter(firstLane),targetNote,'Correct Only keeps missed note in Multi Player');
+  await page.keyboard.press(`Key${left[targetIdx]}`);
+  assert.match(await firstLane.locator('.muted').first().textContent(),/1 correct · 2 attempts/);
+  assert.notEqual(await answerLetter(firstLane),targetNote,'Correct Only advances immediately on correct answer in Multi Player');
+  await button(page,'End round').click();await button(page,'Edit setup').click();
+  await multiModes.getByRole('button',{name:'Correct Only',exact:true}).click();
   await button(page,'Start round').click();await button(page,'Continue to round').click();await button(page,'Ready').click();await page.clock.runFor(3050);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   assert.equal(await page.locator('.multiplayer-panel[data-phase="paused"]').count(),2);

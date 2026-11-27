@@ -1,14 +1,23 @@
 import boneAsset from '../assets/volume-bone.svg';
+import firesideBoneAsset from '../assets/volume-bone-fireside.svg';
 import unoAsset from '../assets/uno-happy.svg';
+import firesideUnoAsset from '../assets/uno-happy-fireside.svg';
 import { noteName } from '../music/pitch.ts';
 import { pitchReading, displayedHz } from '../practice/state.ts';
 import type { PracticeState } from '../practice/state.ts';
+import { pickAsset } from '../shared/theme/assets.ts';
+import { subscribeTheme, type ThemeId } from '../shared/theme/state.ts';
+import { onUnmount } from '../shared/ui/unmount.ts';
+
+const volumeBones = { default: boneAsset, fireside: firesideBoneAsset } as const;
+const unoArt = { default: unoAsset, fireside: firesideUnoAsset } as const;
 
 export { el, button, unavailableButton, row, field, select, numberInput } from '../shared/ui/components.ts';
 import { el, button } from '../shared/ui/components.ts';
 export function uno(className = ''): HTMLImageElement {
   const image = el('img', `uno ${className}`);
-  Object.assign(image, { src: unoAsset, alt: '', width: 300, height: 300 });
+  Object.assign(image, { src: pickAsset(unoArt), alt: '', width: 300, height: 300 });
+  onUnmount(image, subscribeTheme(theme => { image.src = pickAsset(unoArt, theme); }));
   return image;
 }
 export function view(id: string, heading: string): HTMLElement {
@@ -52,9 +61,14 @@ export function responsiveLabel(node: HTMLElement, desktop: string, mobile: stri
 /** Compact volume button opens the existing range control without losing keyboard access. */
 export function volumePopover(label: string, input: HTMLInputElement, options: { heading?: string; formatValue?: (value: string) => string } = {}) {
   const formatValue = options.formatValue ?? ((value: string) => `${value}%`);
-  // Base64 avoids embedded SVG quotes invalidating a CSS url() token.
-  const thumb = boneAsset.includes(';base64,') ? boneAsset : `data:image/svg+xml;base64,${btoa(decodeURIComponent(boneAsset.slice(boneAsset.indexOf(',') + 1)))}`;
-  input.style.setProperty('--volume-thumb', `url("${thumb}")`);
+  const applyThumb = (theme?: ThemeId) => {
+    const asset = pickAsset(volumeBones, theme);
+    // Base64 avoids embedded SVG quotes invalidating a CSS url() token.
+    const thumb = asset.includes(';base64,') ? asset : `data:image/svg+xml;base64,${btoa(decodeURIComponent(asset.slice(asset.indexOf(',') + 1)))}`;
+    input.style.setProperty('--volume-thumb', `url("${thumb}")`);
+  };
+  applyThumb();
+  onUnmount(input, subscribeTheme(applyThumb));
   const wrapper = el('div', 'volume-popover mobile-only');
   const popup = el('div', 'volume-popup');
   popup.id = `${label.toLowerCase().replaceAll(' ', '-')}-popup`;

@@ -40,8 +40,20 @@ async function run(page,url,mode) {
   await button(page,'Start Practice').click();
   await page.locator('.note-preview').waitFor();
   assert.equal(await page.locator('.note-preview').isVisible(),true);
-  assert.equal(await button(page,'Start Practice').isDisabled(),true);
-  assert.equal(await button(page,'Skip').isVisible(),true);
+  assert.match(await page.locator('.preview-caption').textContent(),/Start Practice/);
+  await button(page,'Back to setup').click();
+  assert.equal(await page.locator('.note-preview').count(),0);
+  assert.equal(await button(page,'Choose Notes').evaluate(node => node === document.activeElement),true);
+  await page.clock.runFor(2000);
+  assert.equal(await page.locator('.note-preview').count(),0);
+  await button(page,'Start Practice').click();
+  await page.locator('.note-preview').waitFor();
+  assert.equal(await page.locator('.note-preview').isVisible(),true);
+  assert.equal(await button(page,'Start Practice').isEnabled(),true);
+  assert.equal(await page.locator('.preview-skip-hint').isVisible(),true);
+  assert.equal(await page.locator('.preview-skip-hint').textContent(),'(Skip Intro)');
+  assert.equal(await button(page,'Skip').count(),0);
+  assert.equal(await button(page,'Back to setup').isVisible(),true);
   assert.equal(await button(page,'Replay').isVisible(),false);
   assert.equal(await page.locator('.preview-staff .notehead').count(),1);
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
@@ -58,8 +70,9 @@ async function run(page,url,mode) {
   await page.keyboard.press('a'); await page.clock.runFor(15000);
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'uno-wag');
   assert.equal(await button(page,'Start Practice').isEnabled(),true);
-  assert.equal(await button(page,'Skip').isVisible(),false);
+  assert.equal(await page.locator('.preview-skip-hint').isVisible(),false);
   assert.equal(await button(page,'Replay').isVisible(),true);
+  assert.match(await page.locator('.preview-caption').textContent(),/press Start Practice/);
   assert.equal(await page.locator('.note-preview .uno').getAttribute('data-pose'),'happy');
   assert.equal((await previewLabels(page)).length,9);
   assert.equal(await page.locator('.preview-staff').count(),1);
@@ -92,8 +105,8 @@ async function run(page,url,mode) {
   await button(page,'Replay').click();
   assert.equal(await page.locator('.note-preview .uno-tail').evaluate(n=>getComputedStyle(n).animationName),'none');
   await page.clock.runFor(3000);
-  assert.equal(await button(page,'Skip').isVisible(),true);
-  await button(page,'Skip').click();
+  assert.equal(await page.locator('.preview-skip-hint').isVisible(),true);
+  await button(page,'Start Practice').click();
   await page.clock.runFor(100);
   await page.keyboard.press('a');
   await button(page,'Finish').click();
@@ -135,7 +148,7 @@ async function expansion(page) {
   const notes=Object.fromEntries(p.pool.map(pitch=>[pitchLabel(pitch),Array.from({length:5},()=>({pitch,answer:{letter:pitch.letter,accidental:pitch.accidental},correct:true,responseMs:500000,activity:'practice',preset:p.id}))]));
   data.profiles=[{id:'learner',name:'Learner',adaptive:true,preview:false,defaultPresetId:p.id,results:[{version:1,context:fingerprint(p,true),attempts:20,correct:20,first20:20,interrupted:false,at:1,activeMs:1000}],contexts:[{fingerprint:fingerprint(p,true),version:1,updated:1,notes,learning:{algorithmVersion:1,expansionCount:0}}]}];
   await page.addInitScript(data=>localStorage.setItem('tunotes:data:v1',JSON.stringify(data)),data);await page.goto(new URL('/notes/', host.url).href);
-  await page.clock.install(); await button(page,'Start Practice').click();await button(page,'Skip').click();
+  await page.clock.install(); await button(page,'Start Practice').click(); await page.locator('.note-preview').waitFor(); await page.locator('.note-preview').getByRole('button',{name:'Start Practice',exact:true}).click();
   // Let font loading and the animation-frame play-surface resize settle before measuring.
   await page.evaluate(() => document.fonts.ready);
   await page.clock.runFor(100);

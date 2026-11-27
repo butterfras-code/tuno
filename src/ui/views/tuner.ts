@@ -4,6 +4,11 @@ import { animatedUno } from '../uno.ts';
 import { createTunerFeedback, TUNER_FEEDBACK } from '../../practice/feedback.ts';
 import micAsset from '../../assets/mic.svg';
 import boneAsset from '../../assets/pitch-bone.svg';
+import firesideBoneAsset from '../../assets/pitch-bone-fireside.svg';
+import { pickAsset } from '../../shared/theme/assets.ts';
+import { subscribeTheme } from '../../shared/theme/state.ts';
+
+const pitchBones = { default: boneAsset, fireside: firesideBoneAsset } as const;
 import { displayedHz, LIMITS, pitchReading, rawPitchReading, TRANSPOSITIONS, TUNER_ACCURACIES } from '../../practice/state.ts';
 import type { PracticeStore, Settings } from '../../practice/state.ts';
 import { button, el, micStatusText, field, numberInput, pitchText, responsiveLabel, row, view, selectorPopover, volumePopover } from '../components.ts';
@@ -22,11 +27,13 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   calibration.node.classList.remove('mobile-only');
   calibration.node.classList.add('tuner-reference');
   const showUno = button('Show Uno', () => updateSettings({ showUno: !store.get().showUno }));
-  const listen = button('Start listening', audio.toggleMic);
+  showUno.classList.add('control--toggle');
+  const listen = button('Start listening', audio.toggleMic, true);
   listen.classList.add('tuner-mic');
   const micIcon = el('img', 'control-icon');
   Object.assign(micIcon, { src: micAsset, alt: '' });
-  listen.replaceChildren(micIcon);
+  const micLabel = el('span', 'tuner-mic-label', 'Start listening');
+  listen.replaceChildren(micIcon, micLabel);
   const options = row(listen, transposition.trigger, calibration.node, showUno);
   options.classList.add('tuner-options');
   node.append(options, transposition.popup);
@@ -51,21 +58,43 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
   }
   lane.append(el('div', 'lane-center'), el('span', 'lane-label lane-label--flat', 'FLAT'));
   const marker = el('img', 'pitch-marker');
-  Object.assign(marker, { src: boneAsset, width: 114, height: 30, alt: '' });
+  Object.assign(marker, { src: pickAsset(pitchBones), width: 114, height: 30, alt: '' });
   marker.hidden = true;
+  const stopBoneTheme = subscribeTheme(theme => { marker.src = pickAsset(pitchBones, theme); });
   lane.append(marker);
 
-  const friend = el('div', 'tuner-friend');
+  const friend = el('div', 'tuner-friend tuner-friend--sleeping');
   const encouragement = el('p', 'hold-feedback mobile-only teal', 'Ready when you are.');
-  const holdCaption = el('p', 'hold-caption muted', 'Wake Uno! (Turn on mic above)');
-  holdCaption.setAttribute('role', 'status');
+  const holdCaption = el('div', 'hold-caption');
+  const wakeButton = button('Wake Uno!', audio.toggleMic);
+  wakeButton.classList.add('wake-uno-button');
+  const wakeIcon = el('img', 'control-icon');
+  Object.assign(wakeIcon, { src: micAsset, alt: '' });
+  const wakeLabel = el('span', '', 'Wake Uno!');
+  wakeButton.replaceChildren(wakeIcon, wakeLabel);
+  const holdStatus = el('p', 'hold-status muted');
+  holdStatus.setAttribute('role', 'status');
+  holdStatus.hidden = true;
+  holdCaption.append(wakeButton, holdStatus);
   const hold = el('progress', 'hold-progress');
   hold.max = 1;
   hold.value = 0;
   hold.setAttribute('aria-label', 'Steady pitch hold');
   const dog = animatedUno();
   dog.pose('sleep');
+  dog.node.addEventListener('click', () => {
+    if (!['requesting', 'listening', 'no-signal', 'unreliable'].includes(store.get().micStatus)) audio.toggleMic();
+  });
   friend.append(encouragement, dog.node, el('p', 'friend-caption', 'A little practice. A good friend.'), hold, holdCaption);
+  const syncHoldPrompt = (live: boolean) => {
+    friend.classList.toggle('tuner-friend--sleeping', !live);
+    wakeButton.hidden = live;
+    const wakeText = live ? '' : 'Wake Uno!';
+    if (wakeLabel.textContent !== wakeText) wakeLabel.textContent = wakeText;
+    holdStatus.hidden = !live;
+    const holdText = live ? 'Hold a note to give Uno a treat' : '';
+    if (holdStatus.textContent !== holdText) holdStatus.textContent = holdText;
+  };
   const animation = createTunerFeedback();
   let frame = 0;
   let lastReward = 0;
@@ -90,8 +119,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     const encouragementText = reading && Math.abs(reading.cents) <= TUNER_FEEDBACK.leaveCents * accuracy.scale ? 'Hold steady.'
       : reading ? (reading.cents > 0 ? 'A little lower.' : 'A little higher.') : 'Ready when you are.';
     if (encouragement.textContent !== encouragementText) encouragement.textContent = encouragementText;
-    const holdText = live ? 'Hold a note to give Uno a treat' : 'Wake Uno! (Turn on mic above)';
-    if (holdCaption.textContent !== holdText) holdCaption.textContent = holdText;
+    syncHoldPrompt(live);
     marker.hidden = !reading;
     if (reading) marker.style.top = `${50 - reading.cents}%`;
     if (result.reward !== lastReward) { lastReward = result.reward; dog.catch(marker); }
@@ -133,11 +161,14 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     listen.setAttribute('aria-label', listening ? 'Stop listening' : 'Start listening');
     listen.setAttribute('aria-pressed', String(listening));
     listen.title = listening ? 'Stop listening' : 'Start listening';
+    micLabel.textContent = listening ? 'Stop listening' : 'Start listening';
+    syncHoldPrompt(['listening', 'unreliable', 'no-signal'].includes(state.micStatus));
     hint.textContent = state.micStatus === 'idle' ? 'Start listening or explore a sample pitch.' : `${state.micStatus === 'no-signal' ? 'Play a note' : micStatusText(state.micStatus)} · Level ${state.rms.toFixed(3)} · Pitch quality ${state.quality.toFixed(2)}`;
     caption.textContent = state.micStatus !== 'idle' ? 'Uno hears...' : state.manualHz === null ? 'TUNER' : 'SAMPLE PITCH';
     note.textContent = text.note;
     responsiveLabel(detail, text.detail, displayedHz(state) === null ? 'No pitch yet' : `${displayedHz(state)!.toFixed(1)} Hz`);
     const reading = pitchReading(state);
+    readout.classList.toggle('pitch-readout--idle', reading === null);
     const centered = reading !== null && Math.abs(reading.cents) <= TUNER_FEEDBACK.leaveCents * TUNER_ACCURACIES.find(option => option.value === state.tunerAccuracy)!.scale;
     const cents = reading ? `${reading.cents < 0 ? '−' : reading.cents > 0 ? '+' : ''}${Math.abs(reading.cents).toFixed(0)}` : '';
     responsiveLabel(feedback, centered ? 'Right there. Hold steady.' : text.direction, centered ? `${cents} cents · In tune` : text.direction);
@@ -164,7 +195,7 @@ export function createTuner(store: PracticeStore, audio: AudioController) {
     wake();
   });
   onUnmount(node, () => {
-    unsubscribe(); cancelAnimationFrame(frame); dog.dispose();
+    unsubscribe(); stopBoneTheme(); cancelAnimationFrame(frame); dog.dispose();
     document.removeEventListener('visibilitychange', visibilityChanged);
   });
   return node;

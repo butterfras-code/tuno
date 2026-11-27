@@ -101,9 +101,7 @@ export const screenshotScenarios = [
     await page.locator('[data-count-id]').first().click();
     await page.keyboard.press('1');
     await button(page, 'Perform').click();
-    if (await button(page, 'Options').isVisible()) await button(page, 'Options').click();
     await page.getByRole('checkbox', { name: 'Show written counts during performance', exact: true }).check();
-    await button(page, 'Perform').click();
     await button(page, 'Performance pad').waitFor();
   }),
   scenario('uno234-settings', 'Uno234 — settings', '/rhythm/', async page => {

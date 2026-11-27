@@ -40,6 +40,8 @@ try {
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
     assert.equal(await page.locator('.pitch-marker').evaluate((marker) => getComputedStyle(marker).transitionDuration), '0.14s');
     assert.equal(await page.getByRole('button', { name: 'Start listening' }).first().isEnabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Stop all audio', exact: true }).isVisible(), false);
+    assert.equal(await page.getByRole('button', { name: 'Wake Uno!', exact: true }).isVisible(), true);
     const accuracyTrigger = page.getByRole('button', { name: 'Tuner accuracy', exact: true });
     assert.match(await accuracyTrigger.textContent(), /BEG/);
     for (const label of ['INT', 'BEG', 'ADV']) {
@@ -211,7 +213,10 @@ try {
     await page.waitForFunction(() => document.querySelector('.pitch-marker').hidden, { }, { timeout: 500 });
     const silenceClearMs = await page.evaluate(() => performance.now() - window.silenceStarted);
     assert.ok(silenceClearMs <= 500);
-    await stopAllAudio();
+    const stopAll = page.getByRole('button', { name: 'Stop all audio', exact: true });
+    assert.equal(await stopAll.isVisible(), true);
+    await stopAll.click();
+    assert.equal(await stopAll.isVisible(), false);
     assert.equal(await page.evaluate(() => window.testInput.destination.stream.getTracks().every((track) => track.readyState === 'ended')), true);
     await page.evaluate(() => {
       const input = window.testInput;
@@ -220,8 +225,12 @@ try {
       input.gain.gain.value = 0.2;
       navigator.mediaDevices.getUserMedia = async () => input.destination.stream;
     });
-    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
-    await page.waitForFunction(() => document.querySelector('.pitch-note').textContent === 'B4');
+    await selectTool('Reference tone');
+    await page.getByRole('button', { name: 'Activate Mic', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.mini-note').textContent === 'B4');
+    assert.equal(await stopAll.isVisible(), true);
+    await selectTool('Tuner');
+    assert.equal(await page.locator('.pitch-note').innerText(), 'B4');
     await page.evaluate(() => window.testInput.destination.stream.getAudioTracks()[0].dispatchEvent(new Event('ended')));
     await page.getByText('Microphone disconnected. Reconnect it and start listening again.', { exact: true }).waitFor();
     assert.equal(await page.locator('.pitch-marker').isVisible(), false);
@@ -408,6 +417,10 @@ try {
         const navigation = await page.locator('.practice-navigation').boundingBox();
         assert.ok(navigation.height <= 64, `${mode}: integrated navigation must stay compact at ${width}px`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        if (focus === 'Metronome') {
+          const volumeBox = await page.locator('#view-metronome .beat-volume > .control').boundingBox();
+          assert.ok(volumeBox && volumeBox.height >= 44, `${mode}: mobile beat volume button must keep a 44px touch target at ${width}px`);
+        }
       }
       await selectTool('Reference tone');
       for (const trigger of [tone.locator('.note-picker-trigger'), tone.getByRole('button', { name: 'Browse octave', exact: true })]) {
@@ -421,9 +434,28 @@ try {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
     await selectTool('Tuner');
+    // Mobile idle tuner shows a single "Ready when you are." prompt while Uno is visible, and restores readout feedback when Uno is hidden.
+    assert.equal(await page.locator('#view-tuner .hold-feedback').isVisible(), true);
+    assert.equal(await page.locator('#view-tuner .pitch-feedback').isVisible(), false);
     await page.getByRole('button', { name: 'Show Uno', exact: true }).click();
     assert.equal(await page.locator('.tuner-friend').isVisible(), false);
+    assert.equal(await page.locator('#view-tuner .pitch-feedback').isVisible(), true);
     assert.equal(await page.locator('.pitch-lane').isVisible(), true);
+    // Mobile direct /tone/ load must reveal the default selected key (B♭3) inside the keyboard viewport.
+    await page.evaluate(() => localStorage.clear());
+    const directTone = await context.newPage();
+    await directTone.setViewportSize({ width: 390, height: 844 });
+    await directTone.goto(new URL('/tone/', url).href);
+    await directTone.locator('#view-tone .piano-key[aria-pressed="true"]').waitFor();
+    await directTone.waitForFunction(() => {
+      const scroller = document.querySelector('#view-tone .piano-scroll');
+      const active = document.querySelector('#view-tone .piano-key[aria-pressed="true"]');
+      if (!scroller || !active) return false;
+      const sr = scroller.getBoundingClientRect();
+      const kr = active.getBoundingClientRect();
+      return scroller.scrollLeft > 0 && kr.left >= sr.left && kr.right <= sr.right;
+    });
+    await directTone.close();
     assert.deepEqual(errors, []);
 
     if (process.env.TUNO_SCREENSHOT_DIR && mode === 'hosted') {

@@ -3,7 +3,7 @@ import { assessAttempt } from './assessment.ts';
 import { TreatBagState } from './rewards.ts';
 import { createResults, renderTreatBag } from './results.ts';
 import { createTimingPanel } from './calibration.ts';
-import { el, button, field, numberInput, select } from '../../shared/ui/components.ts';
+import { el, button, field, numberInput } from '../../shared/ui/components.ts';
 import { playOptions } from './play-policy.ts';
 import type { PlayStyle } from './play-policy.ts';
 import type { Exercise } from './fixtures.ts';
@@ -32,13 +32,33 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
 
   const tempo = numberInput(40, 180, options.preferences.bpm);
   const metronome = el('input'); metronome.type = 'checkbox'; metronome.checked = options.preferences.metronome;
-  const metronomeLabel = field('Metronome during exercise', metronome);
-  const howToPlay = select(playOptions, value => {
-    options.preferences.playStyle = value as PlayStyle; options.changed(); refreshExercise();
+  metronome.setAttribute('aria-label', 'Metronome during exercise');
+  const metronomeLabel = el('label', 'rhythm-toggle');
+  metronomeLabel.append(metronome, el('span', '', 'Metronome'));
+  const playField = el('div', 'play-style-segmented');
+  playField.setAttribute('role', 'group');
+  playField.setAttribute('aria-label', 'How to play');
+  playField.setAttribute('aria-describedby', 'instructions');
+  playField.dataset.setting = 'how-to-play';
+  const playButtons = playOptions.map(option => {
+    const choice = button(option.label, () => {
+      if (options.preferences.playStyle === option.value) return;
+      options.preferences.playStyle = option.value as PlayStyle;
+      syncPlayStyle();
+      options.changed();
+      refreshExercise();
+    });
+    choice.className = 'play-style-option';
+    choice.dataset.value = option.value;
+    playField.append(choice);
+    return { value: option.value, button: choice };
   });
-  howToPlay.value = options.preferences.playStyle; howToPlay.dataset.setting = 'how-to-play';
-  const playField = field('How to play', howToPlay);
-  howToPlay.setAttribute('aria-describedby', 'instructions');
+  const syncPlayStyle = () => {
+    for (const item of playButtons) {
+      item.button.setAttribute('aria-pressed', String(options.preferences.playStyle === item.value));
+    }
+  };
+  syncPlayStyle();
   const tempoField = field('Tempo (quarter-note BPM)', tempo); tempoField.className = 'score-tempo';
   tempoField.querySelector('.field-label')!.className = 'field-label sr-only';
   const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -67,10 +87,13 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
   }
   function clearCountIn() { countInDisplay.hidden = true; countInDots.forEach(dot => { dot.classList.remove('lit'); dot.removeAttribute('aria-current'); }); }
   const pulse = el('span', 'pulse'); pulse.hidden = true; pulse.setAttribute('aria-hidden', 'true');
-  const instructions = el('p', '', 'Tap the pad to start. Listen to the count-in, then play the rhythm.'); instructions.id = 'instructions';
+  const instructions = el('p', '', 'Tap the pad or press Space to start. Listen to the count-in, then play the rhythm.'); instructions.id = 'instructions';
   const pad = button(''); pad.className = 'pad'; pad.setAttribute('aria-label', 'Performance pad');
-  const padAction = el('span', 'pad-action', 'Tap to start'); pad.append(padAction, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
-  const stop = button('Stop', () => cancel('Stopped by learner')); stop.disabled = true;
+  const padAction = el('span', 'pad-action', 'Tap to start');
+  const padHint = el('span', 'pad-space-hint'); padHint.setAttribute('aria-hidden', 'true');
+  padHint.append(document.createTextNode('or press '), el('kbd', '', 'Space'));
+  pad.append(padAction, padHint, countInDisplay, status, pulse); pad.setAttribute('aria-describedby', 'instructions'); pad.setAttribute('aria-pressed', 'false'); pad.disabled = false;
+  const stop = button('Stop', () => cancel('Stopped by learner')); stop.classList.add('pad-stop'); stop.disabled = true;
   const download = button('Download timing evidence', () => {
     if (!result) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify({ ...result, assessment: assessAttempt(result) }, null, 2)], { type: 'application/json' }));
@@ -99,8 +122,10 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
   function lock(active: boolean) {
     timing.setLocked(active);
     main.classList.toggle('active', active); options.busy(active);
-    tempo.disabled = metronome.disabled = howToPlay.disabled = active;
-    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Tap to start'; download.disabled = calibrate.disabled = active;
+    tempo.disabled = metronome.disabled = active;
+    playField.classList.toggle('is-locked', active);
+    for (const item of playButtons) item.button.disabled = active;
+    stop.disabled = !active; pad.disabled = false; padAction.textContent = active ? 'Starting…' : result ? 'Try again' : 'Tap to start'; padHint.hidden = active; download.disabled = calibrate.disabled = active;
   }
   function tick(time: number) {
     if (!transport) return;
@@ -215,26 +240,47 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
   // still own capture; this listener must not create a second musical input.
   pad.addEventListener('touchstart', event => event.preventDefault(), { passive: false });
   pad.addEventListener('click', event => { if (!pad.closest('[hidden]') && event.detail === 0 && !transport && !starting) void begin(); });
-  // Keyboard capture is scoped to focused pad. Repeats and duplicate sources remain raw evidence.
-  pad.addEventListener('keydown', event => {
-    if (event.code !== 'Space') return;
+  // Keyboard capture works across the Perform panel (even when another button/toggle has focus),
+  // while leaving number/text/select fields and open dialogs untouched.
+  const handledSpace = new WeakSet<KeyboardEvent>();
+  const canCaptureSpace = (event: KeyboardEvent) => {
+    if (event.code !== 'Space' || event.ctrlKey || event.metaKey || event.altKey) return false;
+    if (main.hidden || surface.hidden || main.closest('[hidden]') || document.querySelector('dialog[open]')) return false;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (transport && target === stop) return false;
+    if (target?.closest('input:not([type="checkbox"]), select, textarea, [contenteditable="true"]')) return false;
+    return true;
+  };
+  const onSpaceDown = (event: KeyboardEvent) => {
+    if (handledSpace.has(event) || !canCaptureSpace(event)) return;
+    handledSpace.add(event);
     event.preventDefault();
     if (!transport) {
-      if (!event.repeat && !starting) { startingKey = true; void begin(); }
+      if (!event.repeat && !starting) {
+        startingKey = true;
+        pad.focus({ preventScroll: true });
+        void begin();
+      }
       return;
     }
     if (startingKey) return;
     transport.input('down', 'keyboard', event.timeStamp, event.repeat);
     pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null));
-  });
-  pad.addEventListener('keyup', event => {
-    if (event.code !== 'Space') return;
+  };
+  const onSpaceUp = (event: KeyboardEvent) => {
+    if (handledSpace.has(event) || event.code !== 'Space') return;
+    if (!startingKey && !transport) return;
+    handledSpace.add(event);
     event.preventDefault();
     if (startingKey) { startingKey = false; return; }
     if (!transport) return;
     transport.input('up', 'keyboard', event.timeStamp);
     pad.setAttribute('aria-pressed', String(transport.capture.heldBy !== null));
-  });
+  };
+  pad.addEventListener('keydown', onSpaceDown);
+  pad.addEventListener('keyup', onSpaceUp);
+  document.addEventListener('keydown', onSpaceDown);
+  document.addEventListener('keyup', onSpaceUp);
   let pointer: number | null = null;
   pad.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
@@ -266,7 +312,7 @@ export function createPerformance(options: { completed?: () => void; follow: (cl
     const plan = planPassage(options.exercise().score.measures, options.preferences.bpm, undefined, sourcePolicy(options.exercise().score.measures[0]!).pulse);
     renderCountIn(plan);
     const count = plan.pulses.filter(p => p.countIn).length;
-    instructions.textContent = `Tap the pad to start. You will hear ${count} clicks to help you get ready. Lift your finger (or release Space) before the rhythm begins. Then play on the pad, or use Space while the pad is selected.`;
+    instructions.textContent = `Tap the pad or press Space to start. You will hear ${count} clicks to help you get ready. Lift your finger (or release Space) before the rhythm begins, then play on the pad or with Space.`;
   }
   function cancel(reason: string) {
     timing.cancel();

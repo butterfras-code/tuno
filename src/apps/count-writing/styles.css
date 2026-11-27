@@ -12,8 +12,8 @@ p { line-height: 1.5; }
 .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-card); padding: 24px; }
 .control { min-height: 44px; padding: 8px 14px; border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-surface); color: var(--color-ink); font: 700 16px var(--font-body); cursor: pointer; }
 .control:hover { background: var(--color-tint); }
-.control--primary { background: var(--color-accent); color: white; border-color: var(--color-accent); }
-.control--primary:hover { background: #61465e; }
+.control--primary { background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
+.control--primary:hover { background: var(--color-accent-hover); }
 .field { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-label { font-size: 14px; font-weight: 700; }
 select { max-width: 100%; }
@@ -45,8 +45,8 @@ select { max-width: 100%; }
 .line-handle::after { content: ''; display: block; margin: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-surface); }
 .line-handle.start { left: -22px; }
 .line-handle.end { right: -22px; }
-.dimension { border-left: 4px solid var(--color-teal); background: #eef4ef; border-radius: 6px; padding: 12px; margin: 10px 0; }
-.dimension.revise { border-color: #99482d; background: #fbefe5; }
+.dimension { border-left: 4px solid var(--color-teal); background: var(--color-feedback-positive-bg); border-radius: 6px; padding: 12px; margin: 10px 0; }
+.dimension.revise { border-color: var(--color-feedback-revise); background: var(--color-feedback-revise-bg); }
 .dimension.provisional { border-color: var(--color-accent); background: var(--color-tint); }
 .dimension ul { margin: 8px 0 0; padding-left: 20px; }
 .skip-link { position: absolute; left: 12px; top: -100px; }
@@ -62,7 +62,7 @@ select { max-width: 100%; }
 /* Settings share the prototype shell; disabled choices remain readable for review. */
 .rhythm-nav { display: flex; gap: 8px; margin: 20px 0; }
 .rhythm-nav a, .settings-footer a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
-.rhythm-nav a[aria-current="page"] { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+.rhythm-nav a[aria-current="page"] { background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
 .settings-intro { max-width: 70ch; }
 .rhythm-settings h2 { font: 800 21px var(--font-heading); margin: 0; }
 .rhythm-settings h3 { font: 800 16px var(--font-body); margin: 0; }
@@ -131,7 +131,7 @@ select { max-width: 100%; }
 
 .count-slot, .notation g[data-start] { touch-action: none; }
 .notation g[data-start] { cursor: pointer; }
-.count-popover { position: fixed; z-index: 100; width: 260px; max-width: calc(100vw - 16px); padding: 10px 12px 12px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); box-shadow: 0 8px 28px #302a292e; touch-action: none; overflow-y: auto; }
+.count-popover { position: fixed; z-index: 100; width: 260px; max-width: calc(100vw - 16px); padding: 10px 12px 12px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); box-shadow: 0 8px 28px var(--color-shadow-strong); touch-action: none; overflow-y: auto; }
 .count-popover-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .count-popover-heading { font-size: 14px; font-weight: 700; }
 .count-popover-dismiss { flex-shrink: 0; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--color-muted); font-size: 28px; cursor: pointer; }

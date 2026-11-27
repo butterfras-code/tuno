@@ -248,11 +248,11 @@ try {
     });
     assert.equal(await page.locator('.tuner-friend .uno').getAttribute('data-pose'), 'sleep');
     const hint = page.locator('.hold-caption');
-    assert.equal(await hint.textContent(), 'Wake Uno! (Turn on mic above)');
+    assert.equal(await hint.textContent(), 'Wake Uno!');
     assert.equal(await hint.evaluate(node => node.previousElementSibling?.classList.contains('hold-progress')), true);
     assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true);
     assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
-    await page.getByRole('button', { name: 'Start listening', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Wake Uno!', exact: true }).click();
     const pose = value => page.waitForFunction(value => document.querySelector('.tuner-friend .uno').dataset.pose === value, value);
     await pose('wag'); await pose('beg'); await page.waitForTimeout(320);
     await page.screenshot({ path: `dist/validation/animations/${engine.name()}-${mode}-beg.png` });
@@ -286,7 +286,7 @@ try {
     }
     await page.getByRole('button', { name: 'Stop listening', exact: true }).first().click();
     await pose('sleep');
-    assert.equal(await hint.textContent(), 'Wake Uno! (Turn on mic above)');
+    assert.equal(await hint.textContent(), 'Wake Uno!');
     assert.equal(await page.locator('.tuner-friend .uno-sleep-eye').isVisible(), true, 'stopping the microphone closes Uno’s eye');
     assert.equal(await page.locator('.tuner-friend .uno-window-night').isVisible(), true);
     await page.evaluate(() => window.signal.ac.close());
