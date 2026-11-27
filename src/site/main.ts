@@ -8,7 +8,6 @@ import rhythmArtwork from '../assets/launcher/rhythm.svg';
 import rhythmFiresideArtwork from '../assets/launcher/rhythm-fireside.svg';
 import { el } from '../shared/ui/components.ts';
 import { prepareSuiteOffline } from '../distribution/suite-offline.ts';
-import { createUpdateNotice } from '../distribution/updates.ts';
 import { initTheme, subscribeTheme } from '../shared/theme/state.ts';
 import { pickAsset, type ThemedAssetVariants } from '../shared/theme/assets.ts';
 
@@ -34,5 +33,5 @@ subscribeTheme(theme => {
 });
 const status = el('div');
 const footer = createAppFooter({ status });
-main.append(brand, createUpdateNotice(), cards, footer);
+main.append(brand, cards, footer);
 prepareSuiteOffline(status);

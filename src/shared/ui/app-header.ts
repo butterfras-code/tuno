@@ -1,7 +1,6 @@
 import { el } from './components.ts';
 import { prepareSuiteOffline } from '../../distribution/suite-offline.ts';
 import './app-header.css';
-import { createUpdateNotice } from '../../distribution/updates.ts';
 import { initTheme } from '../theme/state.ts';
 
 /** Shared presentation only; each application owns its navigation and state. */
@@ -12,7 +11,7 @@ export function createAppHeader(title: string, subtitle: string) {
   tools.href = '/';
   const brand = el('div', 'brand');
   brand.append(el('h1', 'wordmark', title), el('p', 'tagline', subtitle));
-  header.append(tools, brand, createUpdateNotice());
+  header.append(tools, brand);
   prepareSuiteOffline();
   return header;
 }
