@@ -621,10 +621,13 @@ img { display: block; max-width: 100%; }
 .mini-flat { left: -14px; }
 .mini-sharp { right: -14px; }
 @media (min-width: 651px) and (max-width: 900px) {
-  .tone-heading .mini-pitch { padding-inline: 8px; }
-  .mini-readout { gap: 4px; }
+  .tone-heading .mini-pitch { padding-inline: 8px; overflow: hidden; }
+  .mini-readout { display: flex; align-items: center; justify-content: center; gap: 4px; }
   .mini-readout .mini-note { font-size: 22px; }
   .mini-status, .mini-feedback { font-size: 10px; }
+  .mini-feedback:empty { display: none; }
+  .mini-mic-button { min-height: 26px; padding: 2px 7px; font-size: 10px; gap: 3px; max-width: 100%; }
+  .mini-mic-button .control-icon { width: 11px; height: 11px; }
 }
 @media (max-width: 650px) {
   .tone-heading .mini-pitch { display: flex; flex-direction: column; gap: 0; width: calc(100% - 70px); height: 60px; margin-top: 0; }

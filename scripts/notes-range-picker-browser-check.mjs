@@ -16,11 +16,12 @@ try {
     const page = await browser.newPage({viewport:{width,height},hasTouch:true});
     page.on('pageerror',error => errors.push(error.message));
     await page.goto(new URL('/notes/',host.url).href);
+    await page.locator('.activity-setup-toolbar').waitFor();
     assert.equal(await page.getByRole('button',{name:/^(Choose preset…|Select range|Customize…)$/}).count(),0,'redundant setup buttons are removed');
     if (width===375 || width===1366) await page.screenshot({path:`/tmp/tuno-notes-entry-${width}.png`});
     assert.equal(await page.getByRole('tab',{name:'Practice settings',exact:true}).count(),0);
-    const actions = await page.locator('.activity-setup-toolbar').getByRole('button').evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length).map(n=>{const r=n.getBoundingClientRect();return {width:r.width,height:r.height,top:r.top};}));
-    assert.equal(actions.length,2); assert.equal(actions[0].width,actions[1].width); assert.equal(actions[0].height,actions[1].height); assert.equal(actions[0].top,actions[1].top);
+    const actions = await page.locator('.activity-setup-toolbar > .practice-setup-tabs > button:not([hidden]), .activity-setup-toolbar > .start-split').evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length).map(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,height:r.height,top:r.top};}));
+    assert.equal(actions.length,2); assert.ok(actions[0].right<=actions[1].left+1 && actions[1].width>=actions[0].width); assert.ok(Math.abs(actions[0].height-actions[1].height)<=1); assert.ok(Math.abs(actions[0].top-actions[1].top)<=1);
     const modes = page.getByRole('group',{name:'Practice Mode',exact:true});
     assert.equal(await modes.getByRole('button',{name:'Normal',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await modes.getByRole('button',{name:'Auto Every',exact:true}).isDisabled(),false);

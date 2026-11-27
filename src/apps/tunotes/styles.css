@@ -1617,8 +1617,8 @@ fieldset { min-width: 0; border: 1px solid var(--color-line); border-radius: var
   .practice-layout .activity-setup-toolbar,
   .note-preview .preview-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 6px; }
   .practice-layout .activity-setup-toolbar .control:not(:where(.input-config-popover .control)) { font-size: 14px; padding-inline: 6px; white-space: nowrap; }
-  .practice-layout .activity-setup-toolbar .start-split .start-split-main { padding-inline: 6px; font-size: 13px; }
-  .practice-layout .activity-setup-toolbar .start-split .start-split-toggle { min-width: 46px; padding-inline: 5px; }
+  .practice-layout .activity-setup-toolbar .start-split .start-split-main { padding-inline: 4px; font-size: 12px; }
+  .practice-layout .activity-setup-toolbar .start-split .start-split-toggle { min-width: 44px; padding-inline: 4px; }
 }
 
 .input-config-popover { position: fixed; inset: auto; margin: 0; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 16px; border: 1.5px solid var(--color-accent); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-ink); box-shadow: 0 14px 36px color-mix(in srgb, var(--color-ink) 20%, transparent); }

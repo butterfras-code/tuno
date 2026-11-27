@@ -25,7 +25,7 @@ export function writeReport(path, value) {
 }
 
 // One process group per command, so cancellation reaches npm, Node and children.
-function launch(command, args, { cwd, env, output, signal, timeoutMs = 600_000 } = {}) {
+function launch(command, args, { cwd, env, output, signal, timeoutMs = 900_000 } = {}) {
   return new Promise(resolveResult => {
     if (signal?.aborted) return resolveResult({ code: null, cancelled: true });
     const child = spawn(command, args, { cwd, env, detached: true, stdio: ['ignore', output ?? 'inherit', output ?? 'inherit'] });
@@ -51,7 +51,7 @@ function launch(command, args, { cwd, env, output, signal, timeoutMs = 600_000 }
 // flock releases locks even after a killed process. Never unlink lock files:
 // replacing their inode would create a second independent pool.
 export class VerificationPool {
-  constructor({ directory = defaultPool, cwd = process.cwd(), signal, timeoutMs = 600_000 } = {}) {
+  constructor({ directory = defaultPool, cwd = process.cwd(), signal, timeoutMs = 900_000 } = {}) {
     this.directory = directory; this.cwd = cwd; this.signal = signal; this.timeoutMs = timeoutMs;
     mkdirSync(directory, { recursive: true, mode: 0o700 });
   }

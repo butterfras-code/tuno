@@ -620,6 +620,7 @@ try {
   // Real simultaneous touchscreen contacts, including partial release.
   if (name === 'chromium') {
     await page.setViewportSize({width:360,height:740});
+    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     const cdp = await page.context().newCDPSession(page);
     const point = async (n,id) => { const b=await page.getByRole('button',{name:'Valve '+n,exact:true}).boundingBox(); return {x:b.x+b.width/2,y:b.y+b.height/2,id}; };
     const a=await point(1,10), b=await point(2,11);

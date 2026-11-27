@@ -1,5 +1,5 @@
 import { button, el, field, select } from '../../shared/ui/components.ts';
-import { scheduleClick } from '../../audio/click.ts';
+import { scheduleClick } from '../../shared/audio/click.ts';
 import { inputAudioTime } from './timing.ts';
 import { calibrationCount, calibrationPulse, calibrationWarmup, estimateOffset, estimateTapOffset, readOffset } from './offset.ts';
 import type { InputKind, TimingOffset } from './offset.ts';

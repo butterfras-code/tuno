@@ -1,6 +1,6 @@
 import { autoControls } from './auto-controls.ts';
 import { defaultAuto, quarterBeats } from '../engine/auto-every.ts';
-import { scheduleClick } from '../../../audio/click.ts';
+import { scheduleClick } from '../../../shared/audio/click.ts';
 import type { NoteAnswer } from '../domain/fingering.ts';
 import { captureRange, resolveSharedPreset } from '../sharing.ts';
 import type { NotesActivity } from '../sharing.ts';

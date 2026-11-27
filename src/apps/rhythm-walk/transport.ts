@@ -1,4 +1,4 @@
-import { scheduleClick } from '../../audio/click.ts';
+import { scheduleClick } from '../../shared/audio/click.ts';
 import { inputAudioTime } from './timing.ts';
 import { Capture } from './capture.ts';
 import type { AttemptRecord } from './capture.ts';

@@ -140,7 +140,10 @@ try {
       function sample() {
         const tail = document.querySelector('.pet-tempo .uno-tail-side');
         const angle = document.querySelector('.pet-tempo .uno-tail').style.transform;
-        const dog = document.querySelector('.pet-tempo .uno-animated').getBoundingClientRect();
+        const svg = document.querySelector('.pet-tempo .uno-animated > svg');
+        const origin = new DOMPoint(0, 0).matrixTransform(svg.getScreenCTM());
+        const corner = new DOMPoint(300, 300).matrixTransform(svg.getScreenCTM());
+        const dog = { left: origin.x, top: origin.y, width: corner.x - origin.x, height: corner.y - origin.y };
         const bounds = tail.getBoundingClientRect();
         const tip = new DOMPoint(243, 193.895).matrixTransform(tail.querySelector('path').getScreenCTM());
         samples.push({ beat: document.querySelector('.pet-tempo').dataset.beat, transform: tail.style.transform,

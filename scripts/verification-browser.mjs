@@ -2,7 +2,7 @@ import { browserPlan, validateBrowserChecks } from './browser-checks.mjs';
 
 // These measure real-time behavior or rely on animation timing. Do not run
 // alongside other managed jobs, even when those belong to another worktree.
-export const exclusiveChecks = new Set(['performance-check.mjs', 'animation-browser-check.mjs', 'browser-check.mjs']);
+export const exclusiveChecks = new Set(['performance-check.mjs', 'animation-browser-check.mjs', 'browser-check.mjs', 'audio-render-check.mjs']);
 
 export function selectedBrowserPlan(args = [], env = process.env) {
   validateBrowserChecks();

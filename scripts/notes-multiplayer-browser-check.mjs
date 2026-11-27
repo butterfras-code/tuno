@@ -225,7 +225,15 @@ async function run(page,url,label) {
   assert.match(await page.locator('#multiplayer-notes-tab').getAttribute('aria-label'),/^Choose Notes — /);
   const remove=button(page,'Remove Player 3');
   assert.equal(await page.locator('.multiplayer-editor .multiplayer-player-controls').count(),0);
-  assert.equal(await remove.locator('svg').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(143, 63, 72)');
+  const destructiveColor = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = 'var(--color-destructive)';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  });
+  assert.equal(await remove.locator('svg').evaluate(node=>getComputedStyle(node).backgroundColor), destructiveColor);
   const removeBox=await remove.boundingBox();
   assert.ok(removeBox.width >= 43.99 && removeBox.height >= 43.99,`44px touch target (allowing subpixel rounding): ${JSON.stringify(removeBox)}`);
   await page.screenshot({path:`dist/validation/notes-multiplayer-${name}-${label}-setup.png`,fullPage:true});

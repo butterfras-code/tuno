@@ -43,9 +43,16 @@ html[data-theme='fireside'] .pulse-friend .uno > svg {
   }
 }
 
-/* Decorative top garland: full-bleed, zero horizontal overflow, hidden during active fullscreen play. */
+/* Decorative top garland: full-bleed overlay along the top margin so it adds
+   zero vertical flow height on tight classroom/mobile viewports; hidden in active play. */
+body { position: relative; }
 .theme-garland {
   display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
@@ -55,8 +62,7 @@ html[data-theme='fireside'] .pulse-friend .uno > svg {
 }
 html[data-theme='fireside'] .theme-garland--fireside {
   display: block;
-  height: 30px;
-  margin-bottom: -14px;
+  height: 28px;
 }
 .theme-garland svg {
   display: block;
@@ -68,7 +74,6 @@ body:has(#home.is-playing) .theme-garland {
 }
 @media (max-width: 700px) {
   html[data-theme='fireside'] .theme-garland--fireside {
-    height: 28px;
-    margin-bottom: -10px;
+    height: 20px;
   }
 }
